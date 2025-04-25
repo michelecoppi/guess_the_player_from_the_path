@@ -5,9 +5,9 @@ from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.start_handler import start
 import asyncio
 import os
+import threading
 
 flask_app = Flask(__name__)
-
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler("start", start))
 
@@ -16,17 +16,23 @@ def index():
     return "Bot attivo!"
 
 @flask_app.route("/webhook", methods=["POST"])
-async def webhook():
+def webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, telegram_app.bot)
-    await telegram_app.process_update(update)
+    asyncio.run(telegram_app.process_update(update))  # usa run qui per gestire async da sync
     return "OK", 200
 
-async def start_bot():
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
+async def main():
     await telegram_app.initialize()
+    await telegram_app.start()
+    await telegram_app.bot.delete_webhook()
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
-    print("Webhook impostato con successo!")
+
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
 
 if __name__ == "__main__":
-    asyncio.run(start_bot()) 
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+    asyncio.run(main())
