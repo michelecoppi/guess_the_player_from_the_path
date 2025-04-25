@@ -11,6 +11,8 @@ flask_app = Flask(__name__)
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler("start", start))
 
+loop = asyncio.get_event_loop()
+
 @flask_app.route("/")
 def index():
     return "Bot attivo!"
@@ -19,7 +21,8 @@ def index():
 def webhook():
     data = request.get_json(force=True)
     update = Update.de_json(data, telegram_app.bot)
-    asyncio.run(telegram_app.process_update(update))  # usa run qui per gestire async da sync
+
+    loop.create_task(telegram_app.process_update(update))
     return "OK", 200
 
 def run_flask():
@@ -31,8 +34,7 @@ async def main():
     await telegram_app.bot.delete_webhook()
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
 
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.start()
+    threading.Thread(target=run_flask).start()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop.run_until_complete(main())
