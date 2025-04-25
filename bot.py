@@ -20,8 +20,8 @@ def index():
 @flask_app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
+    print("Update JSON:", data)
     update = Update.de_json(data, telegram_app.bot)
-
     loop.create_task(telegram_app.process_update(update))
     return "OK", 200
 
