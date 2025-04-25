@@ -24,8 +24,6 @@ def index():
 @flask_app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
-    logger.info("📦 Update ricevuto dal webhook:")
-    logger.info(data)
     update = Update.de_json(data, telegram_app.bot)
     loop.create_task(telegram_app.process_update(update))
     return "OK", 200
@@ -35,11 +33,12 @@ def run_flask():
 
 async def main():
     await telegram_app.initialize()
-    await telegram_app.start()
     await telegram_app.bot.delete_webhook()
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
 
-    threading.Thread(target=run_flask).start()
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+    logger.info("Flask app is running...")
 
 if __name__ == "__main__":
     loop.run_until_complete(main())
