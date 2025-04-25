@@ -1,29 +1,31 @@
+from flask import Flask, request
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler
-from flask import Flask
-import os
-import threading
 from handlers.start_handler import start
-from config import BOT_TOKEN
+from config import BOT_TOKEN, WEBHOOK_URL
+import asyncio
+import os
 
 flask_app = Flask(__name__)
 
-@flask_app.route('/')
-def home():
-    return "Bot Telegram è online!"
+telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
+telegram_app.add_handler(CommandHandler("start", start))
 
-def run_telegram_bot():
-    telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
-    telegram_app.add_handler(CommandHandler("start", start))
-    telegram_app.run_polling()
+@flask_app.route("/")
+def index():
+    return "Bot attivo e pronto a ricevere webhook!"
 
-def run_flask_app():
-    flask_app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8000)), use_reloader=False)
+@flask_app.route("/webhook", methods=["POST"])
+async def webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, telegram_app.bot)
+    await telegram_app.process_update(update)
+    return "OK", 200
 
-def main():
-    flask_thread = threading.Thread(target=run_flask_app)
-    flask_thread.start()
-    
-    run_telegram_bot()
+async def set_webhook():
+    await telegram_app.bot.set_webhook(WEBHOOK_URL)
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    asyncio.run(set_webhook())
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
