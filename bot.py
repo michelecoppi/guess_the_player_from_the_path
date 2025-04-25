@@ -4,6 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler
 from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.start_handler import start
 import logging
+import os
 from contextlib import asynccontextmanager
 
 logging.basicConfig(level=logging.INFO)
@@ -31,3 +32,7 @@ async def webhook(req: Request):
     await telegram_app.process_update(update)
     return {"status": "ok"}
 
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
