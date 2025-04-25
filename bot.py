@@ -6,6 +6,10 @@ from handlers.start_handler import start
 import asyncio
 import os
 import threading
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 flask_app = Flask(__name__)
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -20,7 +24,8 @@ def index():
 @flask_app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json(force=True)
-    print("Update JSON:", data)
+    logger.info("📦 Update ricevuto dal webhook:")
+    logger.info(data)
     update = Update.de_json(data, telegram_app.bot)
     loop.create_task(telegram_app.process_update(update))
     return "OK", 200
