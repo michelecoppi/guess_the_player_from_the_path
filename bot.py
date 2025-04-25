@@ -7,6 +7,7 @@ import asyncio
 import os
 
 flask_app = Flask(__name__)
+
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler("start", start))
 
@@ -24,9 +25,8 @@ async def webhook():
 async def start_bot():
     await telegram_app.initialize()
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
-    await telegram_app.start()
+    print("Webhook impostato con successo!")
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.create_task(start_bot())
+    asyncio.run(start_bot()) 
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
