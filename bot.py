@@ -33,12 +33,10 @@ def run_flask():
 
 async def main():
     await telegram_app.initialize()
-    await telegram_app.bot.delete_webhook()
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
 
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
-    logger.info("Flask app is running...")
 
 if __name__ == "__main__":
     loop.run_until_complete(main())
