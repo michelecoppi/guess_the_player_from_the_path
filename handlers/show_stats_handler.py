@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 from services.firebase_service import get_user_data
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
+    user_id = update.effective_user.id
     user_data = get_user_data(user_id)
 
     if not user_data:
