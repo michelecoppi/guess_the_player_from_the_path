@@ -41,15 +41,16 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if get_cache()["first_correct_user"] is False:
             bonus = 1
             set_cache({"first_correct_user": True})
-            await update_daily_challenge_first_correct()
+            update_daily_challenge_first_correct()
 
         total_points = points + bonus
-        await update_user_points(user_id, total_points)
-        await update.message.reply_text(f"✅ Corretto! Hai guadagnato {total_points} punti.")
+        update_user_points(user_id, total_points)
+        bonus_message = f"💎 Bonus: +{bonus} punto perchè sei il primo ad indovinare!" if bonus > 0 else ""
+        await update.message.reply_text(f"✅ Corretto! Hai guadagnato {total_points} punti.\n{bonus_message}")
     else:
         await update.message.reply_text("❌ Risposta sbagliata, riprova!")
-        
-    await update_user_daily_attempts(user_id, daily_attempts + 1)
+
+    update_user_daily_attempts(user_id, daily_attempts + 1)
     
 
 def points_for_difficulty(difficulty):
