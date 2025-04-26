@@ -36,7 +36,9 @@ def update_user_points(user_id, points):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
-
+    logging.info(f"[FIREBASE] Aggiornamento punti per l'utente {user_id}: {points}")
+    logging.info(f"[FIREBASE] Query: {query}")
+    logging.info(f"[FIREBASE] Risultati: {results}")
     for user in results:
         user_ref = users_ref.document(user.id)
         user_ref.update({
@@ -94,8 +96,7 @@ def update_daily_challenge_first_correct():
     doc = next(results, None)
 
     if doc:
-        data = doc.to_dict()
-        
+        data = doc.to_dict()  
         daily_path_ref.document(doc.id).update({
             "first_correct_user": True
         })
@@ -104,7 +105,7 @@ def update_daily_challenge_first_correct():
         logging.info(f"[CACHE] Nessun daily challenge trovato per il giorno {today}")
 
 def reset_daily_attempts():
-    users_ref = firestore.client().collection("users")
+    users_ref = db.collection("users")
     users = users_ref.stream()
 
     for user in users:
@@ -116,12 +117,11 @@ def update_user_daily_attempts(user_id, attempts):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
-
+    logging.info(f"[FIREBASE] Aggiornamento tentativi giornalieri per l'utente {user_id}: {attempts}")
+    logging.info(f"[FIREBASE] Query: {query}")
+    logging.info(f"[FIREBASE] Risultati: {results}")
     for user in results:
         user_ref = users_ref.document(user.id)
-        logging.info(f"[FIREBASE] Aggiornamento tentativi giornalieri per l'utente {user_id}: {attempts}")
-        logging.info(f"[FIREBASE] Document ID: {user.id}")
-        logging.info(f"[FIREBASE] Document data: {user_ref.get().to_dict()}")
         user_ref.update({
             "daily_attempts": attempts
         })
