@@ -1,0 +1,15 @@
+from telegram import Update
+from telegram.ext import ContextTypes
+
+
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_message = (
+        "🛠️ Comandi disponibili:\n\n"
+        "/start - Inizia a usare il bot e registrati.\n"
+        "/guess <risposta> - Indovina la carriera con il comando in privato al bot!\n"
+        "/show - Mostra la sfida giornaliera.\n"
+        "/stats - Mostra le tue statistiche.\n"
+        "/help - Mostra questo messaggio di aiuto."
+    )
+    
+    await update.message.reply_text(help_message)

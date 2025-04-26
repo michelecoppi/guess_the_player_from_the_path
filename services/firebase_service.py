@@ -30,7 +30,7 @@ def save_user(user_id, first_name):
             "players_guessed": 0,
             "bonus_first_guessed": 0,
         })
-        return f"Benvenuto, {first_name}! Il tuo account è stato creato."
+        return f"Benvenuto, {first_name}! Il tuo account è stato creato. fai /help per vedere la lista dei comandi disponibili."
     else:
         return f"Ciao di nuovo, {first_name}!"
 

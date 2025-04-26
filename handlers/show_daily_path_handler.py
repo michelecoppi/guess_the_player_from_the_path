@@ -25,7 +25,7 @@ async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎯 Difficoltà: {difficulty}\n"
         f"🏆 Punti: {points}\n"
         f"{bonus_info}"
-        f"\n\n🔍 Indovina la carriera con il comando /guess <risposta>!\n"
+        f"\n\n🔍 Indovina la carriera con il comando /guess <risposta> in privato al bot!\n"
     )
 
     await update.message.reply_photo(
