@@ -36,15 +36,13 @@ def update_user_points(user_id, points):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
-    logging.info(f"[FIREBASE] Aggiornamento punti per l'utente {user_id}: {points}")
-    logging.info(f"[FIREBASE] Query: {query}")
-    logging.info(f"[FIREBASE] Risultati: {results}")
     for user in results:
         user_ref = users_ref.document(user.id)
         user_ref.update({
             "points_totali": firestore.Increment(points),
             "has_guessed_today": True
         })
+        
 def get_user_daily_status(user_id):
     users_ref = db.collection("users")
     query = users_ref.where("telegram_id", "==", user_id).limit(1)
@@ -117,9 +115,7 @@ def update_user_daily_attempts(user_id, attempts):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
-    logging.info(f"[FIREBASE] Aggiornamento tentativi giornalieri per l'utente {user_id}: {attempts}")
-    logging.info(f"[FIREBASE] Query: {query}")
-    logging.info(f"[FIREBASE] Risultati: {results}")
+
     for user in results:
         user_ref = users_ref.document(user.id)
         user_ref.update({
