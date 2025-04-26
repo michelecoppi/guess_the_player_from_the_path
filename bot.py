@@ -5,6 +5,7 @@ from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.start_handler import start
 from handlers.guess_handler import guess
 from handlers.show_daily_path_handler import show
+from handlers.show_stats_handler import stats
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -15,6 +16,7 @@ telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(CommandHandler("guess", guess))
 telegram_app.add_handler(CommandHandler("show", show))
+telegram_app.add_handler(CommandHandler("stats", stats))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

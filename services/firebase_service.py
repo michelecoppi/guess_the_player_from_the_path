@@ -27,21 +27,30 @@ def save_user(user_id, first_name):
             "points_totali": 0,
             "daily_attempts": 0,
             "has_guessed_today": False,
+            "players_guessed": 0,
+            "bonus_first_guessed": 0,
         })
         return f"Benvenuto, {first_name}! Il tuo account è stato creato."
     else:
         return f"Ciao di nuovo, {first_name}!"
 
-def update_user_points(user_id, points):
+def update_user_points(user_id, points, bonus):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
+    
     for user in results:
         user_ref = users_ref.document(user.id)
-        user_ref.update({
+        update_data = {
             "points_totali": firestore.Increment(points),
+            "players_guessed": firestore.Increment(1),
             "has_guessed_today": True
-        })
+        }
+
+        if bonus > 0:
+            update_data["bonus_first_guessed"] = firestore.Increment(1)
+        
+        user_ref.update(update_data)
         
 def get_user_daily_status(user_id):
     users_ref = db.collection("users")
@@ -121,3 +130,12 @@ def update_user_daily_attempts(user_id, attempts):
         user_ref.update({
             "daily_attempts": attempts
         })
+def get_user_data(user_id):
+    users_ref = db.collection("users")
+    query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
+    results = query.stream()
+    
+    for user in results:
+        return user.to_dict()
+    
+    return None

@@ -1,18 +1,24 @@
 from cache import get_cache, set_cache
 from telegram import Update
 from telegram.ext import ContextTypes
-from services.firebase_service import update_user_points, reload_daily_challenge, update_daily_challenge_first_correct, get_user_daily_status, update_user_daily_attempts
+from services.firebase_service import update_user_points, reload_daily_challenge, update_daily_challenge_first_correct, get_user_daily_status, update_user_daily_attempts, get_user_data
 from datetime import datetime, timezone
 import logging
 
 MAX_ATTEMPTS = 3
 
 async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+    user_data = get_user_data(user_id)
+    if not user_data:
+        await update.message.reply_text("❗ Devi registrarti prima di giocare! Usa /start.")
+        return
+    
     if update.message.chat.type != "private":
         await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
         return
-    
-    user_id = update.effective_user.id
+
     today = datetime.now(timezone.utc).strftime("%d/%m/%y")
 
     if get_cache()["current_day"] != today:
@@ -44,7 +50,7 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update_daily_challenge_first_correct()
 
         total_points = points + bonus
-        update_user_points(user_id, total_points)
+        update_user_points(user_id, total_points, bonus)
         bonus_message = f"💎 Bonus: +{bonus} punto perchè sei il primo ad indovinare!" if bonus > 0 else ""
         await update.message.reply_text(f"✅ Corretto! Hai guadagnato {total_points} punti.\n{bonus_message}")
     else:
