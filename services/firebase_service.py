@@ -72,7 +72,7 @@ def reload_daily_challenge():
         set_cache({
             "current_day": data.get("current_day"),
             "image_url": data.get("image_url"),
-            "answers": data.get("answers", []),
+            "correct_answers": data.get("correct_answers", []),
             "difficulty": data.get("difficulty"),
             "first_correct_user": False  
         })
@@ -111,6 +111,7 @@ def reset_daily_attempts():
         user_ref = users_ref.document(user.id)
         user_ref.update({"daily_attempts": 0, "has_guessed_today": False})
     logging.info("Tentativi giornalieri resettati per tutti gli utenti")
+    
 def update_user_daily_attempts(user_id, attempts):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
