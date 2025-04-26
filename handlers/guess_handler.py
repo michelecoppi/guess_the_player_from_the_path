@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from services.firebase_service import update_user_points, reload_daily_challenge, update_daily_challenge_first_correct, get_user_daily_status, update_user_daily_attempts
 from datetime import datetime, timezone
+import logging
 
 MAX_ATTEMPTS = 3
 
@@ -30,6 +31,9 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text or ""
     user_answer = message_text.replace("/guess", "", 1).strip().lower()
 
+    logging.info(f"[GUESS] Risposta dell'utente: {user_answer}")
+    logging.info(f"[GUESS] Risposta corretta: {get_cache()['correct_answers']}")
+
     if user_answer in get_cache()["correct_answers"]:
         points = points_for_difficulty(get_cache()["difficulty"])
         bonus = 0
@@ -41,12 +45,12 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         total_points = points + bonus
         update_user_points(user_id, total_points)
-
+        update_user_daily_attempts(user_id, daily_attempts + 1)
         await update.message.reply_text(f"✅ Corretto! Hai guadagnato {total_points} punti.")
     else:
+        update_user_daily_attempts(user_id, daily_attempts + 1)
         await update.message.reply_text("❌ Risposta sbagliata, riprova!")
-
-    update_user_daily_attempts(user_id, daily_attempts + 1)
+    
 
 def points_for_difficulty(difficulty):
     if difficulty == "easy":
