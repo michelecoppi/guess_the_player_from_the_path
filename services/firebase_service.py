@@ -32,14 +32,14 @@ def save_user(user_id, first_name):
     else:
         return f"Ciao di nuovo, {first_name}!"
 
-def update_user_points(user_id, points):
+async def update_user_points(user_id, points):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
 
     for user in results:
         user_ref = users_ref.document(user.id)
-        user_ref.update({
+        await user_ref.update({
             "points_totali": firestore.Increment(points),
             "has_guessed_today": True
         })
@@ -83,7 +83,7 @@ def reload_daily_challenge():
     else:
         logging.info(f"[CACHE] Nessun daily challenge trovato per il giorno {today}")
 
-def update_daily_challenge_first_correct():
+async def update_daily_challenge_first_correct():
     daily_path_ref = db.collection("daily_path")
     
     today = datetime.now().strftime("%d/%m/%y")
@@ -96,29 +96,29 @@ def update_daily_challenge_first_correct():
     if doc:
         data = doc.to_dict()
         
-        daily_path_ref.document(doc.id).update({
+        await daily_path_ref.document(doc.id).update({
             "first_correct_user": True
         })
         logging.info(f"[CACHE] Aggiornato il primo utente corretto per il giorno {today}")
     else:
         logging.info(f"[CACHE] Nessun daily challenge trovato per il giorno {today}")
 
-def reset_daily_attempts():
+async def reset_daily_attempts():
     users_ref = firestore.client().collection("users")
     users = users_ref.stream()
 
     for user in users:
         user_ref = users_ref.document(user.id)
-        user_ref.update({"daily_attempts": 0, "has_guessed_today": False})
+        await user_ref.update({"daily_attempts": 0, "has_guessed_today": False})
     logging.info("Tentativi giornalieri resettati per tutti gli utenti")
-    
-def update_user_daily_attempts(user_id, attempts):
+
+async def update_user_daily_attempts(user_id, attempts):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
 
     for user in results:
         user_ref = users_ref.document(user.id)
-        user_ref.update({
+        await user_ref.update({
             "daily_attempts": attempts
         })
