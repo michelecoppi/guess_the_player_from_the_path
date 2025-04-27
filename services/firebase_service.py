@@ -3,6 +3,7 @@ from cache import set_cache
 from firebase_admin import credentials, firestore
 from config import FIREBASE_CREDENTIALS_PATH
 from datetime import datetime
+import pytz
 import logging
 
 
@@ -90,9 +91,11 @@ def reload_daily_challenge(today_str):
 def update_daily_challenge_first_correct():
     daily_path_ref = db.collection("daily_path")
     
-    today = datetime.now().strftime("%d/%m/%y")
+    italy_tz = pytz.timezone('Europe/Rome')
+    now_italy = datetime.now(italy_tz)
+    today_str = now_italy.strftime('%Y-%m-%d')  
     
-    query = daily_path_ref.where("current_day", "==", today).limit(1)
+    query = daily_path_ref.where("current_day", "==", today_str).limit(1)
     results = query.stream()
 
     doc = next(results, None)
