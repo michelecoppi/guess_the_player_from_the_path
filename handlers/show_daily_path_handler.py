@@ -5,10 +5,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    today = datetime.now(timezone.utc).strftime("%d/%m/%y")
-
-    if get_cache()["current_day"] != today:
-        reload_daily_challenge()
 
     cache = get_cache()
 

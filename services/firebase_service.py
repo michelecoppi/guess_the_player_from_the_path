@@ -65,12 +65,10 @@ def get_user_daily_status(user_id):
 
     return 0, False
 
-def reload_daily_challenge():
+def reload_daily_challenge(today_str):
     daily_path_ref = db.collection("daily_path")
     
-    today = datetime.now().strftime("%d/%m/%y")
-    
-    query = daily_path_ref.where("current_day", "==", today).limit(1)
+    query = daily_path_ref.where("current_day", "==", today_str).limit(1)
     results = query.stream()
 
     doc = next(results, None)
@@ -88,9 +86,6 @@ def reload_daily_challenge():
 
         reset_daily_attempts()
 
-        logging.info(f"[CACHE] Daily challenge caricata per il giorno {today}")
-    else:
-        logging.info(f"[CACHE] Nessun daily challenge trovato per il giorno {today}")
 
 def update_daily_challenge_first_correct():
     daily_path_ref = db.collection("daily_path")

@@ -19,11 +19,6 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
         return
 
-    today = datetime.now(timezone.utc).strftime("%d/%m/%y")
-
-    if get_cache()["current_day"] != today:
-        reload_daily_challenge()
-
     daily_attempts, has_guessed_today = get_user_daily_status(user_id)
 
     if has_guessed_today:
