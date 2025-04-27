@@ -42,6 +42,10 @@ app = FastAPI(lifespan=lifespan)
 async def root():
     return {"message": "Bot attivo!"}
 
+@app.head("/ping")
+async def ping():
+    return {"status": "ok"}
+
 @app.post("/webhook")
 async def webhook(req: Request):
     data = await req.json()
