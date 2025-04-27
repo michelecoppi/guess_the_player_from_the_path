@@ -7,6 +7,9 @@ from handlers.guess_handler import guess
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats
 from handlers.help_handler import help
+from handlers.daily_job import send_daily_message
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import pytz
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -24,6 +27,11 @@ telegram_app.add_handler(CommandHandler("help", help))
 async def lifespan(app: FastAPI):
     await telegram_app.initialize()
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
+    italy_tz = pytz.timezone('Europe/Rome')
+    scheduler = AsyncIOScheduler(timezone=italy_tz)
+    scheduler.add_job(send_daily_message, "cron", hour=12, minute=25)  
+    scheduler.start()
+    logging.info("Scheduler started")
     yield
     
 
