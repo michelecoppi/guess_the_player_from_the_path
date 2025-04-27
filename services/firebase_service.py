@@ -157,3 +157,17 @@ def get_user_data(user_id):
         return user.to_dict()
     
     return None
+
+def get_all_users():
+    users_ref = db.collection('users')
+    users = users_ref.stream()
+
+    user_list = []
+    for user_doc in users:
+        data = user_doc.to_dict()
+        user_list.append({
+            "telegram_id": data.get("telegram_id"),
+            "username": data.get("first_name", "Sconosciuto"),
+            "points": data.get("points_totali", 0)
+        })
+    return user_list

@@ -9,6 +9,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/guess <risposta> - Indovina la carriera con il comando in privato al bot!\n"
         "/show - Mostra la sfida giornaliera.\n"
         "/stats - Mostra le tue statistiche.\n"
+        "/top - Mostra la classifica dei migliori utenti.\n"
         "/help - Mostra questo messaggio di aiuto."
     )
     
