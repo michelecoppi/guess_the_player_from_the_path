@@ -23,7 +23,7 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if get_cache().get("current_day") is None:
         italy_tz = pytz.timezone('Europe/Rome')
         now_italy = datetime.now(italy_tz)
-        today_str = now_italy.strftime('%Y-%m-%d')
+        today_str = now_italy.strftime('%d-%m-%y')
         load_daily_challenge(today_str) 
 
     daily_attempts, has_guessed_today = get_user_daily_status(user_id)

@@ -9,7 +9,7 @@ bot = Bot(BOT_TOKEN)
 async def update_daily_challenge():
     italy_tz = pytz.timezone('Europe/Rome')
     now_italy = datetime.now(italy_tz)
-    today_str = now_italy.strftime('%Y-%m-%d')  
+    today_str = now_italy.strftime('%d-%m-%y')  
 
     chat_id = 1224482376
     reload_daily_challenge(today_str)  
