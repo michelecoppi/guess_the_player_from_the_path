@@ -125,9 +125,9 @@ def update_daily_challenge_first_correct():
         daily_path_ref.document(doc.id).update({
             "first_correct_user": True
         })
-        logging.info(f"[CACHE] Aggiornato il primo utente corretto per il giorno {today}")
+        logging.info(f"[CACHE] Aggiornato il primo utente corretto per il giorno {today_str}")
     else:
-        logging.info(f"[CACHE] Nessun daily challenge trovato per il giorno {today}")
+        logging.info(f"[CACHE] Nessun daily challenge trovato per il giorno {today_str}")
 
 def reset_daily_attempts():
     users_ref = db.collection("users")
