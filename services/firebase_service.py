@@ -87,6 +87,26 @@ def reload_daily_challenge(today_str):
 
         reset_daily_attempts()
 
+def load_daily_challenge(today_str):
+    daily_path_ref = db.collection("daily_path")
+    query = daily_path_ref.where("current_day", "==", today_str).limit(1)
+    results = query.stream()
+
+    doc = next(results, None)
+
+    if doc:
+        data = doc.to_dict()
+        
+        set_cache({
+            "current_day": data.get("current_day"),
+            "image_url": data.get("image_url"),
+            "correct_answers": data.get("correct_answers", []),
+            "difficulty": data.get("difficulty"),
+            "first_correct_user": data.get("first_correct_user", False)  
+        })
+    else:
+        logging.info(f"Nessuna daily challenge trovata per il giorno {today_str}")
+
 
 def update_daily_challenge_first_correct():
     daily_path_ref = db.collection("daily_path")

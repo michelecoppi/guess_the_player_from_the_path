@@ -1,8 +1,9 @@
 from cache import get_cache, set_cache
 from telegram import Update
 from telegram.ext import ContextTypes
-from services.firebase_service import update_user_points, reload_daily_challenge, update_daily_challenge_first_correct, get_user_daily_status, update_user_daily_attempts, get_user_data
-from datetime import datetime, timezone
+from services.firebase_service import update_user_points, load_daily_challenge, update_daily_challenge_first_correct, get_user_daily_status, update_user_daily_attempts, get_user_data
+from datetime import datetime
+import pytz
 import logging
 
 MAX_ATTEMPTS = 3
@@ -18,6 +19,12 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.chat.type != "private":
         await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
         return
+    
+    if get_cache().get("current_day") is None:
+        italy_tz = pytz.timezone('Europe/Rome')
+        now_italy = datetime.now(italy_tz)
+        today_str = now_italy.strftime('%Y-%m-%d')
+        load_daily_challenge(today_str) 
 
     daily_attempts, has_guessed_today = get_user_daily_status(user_id)
 

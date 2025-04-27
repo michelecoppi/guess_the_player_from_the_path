@@ -1,12 +1,18 @@
 from cache import get_cache, set_cache
-from services.firebase_service import reload_daily_challenge
-from datetime import datetime, timezone
+from services.firebase_service import load_daily_challenge
+from datetime import datetime
+import pytz
 from telegram import Update
 from telegram.ext import ContextTypes
 
 async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     cache = get_cache()
+
+    if cache.get("current_day") is None:
+        italy_tz = pytz.timezone('Europe/Rome')
+        now_italy = datetime.now(italy_tz)
+        today_str = now_italy.strftime('%Y-%m-%d')
+        load_daily_challenge(today_str) 
 
     if not cache.get("image_url"):
         await update.message.reply_text("❗ Non c'è ancora una sfida giornaliera disponibile.")
