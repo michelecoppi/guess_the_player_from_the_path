@@ -37,7 +37,16 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     message_text = update.message.text or ""
-    user_answer = message_text.replace("/guess", "", 1).strip().lower()
+    message_text_lower = message_text.lower()
+
+    if message_text_lower.startswith("/guess"):
+        user_answer = message_text[6:].strip().lower() 
+    else:
+        user_answer = ""
+
+    if not user_answer:
+        await update.message.reply_text("❗ Devi scrivere anche il nome del calciatore dopo /guess!")
+        return
 
     logging.info(f"[GUESS] Risposta dell'utente: {user_answer}")
     logging.info(f"[GUESS] Risposta corretta: {get_cache()['correct_answers']}")
