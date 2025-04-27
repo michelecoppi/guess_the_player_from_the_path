@@ -113,7 +113,7 @@ def update_daily_challenge_first_correct():
     
     italy_tz = pytz.timezone('Europe/Rome')
     now_italy = datetime.now(italy_tz)
-    today_str = now_italy.strftime('%d-%m-%y')  
+    today_str = now_italy.strftime('%d/%m/%y')  
     
     query = daily_path_ref.where("current_day", "==", today_str).limit(1)
     results = query.stream()
