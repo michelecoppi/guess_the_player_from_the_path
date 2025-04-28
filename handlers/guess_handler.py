@@ -65,7 +65,11 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bonus_message = f"💎 Bonus: +{bonus} punto perchè sei il primo ad indovinare!" if bonus > 0 else ""
         await update.message.reply_text(f"✅ Corretto! Hai guadagnato {total_points} punti.\n{bonus_message}")
     else:
-        await update.message.reply_text(f"❌ Risposta sbagliata, riprova! Hai {MAX_ATTEMPTS - (daily_attempts + 1)} tentativi rimasti.")
+        attempts_left = MAX_ATTEMPTS - (daily_attempts + 1)
+        if attempts_left == 0:
+            await update.message.reply_text("❌ Risposta sbagliata, hai esaurito i tentativi per oggi! Riprova domani.")
+        else:
+            await update.message.reply_text(f"❌ Risposta sbagliata, riprova! Hai {attempts_left} tentativi rimasti.")
 
     update_user_daily_attempts(user_id, daily_attempts + 1)
     
