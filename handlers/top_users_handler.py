@@ -21,7 +21,11 @@ async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for index, user in enumerate(top_users, start=1):
         name = user["username"]
         points = user["points"]
-        medal = medals.get(index, f"{index}️⃣")
+
+        if index == 10:
+            medal = "🔟"
+        else:
+            medal = medals.get(index, f"{index}️⃣")
 
         if user["telegram_id"] == user_telegram_id:
             message += f"{medal} <b>{name} [TU] </b> - {points} punti\n"
