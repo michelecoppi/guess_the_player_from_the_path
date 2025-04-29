@@ -25,6 +25,7 @@ def save_user(user_id, first_name):
             "first_name": first_name,
             "telegram_id": user_id,
             "date_created": datetime.now(),
+            "chat_id": -1,
             "points_totali": 0,
             "daily_attempts": 0,
             "has_guessed_today": False,
