@@ -10,7 +10,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/show - Mostra la sfida giornaliera.\n"
         "/stats - Mostra le tue statistiche.\n"
         "/top - Mostra la classifica dei migliori utenti.\n"
-        "/help - Mostra questo messaggio di aiuto."
+        "/notify - Attiva o disattiva le notifiche.\n"
     )
     
     await update.message.reply_text(help_message)
