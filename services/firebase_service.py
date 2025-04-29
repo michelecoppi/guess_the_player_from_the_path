@@ -172,3 +172,27 @@ def get_all_users():
             "points": data.get("points_totali", 0)
         })
     return user_list
+
+def get_all_broadcast_users():
+    users_ref = db.collection("users")
+    query = users_ref.where("chat_id", "!=", -1)
+    results = query.stream()
+    
+    return [
+        {
+            "chat_id": user.to_dict()["chat_id"],
+            "has_guessed_today": user.to_dict().get("has_guessed_today", False)
+        }
+        for user in results
+    ]
+
+def update_user_chat_id(user_id, chat_id):
+    users_ref = db.collection("users")
+    query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
+    results = query.stream()
+
+    for user in results:
+        user_ref = users_ref.document(user.id)
+        user_ref.update({
+            "chat_id": chat_id
+        })

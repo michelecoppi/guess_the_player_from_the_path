@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.start_handler import start
 from handlers.guess_handler import guess
@@ -8,6 +8,7 @@ from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats
 from handlers.help_handler import help
 from handlers.top_users_handler import top
+from handlers.notify_handler import notify, notify_callback
 from handlers.daily_job import update_daily_challenge
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import pytz
@@ -24,6 +25,8 @@ telegram_app.add_handler(CommandHandler("show", show))
 telegram_app.add_handler(CommandHandler("stats", stats))
 telegram_app.add_handler(CommandHandler("help", help))
 telegram_app.add_handler(CommandHandler("top", top))
+telegram_app.add_handler(CommandHandler("notify", notify))
+telegram_app.add_handler(CallbackQueryHandler(notify_callback, pattern="^(enable_notify|disable_notify)$"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
