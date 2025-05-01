@@ -26,7 +26,7 @@ async def update_daily_challenge():
         chat_id = user["chat_id"]
         guessed = user.get("has_guessed_today", False)
 
-        # Primo messaggio: per la daily classica (/show)
+       
         if guessed:
             text1 = (
                 "🎉 Complimenti per aver indovinato ieri!\n"

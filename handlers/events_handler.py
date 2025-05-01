@@ -114,7 +114,7 @@ def get_today_player_message(event):
         f"👀 Indovina chi è questo calciatore!\n"
         f"🏆 Punti disponibili: <b>{points}</b>\n"
         f"{bonus_msg}\n"
-        "Per inodvinare, usare il comando /events inserendo il nome del calciatore.\n\n"
+        "Per inodvinare, usare il comando /events in privato inserendo il nome del calciatore.\n\n"
     )
 
     return message, image_url
@@ -141,6 +141,10 @@ def get_event_leaderboard_message(event):
     return message
 
 async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, event: dict):
+    if update.message.chat.type != "private":
+        await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
+        return
+    
     user = update.effective_user
     user_id = user.id
     guess = " ".join(context.args).strip().lower()
@@ -166,7 +170,7 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
             "name": user.first_name,
             "points": 0,
             "daily_attempts": {},
-            "has_guessed_today": False  # Aggiungi il campo has_guessed_today
+            "has_guessed_today": False  
         }
 
     daily_attempts = user_data.get("daily_attempts", {})
