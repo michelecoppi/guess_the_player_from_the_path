@@ -9,6 +9,8 @@ import logging
 
 cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
 
+ITALY_TZ = pytz.timezone('Europe/Rome')
+
 
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -113,8 +115,7 @@ def load_daily_challenge(today_str):
 def update_daily_challenge_first_correct():
     daily_path_ref = db.collection("daily_path")
     
-    italy_tz = pytz.timezone('Europe/Rome')
-    now_italy = datetime.now(italy_tz)
+    now_italy = datetime.now(ITALY_TZ)
     today_str = now_italy.strftime('%d/%m/%y')  
     
     query = daily_path_ref.where("current_day", "==", today_str).limit(1)
@@ -197,49 +198,17 @@ def update_user_chat_id(user_id, chat_id):
         user_ref.update({
             "chat_id": chat_id
         })
-def create_event():
-    event_data = {
-        "code": "BrazilianWeek_1_2025",
-        "name": "Settimana Brasiliana",
-        "description": "Settimana dedicata ai calciatori brasiliani arrivati in europa.",
-        "start_date": "05/05/25",
-        "end_date": "09/05/25",
-        "trophy_day": "10/05/25",
-        "type": "path",           
-        "ranking": {},           
-        "daily_data": {
-            "05/05/25": {
-                "image_url": "https://i.postimg.cc/Bvp0qT8d/photo-5807402448778808142-y.jpg",
-                "correct_answers": ["Ronaldo"],   
-                "points": 1,
-                "first_correct_user": False,
-            },
-            "06/05/25": {
-                "image_url": "https://i.postimg.cc/XYwWPSnN/photo-5807402448778808141-y.jpg",
-                "correct_answers": ["Kaka","Kakà"],
-                "points": 2,
-                "first_correct_user": False,
-            },
-            "07/05/25": {
-                "image_url": "https://i.postimg.cc/W1RjSbLf/photo-5807402448778808143-y.jpg",
-                "correct_answers": ["Allan"],
-                "points": 3,
-                "first_correct_user": False,
-            },
-            "08/05/25": {
-                "image_url": "https://i.postimg.cc/vmbyFqmr/photo-5807402448778808144-y.jpg",
-                "correct_answers": ["Zico"],
-                "points": 4,
-                "first_correct_user": False,
-            },
-            "09/05/25": {
-                "image_url": "https://i.postimg.cc/fTSDxSF9/photo-5807402448778808138-y.jpg",
-                "correct_answers": ["Luiz Adriano","Adriano"],
-                "points": 5,
-                "first_correct_user": False,
-            },
-        } 
-    }
+def get_current_event():
 
-    db.collection("events").add(event_data)
+    now_italy = datetime.now(ITALY_TZ)
+    current_date = now_italy.strftime('%d/%m/%y')
+    
+    events_ref = db.collection("events")
+    query = events_ref.where("dates", "array_contains", current_date)
+    results = query.stream()
+
+    for event in results:
+        return event.to_dict()
+
+    return None
     
