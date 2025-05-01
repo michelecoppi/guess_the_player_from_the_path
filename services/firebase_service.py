@@ -197,3 +197,17 @@ def update_user_chat_id(user_id, chat_id):
         user_ref.update({
             "chat_id": chat_id
         })
+
+def update_all_users_trophies():
+    users_ref = db.collection("users")
+    users = users_ref.stream()
+
+    for user in users:
+        user_data = user.to_dict()
+        if "trophies" not in user_data:
+            users_ref.document(user.id).update({
+                "trophies": []
+            })
+            print(f"Aggiunto campo 'trophies' all'utente {user.id}")
+        else:
+            print(f"Utente {user.id} ha già il campo 'trophies'")

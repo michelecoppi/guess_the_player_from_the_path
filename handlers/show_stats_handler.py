@@ -38,6 +38,8 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
+    update_all_users_trophies()
+
     trophies = context.user_data.get("trophies", [])
 
     _, _, page_str = query.data.split("_")
