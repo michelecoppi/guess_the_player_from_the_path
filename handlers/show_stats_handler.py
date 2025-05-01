@@ -28,7 +28,11 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⚡ Bonus primo indovino ottenuti: {bonus_first_guessed}"
     )
 
-    await update.message.reply_text(stats_message)
+    keyboard = InlineKeyboardMarkup([
+    [InlineKeyboardButton("🎖️ I miei trofei", callback_data="show_trophies_0")]
+    ])
+
+    await update.message.reply_text(stats_message, reply_markup=keyboard)
 
 async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
