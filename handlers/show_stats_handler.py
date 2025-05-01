@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from services.firebase_service import get_user_data
+from services.firebase_service import get_user_data, update_all_users_trophies
 
 TROPHIES_PER_PAGE = 5
 
