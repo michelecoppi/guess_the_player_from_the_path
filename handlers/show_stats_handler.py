@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from services.firebase_service import get_user_data, update_all_users_trophies
+from services.firebase_service import get_user_data
 
 TROPHIES_PER_PAGE = 5
 
@@ -37,8 +37,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
-    update_all_users_trophies()
 
     trophies = context.user_data.get("trophies", [])
 

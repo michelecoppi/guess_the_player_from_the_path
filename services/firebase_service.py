@@ -197,17 +197,49 @@ def update_user_chat_id(user_id, chat_id):
         user_ref.update({
             "chat_id": chat_id
         })
+def create_event():
+    event_data = {
+        "code": "BrazilianWeek_1_2025",
+        "name": "Settimana Brasiliana",
+        "description": "Settimana dedicata ai calciatori brasiliani arrivati in europa.",
+        "start_date": "05/05/25",
+        "end_date": "09/05/25",
+        "trophy_day": "10/05/25",
+        "type": "path",           
+        "ranking": {},           
+        "daily_data": {
+            "05/05/25": {
+                "image_url": "https://i.postimg.cc/Bvp0qT8d/photo-5807402448778808142-y.jpg",
+                "correct_answers": ["Ronaldo"],   
+                "points": 1,
+                "first_correct_user": False,
+            },
+            "06/05/25": {
+                "image_url": "https://i.postimg.cc/XYwWPSnN/photo-5807402448778808141-y.jpg",
+                "correct_answers": ["Kaka","Kakà"],
+                "points": 2,
+                "first_correct_user": False,
+            },
+            "07/05/25": {
+                "image_url": "https://i.postimg.cc/W1RjSbLf/photo-5807402448778808143-y.jpg",
+                "correct_answers": ["Allan"],
+                "points": 3,
+                "first_correct_user": False,
+            },
+            "08/05/25": {
+                "image_url": "https://i.postimg.cc/vmbyFqmr/photo-5807402448778808144-y.jpg",
+                "correct_answers": ["Zico"],
+                "points": 4,
+                "first_correct_user": False,
+            },
+            "09/05/25": {
+                "image_url": "https://i.postimg.cc/fTSDxSF9/photo-5807402448778808138-y.jpg",
+                "correct_answers": ["Luiz Adriano","Adriano"],
+                "points": 5,
+                "first_correct_user": False,
+            },
+        } 
+    }
 
-def update_all_users_trophies():
-    users_ref = db.collection("users")
-    users = users_ref.stream()
-
-    for user in users:
-        user_data = user.to_dict()
-        if "trophies" not in user_data:
-            users_ref.document(user.id).update({
-                "trophies": []
-            })
-            print(f"Aggiunto campo 'trophies' all'utente {user.id}")
-        else:
-            print(f"Utente {user.id} ha già il campo 'trophies'")
+    db.collection("events").add(event_data)
+    
