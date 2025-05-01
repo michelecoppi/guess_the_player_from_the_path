@@ -4,6 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.start_handler import start
 from handlers.guess_handler import guess
+from handlers.events_handler import events
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats, show_trophies_callback
 from handlers.help_handler import help
@@ -21,6 +22,7 @@ logging.basicConfig(level=logging.INFO)
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(CommandHandler("guess", guess))
+telegram_app.add_handler(CommandHandler("events", events))
 telegram_app.add_handler(CommandHandler("show", show))
 telegram_app.add_handler(CommandHandler("stats", stats))
 telegram_app.add_handler(CommandHandler("help", help))
