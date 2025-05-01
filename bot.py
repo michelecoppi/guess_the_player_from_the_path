@@ -4,7 +4,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 from config import BOT_TOKEN, WEBHOOK_URL
 from handlers.start_handler import start
 from handlers.guess_handler import guess
-from handlers.events_handler import events
+from handlers.events_handler import events, handle_event_navigation
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats, show_trophies_callback
 from handlers.help_handler import help
@@ -30,6 +30,7 @@ telegram_app.add_handler(CommandHandler("top", top))
 telegram_app.add_handler(CommandHandler("notify", notify))
 telegram_app.add_handler(CallbackQueryHandler(notify_callback, pattern="^(enable_notify|disable_notify)$"))
 telegram_app.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"^show_trophies_\d+$"))
+telegram_app.add_handler(CallbackQueryHandler(handle_event_navigation, pattern="^event_"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
