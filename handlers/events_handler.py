@@ -43,6 +43,7 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         return
 
     data = query.data
+    image_url = None
 
     if data == "event_home":
         message = get_event_home_message(event)
