@@ -29,6 +29,7 @@ def save_user(user_id, first_name):
             "points_totali": 0,
             "daily_attempts": 0,
             "has_guessed_today": False,
+            "trophies": [],
             "players_guessed": 0,
             "bonus_first_guessed": 0,
         })

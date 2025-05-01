@@ -9,15 +9,14 @@ import logging
 MAX_ATTEMPTS = 3
 
 async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    if update.message.chat.type != "private":
+        await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
+        return
+    
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     if not user_data:
         await update.message.reply_text("❗ Devi registrarti prima di giocare! Usa /start.")
-        return
-    
-    if update.message.chat.type != "private":
-        await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
         return
     
     if get_cache().get("current_day") is None:
