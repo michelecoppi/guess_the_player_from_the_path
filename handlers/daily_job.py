@@ -2,7 +2,7 @@ from datetime import datetime
 import pytz
 import asyncio
 from telegram import Bot
-from services.firebase_service import reload_daily_challenge, get_all_broadcast_users, get_current_event, get_event_trophy_day
+from services.firebase_service import reload_daily_challenge, get_all_broadcast_users, get_current_event, get_event_trophy_day, update_users_trophies
 from config import BOT_TOKEN
 import logging
 
