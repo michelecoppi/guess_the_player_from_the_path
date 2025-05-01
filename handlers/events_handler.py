@@ -20,7 +20,7 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [
-            InlineKeyboardButton("✅ Home", callback_data="event_home"),
+            InlineKeyboardButton("Home ✅", callback_data="event_home"),
             InlineKeyboardButton("🎮 Giocatore", callback_data="event_player"),
             InlineKeyboardButton("📊 Classifica", callback_data="event_leaderboard"),
         ]
@@ -154,22 +154,28 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     correct_answers = [a.lower() for a in daily_data.get("correct_answers", [])]
-    rankings_ref = db.collection("events").document(event_code).collection("rankings").document(str(user_id))
-    user_ranking_doc = rankings_ref.get()
+    
+    # Accedi alla mappa 'rankings' direttamente dal documento dell'evento
+    user_ranking_data = event.get("rankings", {}).get(str(user_id), {})
     user_data = {}
 
-    if user_ranking_doc.exists:
-        user_data = user_ranking_doc.to_dict()
+    if user_ranking_data:
+        user_data = user_ranking_data
     else:
         user_data = {
             "telegram_id": user_id,
             "name": user.first_name,
             "points": 0,
-            "daily_attempts": {}
+            "daily_attempts": {},
+            "has_guessed_today": False  # Aggiungi il campo has_guessed_today
         }
 
     daily_attempts = user_data.get("daily_attempts", {})
     attempts_today = daily_attempts.get(today_str, 0)
+
+    if user_data.get("has_guessed_today", False):
+        await update.message.reply_text("❌ Hai già indovinato oggi!")
+        return
 
     if attempts_today >= 3:
         await update.message.reply_text("❌ Hai già usato tutti i 3 tentativi di oggi.")
@@ -182,10 +188,15 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
 
         user_data["points"] += earned_points
         user_data["daily_attempts"][today_str] = attempts_today + 1
-        rankings_ref.set(user_data)
+        user_data["has_guessed_today"] = True  
+
+        
+        event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
+        event_ref.update({
+            f"rankings.{user_id}": user_data
+        })
 
         if is_first:
-            event_ref = db.collection("events").document(event_code)
             event_ref.update({f"daily_data.{today_str}.first_correct_user": True})
 
         await update.message.reply_text(
@@ -193,11 +204,18 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
     else:
         user_data["daily_attempts"][today_str] = attempts_today + 1
-        rankings_ref.set(user_data)
+
+        
+        event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
+        event_ref.update({
+            f"rankings.{user_id}": user_data
+        })
 
         await update.message.reply_text(
             f"❌ Risposta sbagliata. Tentativi usati: {attempts_today + 1}/3."
         )
+
+
 
 
 

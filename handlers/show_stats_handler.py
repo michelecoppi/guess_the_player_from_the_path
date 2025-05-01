@@ -1,6 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from services.firebase_service import get_user_data
+import re
 
 TROPHIES_PER_PAGE = 5
 
@@ -56,7 +57,15 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
         parts = t.split("_")
         if len(parts) == 4:
             pos, event, week, year = parts
-            message += f"🏅 *{event}* (Settimana {week}, {year}) - 🥇 Posizione: {pos}\n"
+
+            medal = {
+                "1": "🥇",
+                "2": "🥈",
+                "3": "🥉"
+            }.get(pos, "🏅")
+
+            formatted_event = format_event_name(event)
+            message += f"{medal} *{formatted_event}* (Settimana {week}, {year}) - Posizione: {pos}\n"
         else:
             message += f"🏅 {t}\n"
 
@@ -68,3 +77,8 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = InlineKeyboardMarkup([buttons]) if buttons else None
     await query.edit_message_text(message, reply_markup=keyboard, parse_mode="Markdown")
+
+def format_event_name(event_name):
+    
+    formatted_name = re.sub(r'([a-z])([A-Z])', r'\1 \2', event_name)
+    return formatted_name

@@ -211,4 +211,38 @@ def get_current_event():
         return event.to_dict()
 
     return None
+
+def get_event_trophy_day():
+    now_italy = datetime.now(ITALY_TZ)
+    current_date = now_italy.strftime('%d/%m/%y')
+    
+    events_ref = db.collection("events")
+    query = events_ref.where("trophy_day", "==", current_date)
+    results = query.stream()
+
+    for event in results:
+        return event.to_dict()
+
+    return None
+
+def update_users_trophies(event_doc):
+
+    event_code = event_doc.get("code")
+    rankings = event_doc.get("rankings", {}) 
+
+    sorted_users = sorted(rankings.values(), key=lambda u: u.get("points", 0), reverse=True)
+
+    for idx, user_data in enumerate(sorted_users[:3], start=1):
+        telegram_id = user_data.get("telegram_id")
+        if not telegram_id:
+            continue
+
+        trophy_string = f"{idx}_{event_code}"
+        user_ref = db.collection("users").where("telegram_id", "==", telegram_id).limit(1).stream()
+
+        user_ref.update({
+            "trophies": firestore.ArrayUnion([trophy_string])
+        })
+
+    
     
