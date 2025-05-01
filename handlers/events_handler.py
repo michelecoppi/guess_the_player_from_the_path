@@ -120,12 +120,12 @@ def get_today_player_message(event):
     return message, image_url
 
 def get_event_leaderboard_message(event):
-    rankings = event.get("rankings", {})
+    ranking = event.get("ranking", {})
 
-    if not rankings:
+    if not ranking:
         return "📊 <b>Classifica dell’evento</b>:\nNessun partecipante al momento."
 
-    sorted_users = sorted(rankings.values(), key=lambda x: x.get("points", 0), reverse=True)
+    sorted_users = sorted(ranking.values(), key=lambda x: x.get("points", 0), reverse=True)
 
     message = "📊 <b>Classifica dell’evento</b>:\n\n"
     medals = ["🥇", "🥈", "🥉"]
@@ -155,8 +155,7 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     correct_answers = [a.lower() for a in daily_data.get("correct_answers", [])]
     
-    # Accedi alla mappa 'rankings' direttamente dal documento dell'evento
-    user_ranking_data = event.get("rankings", {}).get(str(user_id), {})
+    user_ranking_data = event.get("ranking", {}).get(str(user_id), {})
     user_data = {}
 
     if user_ranking_data:
@@ -193,7 +192,7 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         
         event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
         event_ref.update({
-            f"rankings.{user_id}": user_data
+            f"ranking.{user_id}": user_data
         })
 
         if is_first:
@@ -208,7 +207,7 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         
         event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
         event_ref.update({
-            f"rankings.{user_id}": user_data
+            f"ranking.{user_id}": user_data
         })
 
         await update.message.reply_text(

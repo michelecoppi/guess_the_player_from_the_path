@@ -228,9 +228,9 @@ def get_event_trophy_day():
 def update_users_trophies(event_doc):
 
     event_code = event_doc.get("code")
-    rankings = event_doc.get("rankings", {}) 
+    ranking = event_doc.get("ranking", {}) 
 
-    sorted_users = sorted(rankings.values(), key=lambda u: u.get("points", 0), reverse=True)
+    sorted_users = sorted(ranking.values(), key=lambda u: u.get("points", 0), reverse=True)
 
     for idx, user_data in enumerate(sorted_users[:3], start=1):
         telegram_id = user_data.get("telegram_id")
