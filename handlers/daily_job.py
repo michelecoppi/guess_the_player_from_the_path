@@ -2,7 +2,7 @@ from datetime import datetime
 import pytz
 import asyncio
 from telegram import Bot
-from services.firebase_service import reload_daily_challenge, get_all_broadcast_users, get_current_event, get_event_trophy_day, update_users_trophies
+from services.firebase_service import reload_daily_challenge, get_all_broadcast_users, get_current_event, get_event_trophy_day, update_users_trophies, reset_daily_guess_status_event
 from config import BOT_TOKEN
 import logging
 
@@ -57,6 +57,9 @@ async def update_daily_challenge():
         update_users_trophies(trophy_day)
 
     reload_daily_challenge(today_str)
+    if event_active:
+        reset_daily_guess_status_event(event_active.code)
+
 
     await bot.send_message(
         chat_id=admin_chat_id,

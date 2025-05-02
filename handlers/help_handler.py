@@ -10,6 +10,7 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/show - Mostra la sfida giornaliera.\n"
         "/stats - Mostra le tue statistiche.\n"
         "/top - Mostra la classifica dei migliori utenti.\n"
+        "/events - Mostra il centro eventi.\n"
         "/notify - Attiva o disattiva le notifiche.\n"
     )
     

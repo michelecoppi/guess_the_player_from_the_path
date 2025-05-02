@@ -212,6 +212,20 @@ def get_current_event():
 
     return None
 
+def reset_daily_guess_status_event(event_code: str):
+    event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()
+    if not event_ref:
+        return
+
+    event_doc = event_ref[0]
+    event_data = event_doc.to_dict()
+    rankings = event_data.get("ranking", {})
+
+    for user_id, user_data in rankings.items():
+        user_data["has_guessed_today"] = False
+        event_doc.reference.update({f"ranking.{user_id}": user_data})
+
+
 def get_event_trophy_day():
     now_italy = datetime.now(ITALY_TZ)
     current_date = now_italy.strftime('%d/%m/%y')
