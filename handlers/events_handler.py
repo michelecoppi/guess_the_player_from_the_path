@@ -36,11 +36,13 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML"
     )
 
+    context.user_data['current_event'] = event
+
 async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    event = get_current_event()
+    event = context.user_data.get('current_event')
     if not event:
         await query.delete_message() 
         await query.message.reply_text("❗ Nessun evento attivo al momento.")
