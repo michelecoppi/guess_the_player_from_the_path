@@ -87,7 +87,7 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
                     parse_mode="HTML"
                 )
         else:
-            raise
+            raise e
 
 def get_event_home_message(event):
     name = event.get("name", "Evento senza nome")
