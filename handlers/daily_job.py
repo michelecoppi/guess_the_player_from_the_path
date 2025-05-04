@@ -42,7 +42,7 @@ async def update_daily_challenge():
         text2 = ""
         if event_active:
             text2 = (
-                f"\n\n🎊 Inoltre è attivo un evento speciale:\n"
+                f"\n\n🎊 Inoltre è attivo un evento speciale: {current_event.name}\n"
                 "🏆 Partecipa usando /events e scala la classifica dell'evento!"
             )
 
@@ -58,7 +58,7 @@ async def update_daily_challenge():
 
     reload_daily_challenge(today_str)
     if event_active:
-        reset_daily_guess_status_event(event_active.code)
+        reset_daily_guess_status_event(current_event.code)
 
 
     await bot.send_message(
