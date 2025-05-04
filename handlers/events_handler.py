@@ -71,11 +71,22 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     else:
-        await query.edit_message_text(
-            message,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="HTML",
-        )
+        try:
+            await query.edit_message_text(
+                message,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode="HTML",
+            )
+        except telegram.error.BadRequest as e:
+            if "message to edit not found" in str(e).lower() or "there is no text in the message to edit" in str(e).lower():
+                await query.delete_message()
+                await query.message.chat.send_message(
+                    text=message,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                    parse_mode="HTML"
+                )
+        else:
+            raise
 
 def get_event_home_message(event):
     name = event.get("name", "Evento senza nome")
