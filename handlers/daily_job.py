@@ -42,7 +42,7 @@ async def update_daily_challenge():
         text2 = ""
         if event_active:
             text2 = (
-                f"\n\n🎊 Inoltre è attivo un evento speciale: {event_active.name}\n"
+                f"\n\n🎊 Inoltre è attivo un evento speciale:\n"
                 "🏆 Partecipa usando /events e scala la classifica dell'evento!"
             )
 
