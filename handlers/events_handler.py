@@ -18,6 +18,7 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     message = get_event_home_message(event)
+    image_url = event.get("event_img", None)
 
     keyboard = [
         [
@@ -28,8 +29,9 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text(
-        message,
+    await update.message.reply_photo(
+        photo=image_url, 
+        caption=message,
         reply_markup=reply_markup,
         parse_mode="HTML"
     )
@@ -40,7 +42,8 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
 
     event = get_current_event()
     if not event:
-        await query.edit_message_text("❗ Nessun evento attivo al momento.")
+        await query.delete_message() 
+        await query.message.reply_text("❗ Nessun evento attivo al momento.")
         return
 
     data = query.data
@@ -48,12 +51,14 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
 
     if data == "event_home":
         message = get_event_home_message(event)
+        image_url = event.get("event_img", None)
         active = "home"
     elif data == "event_player":
         message, image_url = get_today_player_message(event)
         active = "player"
     elif data == "event_leaderboard":
-        message = get_event_leaderboard_message(event) 
+        message = get_event_leaderboard_message(event)
+        image_url = event.get("leaderboard_img", None) 
         active = "leaderboard"
     else:
         return
@@ -66,28 +71,10 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         ]
     ]
 
-    if image_url:
-        await query.edit_message_media(
+    await query.edit_message_media(
             media=InputMediaPhoto(media=image_url, caption=message, parse_mode="HTML"),
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
-    else:
-        try:
-            await query.edit_message_text(
-                message,
-                reply_markup=InlineKeyboardMarkup(keyboard),
-                parse_mode="HTML",
-            )
-        except BadRequest as e:
-            if "message to edit not found" in str(e).lower() or "there is no text in the message to edit" in str(e).lower():
-                await query.delete_message()
-                await query.message.chat.send_message(
-                    text=message,
-                    reply_markup=InlineKeyboardMarkup(keyboard),
-                    parse_mode="HTML"
-                )
-        else:
-            raise e
 
 def get_event_home_message(event):
     name = event.get("name", "Evento senza nome")
