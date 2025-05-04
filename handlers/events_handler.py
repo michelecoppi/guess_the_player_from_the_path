@@ -1,5 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import ContextTypes
+from telegram.error import BadRequest
 from services.firebase_service import get_current_event, db
 from datetime import datetime
 import pytz
@@ -77,7 +78,7 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode="HTML",
             )
-        except telegram.error.BadRequest as e:
+        except BadRequest as e:
             if "message to edit not found" in str(e).lower() or "there is no text in the message to edit" in str(e).lower():
                 await query.delete_message()
                 await query.message.chat.send_message(
