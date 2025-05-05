@@ -261,7 +261,7 @@ def update_users_trophies(event_doc):
 def get_display_name_for_date(date_str):
     daily_data = db.collection("daily_path")
     query = daily_data.where("current_day", "==", date_str).limit(1).stream()
-    result = next(query.stream(), None)
+    result = next(query, None)
     if not result:
         return None
     
