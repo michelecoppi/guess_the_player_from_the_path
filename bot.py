@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     await telegram_app.bot.set_webhook(WEBHOOK_URL)
     italy_tz = pytz.timezone('Europe/Rome')
     scheduler = AsyncIOScheduler(timezone=italy_tz)
-    scheduler.add_job(update_daily_challenge, "cron", hour=0, minute=40, second=1)  
+    scheduler.add_job(update_daily_challenge, "cron", hour=0, minute=0, second=1)  
     scheduler.start()
     yield
     
