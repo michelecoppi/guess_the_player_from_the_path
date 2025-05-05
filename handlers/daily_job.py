@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import asyncio
 from telegram import Bot
-from services.firebase_service import reload_daily_challenge, get_all_broadcast_users, get_current_event, get_event_trophy_day, update_users_trophies, reset_daily_guess_status_event
+from services.firebase_service import reload_daily_challenge, get_all_broadcast_users, get_current_event, get_event_trophy_day, update_users_trophies, reset_daily_guess_status_event, get_display_name_for_date
 from config import BOT_TOKEN
 import logging
 
@@ -11,7 +11,10 @@ bot = Bot(BOT_TOKEN)
 async def update_daily_challenge():
     italy_tz = pytz.timezone('Europe/Rome')
     now_italy = datetime.now(italy_tz)
-    today_str = now_italy.strftime('%d/%m/%y')  
+    today_str = now_italy.strftime('%d/%m/%y')
+    yesterday = datetime.now(italy_tz) - timedelta(days=1)
+    yesterday_str = yesterday.strftime('%d/%m/%y')
+    yesterday_player = get_display_name_for_date(yesterday_str)  
 
     admin_chat_id = 1224482376  
 
@@ -29,12 +32,13 @@ async def update_daily_challenge():
        
         if guessed:
             text1 = (
-                "🎉 Complimenti per aver indovinato ieri!\n"
+                f"🎉 Complimenti per aver indovinato il calciatore {yesterday_player} ieri!\n"
                 "È disponibile una nuova sfida giornaliera!\n"
                 "👉 Usa /show e prova a essere il primo!"
             )
         else:
             text1 = (
+                f"⚠️ Non hai indovinato il calciatore {yesterday_player} ieri.\n"
                 "📢 È disponibile una nuova sfida giornaliera!\n"
                 "👉 Usa /show per indovinare il calciatore misterioso!"
             )

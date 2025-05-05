@@ -258,5 +258,23 @@ def update_users_trophies(event_doc):
             "trophies": firestore.ArrayUnion([trophy_string])
         })
 
+def get_display_name_for_date(date_str):
+    daily_data = db.collection("daily_path")
+    query = daily_data.where("current_day", "==", date_str).limit(1).stream()
+    result = next(query.stream(), None)
+    if not result:
+        return None
+    
+    data = result[0].to_dict()
+    solutions = data.get("correct_answers", [])
+
+    full_names = [s for s in solutions if " " in s]
+    if full_names:
+        return full_names[0].title()
+
+    if solutions:
+        return solutions[0].title() 
+
+    return None
     
     
