@@ -221,9 +221,10 @@ def reset_daily_guess_status_event(event_code: str):
     event_data = event_doc.to_dict()
     rankings = event_data.get("ranking", {})
 
-    for user_id, user_data in rankings.items():
-        user_data["has_guessed_today"] = False
-        event_doc.reference.update({f"ranking.{user_id}": user_data})
+    for user_id in rankings.keys():
+        event_doc.reference.update({
+            f"ranking.{user_id}.has_guessed_today": False
+        })
 
 
 def get_event_trophy_day():
