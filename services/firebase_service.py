@@ -265,7 +265,7 @@ def get_display_name_for_date(date_str):
     if not result:
         return None
     
-    data = result[0].to_dict()
+    data = result.to_dict()
     solutions = data.get("correct_answers", [])
 
     full_names = [s for s in solutions if " " in s]
