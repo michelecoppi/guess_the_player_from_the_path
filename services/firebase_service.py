@@ -1,5 +1,4 @@
 import firebase_admin
-from google.cloud.firestore_v1 import FieldPath
 from cache import set_cache
 from firebase_admin import credentials, firestore
 from config import FIREBASE_CREDENTIALS_PATH
@@ -223,7 +222,7 @@ def reset_daily_guess_status_event(event_code):
     rankings = event_data.get("ranking", {})
 
     for user_id in rankings.keys():
-        field_path = FieldPath("ranking", str(user_id), "has_guessed_today")
+        field_path = field_path = firestore.FieldPath("ranking", str(user_id), "has_guessed_today")
         event_doc.reference.update({field_path: False})
 
 
