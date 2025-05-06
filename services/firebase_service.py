@@ -1,4 +1,5 @@
 import firebase_admin
+from google.cloud.firestore_v1 import FieldPath
 from cache import set_cache
 from firebase_admin import credentials, firestore
 from config import FIREBASE_CREDENTIALS_PATH
@@ -212,7 +213,7 @@ def get_current_event():
 
     return None
 
-def reset_daily_guess_status_event(event_code: str):
+def reset_daily_guess_status_event(event_code):
     event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()
     if not event_ref:
         return
@@ -222,9 +223,8 @@ def reset_daily_guess_status_event(event_code: str):
     rankings = event_data.get("ranking", {})
 
     for user_id in rankings.keys():
-        event_doc.reference.update({
-            f"ranking.{user_id}.has_guessed_today": False
-        })
+        field_path = FieldPath("ranking", str(user_id), "has_guessed_today")
+        event_doc.reference.update({field_path: False})
 
 
 def get_event_trophy_day():
