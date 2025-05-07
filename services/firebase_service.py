@@ -215,6 +215,7 @@ def get_current_event():
 def reset_daily_guess_status_event(event_code):
     event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()
     if not event_ref:
+        logging.info(f"Nessun evento trovato con il codice {event_code}")
         return
 
     event_doc = event_ref[0]
@@ -222,8 +223,11 @@ def reset_daily_guess_status_event(event_code):
     rankings = event_data.get("ranking", {})
 
     for user_id in rankings.keys():
-        field_path = field_path = firestore.FieldPath("ranking", str(user_id), "has_guessed_today")
-        event_doc.reference.update({field_path: False})
+        event_doc.reference.update({
+            f"ranking.{str(user_id)}.has_guessed_today": False
+        })
+        logging.info(f"Resetto lo stato di indovinato per l'utente {user_id} nell'evento {event_code}")
+    logging.info(f"Resetto lo stato di indovinato per l'evento {event_code}")
 
 
 def get_event_trophy_day():
