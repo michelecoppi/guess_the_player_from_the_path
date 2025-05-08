@@ -62,7 +62,7 @@ async def update_daily_challenge():
 
     reload_daily_challenge(today_str)
     if event_active:
-        reset_daily_guess_status_event({current_event.get('code')})
+        reset_daily_guess_status_event(current_event, current_event["ref"])
 
 
     await bot.send_message(

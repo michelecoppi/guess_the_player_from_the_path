@@ -208,26 +208,21 @@ def get_current_event():
     results = query.stream()
 
     for event in results:
-        return event.to_dict()
+        event_data = event.to_dict()
+        event_data["ref"] = event.reference
+        return event_data
 
     return None
 
-def reset_daily_guess_status_event(event_code):
-    event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()
-    if not event_ref:
-        logging.info(f"Nessun evento trovato con il codice {event_code}")
-        return
-
-    event_doc = event_ref[0]
-    event_data = event_doc.to_dict()
+def reset_daily_guess_status_event(event_data, event_ref):
     rankings = event_data.get("ranking", {})
 
-    for user_id in rankings.keys():
-        event_doc.reference.update({
-            f"ranking.{str(user_id)}.has_guessed_today": False
-        })
-        logging.info(f"Resetto lo stato di indovinato per l'utente {user_id} nell'evento {event_code}")
-    logging.info(f"Resetto lo stato di indovinato per l'evento {event_code}")
+    for user_id, user_data in rankings.items():
+        if isinstance(user_data, dict):
+            user_data["has_guessed_today"] = False
+
+    event_ref.update({"ranking": rankings})
+    logging.info(f"Reset globale completato per evento con codice {event_data.get('code')}")
 
 
 def get_event_trophy_day():
