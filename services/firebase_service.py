@@ -239,7 +239,6 @@ def get_event_trophy_day():
     return None
 
 def update_users_trophies(event_doc):
-
     event_code = event_doc.get("code")
     ranking = event_doc.get("ranking", {}) 
 
@@ -251,11 +250,14 @@ def update_users_trophies(event_doc):
             continue
 
         trophy_string = f"{idx}_{event_code}"
-        user_ref = db.collection("users").where("telegram_id", "==", telegram_id).limit(1).stream()
+        user_query = db.collection("users").where("telegram_id", "==", telegram_id).limit(1).stream()
+        user_doc = next(user_query, None)
 
-        user_ref.update({
-            "trophies": firestore.ArrayUnion([trophy_string])
-        })
+        if user_doc:
+            user_doc.reference.update({
+                "trophies": firestore.ArrayUnion([trophy_string])
+            })
+
 
 def get_display_name_for_date(date_str):
     daily_data = db.collection("daily_path")
