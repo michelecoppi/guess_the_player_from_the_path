@@ -1,10 +1,8 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from services.firebase_service import create_reverse_event
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    create_reverse_event()
     help_message = (
         "🛠️ Comandi disponibili:\n\n"
         "/start - Inizia a usare il bot e registrati.\n"
