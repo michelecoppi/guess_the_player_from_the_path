@@ -277,5 +277,61 @@ def get_display_name_for_date(date_str):
         return solutions[0].title() 
 
     return None
-    
-    
+
+def create_reverse_event():
+    event_data = {
+        "code": "PlayerCareer_1_2025",
+        "name": "Player Career",
+        "description": "Indovina alcune squadre dove hanno giocato questi giocatori",
+	    "dates":["12/05/25","13/05/25","14/05/25","15/05/25","16/05,25"],
+	    "event_img":"https://i.postimg.cc/J4typYSQ/Carriera-da-Giocatore-in-Azione.png",
+	    "leaberboard_img":"https://i.postimg.cc/9FvfJmdW/badges-0004-leaderboard-300x300.png",
+        "trophy_day": "17/05/25",
+        "type": "career",
+        "ranking": {},
+        "daily_data": {
+            "15/05/25": {
+                "player_name": "Mohamed Salah",
+                "image_url": "https://i.postimg.cc/MZgCMv0m/Mohamed-Salah-2018.jpg",
+                "correct_answers": ["fiorentina", "roma", "liverpool", "chelsea", "basilea", "el mokawloon"],
+                "min_correct": 3,
+                "points": 1,
+                "first_correct_user": False
+            },
+            "16/05/25": {
+                "player_name": "Carlos Tevez",
+                "image_url": "https://i.postimg.cc/Kvr0Gz0z/Carlos-Tevez-with-Argentina-November-2014-cropped.jpg",
+                "correct_answers": ["juventus", "manchester city", "manchester united", "boca juniors", "west ham", "corinthians", "shanghai shenua"],
+                "min_correct": 3,
+                "points": 2,
+                "first_correct_user": False
+            },
+            "17/05/25": {
+                "player_name": "Giorgio Chiellini",
+                "image_url": "https://i.postimg.cc/vmprLF0k/chiellini.png",
+                "correct_answers": ["juventus", "fiorentina", "livorno", "los angeles fc"],
+                "min_correct": 3,
+                "points": 3,
+                "first_correct_user": False
+            },
+            "18/05/25": {
+                "player_name": "Ruud Gullit",
+                "image_url": "https://i.postimg.cc/768zJ16y/e4c93dc561d0736c25857c9b7a80f333.jpg",
+                "correct_answers": ["chelsea", "milan", "sampdoria", "psv", "feyenoord","hfc haarlem"],
+                "min_correct": 4,
+                "points": 4,
+                "first_correct_user": False
+            },
+            "19/05/25": {
+                "player_name": "Javier Mascherano",
+                "image_url": "https://i.postimg.cc/4dgKxJLf/Mascherano-Congreso-2-cropped.jpg",
+                "correct_answers": ["barcellona", "west ham", "liverpool", "river plate", "estudiantes", "hebei china fortune", "corinthians"],
+                "min_correct": 3,
+                "points": 5,
+                "first_correct_user": False
+            }
+        }
+    }
+
+    db.collection("events").add(event_data)
+  
