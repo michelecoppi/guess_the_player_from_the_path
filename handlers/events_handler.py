@@ -83,6 +83,14 @@ def get_event_home_message(event):
     description = event.get("description", "")
     dates = event.get("dates", [])
     end_date = dates[-1] if dates else "Data non disponibile"
+
+    event_type = event.get("type", "path") 
+
+    if event_type == "career":
+        gameplay_line = "🎮 <b>Giocatore</b>: indovina le squadre della in cui ha giocato"
+    elif event_type == "path":
+        gameplay_line = "🎮 <b>Giocatore</b>: mostra il calciatore del giorno da indovinare"
+
     message = (
         f"🎉 <b>{name}</b>\n\n"
         f"{description}\n\n"
@@ -90,7 +98,7 @@ def get_event_home_message(event):
         f"I primi 3 classificati riceveranno un <b>trofeo speciale</b> 🏆!\n\n"
         f"📌 Usa i pulsanti qui sotto per navigare:\n"
         f"- 🏠 <b>Home</b>: questa schermata\n"
-        f"- 🎮 <b>Giocatore</b>: mostra il calciatore del giorno da indovinare\n"
+        f"- {gameplay_line}\n"
         f"- 📊 <b>Classifica</b>: guarda la top 3 dell'evento in tempo reale"
     )
     return message
@@ -107,16 +115,26 @@ def get_today_player_message(event):
     image_url = today_data.get("image_url", "")
     points = today_data.get("points", 1)
     first_correct_user = today_data.get("first_correct_user", False)
-
     bonus_msg = "⚡ Il primo che indovina riceverà 1 punto bonus!" if not first_correct_user else "✅ Il bonus è già stato assegnato oggi."
 
-    message = (
-        f"🎮 <b>Giocatore del giorno</b>\n\n"
-        f"👀 Indovina chi è questo calciatore!\n"
-        f"🏆 Punti disponibili: <b>{points}</b>\n"
-        f"{bonus_msg}\n"
-        "Per inodvinare, usare il comando /events in privato inserendo il nome del calciatore.\n\n"
-    )
+    event_type = event.get("type", "path")
+    
+    if event_type == "path":
+        message = (
+            f"🎮 <b>Giocatore del giorno</b>\n\n"
+            f"👀 Indovina chi è questo calciatore!\n"
+            f"🏆 Punti disponibili: <b>{points}</b>\n"
+            f"{bonus_msg}\n"
+            "Per indovinare, usa il comando /events in privato inserendo il nome del calciatore."
+        )
+    elif event_type == "career":
+        message = (
+            f"🧠 <b>Modalità carriera</b>\n\n"
+            f"👤 Indovina almeno <b>{today_data.get('min_correct', 1)}</b> delle squadre in cui ha giocato {today_data.get('player_name')}!\n"
+            f"🏆 Punti disponibili: <b>{points}</b>\n"
+            f"{bonus_msg}\n"
+            "Scrivi le squadre separate da virgole, es: /events Roma, Manchester United, Toronto FC"
+        )
 
     return message, image_url
 
@@ -145,7 +163,7 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
     if update.message.chat.type != "private":
         await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
         return
-    
+
     user = update.effective_user
     user_id = user.id
     guess = " ".join(context.args).strip().lower()
@@ -158,21 +176,19 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("⚠️ Nessuna sfida disponibile per oggi.")
         return
 
-    correct_answers = [a.lower() for a in daily_data.get("correct_answers", [])]
+    correct_answers_raw = daily_data.get("correct_answers", [])
+    event_type = event.get("type", "path")
+    min_correct = daily_data.get("min_correct", len(correct_answers_raw))
+
     
     user_ranking_data = event.get("ranking", {}).get(str(user_id), {})
-    user_data = {}
-
-    if user_ranking_data:
-        user_data = user_ranking_data
-    else:
-        user_data = {
-            "telegram_id": user_id,
-            "name": user.first_name,
-            "points": 0,
-            "daily_attempts": {},
-            "has_guessed_today": False  
-        }
+    user_data = user_ranking_data if user_ranking_data else {
+        "telegram_id": user_id,
+        "name": user.first_name,
+        "points": 0,
+        "daily_attempts": {},
+        "has_guessed_today": False
+    }
 
     daily_attempts = user_data.get("daily_attempts", {})
     attempts_today = daily_attempts.get(today_str, 0)
@@ -185,21 +201,30 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         await update.message.reply_text("❌ Hai già usato tutti i 3 tentativi di oggi.")
         return
 
-    if guess in correct_answers:
+    
+    if event_type == "career":
+        user_answers = [part.strip().lower() for part in guess.split(",") if part.strip()]
+        correct_answers = [a.strip().lower() for a in correct_answers_raw]
+
+        unique_user_answers = set(user_answers)
+        matched = sum(1 for answer in unique_user_answers if answer in correct_answers)
+        guess_is_correct = matched >= min_correct
+    else:
+        correct_answers = [a.lower() for a in correct_answers_raw]
+        guess_is_correct = guess in correct_answers
+
+    event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
+
+    if guess_is_correct:
         is_first = not daily_data.get("first_correct_user", False)
         bonus = 1 if is_first else 0
         earned_points = daily_data.get("points", 1) + bonus
 
         user_data["points"] += earned_points
         user_data["daily_attempts"][today_str] = attempts_today + 1
-        user_data["has_guessed_today"] = True  
+        user_data["has_guessed_today"] = True
 
-        
-        event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
-        event_ref.update({
-            f"ranking.{user_id}": user_data
-        })
-
+        event_ref.update({f"ranking.{user_id}": user_data})
         if is_first:
             event_ref.update({f"daily_data.{today_str}.first_correct_user": True})
 
@@ -208,16 +233,15 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
     else:
         user_data["daily_attempts"][today_str] = attempts_today + 1
+        event_ref.update({f"ranking.{user_id}": user_data})
 
-        
-        event_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
-        event_ref.update({
-            f"ranking.{user_id}": user_data
-        })
+        feedback = f"❌ Risposta sbagliata. Tentativi usati: {attempts_today + 1}/3."
 
-        await update.message.reply_text(
-            f"❌ Risposta sbagliata. Tentativi usati: {attempts_today + 1}/3."
-        )
+        if event_type == "career":
+            feedback += f"\n Risposte corrette trovate: {matched}/{len(correct_answers)}"
+
+        await update.message.reply_text(feedback)
+
 
 
 
