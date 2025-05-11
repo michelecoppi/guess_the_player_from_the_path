@@ -133,7 +133,7 @@ def get_today_player_message(event):
             f"👤 Indovina almeno <b>{today_data.get('min_correct', 1)}</b> delle squadre in cui ha giocato {today_data.get('player_name')}!\n"
             f"🏆 Punti disponibili: <b>{points}</b>\n"
             f"{bonus_msg}\n"
-            "Scrivi le squadre separate da virgole, es: /events Roma, Manchester United, Toronto FC"
+            "Scrivi le squadre in privato al bot separate da virgole, es: /events Roma, Manchester United, Toronto FC (massimo 5 squadre a tentativo)"
         )
 
     return message, image_url
@@ -205,7 +205,9 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
     if event_type == "career":
         user_answers = [part.strip().lower() for part in guess.split(",") if part.strip()]
         correct_answers = [a.strip().lower() for a in correct_answers_raw]
-
+        if len(user_answers) > 5:
+            await update.message.reply_text("⚠️ Puoi inserire al massimo 5 squadre separate da virgola.")
+            return
         unique_user_answers = set(user_answers)
         matched = sum(1 for answer in unique_user_answers if answer in correct_answers)
         guess_is_correct = matched >= min_correct
