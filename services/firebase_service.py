@@ -2,7 +2,7 @@ import firebase_admin
 from cache import set_cache
 from firebase_admin import credentials, firestore
 from config import FIREBASE_CREDENTIALS_PATH
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
 import logging
 
@@ -277,28 +277,3 @@ def get_display_name_for_date(date_str):
         return solutions[0].title() 
 
     return None
-
-def update_keys():
-    event_code = "PlayerCareer_1_2025"
-    doc_ref = db.collection("events").where("code", "==", event_code).limit(1).get()[0].reference
-    doc_data = doc_ref.get().to_dict()
-
-    daily_data = doc_data["daily_data"]
-
-   
-    sorted_values = list(daily_data.values())
-
-    
-    start_date = datetime.strptime("12/05/25", "%d/%m/%y")
-    new_daily_data = {}
-
-    for i, day_data in enumerate(sorted_values):
-        correct_date = (start_date + timedelta(days=i)).strftime("%d/%m/%y")
-        new_daily_data[correct_date] = day_data
-
-    # Sovrascrivi daily_data con le chiavi corrette
-    doc_ref.update({
-        "daily_data": new_daily_data
-    })
-
-    print("✅ Chiavi aggiornate con successo!")
