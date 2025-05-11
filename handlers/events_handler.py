@@ -87,7 +87,7 @@ def get_event_home_message(event):
     event_type = event.get("type", "path") 
 
     if event_type == "career":
-        gameplay_line = "🎮 <b>Giocatore</b>: indovina le squadre della in cui ha giocato"
+        gameplay_line = "🎮 <b>Giocatore</b>: indovina le squadre in cui ha giocato il calciatore"
     elif event_type == "path":
         gameplay_line = "🎮 <b>Giocatore</b>: mostra il calciatore del giorno da indovinare"
 
