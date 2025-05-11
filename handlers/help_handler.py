@@ -1,8 +1,10 @@
 from telegram import Update
 from telegram.ext import ContextTypes
+from services.firebase_service import update_keys
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    update_keys()
     help_message = (
         "🛠️ Comandi disponibili:\n\n"
         "/start - Inizia a usare il bot e registrati.\n"
