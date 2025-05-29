@@ -40,7 +40,7 @@ def save_user(user_id, first_name):
     else:
         return f"Ciao di nuovo, {first_name}!"
 
-def update_user_points(user_id, points, bonus):
+def update_user_points(user_id, points, bonus, monthly=False):
     users_ref = db.collection("users")
     query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
     results = query.stream()
@@ -55,6 +55,8 @@ def update_user_points(user_id, points, bonus):
 
         if bonus > 0:
             update_data["bonus_first_guessed"] = firestore.Increment(1)
+        if monthly:
+            update_data["monthly_points"] = firestore.Increment(points)
         
         user_ref.update(update_data)
         
@@ -308,4 +310,6 @@ def update_users_monthly_points(points):
         user_ref.update({
             "monthly_points": points
         })
+
+        
 
