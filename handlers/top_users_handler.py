@@ -30,6 +30,8 @@ async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     users = get_all_users()
 
+    context.chat_data["cached_users"] = users
+
     message, _ = generate_leaderboard(users, telegram_id, field="points")
 
     keyboard = [[InlineKeyboardButton("📆 Classifica Mensile", callback_data="show_monthly")]]
@@ -40,7 +42,10 @@ async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     telegram_id = query.from_user.id
     await query.answer()
 
-    users = get_all_users()
+    users = context.chat_data.get("cached_users")
+    if not users:
+        users = get_all_users()
+        context.chat_data["cached_users"] = users
 
     if query.data == "show_monthly":
         message, _ = generate_leaderboard(users, telegram_id, field="monthly_points")
