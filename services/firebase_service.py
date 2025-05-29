@@ -278,3 +278,34 @@ def get_display_name_for_date(date_str):
         return solutions[0].title() 
 
     return None
+
+def get_last_season_by_month_year(month_name, year):
+    seasons_ref = db.collection("seasons")
+    query = seasons_ref.where("month", "==", month_name).where("year", "==", year).limit(1).stream()
+    
+    for season in query:
+        return season.to_dict()
+    
+    return None
+def add_user_trophy(telegram_id, trophy_code):
+    users_ref = db.collection("users")
+    query = users_ref.where("telegram_id", "==", telegram_id).limit(1)
+    results = query.stream()
+
+    for user in results:
+        user_ref = users_ref.document(user.id)
+        user_ref.update({
+            "trophies": firestore.ArrayUnion([trophy_code])
+        })
+        logging.info(f"Trophy {trophy_code} aggiunta per l'utente {telegram_id}")
+
+def update_users_monthly_points(points):
+    users_ref = db.collection("users")
+    query = users_ref.where("monthly_points", ">", 0)
+    results = query.stream()
+    for user in results:
+        user_ref = users_ref.document(user.id)
+        user_ref.update({
+            "monthly_points": points
+        })
+
