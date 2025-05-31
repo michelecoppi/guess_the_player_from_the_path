@@ -174,7 +174,8 @@ def get_all_users():
         user_list.append({
             "telegram_id": data.get("telegram_id"),
             "username": data.get("first_name", "Sconosciuto"),
-            "points": data.get("points_totali", 0)
+            "points": data.get("points_totali", 0),
+            "monthly_points": data.get("monthly_points", 0)
         })
     return user_list
 
