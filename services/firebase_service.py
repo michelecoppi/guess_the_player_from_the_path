@@ -56,7 +56,7 @@ def update_user_points(user_id, points, bonus, monthly=False):
         if bonus > 0:
             update_data["bonus_first_guessed"] = firestore.Increment(1)
         if monthly:
-            update_data["monthly_points"] = firestore.Increment(points)
+            update_data["monthly_points"] = firestore.Increment(points + bonus)
         
         user_ref.update(update_data)
         
