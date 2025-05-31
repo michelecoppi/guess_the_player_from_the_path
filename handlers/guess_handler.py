@@ -60,7 +60,7 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update_daily_challenge_first_correct()
 
         total_points = points + bonus
-        update_user_points(user_id, total_points, bonus)
+        update_user_points(user_id, total_points, bonus, True)
         bonus_message = f"💎 Bonus: +{bonus} punto perchè sei il primo ad indovinare!" if bonus > 0 else ""
         await update.message.reply_text(f"✅ Corretto! Hai guadagnato {total_points} punti.\n{bonus_message}")
     else:
