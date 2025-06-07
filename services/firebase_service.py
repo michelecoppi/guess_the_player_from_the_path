@@ -56,7 +56,7 @@ def update_user_points(user_id, points, bonus, monthly=False):
         if bonus > 0:
             update_data["bonus_first_guessed"] = firestore.Increment(1)
         if monthly:
-            update_data["monthly_points"] = firestore.Increment(points + bonus)
+            update_data["monthly_points"] = firestore.Increment(points)
         
         user_ref.update(update_data)
         
@@ -174,7 +174,8 @@ def get_all_users():
         user_list.append({
             "telegram_id": data.get("telegram_id"),
             "username": data.get("first_name", "Sconosciuto"),
-            "points": data.get("points_totali", 0)
+            "points": data.get("points_totali", 0),
+            "monthly_points": data.get("monthly_points", 0)
         })
     return user_list
 
