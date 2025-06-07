@@ -90,6 +90,8 @@ def get_event_home_message(event):
         gameplay_line = "🎮 <b>Giocatore</b>: indovina le squadre in cui ha giocato il calciatore"
     elif event_type == "path":
         gameplay_line = "🎮 <b>Giocatore</b>: mostra il calciatore del giorno da indovinare"
+    elif event_type == "father_son":
+        gameplay_line = "🎮 <b>Giocatore</b>: indovina la coppia padre/figlio dall'immagine"
 
     message = (
         f"🎉 <b>{name}</b>\n\n"
@@ -134,6 +136,14 @@ def get_today_player_message(event):
             f"🏆 Punti disponibili: <b>{points}</b>\n"
             f"{bonus_msg}\n"
             "Scrivi le squadre in privato al bot separate da virgole, es: /events Roma, Manchester United, Toronto FC (massimo 5 squadre a tentativo)"
+        )
+    elif event_type == "father_son":
+        message = (
+            f"👨‍👦 <b>Modalità padre-figlio</b>\n\n"
+            f"👤 Indovina la coppia padre/figlio dall'immagine!\n"
+            f"🏆 Punti disponibili: <b>{points}</b>\n"
+            f"{bonus_msg}\n"
+            "Per indovinare, usa il comando /events in privato inserendo il nome della coppia padre/figlio."
         )
 
     return message, image_url
