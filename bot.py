@@ -30,7 +30,7 @@ telegram_app.add_handler(CommandHandler("top", top))
 telegram_app.add_handler(CommandHandler("notify", notify))
 telegram_app.add_handler(CallbackQueryHandler(notify_callback, pattern="^(enable_notify|disable_notify)$"))
 telegram_app.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"^show_trophies_\d+$"))
-application.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))
+telegram_app.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))
 telegram_app.add_handler(CallbackQueryHandler(handle_event_navigation, pattern="^event_"))
 telegram_app.add_handler(CallbackQueryHandler(leaderboard_callback, pattern="show_.*"))
 
