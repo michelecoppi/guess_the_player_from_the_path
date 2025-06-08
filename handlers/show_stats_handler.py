@@ -7,7 +7,7 @@ TROPHIES_PER_PAGE = 5
 PALMARES_IMAGE = "https://i.postimg.cc/cHn605NN/Chat-GPT-Image-8-giu-2025-15-13-48.png"
 FALLBACK_AVATAR = "https://static.thenounproject.com/png/4154905-200.png"
 
-async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=None):
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=None, edit_mode=False):
     user_id = update.effective_user.id
     if user_data is None:
         user_data = get_user_data(user_id)
@@ -25,6 +25,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=No
     monthly_points = user_data.get("monthly_points", 0)
     players_guessed = user_data.get("players_guessed", 0)
     bonus_first_guessed = user_data.get("bonus_first_guessed", 0)
+    telegram_id = user_data.get("telegram_id")
 
     stats_message = (
         f"📊 Le tue statistiche:\n\n"
@@ -39,18 +40,28 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=No
     [InlineKeyboardButton("🎖️ I miei trofei", callback_data="show_trophies_0")]
     ])
 
-    photos = await context.bot.get_user_profile_photos(user_id)
+    photos = await context.bot.get_user_profile_photos(telegram_id)
     if photos.total_count > 0:
         profile_pic = photos.photos[0][-1].file_id
     else:
         profile_pic = FALLBACK_AVATAR
 
-    await update.message.reply_photo(
-        photo=profile_pic,
-        caption=stats_message,
-        reply_markup=keyboard,
-        parse_mode="Markdown"
-    )
+    if edit_mode:
+        await update.callback_query.edit_message_media(
+            media=InputMediaPhoto(
+                media=profile_pic,
+                caption=stats_message,
+                parse_mode="Markdown"
+            ),
+            reply_markup=keyboard
+        )
+    else:
+        await update.message.reply_photo(
+            photo=profile_pic,
+            caption=stats_message,
+            reply_markup=keyboard,
+            parse_mode="Markdown"
+        )
 
 def format_event_name(event_name):
     return re.sub(r'([a-z])([A-Z])', r'\1 \2', event_name)
@@ -133,5 +144,4 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def back_to_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = context.user_data.get("user_data")
-    fake_update = Update(update.update_id, message=update.effective_message)
-    await stats(fake_update, context, user_data=user_data)    
+    await stats(update, context, user_data=user_data, edit_mode=True)    
