@@ -6,7 +6,7 @@ from handlers.start_handler import start
 from handlers.guess_handler import guess
 from handlers.events_handler import events, handle_event_navigation
 from handlers.show_daily_path_handler import show
-from handlers.show_stats_handler import stats, show_trophies_callback
+from handlers.show_stats_handler import stats, show_trophies_callback, back_to_stats_callback
 from handlers.help_handler import help
 from handlers.top_users_handler import top, leaderboard_callback
 from handlers.notify_handler import notify, notify_callback
@@ -30,6 +30,7 @@ telegram_app.add_handler(CommandHandler("top", top))
 telegram_app.add_handler(CommandHandler("notify", notify))
 telegram_app.add_handler(CallbackQueryHandler(notify_callback, pattern="^(enable_notify|disable_notify)$"))
 telegram_app.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"^show_trophies_\d+$"))
+application.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))
 telegram_app.add_handler(CallbackQueryHandler(handle_event_navigation, pattern="^event_"))
 telegram_app.add_handler(CallbackQueryHandler(leaderboard_callback, pattern="show_.*"))
 

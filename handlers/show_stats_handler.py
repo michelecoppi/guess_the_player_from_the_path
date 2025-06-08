@@ -1,23 +1,28 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import ContextTypes
 from services.firebase_service import get_user_data
 import re
 
 TROPHIES_PER_PAGE = 5
+PALMARES_IMAGE = "https://i.postimg.cc/cHn605NN/Chat-GPT-Image-8-giu-2025-15-13-48.png"
+FALLBACK_AVATAR = "https://static.thenounproject.com/png/4154905-200.png"
 
-async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=None):
     user_id = update.effective_user.id
-    user_data = get_user_data(user_id)
+    if user_data is None:
+        user_data = get_user_data(user_id)
     
     if not user_data:
         await update.message.reply_text("❗ Non sei registrato! Usa /start per registrarti.")
         return
     
     trophies = user_data.get("trophies", [])
+    context.user_data["user_data"] = user_data
     context.user_data["trophies"] = trophies 
 
     first_name = user_data.get("first_name", "N/A")
     points_totali = user_data.get("points_totali", 0)
+    monthly_points = user_data.get("monthly_points", 0)
     players_guessed = user_data.get("players_guessed", 0)
     bonus_first_guessed = user_data.get("bonus_first_guessed", 0)
 
@@ -25,6 +30,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📊 Le tue statistiche:\n\n"
         f"👤 Nome: {first_name}\n"
         f"🏆 Punti totali: {points_totali}\n"
+        f"📅 Punti mensili: {monthly_points}\n"
         f"🧠 Indovinati: {players_guessed}\n"
         f"⚡ Bonus primo indovino ottenuti: {bonus_first_guessed}"
     )
@@ -33,7 +39,18 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     [InlineKeyboardButton("🎖️ I miei trofei", callback_data="show_trophies_0")]
     ])
 
-    await update.message.reply_text(stats_message, reply_markup=keyboard)
+    photos = await context.bot.get_user_profile_photos(user_id)
+    if photos.total_count > 0:
+        profile_pic = photos.photos[0][-1].file_id
+    else:
+        profile_pic = FALLBACK_AVATAR
+
+    await update.message.reply_photo(
+        photo=profile_pic,
+        caption=stats_message,
+        reply_markup=keyboard,
+        parse_mode="Markdown"
+    )
 
 def format_event_name(event_name):
     return re.sub(r'([a-z])([A-Z])', r'\1 \2', event_name)
@@ -48,7 +65,17 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
     page = int(page_str)
 
     if not trophies:
-        await query.edit_message_text("😕 Nessun trofeo guadagnato ancora.")
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔙 Indietro", callback_data="back_to_stats")]
+        ])
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=PALMARES_IMAGE,
+                caption="😕 Nessun trofeo guadagnato ancora.",
+                parse_mode="Markdown"
+            ),
+            reply_markup=keyboard
+        )
         return
 
     start = page * TROPHIES_PER_PAGE
@@ -90,5 +117,21 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
     if end < len(trophies):
         buttons.append(InlineKeyboardButton("➡️ Avanti", callback_data=f"show_trophies_{page + 1}"))
 
-    keyboard = InlineKeyboardMarkup([buttons]) if buttons else None
-    await query.edit_message_text(message, reply_markup=keyboard, parse_mode="Markdown")
+    navigation_row = buttons if buttons else []
+    navigation_row.append(InlineKeyboardButton("🔙 Indietro", callback_data="back_to_stats"))
+
+    keyboard = InlineKeyboardMarkup([navigation_row])
+
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=PALMARES_IMAGE,
+            caption=message,
+            parse_mode="Markdown"
+        ),
+        reply_markup=keyboard
+    )
+
+async def back_to_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data = context.user_data.get("user_data")
+    fake_update = Update(update.update_id, message=update.effective_message)
+    await stats(fake_update, context, user_data=user_data)    
