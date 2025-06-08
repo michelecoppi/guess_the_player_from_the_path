@@ -128,10 +128,10 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
     if end < len(trophies):
         buttons.append(InlineKeyboardButton("➡️ Avanti", callback_data=f"show_trophies_{page + 1}"))
 
-    navigation_row = buttons if buttons else []
-    navigation_row.append(InlineKeyboardButton("🔙 Indietro", callback_data="back_to_stats"))
-
-    keyboard = InlineKeyboardMarkup([navigation_row])
+    keyboard = InlineKeyboardMarkup([
+        buttons,  
+        [InlineKeyboardButton("🔙 Indietro", callback_data="back_to_stats")]  
+    ])
 
     await query.edit_message_media(
         media=InputMediaPhoto(
