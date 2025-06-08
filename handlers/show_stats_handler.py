@@ -77,7 +77,7 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     if not trophies:
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔙 Indietro", callback_data="back_to_stats")]
+            [InlineKeyboardButton("🔙 Torna alle stats", callback_data="back_to_stats")]
         ])
         await query.edit_message_media(
             media=InputMediaPhoto(
@@ -130,7 +130,7 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = InlineKeyboardMarkup([
         buttons,  
-        [InlineKeyboardButton("🔙 Indietro", callback_data="back_to_stats")]  
+        [InlineKeyboardButton("🔙 Torna alle stats", callback_data="back_to_stats")]  
     ])
 
     await query.edit_message_media(
