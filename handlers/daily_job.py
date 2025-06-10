@@ -53,7 +53,7 @@ async def update_daily_challenge():
             )
         if result_update_monthly is not None:
             text2 += f"\n\n{result_update_monthly}"
-        text3 = ("\nSe hai idee per migliorare il bot o una funziona nuova che vorresti vedere, manda un messaggio a @gabbente con la tua proposta!")
+        text3 = ("\n\nSe hai idee per migliorare il bot o una funzione nuova che vorresti vedere, manda un messaggio a @gabbente con la tua proposta!")
         try:   
             await bot.send_message(chat_id=chat_id, text=text1 + text2 + text3)
             messaggi_inviati += 1
