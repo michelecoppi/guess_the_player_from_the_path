@@ -147,6 +147,14 @@ def get_today_player_message(event):
             f"{bonus_msg}\n"
             "Per indovinare, usa il comando /events in privato inserendo il nome della coppia padre/figlio."
         )
+    elif event_type == "transfer_guess":
+        message = (
+            f"🔄 <b>Modalità trasferimento</b>\n\n"
+            f"👤 Indovina il calciatore dal trasferimento mostrato!\n"
+            f"🏆 Punti disponibili: <b>{points}</b>\n"
+            f"{bonus_msg}\n"
+            "Per indovinare, usa il comando /events in privato inserendo il nome del calciatore."
+        )
 
     return message, image_url
 
