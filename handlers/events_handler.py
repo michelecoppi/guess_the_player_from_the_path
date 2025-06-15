@@ -92,6 +92,8 @@ def get_event_home_message(event):
         gameplay_line = "🎮 <b>Giocatore</b>: mostra il calciatore del giorno da indovinare"
     elif event_type == "father_son":
         gameplay_line = "🎮 <b>Giocatore</b>: indovina la coppia padre/figlio dall'immagine"
+    elif event_type == "transfer_guess":
+        gameplay_line = "🎮 <b>Giocatore</b>: indovina il calciatore dal trasferimento mostrato"
 
     message = (
         f"🎉 <b>{name}</b>\n\n"
