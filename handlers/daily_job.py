@@ -81,7 +81,7 @@ def handle_monthly_reset(today):
 
     last_month = today.replace(day=1) - timedelta(days=1)
     month_name = last_month.strftime("%B")  
-    year = last_month.year
+    year = str(last_month.year)
 
     
     season = get_last_season_by_month_year(month_name, year)
