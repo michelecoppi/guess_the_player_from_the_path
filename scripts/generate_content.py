@@ -1,9 +1,11 @@
-"""Entrypoint eseguito da GitHub Actions (o manualmente) per generare in anticipo:
+"""Entrypoint per generare manualmente in anticipo:
 - il buffer di sfide giornaliere (data/config.json -> buffer_days_ahead)
 - un nuovo evento tematico, se le regole di rotazione lo consentono
 
-Non richiede che il bot (Render) sia sveglio: scrive direttamente su Firestore usando
-le stesse credenziali del service account (services/firebase_service.py).
+Non richiede che il bot sia sveglio: scrive direttamente su Firestore usando le stesse
+credenziali del service account (services/firebase_service.py). In produzione la
+generazione giornaliera passa invece da Cloud Scheduler -> POST /internal/daily-job
+(vedi README, sezione Deploy).
 """
 import logging
 import sys

@@ -7,7 +7,7 @@ da indovinare, con classifiche, statistiche personali, eventi tematici a tempo e
 
 - **Bot**: [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) su webhook, servito da **FastAPI** (`bot.py`)
 - **Dati di gioco**: **Firebase Firestore** (`users`, `daily_path`, `events` con la sotto-collection `participants`, `seasons`). Le date sul database sono ISO `YYYY-MM-DD`; agli utenti si mostrano come `gg/mm/aa`
-- **Scheduler**: APScheduler in-process (mezzanotte Europe/Rome) + **GitHub Actions** come cron esterno affidabile
+- **Scheduler**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana (nessun processo interno da tenere sveglio)
 - **Immagini del percorso**: generate a runtime con **Pillow** (`services/path_image.py`), nessun hosting immagini esterno necessario
 - **Dataset calciatori**: JSON locale versionato in `data/players.json`
 
@@ -29,19 +29,21 @@ services/daily_generator.py  -> sceglie il calciatore del giorno (con anti-ripet
 services/event_generator.py  -> sceglie un template evento a rotazione e lo riempie con giocatori validi
 services/manual_event_service.py -> eventi creati a mano dalla chat (coppie padre/figlio)
 
-scripts/generate_content.py  -> entrypoint eseguito da GitHub Actions ogni notte
+scripts/generate_content.py  -> entrypoint per generare il buffer a mano (debug/backfill)
 scripts/import_players.py    -> importa nuovi calciatori nel dataset con validazione e anti-duplicati
 scripts/dataset_report.py    -> report sullo stato del dataset (usato anche dalla CI)
 scripts/migrate_firestore.py -> migrazione una tantum dei dati esistenti al modello nuovo
-handlers/daily_job.py        -> job di mezzanotte in-process: broadcast, reset, e fallback di generazione
+handlers/daily_job.py        -> job di mezzanotte chiamato da Cloud Scheduler: broadcast, reset, e generazione
 handlers/admin_handler.py    -> tutti i comandi Telegram /admin_* (al posto di una dashboard web)
 ```
 
 ### Come viene scelto il calciatore del giorno
 
-1. Ogni notte (23:15 UTC) **GitHub Actions** esegue `scripts/generate_content.py`, che scrive
-   direttamente su Firestore i prossimi `buffer_days_ahead` giorni mancanti (default 3): così la
-   sfida di oggi non dipende dal fatto che il server Render sia sveglio esattamente a mezzanotte.
+1. Ogni notte (23:15 UTC) **Cloud Scheduler** chiama `POST /internal/daily-job` sul servizio
+   Cloud Run, che scrive direttamente su Firestore i prossimi `buffer_days_ahead` giorni
+   mancanti (default 3), invia il broadcast agli utenti iscritti, assegna i trofei degli eventi
+   conclusi e - il primo del mese - chiude la stagione mensile. **Non azzera nessun contatore**:
+   i tentativi giornalieri si azzerano da soli (vedi [Database](#database)).
 2. Il calciatore viene scelto **escludendo** quelli usati negli ultimi `history_days_no_repeat`
    giorni (default 60), tra i soli giocatori con `verified: true` e un percorso di almeno
    `min_teams_in_career` squadre (default 2) — niente percorsi banali o dati incompleti.
@@ -49,12 +51,8 @@ handlers/admin_handler.py    -> tutti i comandi Telegram /admin_* (al posto di u
    difficoltà non ci sono candidati liberi, si prova la difficoltà più vicina.
 4. La scelta è **deterministica per data** (seed = data): se la generazione va rieseguita per
    errore, il giocatore scelto per un giorno già passato resta lo stesso.
-5. Se anche GitHub Actions non fosse eseguita, `/show` e `/guess` generano la sfida del giorno
-   al primo utilizzo (fallback "esecuzione alla prima richiesta").
-6. Alla mezzanotte italiana, lo scheduler interno (`handlers/daily_job.py`) fa comunque un
-   controllo di generazione, invia il broadcast agli utenti iscritti, assegna i trofei degli
-   eventi conclusi e - il primo del mese - chiude la stagione mensile. **Non azzera nessun
-   contatore**: i tentativi giornalieri si azzerano da soli (vedi [Database](#database)).
+5. Se anche Cloud Scheduler non dovesse partire, `/show` e `/guess` generano la sfida del
+   giorno al primo utilizzo (fallback "esecuzione alla prima richiesta").
 
 ### Come vengono generati gli eventi tematici
 
@@ -255,50 +253,60 @@ flusso completo di `/guess` e `/events` (tentativi, bonus del primo assegnato un
 sola, limiti giornalieri), il reset "pigro" dei contatori, il reset mensile, il broadcast di
 mezzanotte, le classifiche e le trasformazioni della migrazione Firestore.
 
-## Deploy gratuito
+## Deploy
 
-**Perché questa combinazione**: il bot è un servizio Python a webhook con scheduler interno,
-non un frontend statico — GitHub Pages/Cloudflare Pages non si applicano. Serve un host che
-tenga vivo un processo Python; la generazione dei contenuti però *non* richiede che quel
-processo sia sveglio, quindi la spostiamo su un cron esterno gratuito e affidabile.
+Il bot gira su **Cloud Run** (container, deploy manuale) e la generazione giornaliera dei
+contenuti è affidata a **Cloud Scheduler**, che chiama un endpoint interno del servizio invece
+di dipendere da un processo sempre acceso.
 
 | Componente | Dove | Perché |
 |---|---|---|
-| Bot (webhook + scheduler) | **Render** (free web service) | Gira FastAPI/uvicorn così com'è, HTTPS incluso, deploy automatico da GitHub |
-| Generazione giornaliera/eventi | **GitHub Actions** (cron) | Gratuito, non dipende dal fatto che Render sia "sveglio", esegue lo script direttamente su Firestore |
+| Bot (webhook) | **Cloud Run** | Container da [`Dockerfile`](Dockerfile), scala a zero quando inattivo, HTTPS incluso |
+| Generazione giornaliera/eventi | **Cloud Scheduler** → `POST /internal/daily-job` | Non dipende dal fatto che l'istanza Cloud Run sia già sveglia; Cloud Run la avvia al bisogno |
 | Database | **Firebase Firestore** | Già in uso, nessuna migrazione necessaria |
 
-### 1. Render (bot)
+### 1. Cloud Run (bot)
 
-1. Crea un nuovo *Web Service* da questo repository GitHub.
-2. Build command: `pip install -r requirements.txt`
-3. Start command: `uvicorn bot:app --host 0.0.0.0 --port $PORT`
-4. Variabili d'ambiente da impostare su Render:
-   - `BOT_TOKEN`
-   - `WEBHOOK_URL` (es. `https://<nome-servizio>.onrender.com/webhook`)
-   - `ADMIN_TELEGRAM_IDS`
-   - `FIREBASE_CREDENTIALS_PATH=firebase-key.json`
-   - Carica il contenuto del service account Firebase come *Secret File* chiamato `firebase-key.json` (Render → Environment → Secret Files)
-5. Il piano free di Render va in sleep dopo ~15 minuti di inattività: la prima richiesta dopo lo
-   sleep sarà più lenta, ma **la scelta del giocatore del giorno non ne risente** perché è già
-   stata generata in anticipo da GitHub Actions.
+Build e deploy manuale dell'immagine da [`Dockerfile`](Dockerfile):
 
-### 2. GitHub Actions (generazione contenuti)
+```bash
+gcloud run deploy guess-the-player \
+  --source . \
+  --region europe-west1 \
+  --allow-unauthenticated
+```
 
-Aggiungi questi *repository secrets* (Settings → Secrets and variables → Actions):
+Variabili d'ambiente/secret da impostare sul servizio Cloud Run:
+- `BOT_TOKEN`
+- `WEBHOOK_URL` (es. `https://guess-the-player-<hash>.europe-west1.run.app/webhook`)
+- `ADMIN_TELEGRAM_IDS`
+- `GENERATION_SECRET` — segreto condiviso con Cloud Scheduler per autorizzare `/internal/daily-job`
+- `FIREBASE_CREDENTIALS_PATH=firebase-key.json`, con il service account Firebase montato come secret (Cloud Run → Variabili e secret → Secret di Secret Manager)
 
-- `FIREBASE_CREDENTIALS_JSON` — l'intero contenuto del file JSON del service account Firebase
-- `BOT_PING_URL` *(opzionale)* — es. `https://<nome-servizio>.onrender.com/ping`, per svegliare
-  il servizio Render subito dopo la generazione
+Dopo ogni `gcloud run deploy`, se cambia l'URL del servizio va aggiornato `WEBHOOK_URL` e il
+bot deve rieseguire `set_webhook` (avviene automaticamente all'avvio, vedi `bot.py`).
 
-Il workflow [`daily-generation.yml`](.github/workflows/daily-generation.yml) gira ogni notte
-alle 23:15 UTC (dopo la mezzanotte italiana sia in ora solare che legale) e può anche essere
-lanciato a mano da GitHub → Actions → "Generazione automatica giornaliera" → Run workflow.
+### 2. Cloud Scheduler (generazione contenuti)
+
+Un job di Cloud Scheduler chiama ogni notte l'endpoint interno con l'header di autorizzazione:
+
+```bash
+gcloud scheduler jobs create http daily-generation \
+  --schedule="15 23 * * *" \
+  --uri="https://guess-the-player-595902172561.europe-west1.run.app/internal/daily-job" \
+  --http-method=POST \
+  --headers="x-cron-secret=<GENERATION_SECRET>" \
+  --time-zone="UTC"
+```
+
+L'orario (23:15 UTC) è poco dopo mezzanotte a Roma sia in ora solare che legale. L'endpoint
+(`bot.py`, `@app.post("/internal/daily-job")`) verifica l'header `x-cron-secret` contro
+`GENERATION_SECRET` e rifiuta le chiamate non autorizzate con `403`.
 
 ### 3. Dominio personalizzato
 
-Sia Render che Cloudflare (come proxy DNS gratuito davanti a Render) supportano domini
-personalizzati gratuitamente; non necessario per il funzionamento del bot.
+Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tramite
+"Custom Domains"; non necessario per il funzionamento del bot.
 
 ## Limiti noti / cosa resta da fare
 
@@ -310,13 +318,12 @@ personalizzati gratuitamente; non necessario per il funzionamento del bot.
 - **Eventi "coppie padre/figlio"**: restano manuali per scelta, perché non esiste un dataset
   di immagini di coppie. La creazione però non richiede più di scrivere documenti su
   Firestore a mano: si fa da Telegram con `/admin_fs_add` + `/admin_event_create`.
-- **Nessuna interfaccia web di amministrazione**: la gestione è tramite comandi Telegram
-  (`/admin_*`), che ora coprono anche statistiche utenti, salute del dataset, anteprima delle
-  sfide generate e creazione manuale degli eventi. Restano fuori le viste storiche e i
-  grafici, che avrebbero senso solo con una dashboard vera.
-- **Render free tier**: il servizio va in sleep se inattivo; il ping opzionale da GitHub
-  Actions lo risveglia una volta al giorno, ma un utente che scrive al bot durante un lungo
-  periodo di inattività può avere qualche secondo di latenza sulla prima risposta.
+- **Interfaccia di amministrazione**: oltre ai comandi Telegram `/admin_*`, c'è una dashboard
+  locale (`streamlit run admin_ui.py`) che riusa gli stessi servizi; va lanciata sulla propria
+  macchina con le credenziali del bot, non è esposta pubblicamente.
+- **Cloud Run scale-to-zero**: il servizio può andare a zero istanze se inattivo; la prima
+  richiesta dopo un periodo di inattività (webhook Telegram o chiamata di Cloud Scheduler) ha
+  qualche secondo di latenza in più per il cold start.
 - **Database**: gli interventi della revisione sono stati applicati al codice, ma la
   **migrazione dei dati esistenti va eseguita a mano** (`scripts/migrate_firestore.py`) e le
   regole/indici vanno deployati. Restano da fare un export ricorrente di backup e una pulizia
