@@ -35,9 +35,10 @@ def test_pick_player_raises_when_dataset_empty(monkeypatch):
 
 def test_ensure_daily_buffer_skips_existing_days(monkeypatch):
     saved = []
-    monkeypatch.setattr(daily_generator.firebase_service, "daily_path_exists", lambda date_str: True)
+    monkeypatch.setattr(daily_generator.firebase_service, "daily_path_exists", lambda day_iso: True)
     monkeypatch.setattr(daily_generator.firebase_service, "get_recent_player_ids", lambda days: [])
-    monkeypatch.setattr(daily_generator.firebase_service, "save_daily_path", lambda date_str, doc: saved.append((date_str, doc)))
+    monkeypatch.setattr(daily_generator.firebase_service, "save_daily_path", lambda day_iso, doc: saved.append((day_iso, doc)))
+    monkeypatch.setattr(daily_generator.firebase_service, "get_blocked_player_ids", lambda: [])
 
     result = daily_generator.ensure_daily_buffer(days_ahead=3)
 
@@ -47,15 +48,16 @@ def test_ensure_daily_buffer_skips_existing_days(monkeypatch):
 
 def test_ensure_daily_buffer_generates_missing_days(monkeypatch):
     saved = []
-    monkeypatch.setattr(daily_generator.firebase_service, "daily_path_exists", lambda date_str: False)
+    monkeypatch.setattr(daily_generator.firebase_service, "daily_path_exists", lambda day_iso: False)
     monkeypatch.setattr(daily_generator.firebase_service, "get_recent_player_ids", lambda days: [])
-    monkeypatch.setattr(daily_generator.firebase_service, "save_daily_path", lambda date_str, doc: saved.append((date_str, doc)))
+    monkeypatch.setattr(daily_generator.firebase_service, "save_daily_path", lambda day_iso, doc: saved.append((day_iso, doc)))
+    monkeypatch.setattr(daily_generator.firebase_service, "get_blocked_player_ids", lambda: [])
 
     result = daily_generator.ensure_daily_buffer(days_ahead=2)
 
     assert len(result) == 2
     assert len(saved) == 2
-    for date_str, doc in saved:
+    for day_iso, doc in saved:
         assert doc["correct_answers"]
         assert doc["career_path"]
         assert doc["difficulty"] in ("easy", "medium", "hard", "impossible")

@@ -1,13 +1,42 @@
-import firebase_admin
-from cache import set_cache
-from firebase_admin import credentials, firestore
-from config import FIREBASE_CREDENTIALS_PATH
-from datetime import datetime
-import pytz
+"""Accesso a Firestore.
+
+Convenzioni del modello dati (vedi docs/firebase_review.md per il perche'):
+
+- `users/{telegram_id}`: l'id Telegram e' l'id del documento, quindi ogni accesso e' una
+  lettura diretta e la creazione e' un upsert atomico (niente utenti duplicati).
+- I contatori giornalieri non vengono azzerati da un job notturno: ogni documento porta con
+  se' il giorno a cui si riferisce (`last_played_day`), e i contatori valgono zero appena il
+  giorno cambia. Costo del reset: nessuno.
+- Le date sono salvate in ISO `YYYY-MM-DD` (services/dates.py), cosi' gli id documento sono
+  ordinabili e si possono fare query di intervallo.
+- Quello che deve essere assegnato "una volta sola" (il bonus al primo che indovina) passa
+  da una transazione, non da un controllo seguito da una scrittura.
+- I partecipanti a un evento sono documenti separati (`events/{code}/participants/{id}`), non
+  una mappa dentro l'evento: niente limite di 1 MB e niente contesa in scrittura.
+"""
 import logging
 
+import firebase_admin
+from firebase_admin import credentials, firestore
 
-ITALY_TZ = pytz.timezone('Europe/Rome')
+from config import FIREBASE_CREDENTIALS_PATH
+from services.dates import (
+    ITALY_TZ,
+    normalize_day,
+    now_italy,
+    parse_iso,
+    shift_iso,
+    today_iso,
+)
+
+USERS_COLLECTION = "users"
+DAILY_PATH_COLLECTION = "daily_path"
+EVENTS_COLLECTION = "events"
+PARTICIPANTS_SUBCOLLECTION = "participants"
+SEASONS_COLLECTION = "seasons"
+ADMIN_SETTINGS_COLLECTION = "admin_settings"
+DATASET_OVERRIDES_DOC = "dataset_overrides"
+FATHER_SON_COLLECTION = "father_son_pairs"
 
 
 class _LazyFirestoreClient:
@@ -32,373 +61,575 @@ class _LazyFirestoreClient:
 db = _LazyFirestoreClient()
 
 
-def save_user(user_id, first_name):
-    users_ref = db.collection("users")
-    query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
-    results = query.stream()
+# ---------------------------------------------------------------------------
+# Utenti
+# ---------------------------------------------------------------------------
 
-    if not any(results):
-        user_ref = db.collection("users").document() 
-        user_ref.set({
+def user_ref(user_id):
+    return db.collection(USERS_COLLECTION).document(str(user_id))
+
+
+def save_user(user_id, first_name):
+    """Crea l'utente se non esiste. E' una transazione: due /start ravvicinati non possono
+    piu' creare due documenti per la stessa persona."""
+    ref = user_ref(user_id)
+
+    @firestore.transactional
+    def _create(transaction):
+        snapshot = ref.get(transaction=transaction)
+        if snapshot.exists:
+            return False
+        transaction.set(ref, {
             "first_name": first_name,
             "telegram_id": user_id,
-            "date_created": datetime.now(),
+            "date_created": firestore.SERVER_TIMESTAMP,
             "chat_id": -1,
+            "notifications_enabled": False,
             "monthly_points": 0,
             "points_totali": 0,
             "daily_attempts": 0,
             "has_guessed_today": False,
+            "last_played_day": None,
             "trophies": [],
             "players_guessed": 0,
             "bonus_first_guessed": 0,
         })
-        return f"Benvenuto, {first_name}! Il tuo account è stato creato. fai /help per vedere la lista dei comandi disponibili."
-    else:
-        return f"Ciao di nuovo, {first_name}!"
+        return True
 
-def update_user_points(user_id, points, bonus, monthly=False):
-    users_ref = db.collection("users")
-    query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
-    results = query.stream()
-    
-    for user in results:
-        user_ref = users_ref.document(user.id)
-        update_data = {
-            "points_totali": firestore.Increment(points),
-            "players_guessed": firestore.Increment(1),
-            "has_guessed_today": True
-        }
-
-        if bonus > 0:
-            update_data["bonus_first_guessed"] = firestore.Increment(1)
-        if monthly:
-            update_data["monthly_points"] = firestore.Increment(points)
-        
-        user_ref.update(update_data)
-        
-def get_user_daily_status(user_id):
-    users_ref = db.collection("users")
-    query = users_ref.where("telegram_id", "==", user_id).limit(1)
-    results = query.stream()
-
-    for user in results:
-        user_data = user.to_dict()
-        daily_attempts = user_data.get("daily_attempts", 0)
-        has_guessed_today = user_data.get("has_guessed_today", False)
-        return daily_attempts, has_guessed_today
-
-    return 0, False
-
-def reload_daily_challenge(today_str):
-    daily_path_ref = db.collection("daily_path")
-    
-    query = daily_path_ref.where("current_day", "==", today_str).limit(1)
-    results = query.stream()
-
-    doc = next(results, None)
-
-    if doc:
-        data = doc.to_dict()
-        
-        set_cache({
-            "current_day": data.get("current_day"),
-            "image_url": data.get("image_url"),
-            "career_path": data.get("career_path", []),
-            "correct_answers": data.get("correct_answers", []),
-            "difficulty": data.get("difficulty"),
-            "first_correct_user": False
-        })
-
-        reset_daily_attempts()
-
-def load_daily_challenge(today_str):
-    daily_path_ref = db.collection("daily_path")
-    query = daily_path_ref.where("current_day", "==", today_str).limit(1)
-    results = query.stream()
-
-    doc = next(results, None)
-
-    if doc:
-        data = doc.to_dict()
-        
-        set_cache({
-            "current_day": data.get("current_day"),
-            "image_url": data.get("image_url"),
-            "career_path": data.get("career_path", []),
-            "correct_answers": data.get("correct_answers", []),
-            "difficulty": data.get("difficulty"),
-            "first_correct_user": data.get("first_correct_user", False)
-        })
-    else:
-        logging.info(f"Nessuna daily challenge trovata per il giorno {today_str}")
+    created = _create(db.transaction())
+    if created:
+        return (
+            f"Benvenuto, {first_name}! Il tuo account è stato creato. "
+            "fai /help per vedere la lista dei comandi disponibili."
+        )
+    return f"Ciao di nuovo, {first_name}!"
 
 
-def update_daily_challenge_first_correct():
-    daily_path_ref = db.collection("daily_path")
-    
-    now_italy = datetime.now(ITALY_TZ)
-    today_str = now_italy.strftime('%d/%m/%y')  
-    
-    query = daily_path_ref.where("current_day", "==", today_str).limit(1)
-    results = query.stream()
-
-    doc = next(results, None)
-
-    if doc:
-        data = doc.to_dict()  
-        daily_path_ref.document(doc.id).update({
-            "first_correct_user": True
-        })
-        logging.info(f"[CACHE] Aggiornato il primo utente corretto per il giorno {today_str}")
-    else:
-        logging.info(f"[CACHE] Nessun daily challenge trovato per il giorno {today_str}")
-
-def reset_daily_attempts():
-    users_ref = db.collection("users")
-    users = users_ref.stream()
-
-    for user in users:
-        user_ref = users_ref.document(user.id)
-        user_ref.update({"daily_attempts": 0, "has_guessed_today": False})
-    logging.info("Tentativi giornalieri resettati per tutti gli utenti")
-
-def update_user_daily_attempts(user_id, attempts):
-    users_ref = db.collection("users")
-    query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
-    results = query.stream()
-
-    for user in results:
-        user_ref = users_ref.document(user.id)
-        user_ref.update({
-            "daily_attempts": attempts
-        })
 def get_user_data(user_id):
-    users_ref = db.collection("users")
-    query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
-    results = query.stream()
-    
-    for user in results:
-        return user.to_dict()
-    
-    return None
+    snapshot = user_ref(user_id).get()
+    return snapshot.to_dict() if snapshot.exists else None
 
-def get_all_users():
-    users_ref = db.collection('users')
-    users = users_ref.stream()
 
-    user_list = []
-    for user_doc in users:
-        data = user_doc.to_dict()
-        user_list.append({
-            "telegram_id": data.get("telegram_id"),
-            "username": data.get("first_name", "Sconosciuto"),
-            "points": data.get("points_totali", 0),
-            "monthly_points": data.get("monthly_points", 0)
+def get_user_daily_status(user_id, day_iso=None):
+    """Tentativi usati e se ha gia' indovinato **oggi**. I contatori di un giorno passato
+    valgono zero senza bisogno di averli azzerati."""
+    day_iso = day_iso or today_iso()
+    data = get_user_data(user_id)
+    if not data:
+        return 0, False
+    if normalize_day(data.get("last_played_day")) != day_iso:
+        return 0, False
+    return data.get("daily_attempts", 0), data.get("has_guessed_today", False)
+
+
+def begin_guess_attempt(user_id, day_iso, max_attempts):
+    """Consuma un tentativo in modo atomico e dice se il tentativo e' ammesso.
+
+    Ritorna un dizionario con 'ok' e, quando ok e' False, il motivo:
+    'not_registered' | 'already_guessed' | 'no_attempts'.
+    """
+    ref = user_ref(user_id)
+
+    @firestore.transactional
+    def _attempt(transaction):
+        snapshot = ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return {"ok": False, "reason": "not_registered"}
+
+        data = snapshot.to_dict()
+        same_day = normalize_day(data.get("last_played_day")) == day_iso
+        attempts = data.get("daily_attempts", 0) if same_day else 0
+        has_guessed = data.get("has_guessed_today", False) if same_day else False
+
+        if has_guessed:
+            return {"ok": False, "reason": "already_guessed"}
+        if attempts >= max_attempts:
+            return {"ok": False, "reason": "no_attempts", "attempts_used": attempts}
+
+        transaction.update(ref, {
+            "daily_attempts": attempts + 1,
+            "has_guessed_today": False,
+            "last_played_day": day_iso,
         })
-    return user_list
-
-def get_all_broadcast_users():
-    users_ref = db.collection("users")
-    query = users_ref.where("chat_id", "!=", -1)
-    results = query.stream()
-    
-    return [
-        {
-            "chat_id": user.to_dict()["chat_id"],
-            "has_guessed_today": user.to_dict().get("has_guessed_today", False)
+        return {
+            "ok": True,
+            "attempts_used": attempts + 1,
+            "attempts_left": max_attempts - (attempts + 1),
         }
-        for user in results
-    ]
 
-def update_user_chat_id(user_id, chat_id):
-    users_ref = db.collection("users")
-    query = users_ref.where(field_path="telegram_id", op_string="==", value=user_id).limit(1)
-    results = query.stream()
-
-    for user in results:
-        user_ref = users_ref.document(user.id)
-        user_ref.update({
-            "chat_id": chat_id
-        })
-def get_current_event():
-
-    now_italy = datetime.now(ITALY_TZ)
-    current_date = now_italy.strftime('%d/%m/%y')
-    
-    events_ref = db.collection("events")
-    query = events_ref.where("dates", "array_contains", current_date)
-    results = query.stream()
-
-    for event in results:
-        event_data = event.to_dict()
-        event_data["ref"] = event.reference
-        return event_data
-
-    return None
-
-def reset_daily_guess_status_event(event_data, event_ref):
-    rankings = event_data.get("ranking", {})
-
-    for user_id, user_data in rankings.items():
-        if isinstance(user_data, dict):
-            user_data["has_guessed_today"] = False
-
-    event_ref.update({"ranking": rankings})
-    logging.info(f"Reset globale completato per evento con codice {event_data.get('code')}")
+    return _attempt(db.transaction())
 
 
-def get_event_trophy_day():
-    now_italy = datetime.now(ITALY_TZ)
-    current_date = now_italy.strftime('%d/%m/%y')
-    
-    events_ref = db.collection("events")
-    query = events_ref.where("trophy_day", "==", current_date)
-    results = query.stream()
-
-    for event in results:
-        return event.to_dict()
-
-    return None
-
-def update_users_trophies(event_doc):
-    event_code = event_doc.get("code")
-    ranking = event_doc.get("ranking", {}) 
-
-    sorted_users = sorted(ranking.values(), key=lambda u: u.get("points", 0), reverse=True)
-
-    for idx, user_data in enumerate(sorted_users[:3], start=1):
-        telegram_id = user_data.get("telegram_id")
-        if not telegram_id:
-            continue
-
-        trophy_string = f"{idx}_{event_code}"
-        user_query = db.collection("users").where("telegram_id", "==", telegram_id).limit(1).stream()
-        user_doc = next(user_query, None)
-
-        if user_doc:
-            user_doc.reference.update({
-                "trophies": firestore.ArrayUnion([trophy_string])
-            })
+def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True):
+    day_iso = day_iso or today_iso()
+    update_data = {
+        "points_totali": firestore.Increment(points),
+        "players_guessed": firestore.Increment(1),
+        "has_guessed_today": True,
+        "last_played_day": day_iso,
+    }
+    if bonus > 0:
+        update_data["bonus_first_guessed"] = firestore.Increment(1)
+    if monthly:
+        update_data["monthly_points"] = firestore.Increment(points)
+    user_ref(user_id).update(update_data)
 
 
-def get_display_name_for_date(date_str):
-    daily_data = db.collection("daily_path")
-    query = daily_data.where("current_day", "==", date_str).limit(1).stream()
-    result = next(query, None)
-    if not result:
-        return None
-    
-    data = result.to_dict()
-    solutions = data.get("correct_answers", [])
+def set_user_notifications(user_id, chat_id, enabled):
+    user_ref(user_id).update({
+        "chat_id": chat_id if enabled else -1,
+        "notifications_enabled": bool(enabled),
+    })
 
-    full_names = [s for s in solutions if " " in s]
-    if full_names:
-        return full_names[0].title()
 
-    if solutions:
-        return solutions[0].title() 
+def get_broadcast_users(reference_day_iso=None):
+    """Utenti da avvisare al cambio di giornata, con l'informazione se avevano indovinato
+    la sfida del giorno di riferimento (di norma ieri, perche' il messaggio parte a
+    mezzanotte)."""
+    reference_day_iso = reference_day_iso or shift_iso(today_iso(), -1)
+    query = db.collection(USERS_COLLECTION).where("notifications_enabled", "==", True)
 
-    return None
+    users = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        guessed = (
+            data.get("has_guessed_today", False)
+            and normalize_day(data.get("last_played_day")) == reference_day_iso
+        )
+        users.append({"chat_id": data.get("chat_id"), "has_guessed_today": guessed})
+    return users
 
-def get_last_season_by_month_year(month_name, year):
-    seasons_ref = db.collection("seasons")
-    query = seasons_ref.where("month", "==", month_name).where("year", "==", year).limit(1).stream()
-    
-    for season in query:
-        return season.to_dict()
-    
-    return None
+
+def get_top_users(field="points_totali", limit=10):
+    """Solo i primi N, ordinati da Firestore: una manciata di letture invece dell'intera
+    collection ad ogni /top."""
+    query = db.collection(USERS_COLLECTION).order_by(
+        field, direction=firestore.Query.DESCENDING
+    ).limit(limit)
+    return [_public_user(doc.to_dict()) for doc in query.stream()]
+
+
+def count_users_ahead(field, value):
+    """Quanti utenti hanno piu' punti di 'value': serve a mostrare la posizione di chi e'
+    fuori dalla top 10 senza scaricare la classifica intera."""
+    query = db.collection(USERS_COLLECTION).where(field, ">", value)
+    return _count_collection(query)
+
+
+def _public_user(data):
+    return {
+        "telegram_id": data.get("telegram_id"),
+        "username": data.get("first_name", "Sconosciuto"),
+        "points": data.get("points_totali", 0),
+        "monthly_points": data.get("monthly_points", 0),
+    }
+
+
 def add_user_trophy(telegram_id, trophy_code):
-    users_ref = db.collection("users")
-    query = users_ref.where("telegram_id", "==", telegram_id).limit(1)
-    results = query.stream()
+    user_ref(telegram_id).update({"trophies": firestore.ArrayUnion([trophy_code])})
+    logging.info(f"Trofeo {trophy_code} aggiunto per l'utente {telegram_id}")
 
-    for user in results:
-        user_ref = users_ref.document(user.id)
-        user_ref.update({
-            "trophies": firestore.ArrayUnion([trophy_code])
-        })
-        logging.info(f"Trophy {trophy_code} aggiunta per l'utente {telegram_id}")
 
-def daily_path_exists(date_str):
-    query = db.collection("daily_path").where("current_day", "==", date_str).limit(1).stream()
-    return next(query, None) is not None
+def reset_monthly_points():
+    """Azzera i punti mensili di chi ne ha: girata una volta al mese, in batch."""
+    query = db.collection(USERS_COLLECTION).where("monthly_points", ">", 0)
+    batch = db.batch()
+    count = 0
+    for doc in query.stream():
+        batch.update(doc.reference, {"monthly_points": 0})
+        count += 1
+        if count % 400 == 0:  # il limite di un batch Firestore e' 500 operazioni
+            batch.commit()
+            batch = db.batch()
+    if count % 400:
+        batch.commit()
+    logging.info(f"Punti mensili azzerati per {count} utenti")
+    return count
+
+
+# ---------------------------------------------------------------------------
+# Sfida giornaliera
+# ---------------------------------------------------------------------------
+
+def daily_path_ref(day_iso):
+    return db.collection(DAILY_PATH_COLLECTION).document(day_iso)
+
+
+def daily_path_exists(day_iso):
+    return daily_path_ref(day_iso).get().exists
+
+
+def get_daily_path(day_iso):
+    """La sfida di un giorno, letta direttamente per id documento (la data ISO)."""
+    snapshot = daily_path_ref(day_iso).get()
+    if not snapshot.exists:
+        logging.info(f"Nessuna daily challenge trovata per il giorno {day_iso}")
+        return None
+    return snapshot.to_dict()
+
+
+def save_daily_path(day_iso, doc):
+    doc = dict(doc)
+    doc["day"] = day_iso
+    daily_path_ref(day_iso).set(doc)
+    logging.info(f"[GENERATOR] Salvata daily_path per {day_iso} (player_id={doc.get('player_id')})")
 
 
 def get_recent_player_ids(days):
-    """Ritorna gli id (players.json) usati negli ultimi N giorni, per evitare ripetizioni."""
-    docs = db.collection("daily_path").order_by(
-        "generated_at", direction=firestore.Query.DESCENDING
-    ).limit(days).stream()
+    """Gli id dei giocatori usati (o gia' programmati) nella finestra di anti-ripetizione.
+    Query di intervallo sulla data: possibile solo perche' le date sono ISO."""
+    start_day = shift_iso(today_iso(), -days)
+    docs = db.collection(DAILY_PATH_COLLECTION).where("day", ">=", start_day).stream()
 
     ids = []
     for doc in docs:
-        data = doc.to_dict()
-        player_id = data.get("player_id")
+        player_id = doc.to_dict().get("player_id")
         if player_id:
             ids.append(player_id)
     return ids
 
 
-def save_daily_path(date_str, doc):
+def claim_daily_first_correct(day_iso):
+    """Assegna il bonus 'primo che indovina' a un solo utente, anche se due rispondono
+    nello stesso istante. Ritorna True se il bonus spetta a chi ha appena chiamato."""
+    ref = daily_path_ref(day_iso)
+
+    @firestore.transactional
+    def _claim(transaction):
+        snapshot = ref.get(transaction=transaction)
+        if not snapshot.exists or snapshot.to_dict().get("first_correct_user"):
+            return False
+        transaction.update(ref, {"first_correct_user": True})
+        return True
+
+    return _claim(db.transaction())
+
+
+def get_display_name_for_day(day_iso):
+    data = get_daily_path(day_iso)
+    if not data:
+        return None
+
+    solutions = data.get("correct_answers", [])
+    full_names = [s for s in solutions if " " in s]
+    if full_names:
+        return full_names[0].title()
+    if solutions:
+        return solutions[0].title()
+    return None
+
+
+def get_upcoming_daily_paths(limit=7):
+    """Le sfide gia' generate, dalla piu' lontana nel futuro: serve a /admin_next."""
+    docs = db.collection(DAILY_PATH_COLLECTION).order_by(
+        "day", direction=firestore.Query.DESCENDING
+    ).limit(limit).stream()
+    return [doc.to_dict() for doc in docs]
+
+
+# ---------------------------------------------------------------------------
+# Eventi
+# ---------------------------------------------------------------------------
+
+def event_ref(event_code):
+    return db.collection(EVENTS_COLLECTION).document(event_code)
+
+
+def get_event(event_code):
+    snapshot = event_ref(event_code).get()
+    if not snapshot.exists:
+        return None
+    data = snapshot.to_dict()
+    data["code"] = snapshot.id
+    return data
+
+
+def event_exists(event_code):
+    return event_ref(event_code).get().exists
+
+
+def save_event(event_code, doc):
     doc = dict(doc)
-    doc["current_day"] = date_str
-    db.collection("daily_path").document(date_str.replace("/", "-")).set(doc)
-    logging.info(f"[GENERATOR] Salvata daily_path per {date_str} (player_id={doc.get('player_id')})")
+    doc["code"] = event_code
+    event_ref(event_code).set(doc)
+    logging.info(f"[GENERATOR] Salvato evento {event_code} ({doc.get('name')})")
 
 
-def get_active_events():
-    events_ref = db.collection("events")
-    now_italy = datetime.now(ITALY_TZ)
-    today_str = now_italy.strftime('%d/%m/%y')
-    query = events_ref.where("dates", "array_contains", today_str).stream()
-    return [e.to_dict() for e in query]
+def get_active_events(day_iso=None):
+    day_iso = day_iso or today_iso()
+    query = db.collection(EVENTS_COLLECTION).where("dates", "array_contains", day_iso)
+    events = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        data["code"] = doc.id
+        events.append(data)
+    return events
+
+
+def get_current_event(day_iso=None):
+    events = get_active_events(day_iso)
+    return events[0] if events else None
 
 
 def get_recent_event_template_ids(limit):
-    docs = db.collection("events").order_by(
+    docs = db.collection(EVENTS_COLLECTION).order_by(
         "generated_at", direction=firestore.Query.DESCENDING
     ).limit(limit).stream()
 
     ids = []
     for doc in docs:
-        data = doc.to_dict()
-        template_id = data.get("template_id")
+        template_id = doc.to_dict().get("template_id")
         if template_id:
             ids.append(template_id)
     return ids
 
 
 def get_last_event_end_date():
-    docs = db.collection("events").order_by(
+    docs = db.collection(EVENTS_COLLECTION).order_by(
         "generated_at", direction=firestore.Query.DESCENDING
     ).limit(1).stream()
     doc = next(docs, None)
     if not doc:
         return None
-    data = doc.to_dict()
-    dates = data.get("dates", [])
+    dates = doc.to_dict().get("dates", [])
     if not dates:
         return None
-    return datetime.strptime(dates[-1], "%d/%m/%y")
+    return parse_iso(normalize_day(dates[-1]))
 
 
-def save_event(event_code, doc):
-    doc = dict(doc)
-    doc["code"] = event_code
-    db.collection("events").document(event_code).set(doc)
-    logging.info(f"[GENERATOR] Salvato evento {event_code} ({doc.get('name')})")
+def get_recent_events(limit=5):
+    docs = db.collection(EVENTS_COLLECTION).order_by(
+        "generated_at", direction=firestore.Query.DESCENDING
+    ).limit(limit).stream()
+
+    events = []
+    for doc in docs:
+        data = doc.to_dict()
+        data["code"] = doc.id
+        data["participants_count"] = _count_collection(doc.reference.collection(PARTICIPANTS_SUBCOLLECTION))
+        events.append(data)
+    return events
 
 
-def update_users_monthly_points(points):
-    users_ref = db.collection("users")
-    query = users_ref.where("monthly_points", ">", 0)
-    results = query.stream()
-    for user in results:
-        user_ref = users_ref.document(user.id)
-        user_ref.update({
-            "monthly_points": points
-        })
+def participant_ref(event_code, user_id):
+    return event_ref(event_code).collection(PARTICIPANTS_SUBCOLLECTION).document(str(user_id))
 
-        
 
+def get_event_participant(event_code, user_id):
+    snapshot = participant_ref(event_code, user_id).get()
+    return snapshot.to_dict() if snapshot.exists else None
+
+
+def begin_event_attempt(event_code, user_id, name, day_iso, max_attempts):
+    """Come begin_guess_attempt ma per l'evento: ogni partecipante ha il suo documento,
+    quindi due utenti che rispondono insieme non si contendono lo stesso documento."""
+    ref = participant_ref(event_code, user_id)
+
+    @firestore.transactional
+    def _attempt(transaction):
+        snapshot = ref.get(transaction=transaction)
+        data = snapshot.to_dict() if snapshot.exists else {}
+
+        same_day = normalize_day(data.get("last_played_day")) == day_iso
+        attempts = data.get("daily_attempts", 0) if same_day else 0
+        has_guessed = data.get("has_guessed_today", False) if same_day else False
+
+        if has_guessed:
+            return {"ok": False, "reason": "already_guessed"}
+        if attempts >= max_attempts:
+            return {"ok": False, "reason": "no_attempts", "attempts_used": attempts}
+
+        transaction.set(ref, {
+            "telegram_id": user_id,
+            "name": name,
+            "points": data.get("points", 0),
+            "daily_attempts": attempts + 1,
+            "has_guessed_today": False,
+            "last_played_day": day_iso,
+        }, merge=True)
+        return {
+            "ok": True,
+            "attempts_used": attempts + 1,
+            "attempts_left": max_attempts - (attempts + 1),
+        }
+
+    return _attempt(db.transaction())
+
+
+def register_event_correct_guess(event_code, user_id, points, day_iso):
+    participant_ref(event_code, user_id).update({
+        "points": firestore.Increment(points),
+        "has_guessed_today": True,
+        "last_played_day": day_iso,
+    })
+
+
+def claim_event_first_correct(event_code, day_iso):
+    ref = event_ref(event_code)
+    field = f"daily_data.{day_iso}.first_correct_user"
+
+    @firestore.transactional
+    def _claim(transaction):
+        snapshot = ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return False
+        day_data = (snapshot.to_dict().get("daily_data") or {}).get(day_iso) or {}
+        if day_data.get("first_correct_user"):
+            return False
+        transaction.update(ref, {field: True})
+        return True
+
+    return _claim(db.transaction())
+
+
+def get_event_leaderboard(event_code, limit=3):
+    query = event_ref(event_code).collection(PARTICIPANTS_SUBCOLLECTION).order_by(
+        "points", direction=firestore.Query.DESCENDING
+    ).limit(limit)
+    return [doc.to_dict() for doc in query.stream()]
+
+
+def get_event_trophy_day(day_iso=None):
+    day_iso = day_iso or today_iso()
+    query = db.collection(EVENTS_COLLECTION).where("trophy_day", "==", day_iso)
+    for doc in query.stream():
+        data = doc.to_dict()
+        data["code"] = doc.id
+        return data
+    return None
+
+
+def update_users_trophies(event_doc):
+    """Assegna il trofeo ai primi tre dell'evento."""
+    event_code = event_doc.get("code")
+    podium = get_event_leaderboard(event_code, limit=3)
+
+    assigned = []
+    for position, participant in enumerate(podium, start=1):
+        telegram_id = participant.get("telegram_id")
+        if not telegram_id:
+            continue
+        trophy_code = f"{position}_{event_code}"
+        add_user_trophy(telegram_id, trophy_code)
+        assigned.append((telegram_id, trophy_code))
+    return assigned
+
+
+# ---------------------------------------------------------------------------
+# Stagioni mensili
+# ---------------------------------------------------------------------------
+
+def get_or_create_season(month_name, year):
+    """La stagione mensile serve a numerare i trofei. Se manca, il reset mensile non deve
+    saltare in silenzio (era il comportamento precedente): la creiamo noi, numerandola
+    dopo l'ultima esistente."""
+    query = db.collection(SEASONS_COLLECTION).where("month", "==", month_name).where("year", "==", year).limit(1)
+    for doc in query.stream():
+        return doc.to_dict(), False
+
+    existing = db.collection(SEASONS_COLLECTION).order_by(
+        "season_number", direction=firestore.Query.DESCENDING
+    ).limit(1).stream()
+    last = next(existing, None)
+    next_number = (last.to_dict().get("season_number", 0) + 1) if last else 1
+
+    season = {
+        "month": month_name,
+        "year": year,
+        "season_number": next_number,
+        "created_at": firestore.SERVER_TIMESTAMP,
+    }
+    db.collection(SEASONS_COLLECTION).document(f"{year}-{month_name}").set(season)
+    logging.info(f"[SEASON] Creata stagione mancante {month_name} {year} (numero {next_number})")
+    return season, True
+
+
+# ---------------------------------------------------------------------------
+# Amministrazione via Telegram (nessuna dashboard web)
+# ---------------------------------------------------------------------------
+
+def _count_collection(query):
+    """Conta i documenti usando l'aggregazione lato server (una lettura fatturata invece di N).
+    Se il backend non la supporta, ripiega sul conteggio in streaming."""
+    try:
+        result = query.count().get()
+        return int(result[0][0].value)
+    except Exception:
+        logging.info("[ADMIN] count() non disponibile, fallback su stream()")
+        return sum(1 for _ in query.stream())
+
+
+def get_admin_overview():
+    """Numeri di riepilogo per /admin_stats, senza scaricare l'intera collection users."""
+    users_ref = db.collection(USERS_COLLECTION)
+    return {
+        "users_total": _count_collection(users_ref),
+        "users_with_notifications": _count_collection(users_ref.where("notifications_enabled", "==", True)),
+        "users_guessed_today": _count_collection(
+            users_ref.where("last_played_day", "==", today_iso()).where("has_guessed_today", "==", True)
+        ),
+    }
+
+
+def get_blocked_player_ids():
+    """Giocatori sospesi a mano dall'admin (dato sbagliato segnalato): esclusi dalla
+    selezione automatica senza dover ridistribuire il bot."""
+    doc = db.collection(ADMIN_SETTINGS_COLLECTION).document(DATASET_OVERRIDES_DOC).get()
+    if not doc.exists:
+        return []
+    return doc.to_dict().get("blocked_player_ids", [])
+
+
+def block_player_id(player_id):
+    db.collection(ADMIN_SETTINGS_COLLECTION).document(DATASET_OVERRIDES_DOC).set(
+        {"blocked_player_ids": firestore.ArrayUnion([player_id])}, merge=True
+    )
+    logging.info(f"[ADMIN] Giocatore sospeso dalla selezione automatica: {player_id}")
+
+
+def unblock_player_id(player_id):
+    db.collection(ADMIN_SETTINGS_COLLECTION).document(DATASET_OVERRIDES_DOC).set(
+        {"blocked_player_ids": firestore.ArrayRemove([player_id])}, merge=True
+    )
+    logging.info(f"[ADMIN] Giocatore riammesso nella selezione automatica: {player_id}")
+
+
+def add_father_son_pair(pair):
+    """Salva una coppia padre/figlio inviata dall'admin via Telegram (foto + risposte).
+    Il campo 'file_id' e' l'identificativo della foto su Telegram: puo' essere rispedito
+    come immagine senza doverla ospitare da nessuna parte."""
+    doc_ref = db.collection(FATHER_SON_COLLECTION).document()
+    payload = dict(pair)
+    payload["created_at"] = now_italy()
+    payload["used_in_events"] = payload.get("used_in_events", [])
+    doc_ref.set(payload)
+    logging.info(f"[ADMIN] Coppia padre/figlio salvata: {doc_ref.id}")
+    return doc_ref.id
+
+
+def list_father_son_pairs(limit=50, only_unused=False):
+    query = db.collection(FATHER_SON_COLLECTION).limit(limit)
+    pairs = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        data["id"] = doc.id
+        if only_unused and data.get("used_in_events"):
+            continue
+        pairs.append(data)
+    return pairs
+
+
+def delete_father_son_pair(pair_id):
+    doc_ref = db.collection(FATHER_SON_COLLECTION).document(pair_id)
+    if not doc_ref.get().exists:
+        return False
+    doc_ref.delete()
+    logging.info(f"[ADMIN] Coppia padre/figlio eliminata: {pair_id}")
+    return True
+
+
+def mark_father_son_pairs_used(pair_ids, event_code):
+    for pair_id in pair_ids:
+        db.collection(FATHER_SON_COLLECTION).document(pair_id).update(
+            {"used_in_events": firestore.ArrayUnion([event_code])}
+        )

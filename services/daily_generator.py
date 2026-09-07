@@ -5,18 +5,21 @@ from datetime import datetime, timedelta
 from services.player_pool import get_all_players, get_answer_aliases, load_config
 from services.difficulty import compute_difficulty, group_players_by_difficulty, DIFFICULTY_ORDER
 from services import firebase_service
+from services.dates import ITALY_TZ, to_iso
 
-ITALY_TZ = firebase_service.ITALY_TZ
 
-
-def pick_player_for_date(date_dt, recent_player_ids, rotation_index):
+def pick_player_for_date(date_dt, recent_player_ids, rotation_index, blocked_ids=None):
     """Sceglie deterministicamente un giocatore per la data indicata, evitando ripetizioni
-    recenti e ruotando la difficolta' target secondo 'difficulty_rotation' in config.json."""
+    recenti e ruotando la difficolta' target secondo 'difficulty_rotation' in config.json.
+
+    'blocked_ids' sono i giocatori sospesi dall'admin (/admin_block): restano fuori anche
+    quando il pool si esaurisce, perche' di solito sono sospesi per un dato sbagliato."""
     config = load_config()
     rotation = config.get("difficulty_rotation", DIFFICULTY_ORDER)
     target_difficulty = rotation[rotation_index % len(rotation)]
 
-    players = get_all_players()
+    blocked_ids = set(blocked_ids or [])
+    players = [p for p in get_all_players() if p["id"] not in blocked_ids]
     available = [p for p in players if p["id"] not in recent_player_ids]
     if not available:
         # Se abbiamo esaurito il pool senza ripetizioni, si riparte accettando ripetizioni
@@ -42,8 +45,8 @@ def pick_player_for_date(date_dt, recent_player_ids, rotation_index):
     raise ValueError("Nessun giocatore disponibile per nessuna fascia di difficolta'")
 
 
-def build_daily_path_doc(date_dt, recent_player_ids, rotation_index):
-    player, difficulty = pick_player_for_date(date_dt, recent_player_ids, rotation_index)
+def build_daily_path_doc(date_dt, recent_player_ids, rotation_index, blocked_ids=None):
+    player, difficulty = pick_player_for_date(date_dt, recent_player_ids, rotation_index, blocked_ids)
 
     return {
         "player_id": player["id"],
@@ -67,18 +70,25 @@ def ensure_daily_buffer(days_ahead=None):
     now_italy = datetime.now(ITALY_TZ)
     generated = []
 
+    try:
+        blocked_ids = firebase_service.get_blocked_player_ids()
+    except Exception:
+        # Un problema nel leggere gli override non deve impedire la generazione della sfida.
+        logging.exception("[GENERATOR] Impossibile leggere i giocatori sospesi: procedo senza esclusioni")
+        blocked_ids = []
+
     for offset in range(days_ahead):
         date_dt = now_italy + timedelta(days=offset)
-        date_str = date_dt.strftime("%d/%m/%y")
+        day_iso = to_iso(date_dt)
 
-        if firebase_service.daily_path_exists(date_str):
+        if firebase_service.daily_path_exists(day_iso):
             continue
 
         recent_ids = set(firebase_service.get_recent_player_ids(history_days))
         # giorno dall'inizio dell'anno come indice di rotazione difficolta', stabile e deterministico
         rotation_index = date_dt.timetuple().tm_yday
-        doc = build_daily_path_doc(date_dt, recent_ids, rotation_index)
-        firebase_service.save_daily_path(date_str, doc)
-        generated.append({"date": date_str, "player_id": doc["player_id"], "difficulty": doc["difficulty"]})
+        doc = build_daily_path_doc(date_dt, recent_ids, rotation_index, blocked_ids)
+        firebase_service.save_daily_path(day_iso, doc)
+        generated.append({"day": day_iso, "player_id": doc["player_id"], "difficulty": doc["difficulty"]})
 
     return generated

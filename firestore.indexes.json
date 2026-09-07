@@ -1,0 +1,24 @@
+{
+  "_comment": "Indici compositi usati dal bot. Firestore crea da solo gli indici a campo singolo (order_by points_totali, where day >= ..., array_contains su dates, ecc.): qui servono solo le query con piu' filtri di uguaglianza. Deploy: firebase deploy --only firestore:indexes",
+  "indexes": [
+    {
+      "_comment": "/admin_stats: quanti utenti hanno indovinato oggi",
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "last_played_day", "order": "ASCENDING"},
+        {"fieldPath": "has_guessed_today", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "_comment": "reset mensile: la stagione di un dato mese/anno",
+      "collectionGroup": "seasons",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "month", "order": "ASCENDING"},
+        {"fieldPath": "year", "order": "ASCENDING"}
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

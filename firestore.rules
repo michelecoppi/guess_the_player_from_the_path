@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Il bot accede a Firestore solo con l'Admin SDK (service account), che ignora queste
+// regole: nessun client legge o scrive direttamente il database. Di conseguenza la regola
+// corretta e' negare tutto, cosi' un eventuale client SDK con il project id non puo'
+// leggere gli utenti o falsificare punteggi.
+//
+// Deploy:  firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -19,6 +19,7 @@ def test_buffer_dates_are_sequential_and_unique(monkeypatch):
     monkeypatch.setattr(daily_generator.firebase_service, "daily_path_exists", fake_exists)
     monkeypatch.setattr(daily_generator.firebase_service, "get_recent_player_ids", lambda days: [])
     monkeypatch.setattr(daily_generator.firebase_service, "save_daily_path", fake_save)
+    monkeypatch.setattr(daily_generator.firebase_service, "get_blocked_player_ids", lambda: [])
 
     daily_generator.ensure_daily_buffer(days_ahead=5)
 
@@ -32,7 +33,8 @@ def test_buffer_generation_across_dst_change(monkeypatch):
     seen_dates = []
     monkeypatch.setattr(daily_generator.firebase_service, "daily_path_exists", lambda date_str: False)
     monkeypatch.setattr(daily_generator.firebase_service, "get_recent_player_ids", lambda days: [])
-    monkeypatch.setattr(daily_generator.firebase_service, "save_daily_path", lambda date_str, doc: seen_dates.append(date_str))
+    monkeypatch.setattr(daily_generator.firebase_service, "save_daily_path", lambda day_iso, doc: seen_dates.append(day_iso))
+    monkeypatch.setattr(daily_generator.firebase_service, "get_blocked_player_ids", lambda: [])
 
     # 29/30 marzo 2026: passaggio all'ora legale in Europa
     fixed_now = ITALY_TZ.localize(datetime(2026, 3, 28, 23, 30))
@@ -40,7 +42,9 @@ def test_buffer_generation_across_dst_change(monkeypatch):
 
     daily_generator.ensure_daily_buffer(days_ahead=4)
     assert len(seen_dates) == 4
-    assert seen_dates == sorted(seen_dates, key=lambda d: datetime.strptime(d, "%d/%m/%y"))
+    # Le date ISO sono ordinabili come stringhe: e' il motivo per cui sono state adottate.
+    assert seen_dates == sorted(seen_dates)
+    assert seen_dates[0] == "2026-03-28"
 
 
 class _FixedDatetime:

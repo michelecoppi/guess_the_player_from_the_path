@@ -7,11 +7,10 @@ from datetime import datetime, timedelta
 
 from services.player_pool import get_all_players, get_answer_aliases, filter_players, load_config
 from services import firebase_service
+from services.dates import ITALY_TZ, to_iso
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _TEMPLATES_PATH = os.path.join(_BASE_DIR, "data", "event_templates.json")
-
-ITALY_TZ = firebase_service.ITALY_TZ
 
 _templates_cache = None
 
@@ -102,7 +101,7 @@ def _build_daily_data_for_type(event_type, dates, rules, points_per_day, min_cor
 def build_event_doc(template, start_date=None):
     start_date = start_date or datetime.now(ITALY_TZ)
     duration_days = template.get("duration_days", 5)
-    dates = [(start_date + timedelta(days=i)).strftime("%d/%m/%y") for i in range(duration_days)]
+    dates = [to_iso(start_date + timedelta(days=i)) for i in range(duration_days)]
 
     daily_data = _build_daily_data_for_type(
         template["type"],
@@ -123,7 +122,6 @@ def build_event_doc(template, start_date=None):
         "difficulty": template.get("difficulty"),
         "dates": dates,
         "daily_data": daily_data,
-        "ranking": {},
         "trophy_day": dates[-1] if dates else None,
         "generated_at": datetime.now(ITALY_TZ),
         "source": "auto",
