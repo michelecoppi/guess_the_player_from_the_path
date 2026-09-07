@@ -2,6 +2,7 @@ from cache import get_cache, set_cache
 from telegram import Update
 from telegram.ext import ContextTypes
 from services.firebase_service import update_user_points, load_daily_challenge, update_daily_challenge_first_correct, get_user_daily_status, update_user_daily_attempts, get_user_data
+from services.daily_generator import ensure_daily_buffer
 from datetime import datetime
 import pytz
 import logging
@@ -23,7 +24,10 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
         italy_tz = pytz.timezone('Europe/Rome')
         now_italy = datetime.now(italy_tz)
         today_str = now_italy.strftime('%d/%m/%y')
-        load_daily_challenge(today_str) 
+        load_daily_challenge(today_str)
+        if get_cache().get("current_day") is None:
+            ensure_daily_buffer(days_ahead=1)
+            load_daily_challenge(today_str)
 
     daily_attempts, has_guessed_today = get_user_daily_status(user_id)
 

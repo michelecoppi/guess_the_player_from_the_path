@@ -1,6 +1,7 @@
 CACHE = {
     "current_day": None,
     "image_url": None,
+    "career_path": [],
     "correct_answers": [],
     "difficulty": None,
     "first_correct_user": False

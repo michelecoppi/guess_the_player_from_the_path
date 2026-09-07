@@ -1,0 +1,22 @@
+{
+  "min_teams_in_career": 2,
+  "history_days_no_repeat": 60,
+  "buffer_days_ahead": 3,
+  "auto_include_unverified_players": false,
+  "difficulty_rotation": ["easy", "medium", "hard", "impossible"],
+  "top_leagues": [
+    "Premier League",
+    "La Liga",
+    "Serie A",
+    "Bundesliga",
+    "Ligue 1"
+  ],
+  "difficulty_thresholds": {
+    "easy": 5,
+    "medium": 9,
+    "hard": 13
+  },
+  "event_min_gap_days": 10,
+  "event_default_duration_days": 5,
+  "event_history_no_repeat_templates": 3
+}

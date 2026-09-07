@@ -2,6 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMe
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 from services.firebase_service import get_current_event, db
+from services.path_image import render_career_path_image, render_event_banner
 from datetime import datetime
 import pytz
 
@@ -18,7 +19,7 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     message = get_event_home_message(event)
-    image_url = event.get("event_img", None)
+    image_url = event.get("event_img") or render_event_banner(event.get("name", "Evento"), event.get("description", ""))
 
     keyboard = [
         [
@@ -53,14 +54,14 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
 
     if data == "event_home":
         message = get_event_home_message(event)
-        image_url = event.get("event_img", None)
+        image_url = event.get("event_img") or render_event_banner(event.get("name", "Evento"), event.get("description", ""))
         active = "home"
     elif data == "event_player":
         message, image_url = get_today_player_message(event)
         active = "player"
     elif data == "event_leaderboard":
         message = get_event_leaderboard_message(event)
-        image_url = event.get("leaderboard_img", None) 
+        image_url = event.get("leaderboard_img") or render_event_banner(event.get("name", "Evento"), badge_text="CLASSIFICA")
         active = "leaderboard"
     else:
         return
@@ -94,6 +95,8 @@ def get_event_home_message(event):
         gameplay_line = "🎮 <b>Giocatore</b>: indovina la coppia padre/figlio dall'immagine"
     elif event_type == "transfer_guess":
         gameplay_line = "🎮 <b>Giocatore</b>: indovina il calciatore dal trasferimento mostrato"
+    else:
+        gameplay_line = "🎮 <b>Giocatore</b>: segui le istruzioni della sfida del giorno"
 
     message = (
         f"🎉 <b>{name}</b>\n\n"
@@ -116,7 +119,13 @@ def get_today_player_message(event):
     if not today_data:
         return "📭 Nessun giocatore disponibile per oggi.", None
 
-    image_url = today_data.get("image_url", "")
+    career_path = today_data.get("career_path")
+    if career_path:
+        image_url = render_career_path_image(career_path)
+    elif today_data.get("image_url"):
+        image_url = today_data["image_url"]
+    else:
+        image_url = render_event_banner(event.get("name", "Evento"), badge_text="GIOCATORE DEL GIORNO")
     points = today_data.get("points", 1)
     first_correct_user = today_data.get("first_correct_user", False)
     bonus_msg = "⚡ Il primo che indovina riceverà 1 punto bonus!" if not first_correct_user else "✅ Il bonus è già stato assegnato oggi."
@@ -154,6 +163,13 @@ def get_today_player_message(event):
             f"🏆 Punti disponibili: <b>{points}</b>\n"
             f"{bonus_msg}\n"
             "Per indovinare, usa il comando /events in privato inserendo il nome del calciatore."
+        )
+    else:
+        message = (
+            f"🎮 <b>Sfida del giorno</b>\n\n"
+            f"🏆 Punti disponibili: <b>{points}</b>\n"
+            f"{bonus_msg}\n"
+            "Per indovinare, usa il comando /events in privato al bot."
         )
 
     return message, image_url

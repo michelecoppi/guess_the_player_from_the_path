@@ -1,0 +1,108 @@
+{
+  "_comment": "Regole configurabili per la generazione automatica degli eventi. Ogni template descrive UN TIPO di evento; il generatore sceglie a rotazione un template non usato di recente (vedi 'event_min_gap_days' e 'event_history_no_repeat_templates' in config.json) e lo riempie con giocatori del pool che rispettano 'rules'.",
+  "templates": [
+    {
+      "id": "giramondo",
+      "name": "Giramondo",
+      "description": "Calciatori che hanno girato il mondo: percorsi con tante squadre diverse.",
+      "type": "path",
+      "category": "percorso_lungo",
+      "difficulty": "hard",
+      "rules": {"min_teams": 6},
+      "duration_days": 5,
+      "points_per_day": 2
+    },
+    {
+      "id": "un_amore_una_maglia",
+      "name": "Un amore, una maglia",
+      "description": "Bandiere: calciatori legati per (quasi) tutta la carriera a un solo club.",
+      "type": "path",
+      "category": "one_club_man",
+      "difficulty": "medium",
+      "rules": {"max_teams": 2},
+      "duration_days": 4,
+      "points_per_day": 1
+    },
+    {
+      "id": "campionato_top",
+      "name": "Solo grandi campionati",
+      "description": "Percorsi interamente giocati nei 5 campionati europei principali.",
+      "type": "path",
+      "category": "top_league",
+      "difficulty": "medium",
+      "rules": {"leagues_only_top": true},
+      "duration_days": 4,
+      "points_per_day": 1
+    },
+    {
+      "id": "sudamerica",
+      "name": "Sudamerica protagonista",
+      "description": "Calciatori con radici o tappe in Sudamerica.",
+      "type": "path",
+      "category": "nazionalita",
+      "difficulty": "medium",
+      "rules": {"nationality_in": ["Argentina", "Brasile", "Uruguay"]},
+      "duration_days": 5,
+      "points_per_day": 1
+    },
+    {
+      "id": "squadra_sorpresa",
+      "name": "La squadra a sorpresa",
+      "description": "Percorsi con almeno una tappa in un campionato minore o poco conosciuto.",
+      "type": "path",
+      "category": "squadra_sorpresa",
+      "difficulty": "hard",
+      "rules": {"requires_minor_league": true},
+      "duration_days": 5,
+      "points_per_day": 2
+    },
+    {
+      "id": "carriera_a_squadre",
+      "name": "Modalita Carriera",
+      "description": "Indovina almeno metà delle squadre in cui ha giocato il calciatore misterioso.",
+      "type": "career",
+      "category": "career_mode",
+      "difficulty": "hard",
+      "rules": {"min_teams": 4},
+      "duration_days": 5,
+      "points_per_day": 2,
+      "min_correct_ratio": 0.5
+    },
+    {
+      "id": "weekend_transfer",
+      "name": "Weekend del trasferimento",
+      "description": "Evento lampo del weekend: indovina il calciatore da un singolo trasferimento clamoroso.",
+      "type": "transfer_guess",
+      "category": "weekend_special",
+      "difficulty": "medium",
+      "rules": {"min_teams": 3},
+      "duration_days": 2,
+      "points_per_day": 2,
+      "weekend_only": true
+    },
+    {
+      "id": "esperti_del_pallone",
+      "name": "Esperti del pallone",
+      "description": "Evento riservato ai veterani: solo calciatori meno noti al grande pubblico.",
+      "type": "path",
+      "category": "difficolta_estrema",
+      "difficulty": "impossible",
+      "rules": {"max_popularity": 2, "min_teams": 3},
+      "duration_days": 4,
+      "points_per_day": 3
+    },
+    {
+      "id": "coppie_leggendarie",
+      "name": "Coppie leggendarie",
+      "description": "Indovina la coppia padre/figlio dall'immagine mostrata.",
+      "type": "father_son",
+      "category": "special",
+      "difficulty": "medium",
+      "rules": {},
+      "duration_days": 4,
+      "points_per_day": 1,
+      "manual_only": true,
+      "manual_reason": "Richiede un dataset di coppie padre/figlio con immagini non ancora disponibile: creare l'evento manualmente da admin finche' il dataset non viene aggiunto."
+    }
+  ]
+}

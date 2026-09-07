@@ -10,6 +10,7 @@ from handlers.show_stats_handler import stats, show_trophies_callback, back_to_s
 from handlers.help_handler import help
 from handlers.top_users_handler import top, leaderboard_callback
 from handlers.notify_handler import notify, notify_callback
+from handlers.admin_handler import admin_status, admin_regen, admin_review
 from handlers.daily_job import update_daily_challenge
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import pytz
@@ -28,6 +29,9 @@ telegram_app.add_handler(CommandHandler("stats", stats))
 telegram_app.add_handler(CommandHandler("help", help))
 telegram_app.add_handler(CommandHandler("top", top))
 telegram_app.add_handler(CommandHandler("notify", notify))
+telegram_app.add_handler(CommandHandler("admin_status", admin_status))
+telegram_app.add_handler(CommandHandler("admin_regen", admin_regen))
+telegram_app.add_handler(CommandHandler("admin_review", admin_review))
 telegram_app.add_handler(CallbackQueryHandler(notify_callback, pattern="^(enable_notify|disable_notify)$"))
 telegram_app.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"^show_trophies_\d+$"))
 telegram_app.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))

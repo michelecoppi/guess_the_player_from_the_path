@@ -7,13 +7,29 @@ import pytz
 import logging
 
 
-cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-
 ITALY_TZ = pytz.timezone('Europe/Rome')
 
 
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+class _LazyFirestoreClient:
+    """Inizializza Firebase/Firestore solo al primo utilizzo reale (non all'import del
+    modulo). Permette di importare services.firebase_service e i moduli che ne dipendono
+    (es. nei test) senza dover avere per forza le credenziali configurate."""
+
+    _client = None
+
+    def _ensure(self):
+        if _LazyFirestoreClient._client is None:
+            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+            if not firebase_admin._apps:
+                firebase_admin.initialize_app(cred)
+            _LazyFirestoreClient._client = firestore.client()
+        return _LazyFirestoreClient._client
+
+    def __getattr__(self, name):
+        return getattr(self._ensure(), name)
+
+
+db = _LazyFirestoreClient()
 
 
 def save_user(user_id, first_name):
@@ -87,9 +103,10 @@ def reload_daily_challenge(today_str):
         set_cache({
             "current_day": data.get("current_day"),
             "image_url": data.get("image_url"),
+            "career_path": data.get("career_path", []),
             "correct_answers": data.get("correct_answers", []),
             "difficulty": data.get("difficulty"),
-            "first_correct_user": False  
+            "first_correct_user": False
         })
 
         reset_daily_attempts()
@@ -107,9 +124,10 @@ def load_daily_challenge(today_str):
         set_cache({
             "current_day": data.get("current_day"),
             "image_url": data.get("image_url"),
+            "career_path": data.get("career_path", []),
             "correct_answers": data.get("correct_answers", []),
             "difficulty": data.get("difficulty"),
-            "first_correct_user": data.get("first_correct_user", False)  
+            "first_correct_user": data.get("first_correct_user", False)
         })
     else:
         logging.info(f"Nessuna daily challenge trovata per il giorno {today_str}")
@@ -301,6 +319,76 @@ def add_user_trophy(telegram_id, trophy_code):
             "trophies": firestore.ArrayUnion([trophy_code])
         })
         logging.info(f"Trophy {trophy_code} aggiunta per l'utente {telegram_id}")
+
+def daily_path_exists(date_str):
+    query = db.collection("daily_path").where("current_day", "==", date_str).limit(1).stream()
+    return next(query, None) is not None
+
+
+def get_recent_player_ids(days):
+    """Ritorna gli id (players.json) usati negli ultimi N giorni, per evitare ripetizioni."""
+    docs = db.collection("daily_path").order_by(
+        "generated_at", direction=firestore.Query.DESCENDING
+    ).limit(days).stream()
+
+    ids = []
+    for doc in docs:
+        data = doc.to_dict()
+        player_id = data.get("player_id")
+        if player_id:
+            ids.append(player_id)
+    return ids
+
+
+def save_daily_path(date_str, doc):
+    doc = dict(doc)
+    doc["current_day"] = date_str
+    db.collection("daily_path").document(date_str.replace("/", "-")).set(doc)
+    logging.info(f"[GENERATOR] Salvata daily_path per {date_str} (player_id={doc.get('player_id')})")
+
+
+def get_active_events():
+    events_ref = db.collection("events")
+    now_italy = datetime.now(ITALY_TZ)
+    today_str = now_italy.strftime('%d/%m/%y')
+    query = events_ref.where("dates", "array_contains", today_str).stream()
+    return [e.to_dict() for e in query]
+
+
+def get_recent_event_template_ids(limit):
+    docs = db.collection("events").order_by(
+        "generated_at", direction=firestore.Query.DESCENDING
+    ).limit(limit).stream()
+
+    ids = []
+    for doc in docs:
+        data = doc.to_dict()
+        template_id = data.get("template_id")
+        if template_id:
+            ids.append(template_id)
+    return ids
+
+
+def get_last_event_end_date():
+    docs = db.collection("events").order_by(
+        "generated_at", direction=firestore.Query.DESCENDING
+    ).limit(1).stream()
+    doc = next(docs, None)
+    if not doc:
+        return None
+    data = doc.to_dict()
+    dates = data.get("dates", [])
+    if not dates:
+        return None
+    return datetime.strptime(dates[-1], "%d/%m/%y")
+
+
+def save_event(event_code, doc):
+    doc = dict(doc)
+    doc["code"] = event_code
+    db.collection("events").document(event_code).set(doc)
+    logging.info(f"[GENERATOR] Salvato evento {event_code} ({doc.get('name')})")
+
 
 def update_users_monthly_points(points):
     users_ref = db.collection("users")
