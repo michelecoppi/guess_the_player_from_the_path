@@ -53,8 +53,8 @@ gcloud iam service-accounts add-iam-policy-binding \
   --member="principalSet://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/attribute.repository/$REPO"
 
 # 4. Permessi minimi per fare 'gcloud run deploy --source .' (Cloud Build compila
-#    l'immagine e la carica su un bucket, poi Cloud Run la esegue)
-for ROLE in roles/run.admin roles/iam.serviceAccountUser roles/cloudbuild.builds.editor roles/storage.admin; do
+#    l'immagine e la carica su Artifact Registry, poi Cloud Run la esegue)
+for ROLE in roles/run.admin roles/iam.serviceAccountUser roles/cloudbuild.builds.editor roles/storage.admin roles/artifactregistry.writer; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:github-deployer@$PROJECT_ID.iam.gserviceaccount.com" \
     --role="$ROLE"
