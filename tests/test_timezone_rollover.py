@@ -1,10 +1,9 @@
 from datetime import datetime
-
-import pytz
+from zoneinfo import ZoneInfo
 
 from services import daily_generator
 
-ITALY_TZ = pytz.timezone("Europe/Rome")
+ITALY_TZ = ZoneInfo("Europe/Rome")
 
 
 def test_buffer_dates_are_sequential_and_unique(monkeypatch):
@@ -37,7 +36,7 @@ def test_buffer_generation_across_dst_change(monkeypatch):
     monkeypatch.setattr(daily_generator.firebase_service, "get_blocked_player_ids", lambda: [])
 
     # 29/30 marzo 2026: passaggio all'ora legale in Europa
-    fixed_now = ITALY_TZ.localize(datetime(2026, 3, 28, 23, 30))
+    fixed_now = datetime(2026, 3, 28, 23, 30, tzinfo=ITALY_TZ)
     monkeypatch.setattr(daily_generator, "datetime", _FixedDatetime(fixed_now))
 
     daily_generator.ensure_daily_buffer(days_ahead=4)

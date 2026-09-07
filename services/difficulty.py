@@ -52,7 +52,7 @@ def compute_difficulty(player):
 
 
 def group_players_by_difficulty(players):
-    groups = {level: [] for level in DIFFICULTY_ORDER}
+    groups: dict[str, list] = {level: [] for level in DIFFICULTY_ORDER}
     for player in players:
         groups[compute_difficulty(player)].append(player)
     return groups

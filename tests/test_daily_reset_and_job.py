@@ -4,13 +4,12 @@ Il punto: non esiste piu' nessuna scrittura di azzeramento. Un contatore di ieri
 oggi perche' il documento porta con se' il giorno a cui si riferisce.
 """
 from datetime import datetime
-
-import pytz
+from zoneinfo import ZoneInfo
 
 from handlers import daily_job
 from services import firebase_service
 
-ITALY_TZ = pytz.timezone("Europe/Rome")
+ITALY_TZ = ZoneInfo("Europe/Rome")
 
 
 def test_yesterday_counters_count_as_zero_today(monkeypatch):
@@ -73,7 +72,7 @@ def _monthly_fakes(monkeypatch, top_users, season_exists=True):
 
 def test_monthly_reset_only_on_the_first_day(monkeypatch):
     calls = _monthly_fakes(monkeypatch, [])
-    assert daily_job.handle_monthly_reset(ITALY_TZ.localize(datetime(2026, 9, 15))) is None
+    assert daily_job.handle_monthly_reset(datetime(2026, 9, 15, tzinfo=ITALY_TZ)) is None
     assert calls["reset"] == 0
 
 
@@ -84,7 +83,7 @@ def test_monthly_reset_assigns_trophies_and_zeroes_points(monkeypatch):
     ]
     calls = _monthly_fakes(monkeypatch, top)
 
-    message = daily_job.handle_monthly_reset(ITALY_TZ.localize(datetime(2026, 9, 1)))
+    message = daily_job.handle_monthly_reset(datetime(2026, 9, 1, tzinfo=ITALY_TZ))
 
     assert "Anna" in message and "Bruno" in message
     assert [t[0] for t in calls["trophies"]] == [1, 2]
@@ -97,7 +96,7 @@ def test_monthly_reset_still_zeroes_points_without_participants(monkeypatch):
     # mensili restavano per sempre.
     calls = _monthly_fakes(monkeypatch, [], season_exists=False)
 
-    message = daily_job.handle_monthly_reset(ITALY_TZ.localize(datetime(2026, 9, 1)))
+    message = daily_job.handle_monthly_reset(datetime(2026, 9, 1, tzinfo=ITALY_TZ))
 
     assert message is None
     assert calls["reset"] == 1
@@ -110,7 +109,7 @@ def test_users_with_zero_monthly_points_are_not_awarded(monkeypatch):
     ]
     calls = _monthly_fakes(monkeypatch, top)
 
-    daily_job.handle_monthly_reset(ITALY_TZ.localize(datetime(2026, 9, 1)))
+    daily_job.handle_monthly_reset(datetime(2026, 9, 1, tzinfo=ITALY_TZ))
 
     assert [t[0] for t in calls["trophies"]] == [1]
 

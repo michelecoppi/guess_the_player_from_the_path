@@ -2,10 +2,12 @@ import logging
 import random
 from datetime import datetime, timedelta
 
-from services.player_pool import get_all_players, get_answer_aliases, load_config
-from services.difficulty import compute_difficulty, group_players_by_difficulty, DIFFICULTY_ORDER
+from google.api_core.exceptions import GoogleAPICallError
+
 from services import firebase_service
 from services.dates import ITALY_TZ, to_iso
+from services.difficulty import DIFFICULTY_ORDER, group_players_by_difficulty
+from services.player_pool import get_all_players, get_answer_aliases, load_config
 
 
 def pick_player_for_date(date_dt, recent_player_ids, rotation_index, blocked_ids=None):
@@ -72,7 +74,7 @@ def ensure_daily_buffer(days_ahead=None):
 
     try:
         blocked_ids = firebase_service.get_blocked_player_ids()
-    except Exception:
+    except GoogleAPICallError:
         # Un problema nel leggere gli override non deve impedire la generazione della sfida.
         logging.exception("[GENERATOR] Impossibile leggere i giocatori sospesi: procedo senza esclusioni")
         blocked_ids = []

@@ -18,10 +18,10 @@ import logging
 
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.api_core.exceptions import GoogleAPICallError
 
 from config import FIREBASE_CREDENTIALS_PATH
 from services.dates import (
-    ITALY_TZ,
     normalize_day,
     now_italy,
     parse_iso,
@@ -554,7 +554,7 @@ def _count_collection(query):
     try:
         result = query.count().get()
         return int(result[0][0].value)
-    except Exception:
+    except GoogleAPICallError:
         logging.info("[ADMIN] count() non disponibile, fallback su stream()")
         return sum(1 for _ in query.stream())
 

@@ -1,7 +1,9 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
-from telegram.ext import ContextTypes
-from services.firebase_service import get_user_data
 import re
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
+from telegram.ext import ContextTypes
+
+from services.firebase_service import get_user_data
 
 TROPHIES_PER_PAGE = 5
 PALMARES_IMAGE = "https://i.postimg.cc/cHn605NN/Chat-GPT-Image-8-giu-2025-15-13-48.png"
@@ -11,14 +13,14 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=No
     user_id = update.effective_user.id
     if user_data is None:
         user_data = get_user_data(user_id)
-    
+
     if not user_data:
         await update.message.reply_text("❗ Non sei registrato! Usa /start per registrarti.")
         return
-    
+
     trophies = user_data.get("trophies", [])
     context.user_data["user_data"] = user_data
-    context.user_data["trophies"] = trophies 
+    context.user_data["trophies"] = trophies
 
     first_name = user_data.get("first_name", "N/A")
     points_totali = user_data.get("points_totali", 0)
@@ -105,7 +107,7 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
                     "3": "🥉"
                 }.get(pos, "🏅")
                 message += f"{medal} *Classifica Mensile* ({month} {year}, Stagione {season_num}) - Posizione: {pos}\n"
-            except:
+            except ValueError:
                 message += f"🏅 {trophy}\n"
         else:
             # Trofeo evento settimanale
@@ -129,8 +131,8 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
         buttons.append(InlineKeyboardButton("➡️ Avanti", callback_data=f"show_trophies_{page + 1}"))
 
     keyboard = InlineKeyboardMarkup([
-        buttons,  
-        [InlineKeyboardButton("🔙 Torna alle stats", callback_data="back_to_stats")]  
+        buttons,
+        [InlineKeyboardButton("🔙 Torna alle stats", callback_data="back_to_stats")]
     ])
 
     await query.edit_message_media(
@@ -144,4 +146,4 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def back_to_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = context.user_data.get("user_data")
-    await stats(update, context, user_data=user_data, edit_mode=True)    
+    await stats(update, context, user_data=user_data, edit_mode=True)

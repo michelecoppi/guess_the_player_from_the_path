@@ -11,10 +11,9 @@ bot ha sempre usato nei messaggi.
 scritti prima della migrazione a ISO (`scripts/migrate_firestore.py`).
 """
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
-import pytz
-
-ITALY_TZ = pytz.timezone("Europe/Rome")
+ITALY_TZ = ZoneInfo("Europe/Rome")
 
 ISO_FORMAT = "%Y-%m-%d"
 DISPLAY_FORMAT = "%d/%m/%y"

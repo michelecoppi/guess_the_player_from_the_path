@@ -13,19 +13,19 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from config import ADMIN_TELEGRAM_IDS
-from services.player_pool import get_incomplete_or_unverified_players, get_player_by_id
+from services import firebase_service
 from services.daily_generator import ensure_daily_buffer
-from services.event_generator import maybe_generate_event, load_templates
 from services.dataset_health import build_report
+from services.dates import ITALY_TZ, to_display
+from services.event_generator import load_templates, maybe_generate_event
+from services.firebase_service import get_current_event
 from services.manual_event_service import (
     ManualEventError,
     create_manual_event,
     parse_answers,
     parse_start_date,
 )
-from services import firebase_service
-from services.dates import ITALY_TZ, to_display
-from services.firebase_service import get_current_event
+from services.player_pool import get_incomplete_or_unverified_players, get_player_by_id
 
 TELEGRAM_MAX_MESSAGE = 3900
 

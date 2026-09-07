@@ -1,7 +1,7 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
-import pytz
 
 from services import manual_event_service
 from services.manual_event_service import (
@@ -13,8 +13,8 @@ from services.manual_event_service import (
     parse_start_date,
 )
 
-ITALY_TZ = pytz.timezone("Europe/Rome")
-START = ITALY_TZ.localize(datetime(2026, 12, 1))
+ITALY_TZ = ZoneInfo("Europe/Rome")
+START = datetime(2026, 12, 1, tzinfo=ITALY_TZ)
 
 
 def _pairs(n):

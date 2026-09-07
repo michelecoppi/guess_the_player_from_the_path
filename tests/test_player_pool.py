@@ -1,9 +1,9 @@
 from services.player_pool import (
-    get_all_players,
-    validate_player,
-    get_incomplete_or_unverified_players,
     filter_players,
+    get_all_players,
     get_answer_aliases,
+    get_incomplete_or_unverified_players,
+    validate_player,
 )
 
 

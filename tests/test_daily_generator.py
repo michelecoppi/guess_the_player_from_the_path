@@ -1,12 +1,12 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
-import pytz
 import pytest
 
 from services import daily_generator
 from services.player_pool import get_all_players
 
-ITALY_TZ = pytz.timezone("Europe/Rome")
+ITALY_TZ = ZoneInfo("Europe/Rome")
 
 
 def test_pick_player_avoids_recent_repeats():

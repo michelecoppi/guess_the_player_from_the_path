@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
-
-import pytz
+from zoneinfo import ZoneInfo
 
 from services import event_generator
 
-ITALY_TZ = pytz.timezone("Europe/Rome")
+ITALY_TZ = ZoneInfo("Europe/Rome")
 
 
 def test_manual_only_template_never_selected(monkeypatch):

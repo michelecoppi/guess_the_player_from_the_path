@@ -1,36 +1,38 @@
-from fastapi import FastAPI, Header, HTTPException, Request
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters
-from config import BOT_TOKEN, GENERATION_SECRET, WEBHOOK_URL
-from handlers.start_handler import start
-from handlers.guess_handler import guess
-from handlers.events_handler import events, handle_event_navigation
-from handlers.show_daily_path_handler import show
-from handlers.show_stats_handler import stats, show_trophies_callback, back_to_stats_callback
-from handlers.help_handler import help
-from handlers.top_users_handler import top, leaderboard_callback
-from handlers.notify_handler import notify, notify_callback
-from handlers.admin_handler import (
-    admin_help,
-    admin_status,
-    admin_stats,
-    admin_pool,
-    admin_regen,
-    admin_review,
-    admin_next,
-    admin_events,
-    admin_block,
-    admin_unblock,
-    admin_blocked,
-    admin_fs_add,
-    admin_fs_list,
-    admin_fs_del,
-    admin_event_create,
-)
-from handlers.daily_job import update_daily_challenge
 import logging
 import os
 from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Header, HTTPException, Request
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, MessageHandler, filters
+
+from config import BOT_TOKEN, GENERATION_SECRET, WEBHOOK_URL
+from handlers.admin_handler import (
+    admin_block,
+    admin_blocked,
+    admin_event_create,
+    admin_events,
+    admin_fs_add,
+    admin_fs_del,
+    admin_fs_list,
+    admin_help,
+    admin_next,
+    admin_pool,
+    admin_regen,
+    admin_review,
+    admin_stats,
+    admin_status,
+    admin_unblock,
+)
+from handlers.daily_job import update_daily_challenge
+from handlers.events_handler import events, handle_event_navigation
+from handlers.guess_handler import guess
+from handlers.help_handler import help
+from handlers.notify_handler import notify, notify_callback
+from handlers.show_daily_path_handler import show
+from handlers.show_stats_handler import back_to_stats_callback, show_trophies_callback, stats
+from handlers.start_handler import start
+from handlers.top_users_handler import leaderboard_callback, top
 
 logging.basicConfig(level=logging.INFO)
 

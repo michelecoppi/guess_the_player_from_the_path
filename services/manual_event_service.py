@@ -168,7 +168,7 @@ def parse_start_date(text):
         naive = datetime.strptime(text.strip(), "%d/%m/%y")
     except ValueError:
         raise ManualEventError(f"Data '{text}' non valida: usa il formato gg/mm/aa (es. 01/12/26).")
-    return ITALY_TZ.localize(naive)
+    return naive.replace(tzinfo=ITALY_TZ)
 
 
 def default_event_duration():

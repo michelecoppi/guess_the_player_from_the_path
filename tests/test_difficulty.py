@@ -1,9 +1,9 @@
 from services.difficulty import (
+    DIFFICULTY_ORDER,
     compute_difficulty,
     compute_difficulty_score,
     group_players_by_difficulty,
     points_for_difficulty,
-    DIFFICULTY_ORDER,
 )
 from services.player_pool import get_all_players
 

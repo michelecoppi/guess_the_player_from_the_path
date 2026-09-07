@@ -13,5 +13,5 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/events - Mostra il centro eventi.\n"
         "/notify - Attiva o disattiva le notifiche.\n"
     )
-    
+
     await update.message.reply_text(help_message)

@@ -21,6 +21,12 @@ jobs:
       - name: Controllo sintassi
         run: python -m py_compile bot.py config.py services/*.py handlers/*.py scripts/*.py
 
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Type check (mypy su services/)
+        run: mypy services/
+
       - name: Valida i dataset JSON
         run: |
           python -c "
@@ -33,5 +39,5 @@ jobs:
       - name: Controlla integrita e salute del dataset calciatori
         run: python scripts/dataset_report.py --strict
 
-      - name: Esegui i test
-        run: pytest -q
+      - name: Esegui i test (con coverage)
+        run: pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=50

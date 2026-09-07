@@ -1,0 +1,39 @@
+name: Deploy
+
+# Parte solo dopo che il workflow CI e' andato a buon fine su main: niente deploy di codice
+# che non ha passato i test. Vedi docs/deploy.md per il setup di Workload Identity Federation
+# (WIF_PROVIDER / WIF_SERVICE_ACCOUNT) richiesto perche' questo job possa autenticarsi su GCP.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy su Cloud Run
+        run: |
+          gcloud run deploy guess-the-player \
+            --source . \
+            --project guess-the-player-from-path-bot \
+            --region europe-west1 \
+            --quiet

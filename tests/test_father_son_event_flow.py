@@ -3,14 +3,13 @@ prodotto da /admin_event_create sia poi renderizzato correttamente dal centro ev
 (foto della coppia, testo della modalita', nessuna fuga di risposta nella didascalia).
 """
 from datetime import datetime
-
-import pytz
+from zoneinfo import ZoneInfo
 
 from handlers.events_handler import get_event_home_message, get_today_player_message
 from services.dates import to_display
 from services.manual_event_service import build_father_son_event, get_template
 
-ITALY_TZ = pytz.timezone("Europe/Rome")
+ITALY_TZ = ZoneInfo("Europe/Rome")
 
 
 def _today_event():

@@ -5,9 +5,9 @@ import os
 import random
 from datetime import datetime, timedelta
 
-from services.player_pool import get_all_players, get_answer_aliases, filter_players, load_config
 from services import firebase_service
 from services.dates import ITALY_TZ, to_iso
+from services.player_pool import filter_players, get_all_players, get_answer_aliases, load_config
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _TEMPLATES_PATH = os.path.join(_BASE_DIR, "data", "event_templates.json")

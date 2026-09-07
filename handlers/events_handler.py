@@ -1,8 +1,8 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import ContextTypes
 
 from services import firebase_service
-from services.dates import today_iso, to_display
+from services.dates import to_display, today_iso
 from services.path_image import render_career_path_image, render_event_banner
 
 MAX_EVENT_ATTEMPTS = 3

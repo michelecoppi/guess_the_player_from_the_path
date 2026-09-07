@@ -1,10 +1,10 @@
+from services.dataset_health import build_report
 from services.player_pool import (
     _load_raw_players,
     get_all_players,
     validate_dataset,
     validate_player,
 )
-from services.dataset_health import build_report
 
 
 def test_real_dataset_has_no_integrity_problems():

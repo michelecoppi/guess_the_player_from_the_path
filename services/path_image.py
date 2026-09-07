@@ -1,5 +1,6 @@
-import io
 import hashlib
+import io
+
 from PIL import Image, ImageDraw, ImageFont
 
 WIDTH = 900

@@ -49,19 +49,19 @@ if not credentials_path.exists():
 # qui lo normalizziamo ad assoluto cosi' funziona indipendentemente dalla cwd da cui parte streamlit.
 os.environ["FIREBASE_CREDENTIALS_PATH"] = str(credentials_path)
 
-from config import BOT_TOKEN, ADMIN_TELEGRAM_IDS
+from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
 from services import firebase_service
-from services.player_pool import get_incomplete_or_unverified_players, get_player_by_id
 from services.daily_generator import ensure_daily_buffer
-from services.event_generator import maybe_generate_event, load_templates
 from services.dataset_health import build_report
+from services.dates import ITALY_TZ, to_display
+from services.event_generator import load_templates, maybe_generate_event
 from services.manual_event_service import (
     ManualEventError,
     create_manual_event,
     parse_answers,
     parse_start_date,
 )
-from services.dates import ITALY_TZ, to_display
+from services.player_pool import get_incomplete_or_unverified_players, get_player_by_id
 
 st.title("🛠️ Guess the Player — Pannello admin locale")
 

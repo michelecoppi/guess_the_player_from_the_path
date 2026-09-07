@@ -5,7 +5,7 @@ collection `users` ad ogni /top, cioe' una lettura per utente registrato per mos
 La posizione di chi resta fuori dalla top 10 si ottiene con un conteggio lato server
 (`count()`), non scorrendo la classifica.
 """
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 

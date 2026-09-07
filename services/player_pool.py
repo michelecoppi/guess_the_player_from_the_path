@@ -128,7 +128,7 @@ def validate_dataset(players=None, min_teams=None):
             problems.append(f"id duplicato: '{player_id}'")
         seen_ids[player_id] = index
 
-    alias_owner = {}
+    alias_owner: dict[str, str] = {}
     for player in players:
         for alias in get_answer_aliases(player):
             owner = alias_owner.get(alias)

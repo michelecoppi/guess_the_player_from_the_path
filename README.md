@@ -255,9 +255,10 @@ mezzanotte, le classifiche e le trasformazioni della migrazione Firestore.
 
 ## Deploy
 
-Il bot gira su **Cloud Run** (container, deploy manuale) e la generazione giornaliera dei
-contenuti è affidata a **Cloud Scheduler**, che chiama un endpoint interno del servizio invece
-di dipendere da un processo sempre acceso.
+Il bot gira su **Cloud Run** (container, deploy automatico da GitHub Actions dopo i test — vedi
+[`docs/deploy.md`](docs/deploy.md)) e la generazione giornaliera dei contenuti è affidata a
+**Cloud Scheduler**, che chiama un endpoint interno del servizio invece di dipendere da un
+processo sempre acceso.
 
 | Componente | Dove | Perché |
 |---|---|---|
@@ -267,24 +268,12 @@ di dipendere da un processo sempre acceso.
 
 ### 1. Cloud Run (bot)
 
-Build e deploy manuale dell'immagine da [`Dockerfile`](Dockerfile):
+Deploy automatico da GitHub Actions ad ogni push su `main` che supera la CI (setup di Workload
+Identity Federation, comandi manuali di fallback e variabili d'ambiente del servizio: vedi
+[`docs/deploy.md`](docs/deploy.md)).
 
-```bash
-gcloud run deploy guess-the-player \
-  --source . \
-  --region europe-west1 \
-  --allow-unauthenticated
-```
-
-Variabili d'ambiente/secret da impostare sul servizio Cloud Run:
-- `BOT_TOKEN`
-- `WEBHOOK_URL` (es. `https://guess-the-player-<hash>.europe-west1.run.app/webhook`)
-- `ADMIN_TELEGRAM_IDS`
-- `GENERATION_SECRET` — segreto condiviso con Cloud Scheduler per autorizzare `/internal/daily-job`
-- `FIREBASE_CREDENTIALS_PATH=firebase-key.json`, con il service account Firebase montato come secret (Cloud Run → Variabili e secret → Secret di Secret Manager)
-
-Dopo ogni `gcloud run deploy`, se cambia l'URL del servizio va aggiornato `WEBHOOK_URL` e il
-bot deve rieseguire `set_webhook` (avviene automaticamente all'avvio, vedi `bot.py`).
+Se cambia l'URL del servizio va aggiornato `WEBHOOK_URL` e il bot deve rieseguire `set_webhook`
+(avviene automaticamente all'avvio, vedi `bot.py`).
 
 ### 2. Cloud Scheduler (generazione contenuti)
 

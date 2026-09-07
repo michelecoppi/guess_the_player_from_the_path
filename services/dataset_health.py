@@ -7,14 +7,14 @@ non hanno abbastanza candidati.
 
 Usato da `scripts/dataset_report.py` (CI e riga di comando) e dal comando Telegram /admin_pool.
 """
+from services.difficulty import DIFFICULTY_ORDER, compute_difficulty
 from services.player_pool import (
     _load_raw_players,
+    filter_players,
     get_all_players,
     load_config,
     validate_dataset,
-    filter_players,
 )
-from services.difficulty import compute_difficulty, DIFFICULTY_ORDER
 
 
 def _load_templates():
