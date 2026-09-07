@@ -2,6 +2,6 @@ python-telegram-bot==20.7
 firebase-admin==6.5.0
 python-dotenv==1.0.1
 fastapi==0.115.12
-uvicorn[standard]==0.29.0
+uvicorn[standard]==0.30.6
 Pillow==12.3.0
 tzdata==2024.1
