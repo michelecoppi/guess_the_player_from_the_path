@@ -12,9 +12,11 @@ class FakeMessage:
         self.text = text
         self.chat = SimpleNamespace(type="private")
         self.replies = []
+        self.markups = []
 
     async def reply_text(self, text, **kwargs):
         self.replies.append(text)
+        self.markups.append(kwargs.get("reply_markup"))
 
 
 def make_update(text, user_id=42):
@@ -131,12 +133,17 @@ def test_missing_challenge_does_not_consume_an_attempt(firebase, monkeypatch):
     assert "sfida giornaliera" in message.replies[0]
 
 
-def test_guess_outside_private_chat_is_refused(firebase):
+def test_guess_in_a_group_never_touches_the_daily_challenge(firebase, monkeypatch):
+    """In un gruppo /guess risponde al round del gruppo, mai alla sfida di oggi: la
+    risposta comparirebbe in chiaro davanti a chi non ha ancora giocato."""
+    from handlers import group_handler
+
+    monkeypatch.setattr(group_handler.firebase_service, "get_group_round", lambda chat_id: None)
     update, message = make_update("/guess messi")
-    update.message.chat = SimpleNamespace(type="group")
+    update.message.chat = SimpleNamespace(type="group", id=-100123)
     asyncio.run(guess_handler.guess(update, None))
 
-    assert "chat privata" in message.replies[0]
+    assert "round" in message.replies[0].lower()
     assert firebase.calls["attempts"] == []
 
 
@@ -172,3 +179,59 @@ def test_another_player_is_still_wrong(firebase):
 
     assert firebase.calls["registered"] == []
     assert "2 tentativi rimasti" in message.replies[0]
+
+
+# ---------------------------------------------------------------------------
+# Card condivisibile e confronto dopo un tentativo sbagliato
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def shareable(monkeypatch):
+    """Senza BOT_USERNAME non c'e' nessun link da condividere e il bottone non compare:
+    nei test lo diamo per configurato, altrimenti si proverebbe il caso sbagliato."""
+    from services import share
+
+    monkeypatch.setattr(share, "BOT_USERNAME", "guess_the_player_bot")
+
+
+def test_a_lost_day_can_be_shared_too(firebase, shareable):
+    """Il quadratino "X/3" e' meta' di quello che si incolla in un gruppo, e non puo'
+    spoilerare niente: prima il bottone c'era solo per chi indovinava."""
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0}
+    update, message = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert message.markups[0] is not None
+    url = message.markups[0].inline_keyboard[0][0].url
+    assert "X%2F3" in url  # "X/3", cioe' giornata non risolta
+
+
+def test_attempts_left_over_do_not_show_the_share_button(firebase, shareable):
+    update, message = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert message.markups[0] is None
+
+
+def test_a_wrong_guess_is_compared_with_the_solution(firebase, monkeypatch):
+    """Il confronto e' la sola cosa che un tentativo sbagliato lascia in mano a chi gioca."""
+    monkeypatch.setattr(
+        guess_handler, "get_today_challenge",
+        lambda: dict(CHALLENGE, player_id="messi"),
+    )
+    update, message = make_update("/guess Del Piero")
+    asyncio.run(guess_handler.guess(update, None))
+
+    reply = message.replies[0]
+    assert "Del Piero" in reply           # il nome che il bot ha capito
+    assert "Nazionalit\u00e0" in reply
+    assert "messi" not in reply.lower()   # mai la soluzione
+
+
+def test_a_challenge_without_player_id_answers_exactly_like_before(firebase):
+    """Le sfide vecchie non hanno `player_id`: il messaggio deve restare quello di prima,
+    non un blocco vuoto o un errore."""
+    update, message = make_update("/guess Del Piero")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert message.replies[0] == "\u274c Risposta sbagliata, riprova! Hai 2 tentativi rimasti."

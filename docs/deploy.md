@@ -149,7 +149,50 @@ Se Cloud Scheduler non dovesse partire per qualche motivo, `/show` e `/guess` ge
 comunque la sfida del giorno al primo utilizzo (fallback "esecuzione alla prima richiesta" in
 `services/daily_generator.py`), quindi il gioco non si blocca.
 
-## 3. Generazione manuale (debug/backfill)
+## 3. Backup settimanale del database
+
+[`.github/workflows/backup.yml`](../.github/workflows/backup.yml) esegue
+`scripts/backup_firestore.py` ogni lunedì alle 03:30 UTC e archivia il JSON come artifact del
+workflow (365 giorni di conservazione). Si può lanciare anche a mano da GitHub → Actions →
+*Backup Firestore* → *Run workflow*, ad esempio prima di una modifica ai dati.
+
+Si autentica con la **stessa Workload Identity Federation del deploy** (`WIF_PROVIDER` /
+`WIF_SERVICE_ACCOUNT`): nessuna chiave di service account nei secret. Perché funzioni, al
+service account del deploy va aggiunto **una volta sola** il permesso di leggere Firestore —
+i ruoli elencati al punto 1 servono a fare il deploy, non a leggere il database:
+
+```bash
+gcloud projects add-iam-policy-binding guess-the-player-from-path-bot \
+  --member="serviceAccount:github-deployer@guess-the-player-from-path-bot.iam.gserviceaccount.com" \
+  --role="roles/datastore.viewer"
+```
+
+`roles/datastore.viewer` è **sola lettura**: il workflow non può modificare né cancellare
+niente, che è esattamente quello che deve poter fare un backup.
+
+Per verificare quali ruoli ha adesso quel service account:
+
+```bash
+gcloud projects get-iam-policy guess-the-player-from-path-bot \
+  --flatten="bindings[].members" \
+  --filter="bindings.members:github-deployer@guess-the-player-from-path-bot.iam.gserviceaccount.com" \
+  --format="table(bindings.role)"
+```
+
+Senza questo ruolo il workflow fallisce con un errore di permessi al primo lunedì utile: il
+codice è a posto, manca solo l'autorizzazione.
+
+In locale invece lo script usa il `firebase-key.json` come tutto il resto:
+
+```bash
+python scripts/backup_firestore.py
+```
+
+La pulizia dello storico (`scripts/cleanup_daily_paths.py`) resta **manuale di proposito**: una
+cancellazione ricorrente che nessuno guarda, su una collezione che contiene le soluzioni, è il
+tipo di automatismo che si scopre rotto tardi.
+
+## 4. Generazione manuale (debug/backfill)
 
 Per generare il buffer senza passare da Cloud Scheduler, in locale con le stesse credenziali
 del bot (`.env`, `firebase-key.json`):
@@ -161,7 +204,7 @@ python scripts/generate_content.py
 Oppure da Telegram, come admin: `/admin_regen` forza subito la generazione del buffer di
 sfide/eventi mancanti.
 
-## 4. Dominio personalizzato
+## 5. Dominio personalizzato
 
 Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tramite
 "Custom Domains"; non necessario per il funzionamento del bot.
@@ -171,5 +214,6 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
 Il progetto in passato usava Render (web service sempre acceso) + un workflow GitHub Actions
 (`daily-generation.yml`) come cron esterno per svegliare la generazione dei contenuti. Con
 Cloud Run + Cloud Scheduler questi due pezzi non servono più e sono stati rimossi: restano
-invece attivi `.github/workflows/ci.yml` (test e lint) e `.github/workflows/deploy.yml`
-(deploy automatico su Cloud Run dopo che la CI passa su `main`, vedi sopra).
+invece attivi `.github/workflows/ci.yml` (test e lint), `.github/workflows/deploy.yml`
+(deploy automatico su Cloud Run dopo che la CI passa su `main`, vedi sopra) e
+`.github/workflows/backup.yml` (export settimanale del database, punto 3).

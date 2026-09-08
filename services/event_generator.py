@@ -117,6 +117,10 @@ def build_event_doc(template, start_date=None):
         "template_id": template["id"],
         "name": template["name"],
         "description": template["description"],
+        # Le traduzioni si copiano sul documento come il nome: un evento gia' generato deve
+        # restare quello che era anche se il template cambia sotto.
+        "name_i18n": template.get("name_i18n", {}),
+        "description_i18n": template.get("description_i18n", {}),
         "type": template["type"],
         "category": template.get("category"),
         "difficulty": template.get("difficulty"),

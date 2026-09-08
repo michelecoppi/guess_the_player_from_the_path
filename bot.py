@@ -28,17 +28,24 @@ from handlers.admin_handler import (
 from handlers.archive_handler import archive, archive_callback, back_to_today
 from handlers.daily_job import update_daily_challenge
 from handlers.events_handler import events, handle_event_navigation
+from handlers.group_handler import (
+    group_challenge,
+    group_new_round_callback,
+    group_standings,
+)
 from handlers.guess_handler import free_text_guess, guess
 from handlers.help_handler import help
 from handlers.keyboards import bot_commands
 from handlers.language_handler import language, language_callback
 from handlers.league_handler import league_callback, league_create, league_join, league_leave, leagues
+from handlers.legend_handler import legend, legend_callback
 from handlers.menu_handler import menu, menu_callback
 from handlers.notify_handler import notify, notify_callback
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import back_to_stats_callback, show_trophies_callback, stats
 from handlers.start_handler import start
 from handlers.top_users_handler import leaderboard_callback, top
+from handlers.training_handler import training, training_callback
 from services.i18n import SUPPORTED_LANGUAGES
 from services.webapp_api import build_profile
 from services.webapp_auth import user_id_from_init_data
@@ -53,16 +60,23 @@ telegram_app.add_handler(CommandHandler("show", show))
 telegram_app.add_handler(CommandHandler("stats", stats))
 telegram_app.add_handler(CommandHandler("help", help))
 telegram_app.add_handler(CommandHandler("menu", menu))
-# /archivio e /oggi hanno anche il nome inglese: il bot parla tre lingue, i comandi no.
-telegram_app.add_handler(CommandHandler(["archivio", "archive"], archive))
-telegram_app.add_handler(CommandHandler(["oggi", "today"], back_to_today))
-telegram_app.add_handler(CommandHandler(["lega", "league"], leagues))
-telegram_app.add_handler(CommandHandler(["lega_crea", "league_create"], league_create))
-telegram_app.add_handler(CommandHandler(["lega_entra", "league_join"], league_join))
-telegram_app.add_handler(CommandHandler(["lega_esci", "league_leave"], league_leave))
+# Il nome ufficiale e' quello inglese (e' quello che il bot suggerisce nel menu "/");
+# l'alias italiano resta registrato per chi lo ha gia' imparato.
+telegram_app.add_handler(CommandHandler(["archive", "archivio"], archive))
+telegram_app.add_handler(CommandHandler(["today", "oggi"], back_to_today))
+# Allenamento (privato) e partita di gruppo: due facce dello stesso motore, cioe' le
+# sfide gia' passate riproposte senza toccare la classifica generale.
+telegram_app.add_handler(CommandHandler(["training", "allenamento"], training))
+telegram_app.add_handler(CommandHandler(["round", "sfida"], group_challenge))
+telegram_app.add_handler(CommandHandler(["standings", "classifica"], group_standings))
+telegram_app.add_handler(CommandHandler(["league", "lega"], leagues))
+telegram_app.add_handler(CommandHandler(["league_create", "lega_crea"], league_create))
+telegram_app.add_handler(CommandHandler(["league_join", "lega_entra"], league_join))
+telegram_app.add_handler(CommandHandler(["league_leave", "lega_esci"], league_leave))
 telegram_app.add_handler(CommandHandler("top", top))
 telegram_app.add_handler(CommandHandler("notify", notify))
 telegram_app.add_handler(CommandHandler("language", language))
+telegram_app.add_handler(CommandHandler(["legend", "legenda"], legend))
 telegram_app.add_handler(CommandHandler("admin_help", admin_help))
 telegram_app.add_handler(CommandHandler("admin_status", admin_status))
 telegram_app.add_handler(CommandHandler("admin_stats", admin_stats))
@@ -86,6 +100,9 @@ telegram_app.add_handler(CallbackQueryHandler(archive_callback, pattern="^arch_"
 telegram_app.add_handler(CallbackQueryHandler(league_callback, pattern="^lg_"))
 telegram_app.add_handler(CallbackQueryHandler(notify_callback, pattern="^(enable_notify|disable_notify)$"))
 telegram_app.add_handler(CallbackQueryHandler(language_callback, pattern="^set_lang_"))
+telegram_app.add_handler(CallbackQueryHandler(legend_callback, pattern="^legend$"))
+telegram_app.add_handler(CallbackQueryHandler(training_callback, pattern="^trn_"))
+telegram_app.add_handler(CallbackQueryHandler(group_new_round_callback, pattern="^grp_new$"))
 telegram_app.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"^show_trophies_\d+$"))
 telegram_app.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))
 telegram_app.add_handler(CallbackQueryHandler(handle_event_navigation, pattern="^event_"))

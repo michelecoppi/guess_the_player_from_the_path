@@ -1,6 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from handlers.legend_handler import legend_keyboard
 from services.daily_challenge import bonus_available, challenge_number, get_today_challenge
 from services.difficulty import points_for_difficulty
 from services.i18n import difficulty_label, resolve_language, t
@@ -39,4 +40,8 @@ async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
             footer=f"Guess the Player #{challenge_number()}",
         )
 
-    await update.effective_message.reply_photo(photo=photo, caption=caption)
+    # La legenda sta sotto l'immagine perche' e' li' che nasce la domanda: cosa vuol dire
+    # la barretta tratteggiata, cosa sono i numeri fra parentesi.
+    await update.effective_message.reply_photo(
+        photo=photo, caption=caption, reply_markup=legend_keyboard(lang)
+    )

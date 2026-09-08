@@ -1,12 +1,15 @@
 import json
 import os
 
+from services.matching import find_match, normalize
+
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PLAYERS_PATH = os.path.join(_BASE_DIR, "data", "players.json")
 _CONFIG_PATH = os.path.join(_BASE_DIR, "data", "config.json")
 
 _players_cache = None
 _config_cache = None
+_alias_index_cache = None
 
 # Anno minimo plausibile per una tappa di carriera: sotto questa soglia il dato e' quasi
 # sicuramente un errore di battitura (es. 199 invece di 1990).
@@ -34,9 +37,10 @@ def _load_raw_players():
 def reload_dataset():
     """Svuota le cache in memoria: usato dagli script di import e dai test dopo aver
     riscritto data/players.json."""
-    global _players_cache, _config_cache
+    global _players_cache, _config_cache, _alias_index_cache
     _players_cache = None
     _config_cache = None
+    _alias_index_cache = None
 
 
 def validate_player(player, min_teams=2):
@@ -156,12 +160,27 @@ def validate_dataset(players=None, min_teams=None):
     return problems
 
 
-def get_all_players(include_unverified=None, exclude_ids=None):
+def is_practice_only(player):
+    """Riservato all'allenamento: non esce mai come sfida del giorno ne' dentro un evento.
+
+    E' la regola che rende allenamento e round di gruppo materiale infinito **senza
+    spoiler**: chi si allena su queste schede non vedra' mai lo stesso percorso arrivare
+    come sfida del giorno, perche' per costruzione non ci puo' arrivare. La fetta e' scritta
+    nel dataset (`"practice_only": true`) e non calcolata a runtime: se cambiasse da sola,
+    un giocatore potrebbe passare da una parte all'altra e lo spoiler tornerebbe."""
+    return bool(player.get("practice_only"))
+
+
+def get_all_players(include_unverified=None, exclude_ids=None, practice_only=False):
     """Carica tutti i giocatori dal dataset locale, filtrando quelli con dati incompleti
     e (di default) quelli non verificati, secondo 'auto_include_unverified_players' in config.json.
 
     'exclude_ids' permette all'admin di sospendere al volo un giocatore (dato sbagliato
-    segnalato dagli utenti) senza dover ridistribuire il bot."""
+    segnalato dagli utenti) senza dover ridistribuire il bot.
+
+    'practice_only' sceglie **quale delle due meta'** del dataset si vuole: di default
+    quella che alimenta il gioco vero (sfida del giorno ed eventi), con True quella
+    riservata all'allenamento. Le due non si incontrano mai."""
     config = load_config()
     if include_unverified is None:
         include_unverified = config.get("auto_include_unverified_players", False)
@@ -172,6 +191,8 @@ def get_all_players(include_unverified=None, exclude_ids=None):
     for player in _load_raw_players():
         if player.get("id") in exclude_ids:
             continue
+        if is_practice_only(player) != practice_only:
+            continue
         if not include_unverified and not player.get("verified", False):
             continue
         if validate_player(player, min_teams=min_teams):
@@ -179,6 +200,12 @@ def get_all_players(include_unverified=None, exclude_ids=None):
         valid_players.append(player)
 
     return valid_players
+
+
+def get_practice_players(exclude_ids=None):
+    """La fetta riservata all'allenamento: stessi controlli di validita' del resto, perche'
+    una scheda sbagliata mostrata in allenamento e' sbagliata uguale."""
+    return get_all_players(exclude_ids=exclude_ids, practice_only=True)
 
 
 def get_incomplete_or_unverified_players():
@@ -237,3 +264,37 @@ def filter_players(players, rules):
         result.append(player)
 
     return result
+
+
+def _alias_index():
+    """Indice alias normalizzato -> scheda, costruito una volta sola.
+
+    Serve al confronto dopo un tentativo sbagliato (services/guess_feedback.py): li' non
+    basta sapere che la risposta e' sbagliata, serve **quale** calciatore ha scritto
+    l'utente. Gli alias ambigui sono gia' vietati da validate_dataset(), quindi la mappa
+    non puo' avere due proprietari per la stessa chiave."""
+    global _alias_index_cache
+    if _alias_index_cache is None:
+        index: dict[str, dict] = {}
+        for player in _load_raw_players():
+            for alias in get_answer_aliases(player):
+                index.setdefault(normalize(alias), player)
+        _alias_index_cache = index
+    return _alias_index_cache
+
+
+def find_player_by_answer(text):
+    """La scheda del calciatore che l'utente ha scritto, None se non e' nel dataset.
+
+    Cerca fra **tutte** le schede, anche quelle non verificate: qui non si sta scegliendo
+    la sfida del giorno, si sta solo capendo di chi parla l'utente, e una scheda in attesa
+    di revisione ha comunque nazionalita' e ruolo giusti (quello che si sbaglia sono le
+    date della carriera).
+
+    La tolleranza ai refusi e' la stessa delle risposte (services/matching.py): chi scrive
+    "Ibrahimovich" merita il confronto come chi lo scrive giusto."""
+    index = _alias_index()
+    match = find_match(text, index.keys())
+    if not match:
+        return None
+    return index.get(match["answer"])

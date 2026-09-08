@@ -18,6 +18,7 @@ from handlers.notify_handler import notify
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats
 from handlers.top_users_handler import top
+from handlers.training_handler import training
 from services.i18n import t
 
 
@@ -32,6 +33,7 @@ ACTIONS = {
     "play": show,
     "events": events,
     "archive": archive,
+    "training": training,
     "leagues": leagues,
     "stats": stats,
     "top": top,

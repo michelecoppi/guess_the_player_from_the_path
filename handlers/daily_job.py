@@ -17,7 +17,7 @@ from services.daily_challenge import invalidate as invalidate_daily_cache
 from services.daily_generator import ensure_daily_buffer
 from services.dates import now_italy, shift_iso, to_display, today_iso
 from services.event_generator import maybe_generate_event
-from services.i18n import DEFAULT_LANGUAGE, month_label, t
+from services.i18n import DEFAULT_LANGUAGE, content_text, month_label, t
 
 _bot = None
 
@@ -92,7 +92,8 @@ async def _broadcast(reference_day, yesterday_player, current_event, monthly_res
             text = t(lang, "job.missed", player=player_label)
 
         if current_event:
-            text += t(lang, "job.event_mention", event_name=current_event.get("name", t(lang, "job.unknown_event")))
+            event_name = content_text(current_event, "name", lang, default=t(lang, "job.unknown_event"))
+            text += t(lang, "job.event_mention", event_name=event_name)
         if monthly_result:
             month = month_label(lang, monthly_result["month_name"])
             text += "\n\n" + t(lang, "job.monthly_results_title", month=month, year=monthly_result["year"])

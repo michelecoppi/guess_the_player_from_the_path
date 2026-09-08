@@ -15,10 +15,13 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from handlers.archive_handler import process_archive_answer
+from handlers.group_handler import process_group_answer
+from handlers.training_handler import process_training_answer
 from services import firebase_service
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number, get_today_challenge
 from services.dates import today_iso
 from services.difficulty import points_for_difficulty
+from services.guess_feedback import build_comparison, comparison_text
 from services.i18n import resolve_language, t
 from services.matching import find_match, looks_like_an_answer
 from services.share import share_text, share_url
@@ -41,12 +44,14 @@ async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.effective_message
     user_answer = _answer_from_command(message.text or "")
 
+    # In un gruppo /guess non e' un tentativo sulla sfida di oggi (che rovinerebbe la
+    # giornata a chi legge) ma la risposta al round del gruppo, su una sfida gia' passata.
+    if message.chat.type != "private":
+        await process_group_answer(update, context, user_answer)
+        return
+
     if not user_answer:
-        lang = _language_for(update)
-        if message.chat.type != "private":
-            await message.reply_text(t(lang, "common.private_only"))
-            return
-        await message.reply_text(t(lang, "guess.missing_answer"))
+        await message.reply_text(t(_language_for(update), "guess.missing_answer"))
         return
 
     await process_answer(update, context, user_answer)
@@ -76,10 +81,14 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
     user_data = firebase_service.get_user_data(user_id)
     lang = _language_for(update, user_data)
 
-    # Con una sfida d'archivio aperta la risposta vale per quella: e' l'unico modo di
-    # rispondere a una sfida passata senza inventare un secondo comando.
+    # Con una sfida d'archivio (o di allenamento) aperta la risposta vale per quella: e'
+    # l'unico modo di rispondere a una sfida passata senza inventare un secondo comando.
     if user_data and user_data.get("archive_day"):
         await process_archive_answer(update, context, user_answer, user_data)
+        return
+
+    if user_data and user_data.get("training_key"):
+        await process_training_answer(update, context, user_answer, user_data)
         return
 
     challenge = get_today_challenge()
@@ -101,10 +110,19 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
     match = find_match(user_answer, challenge.get("correct_answers", []))
     if not match:
         attempts_left = attempt["attempts_left"]
+        # Il confronto con il calciatore scritto (nazionalita', ruolo, eta') e' l'unica cosa
+        # che l'utente si porta via da un tentativo sbagliato: senza, tre tentativi su una
+        # sfida difficile sono tre nomi sparati a caso.
+        comparison = comparison_text(lang, build_comparison(user_answer, challenge.get("player_id")))
         if attempts_left == 0:
-            await message.reply_text(t(lang, "guess.wrong_last"))
+            # A tentativi finiti la card si condivide comunque: "X/3" e' meta' del gioco in
+            # un gruppo, e non rivela niente della soluzione.
+            await message.reply_text(
+                t(lang, "guess.wrong_last") + comparison,
+                reply_markup=_share_keyboard(lang, attempt["attempts_used"], streak=0, solved=False),
+            )
         else:
-            await message.reply_text(t(lang, "guess.wrong_remaining", attempts_left=attempts_left))
+            await message.reply_text(t(lang, "guess.wrong_remaining", attempts_left=attempts_left) + comparison)
         return
 
     points = points_for_difficulty(challenge.get("difficulty"))
@@ -135,9 +153,13 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
     await message.reply_text(text, reply_markup=_share_keyboard(lang, attempt["attempts_used"], streak))
 
 
-def _share_keyboard(lang, attempts_used, streak):
-    """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta."""
-    text = share_text(lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=True, streak=streak)
+def _share_keyboard(lang, attempts_used, streak, solved=True):
+    """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta.
+
+    Vale anche per chi non ci e' arrivato (`solved=False`, cioe' "X/3"): la sconfitta e'
+    meta' di quello che si condivide in un gruppo, ed e' l'unica riga che non puo'
+    spoilerare niente."""
+    text = share_text(lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=solved, streak=streak)
     url = share_url(text)
     if not url:
         return None

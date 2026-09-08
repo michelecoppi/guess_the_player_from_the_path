@@ -16,9 +16,11 @@ class FakeMessage:
         self.chat = SimpleNamespace(type="private")
         self.replies = []
         self.photos = []
+        self.markups = []
 
     async def reply_text(self, text, **kwargs):
         self.replies.append(text)
+        self.markups.append(kwargs.get("reply_markup"))
 
     async def reply_photo(self, photo, caption=None, **kwargs):
         self.photos.append(caption)
@@ -131,3 +133,28 @@ def test_opening_a_day_sends_the_path_and_starts_the_session(firebase, monkeypat
 
     assert firebase.calls["archive_day"] == [DAY]
     assert message.photos and "01/09/26" in message.photos[0]
+
+
+def test_a_recovered_day_can_be_shared_as_an_archive_result(firebase, monkeypatch):
+    """La sfida recuperata si condivide, ma marcata come archivio: in un gruppo dove quella
+    di oggi e' ancora aperta, la riga va letta al volo."""
+    from services import share
+
+    monkeypatch.setattr(share, "BOT_USERNAME", "guess_the_player_bot")
+    update, message = make_update("Messi")
+    asyncio.run(guess_handler.free_text_guess(update, None))
+
+    assert message.markups[0] is not None
+    assert "archivio" in message.markups[0].inline_keyboard[0][0].url
+
+
+def test_a_wrong_archive_answer_is_compared_too(firebase, monkeypatch):
+    monkeypatch.setattr(
+        archive_handler.firebase_service, "get_daily_path",
+        lambda day: dict(CHALLENGE, player_id="messi") if day == DAY else None,
+    )
+    update, message = make_update("Del Piero")
+    asyncio.run(guess_handler.free_text_guess(update, None))
+
+    assert "Del Piero" in message.replies[0]
+    assert "messi" not in message.replies[0].lower()

@@ -14,12 +14,16 @@ Qui, a differenza della sfida del giorno, la risposta si puo' rivelare: e' gia' 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from handlers.legend_handler import legend_keyboard
 from services import firebase_service
+from services.daily_challenge import challenge_number
 from services.dates import to_display
 from services.difficulty import points_for_difficulty
+from services.guess_feedback import build_comparison, comparison_text
 from services.i18n import difficulty_label, resolve_language, t
 from services.matching import find_match
 from services.path_image import render_career_path_image
+from services.share import share_text, share_url
 
 MAX_ARCHIVE_ATTEMPTS = 3
 ARCHIVE_DAYS = 10
@@ -114,11 +118,13 @@ async def _send_challenge(message, challenge, day_iso, lang):
         badge=difficulty_label(lang, challenge.get("difficulty")).upper(),
         footer=f"{to_display(day_iso)}  ({points_for_difficulty(challenge.get('difficulty'))})",
     )
-    await message.reply_photo(photo=photo, caption=caption)
+    await message.reply_photo(photo=photo, caption=caption, reply_markup=legend_keyboard(lang))
 
 
 async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/oggi: esce dalla modalita' archivio."""
+    """/oggi: esce dall'archivio o dall'allenamento, cioe' da qualunque partita che non sia
+    quella di oggi. E' un comando solo perche' all'utente la differenza non interessa: vuole
+    tornare alla sfida del giorno."""
     user_id = update.effective_user.id
     user_data = firebase_service.get_user_data(user_id)
     lang = _lang_for(update, user_data)
@@ -127,12 +133,21 @@ async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(t(lang, "archive.not_registered"))
         return
 
-    if not user_data.get("archive_day"):
+    in_archive = bool(user_data.get("archive_day"))
+    in_training = bool(user_data.get("training_key"))
+
+    if not in_archive and not in_training:
         await update.effective_message.reply_text(t(lang, "archive.not_in_archive"))
         return
 
-    firebase_service.set_archive_day(user_id, None)
-    await update.effective_message.reply_text(t(lang, "archive.exited"))
+    if in_training:
+        firebase_service.clear_training_key(user_id)
+    if in_archive:
+        firebase_service.set_archive_day(user_id, None)
+
+    await update.effective_message.reply_text(
+        t(lang, "archive.exited" if in_archive else "training.exited")
+    )
 
 
 async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, user_answer, user_data):
@@ -159,15 +174,39 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
         firebase_service.register_archive_solved(user_id, day_iso, attempt["attempts_used"])
         firebase_service.set_archive_day(user_id, None)
         await message.reply_text(
-            t(lang, "archive.correct", date=to_display(day_iso), attempts=attempt["attempts_used"])
+            t(lang, "archive.correct", date=to_display(day_iso), attempts=attempt["attempts_used"]),
+            reply_markup=_share_keyboard(lang, day_iso, attempt["attempts_used"], solved=True),
         )
         return
 
+    # Stesso confronto della sfida di oggi: un tentativo sbagliato deve lasciare qualcosa
+    # anche qui, altrimenti l'archivio e' piu' difficile del gioco vero.
+    comparison = comparison_text(lang, build_comparison(user_answer, challenge.get("player_id")))
+
     if attempt["attempts_left"] > 0:
-        await message.reply_text(t(lang, "archive.wrong", attempts_left=attempt["attempts_left"]))
+        await message.reply_text(
+            t(lang, "archive.wrong", attempts_left=attempt["attempts_left"]) + comparison
+        )
         return
 
     # Tentativi finiti: la sfida e' passata, la risposta si puo' dire.
     answer = firebase_service.get_display_name_for_day(day_iso) or "?"
     firebase_service.set_archive_day(user_id, None)
-    await message.reply_text(t(lang, "archive.wrong_last", answer=answer))
+    await message.reply_text(
+        t(lang, "archive.wrong_last", answer=answer),
+        reply_markup=_share_keyboard(lang, day_iso, attempt["attempts_used"], solved=False),
+    )
+
+
+def _share_keyboard(lang, day_iso, attempts_used, solved):
+    """Come per la sfida di oggi, ma marcata come recuperata dall'archivio: chi la incolla
+    in un gruppo non deve sembrare che abbia risolto quella di oggi. La striscia non
+    c'entra (l'archivio non la muove) e non compare."""
+    text = share_text(
+        lang, challenge_number(day_iso), attempts_used, MAX_ARCHIVE_ATTEMPTS,
+        solved=solved, archive=True,
+    )
+    url = share_url(text)
+    if not url:
+        return None
+    return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "share.button"), url=url)]])

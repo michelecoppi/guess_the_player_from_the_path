@@ -308,9 +308,15 @@ def render_event_banner(name, description="", badge_text="EVENTO"):
     return _to_buffer(img, "event_banner.png")
 
 
-def render_transfer_image(stop_from, stop_to, title="Trasferimento misterioso"):
-    """Evento transfer_guess: si mostra solo la squadra di arrivo con l'anno."""
-    return render_career_path_image([stop_to], title=title, subtitle="Chi si è trasferito qui?")
+def render_transfer_image(stop_from, stop_to, title="Trasferimento misterioso", subtitle=None):
+    """Evento transfer_guess: si mostra solo la squadra di arrivo con l'anno.
+
+    Titolo e sottotitolo arrivano da chi chiama (services/i18n.py, chiavi `image.transfer_*`):
+    il sottotitolo era fisso in italiano, e sarebbe finito cosi' anche dentro l'immagine di
+    un utente inglese o spagnolo."""
+    return render_career_path_image(
+        [stop_to], title=title, subtitle=subtitle or "Chi si è trasferito qui?"
+    )
 
 
 def render_palmares_image(title="Palmarès", subtitle=None, trophies=0):

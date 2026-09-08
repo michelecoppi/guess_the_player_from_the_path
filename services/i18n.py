@@ -38,6 +38,18 @@ def t(lang, key, **kwargs):
     return template.format(**kwargs) if kwargs else template
 
 
+def content_text(entry, field, lang, default=""):
+    """Un testo che sta nel **contenuto** e non fra le traduzioni: nome e descrizione di un
+    evento (data/event_templates.json, poi copiati sul documento dell'evento).
+
+    Stanno li' e non in TRANSLATIONS perche' sono contenuto come le schede dei calciatori:
+    chi aggiunge un evento scrive un blocco solo, in un file solo. Qui si sceglie la lingua,
+    con l'italiano di `field` come ripiego - cosi' gli eventi generati prima che le
+    traduzioni esistessero continuano a mostrare qualcosa invece di una riga vuota."""
+    translated = (entry or {}).get(f"{field}_i18n") or {}
+    return translated.get(lang) or (entry or {}).get(field) or default
+
+
 DIFFICULTY_LABELS = {
     "it": {"easy": "Facile", "medium": "Media", "hard": "Difficile", "impossible": "Impossibile", "unknown": "Sconosciuta"},
     "es": {"easy": "Fácil", "medium": "Media", "hard": "Difícil", "impossible": "Imposible", "unknown": "Desconocida"},
@@ -94,11 +106,15 @@ TRANSLATIONS = {
             "/stats - Le tue statistiche, la striscia e i trofei.\n"
             "/top - La classifica generale e quella del mese.\n"
             "/events - Il centro eventi.\n"
-            "/archivio - Rigioca le sfide dei giorni scorsi (senza punti).\n"
-            "/oggi - Esci dall'archivio e torna alla sfida di oggi.\n"
-            "/lega - Le tue leghe private; /lega_crea e /lega_entra per farne una o entrarci.\n"
+            "/archive - Rigioca le sfide dei giorni scorsi (senza punti).\n"
+            "/training - Sfide passate a raffica, senza punti.\n"
+            "/round - In un gruppo: un round per tutti, vince chi risponde per primo.\n"
+            "/standings - In un gruppo: la classifica di quel gruppo.\n"
+            "/today - Esci da archivio o allenamento e torna alla sfida di oggi.\n"
+            "/league - Le tue leghe private; /league_create e /league_join per farne una o entrarci.\n"
             "/notify - Attiva o disattiva le notifiche.\n"
             "/language - Cambia la lingua del bot.\n"
+            "/legend - Come si legge l'immagine del percorso.\n"
         ),
 
         "language.prompt": "🌐 Scegli la lingua del bot:",
@@ -252,6 +268,7 @@ TRANSLATIONS = {
         "menu.top": "🏆 Classifica",
         "menu.events": "🎊 Eventi",
         "menu.archive": "🗂 Archivio",
+        "menu.training": "🏋️ Allenamento",
         "menu.leagues": "👥 Leghe",
         "menu.notify": "🔔 Notifiche",
         "menu.language": "🌐 Lingua",
@@ -266,6 +283,7 @@ TRANSLATIONS = {
         "cmd.top": "Classifica generale",
         "cmd.events": "Centro eventi",
         "cmd.archive": "Rigioca le sfide passate",
+        "cmd.training": "Sfide passate a raffica",
         "cmd.league": "Le tue leghe private",
         "cmd.notify": "Attiva o disattiva le notifiche",
         "cmd.language": "Cambia lingua",
@@ -282,35 +300,87 @@ TRANSLATIONS = {
         "share.button": "📤 Condividi il risultato",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.archive_title": "🗄 Guess the Player #{number} (archivio)",
+
+        "feedback.header": "🔎 Rispetto a {name}:",
+        "feedback.nationality_same": "🌍 Nazionalità: stessa",
+        "feedback.nationality_diff": "🌍 Nazionalità: diversa",
+        "feedback.position_same": "🎽 Ruolo: stesso",
+        "feedback.position_diff": "🎽 Ruolo: diverso",
+        "feedback.birth_same": "🎂 Stesso anno di nascita ({year})",
+        "feedback.birth_before": "⬆️ Più vecchio: nato prima del {year}",
+        "feedback.birth_after": "⬇️ Più giovane: nato dopo il {year}",
+
+        "training.button_next": "🎲 Un'altra",
+        "training.button_reveal": "👀 Rivela",
+        "training.private_only": "L'allenamento si fa in chat privata con me.",
+        "training.not_registered": "❗ Devi registrarti con /start prima di allenarti.",
+        "training.empty": "🏋️ Non ci sono ancora sfide passate da riproporre: torna qui fra qualche giorno.",
+        "training.opened": "🏋️ <b>Allenamento</b>: scrivi il nome del calciatore.\nNon vale punti e non tocca la sfida di oggi. Hai {attempts} tentativi.\nTorna alla sfida di oggi con /today.",
+        "training.correct": "✅ Preso in {attempts} tentativi!\nNessun punto: è allenamento.",
+        "training.wrong": "❌ No. Tentativi rimasti: {attempts_left}.",
+        "training.wrong_last": "❌ Tentativi finiti: era {answer}.",
+        "training.revealed": "👀 Era {answer}.",
+        "training.not_open": "Non hai nessuna sfida di allenamento aperta: /training per cominciarne una.",
+        "training.gone": "❗ Quella sfida di allenamento non è più disponibile: /training per un'altra.",
+        "training.exited": "👋 Allenamento chiuso: /show per la sfida di oggi.",
+
+        "group.private_hint": "👥 Questa è una modalità da gruppo: aggiungimi a un gruppo e scrivi /round. Qui in privato c'è /training.",
+        "group.empty": "👥 Non ci sono ancora sfide passate da riproporre in un round.",
+        "group.round_opened": "👥 <b>Round #{number}</b> — {difficulty} ({points} punti)\nChi risponde per primo vince. Si risponde con <code>/guess nome</code>, {attempts} tentativi a testa.\nI punti restano in questo gruppo.",
+        "group.no_round": "👥 Nessun round aperto: scrivi /round per cominciarne uno.",
+        "group.usage": "👥 Si risponde così: <code>/guess Maldini</code>",
+        "group.already_solved": "👥 Questo round l'ha già vinto {winner}. /round per il prossimo.",
+        "group.no_attempts": "❌ {name}, hai finito i tentativi per questo round.",
+        "group.wrong": "❌ {name}: no. Tentativi rimasti: {attempts_left}.",
+        "group.correct": "🏆 <b>{name}</b> vince il round #{number}: +{points} punti nella classifica del gruppo.\n/round per il prossimo, /standings per vedere come siete messi.",
+        "group.standings_title": "👥 <b>Classifica del gruppo</b>\n(vale solo qui: la classifica generale è /top)\n\n",
+        "group.standings_line": "{medal} {name} — {points} punti ({rounds} round)\n",
+        "group.standings_empty": "👥 Nessun round vinto qui dentro: /round per cominciare.",
+        "group.button_private": "🎯 Gioca la sfida di oggi",
+        "group.button_new_round": "🔁 Un altro round",
+
+        "legend.button": "ℹ️ Come si legge",
+        "legend.text": (
+            "ℹ️ <b>Come si legge il percorso</b>\n\n"
+            "Ogni riga è una tappa, dall'alto in basso in ordine di tempo.\n\n"
+            "• <b>2016 – 2019</b>: gli anni in quella squadra. <b>2016 – …</b> vuol dire che è ancora lì.\n"
+            "• <b>→ 2016 – 2017</b>: la freccia, insieme alla barretta tratteggiata a sinistra, è un <b>prestito</b>.\n"
+            "• <b>33 (22)</b>: presenze e, fra parentesi, gol di <b>campionato</b> (la convenzione di Wikipedia). Per i portieri ci sono le sole presenze.\n"
+            "• La <b>barra</b> al posto dei numeri compare quando presenze e gol non li abbiamo: è lunga quanto la tappa.\n"
+            "• Sotto il nome della squadra: <b>campionato · paese</b>.\n"
+            "• In alto a destra: la <b>difficoltà</b> della sfida.\n\n"
+            "Nell'immagine non c'è nessuna parola: la stessa figura va a chi gioca in italiano, spagnolo e inglese."
+        ),
         "archive.title": "🗂 <b>Archivio</b>\nRigioca le sfide dei giorni scorsi: non danno punti, valgono per il gusto di riuscirci.\nScegli un giorno:",
         "archive.empty": "🗂 Non c'è ancora nessuna sfida in archivio.",
         "archive.not_registered": "❗ Devi registrarti con /start prima di usare l'archivio.",
-        "archive.opened": "🗂 Sfida del {date}. Scrivi il nome del calciatore: questa non assegna punti.\nTorna alla sfida di oggi con /oggi.",
+        "archive.opened": "🗂 Sfida del {date}. Scrivi il nome del calciatore: questa non assegna punti.\nTorna alla sfida di oggi con /today.",
         "archive.missing_day": "❗ Quella sfida non è più disponibile.",
-        "archive.correct": "✅ Preso! Sfida del {date} recuperata in {attempts} tentativi.\nScegli un altro giorno con /archivio o torna a oggi con /oggi.",
+        "archive.correct": "✅ Preso! Sfida del {date} recuperata in {attempts} tentativi.\nScegli un altro giorno con /archive o torna a oggi con /today.",
         "archive.wrong": "❌ No. Tentativi rimasti per questa sfida: {attempts_left}.",
-        "archive.wrong_last": "❌ Tentativi finiti: era {answer}.\nScegli un altro giorno con /archivio o torna a oggi con /oggi.",
-        "archive.already_solved": "✅ Questa sfida l'avevi già recuperata. Scegline un'altra con /archivio.",
-        "archive.no_attempts": "❌ Hai finito i tentativi su questa sfida. Scegline un'altra con /archivio.",
+        "archive.wrong_last": "❌ Tentativi finiti: era {answer}.\nScegli un altro giorno con /archive o torna a oggi con /today.",
+        "archive.already_solved": "✅ Questa sfida l'avevi già recuperata. Scegline un'altra con /archive.",
+        "archive.no_attempts": "❌ Hai finito i tentativi su questa sfida. Scegline un'altra con /archive.",
         "archive.exited": "👋 Torniamo alla sfida di oggi: /show per rivederla.",
-        "archive.not_in_archive": "Non stai giocando nessuna sfida d'archivio. Aprine una con /archivio.",
+        "archive.not_in_archive": "Non stai giocando nessuna sfida d'archivio. Aprine una con /archive.",
         "archive.button_today": "🎯 Torna a oggi",
         "cmd.today": "Torna alla sfida di oggi",
 
         # --- leghe private ---
-        "league.intro": "👥 <b>Le tue leghe</b>\nUna lega è una classifica privata fra amici: si contano i punti che fai da quando ne fai parte.\n\nCrea la tua con <code>/lega_crea Nome della lega</code> o entra in una con <code>/lega_entra CODICE</code>.",
-        "league.none": "👥 Non fai parte di nessuna lega.\n\nCreane una con <code>/lega_crea Nome della lega</code>, oppure entra in una esistente con <code>/lega_entra CODICE</code>.",
-        "league.usage_create": "Uso: <code>/lega_crea Nome della lega</code>",
-        "league.usage_join": "Uso: <code>/lega_entra CODICE</code>",
-        "league.usage_leave": "Uso: <code>/lega_esci CODICE</code>",
+        "league.intro": "👥 <b>Le tue leghe</b>\nUna lega è una classifica privata fra amici: si contano i punti che fai da quando ne fai parte.\n\nCrea la tua con <code>/league_create Nome della lega</code> o entra in una con <code>/league_join CODICE</code>.",
+        "league.none": "👥 Non fai parte di nessuna lega.\n\nCreane una con <code>/league_create Nome della lega</code>, oppure entra in una esistente con <code>/league_join CODICE</code>.",
+        "league.usage_create": "Uso: <code>/league_create Nome della lega</code>",
+        "league.usage_join": "Uso: <code>/league_join CODICE</code>",
+        "league.usage_leave": "Uso: <code>/league_leave CODICE</code>",
         "league.name_too_long": "❗ Il nome della lega può essere lungo al massimo {max} caratteri.",
         "league.created": "✅ Lega <b>{name}</b> creata!\nCodice: <code>{code}</code>\n\nInvita chi vuoi con questo link:\n{link}",
-        "league.invite": "🔗 Invita nella lega <b>{name}</b>:\n{link}\n\nOppure fagli usare <code>/lega_entra {code}</code>.",
-        "league.joined": "✅ Sei entrato nella lega <b>{name}</b>! Vedi la classifica con /lega.",
-        "league.already_member": "Fai già parte di questa lega. Vedi la classifica con /lega.",
+        "league.invite": "🔗 Invita nella lega <b>{name}</b>:\n{link}\n\nOppure fagli usare <code>/league_join {code}</code>.",
+        "league.joined": "✅ Sei entrato nella lega <b>{name}</b>! Vedi la classifica con /league.",
+        "league.already_member": "Fai già parte di questa lega. Vedi la classifica con /league.",
         "league.not_found": "❗ Nessuna lega con il codice <code>{code}</code>.",
         "league.full": "❗ Questa lega è piena ({max} membri).",
-        "league.limit_reached": "❗ Puoi far parte di al massimo {max} leghe. Escine da una con <code>/lega_esci CODICE</code>.",
+        "league.limit_reached": "❗ Puoi far parte di al massimo {max} leghe. Escine da una con <code>/league_leave CODICE</code>.",
         "league.left": "👋 Hai lasciato la lega <b>{name}</b>.",
         "league.not_member": "❗ Non fai parte di questa lega.",
         "league.leaderboard_title": "👥 <b>{name}</b>\nCodice: <code>{code}</code>\n\n",
@@ -337,11 +407,15 @@ TRANSLATIONS = {
             "/stats - Tus estadísticas, la racha y los trofeos.\n"
             "/top - La clasificación general y la del mes.\n"
             "/events - El centro de eventos.\n"
-            "/archivio - Vuelve a jugar los desafíos de días pasados (sin puntos).\n"
-            "/oggi - Sal del archivo y vuelve al desafío de hoy.\n"
-            "/lega - Tus ligas privadas; /lega_crea y /lega_entra para crear una o entrar.\n"
+            "/archive - Vuelve a jugar los desafíos de días pasados (sin puntos).\n"
+            "/training - Desafíos pasados en cadena, sin puntos.\n"
+            "/round - En un grupo: un round para todos, gana quien responde primero.\n"
+            "/standings - En un grupo: la clasificación de ese grupo.\n"
+            "/today - Sal del archivo o del entrenamiento y vuelve al desafío de hoy.\n"
+            "/league - Tus ligas privadas; /league_create y /league_join para crear una o entrar.\n"
             "/notify - Activa o desactiva las notificaciones.\n"
             "/language - Cambia el idioma del bot.\n"
+            "/legend - Como se lee la imagen de la trayectoria.\n"
         ),
 
         "language.prompt": "🌐 Elige el idioma del bot:",
@@ -489,30 +563,32 @@ TRANSLATIONS = {
         "image.badge_leaderboard": "CLASIFICACION",
 
         # --- menu principal y botones ---
-        "menu.title": "⚽ <b>Guess the Player</b>\nElige que hacer:",
-        "menu.play": "🎯 Desafio de hoy",
-        "menu.stats": "📊 Estadisticas",
-        "menu.top": "🏆 Clasificacion",
+        "menu.title": "⚽ <b>Guess the Player</b>\nElige qué hacer:",
+        "menu.play": "🎯 Desafío de hoy",
+        "menu.stats": "📊 Estadísticas",
+        "menu.top": "🏆 Clasificación",
         "menu.events": "🎊 Eventos",
         "menu.archive": "🗂 Archivo",
+        "menu.training": "🏋️ Entrenamiento",
         "menu.leagues": "👥 Ligas",
         "menu.notify": "🔔 Notificaciones",
         "menu.language": "🌐 Idioma",
         "menu.help": "❓ Ayuda",
         "menu.app": "📱 Abrir la app",
-        "menu.back": "⬅️ Menu",
+        "menu.back": "⬅️ Menú",
 
         # --- descripciones de los comandos (set_my_commands) ---
-        "cmd.start": "Registrate y abre el menu",
-        "cmd.show": "El desafio de hoy",
-        "cmd.stats": "Tus estadisticas",
-        "cmd.top": "Clasificacion general",
+        "cmd.start": "Regístrate y abre el menú",
+        "cmd.show": "El desafío de hoy",
+        "cmd.stats": "Tus estadísticas",
+        "cmd.top": "Clasificación general",
         "cmd.events": "Centro de eventos",
-        "cmd.archive": "Vuelve a jugar desafios pasados",
+        "cmd.archive": "Vuelve a jugar desafíos pasados",
+        "cmd.training": "Desafíos pasados en cadena",
         "cmd.league": "Tus ligas privadas",
         "cmd.notify": "Activa o desactiva las notificaciones",
         "cmd.language": "Cambiar idioma",
-        "cmd.help": "Como se juega",
+        "cmd.help": "Cómo se juega",
 
         # --- respuesta libre (sin /guess) ---
         "guess.free_text_hint": "💬 Escribeme el nombre del futbolista para intentar el desafio de hoy, o usa /show para verlo otra vez.",
@@ -525,35 +601,87 @@ TRANSLATIONS = {
         "share.button": "📤 Comparte el resultado",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.archive_title": "🗄 Guess the Player #{number} (archivo)",
+
+        "feedback.header": "🔎 Comparado con {name}:",
+        "feedback.nationality_same": "🌍 Nacionalidad: la misma",
+        "feedback.nationality_diff": "🌍 Nacionalidad: distinta",
+        "feedback.position_same": "🎽 Posición: la misma",
+        "feedback.position_diff": "🎽 Posición: distinta",
+        "feedback.birth_same": "🎂 Mismo año de nacimiento ({year})",
+        "feedback.birth_before": "⬆️ Más veterano: nació antes de {year}",
+        "feedback.birth_after": "⬇️ Más joven: nació después de {year}",
+
+        "training.button_next": "🎲 Otra",
+        "training.button_reveal": "👀 Revelar",
+        "training.private_only": "El entrenamiento se juega en chat privado conmigo.",
+        "training.not_registered": "❗ Regístrate con /start antes de entrenar.",
+        "training.empty": "🏋️ Todavía no hay desafíos pasados que reproponer: vuelve dentro de unos días.",
+        "training.opened": "🏋️ <b>Entrenamiento</b>: escribe el nombre del futbolista.\nNo da puntos y no toca el desafío de hoy. Tienes {attempts} intentos.\nVuelve al desafío de hoy con /today.",
+        "training.correct": "✅ ¡Acertado en {attempts} intentos!\nSin puntos: es entrenamiento.",
+        "training.wrong": "❌ No. Intentos restantes: {attempts_left}.",
+        "training.wrong_last": "❌ Se acabaron los intentos: era {answer}.",
+        "training.revealed": "👀 Era {answer}.",
+        "training.not_open": "No tienes ningún entrenamiento abierto: /training para empezar uno.",
+        "training.gone": "❗ Ese entrenamiento ya no está disponible: /training para otro.",
+        "training.exited": "👋 Entrenamiento cerrado: /show para el desafío de hoy.",
+
+        "group.private_hint": "👥 Esta es una modalidad de grupo: añádeme a un grupo y escribe /round. Aquí en privado está /training.",
+        "group.empty": "👥 Todavía no hay desafíos pasados para un round.",
+        "group.round_opened": "👥 <b>Round #{number}</b> — {difficulty} ({points} puntos)\nGana quien responda primero. Se responde con <code>/guess nombre</code>, {attempts} intentos por persona.\nLos puntos se quedan en este grupo.",
+        "group.no_round": "👥 No hay ningún round abierto: escribe /round para empezar uno.",
+        "group.usage": "👥 Se responde así: <code>/guess Maldini</code>",
+        "group.already_solved": "👥 Este round ya lo ganó {winner}. /round para el siguiente.",
+        "group.no_attempts": "❌ {name}, se te acabaron los intentos de este round.",
+        "group.wrong": "❌ {name}: no. Intentos restantes: {attempts_left}.",
+        "group.correct": "🏆 <b>{name}</b> gana el round #{number}: +{points} puntos en la clasificación del grupo.\n/round para el siguiente, /standings para ver cómo vais.",
+        "group.standings_title": "👥 <b>Clasificación del grupo</b>\n(vale solo aquí: la general es /top)\n\n",
+        "group.standings_line": "{medal} {name} — {points} puntos ({rounds} rounds)\n",
+        "group.standings_empty": "👥 Nadie ha ganado un round aquí: /round para empezar.",
+        "group.button_private": "🎯 Juega el desafío de hoy",
+        "group.button_new_round": "🔁 Otro round",
+
+        "legend.button": "ℹ️ Cómo se lee",
+        "legend.text": (
+            "ℹ️ <b>Cómo se lee la trayectoria</b>\n\n"
+            "Cada línea es una etapa, de arriba abajo en orden cronológico.\n\n"
+            "• <b>2016 – 2019</b>: los años en ese equipo. <b>2016 – …</b> significa que sigue allí.\n"
+            "• <b>→ 2016 – 2017</b>: la flecha, junto a la barra discontinua de la izquierda, indica una <b>cesión</b>.\n"
+            "• <b>33 (22)</b>: partidos y, entre paréntesis, goles de <b>liga</b> (la convención de Wikipedia). En los porteros solo aparecen los partidos.\n"
+            "• La <b>barra</b> en lugar de los números aparece cuando no tenemos partidos ni goles: mide lo que duró la etapa.\n"
+            "• Debajo del nombre del equipo: <b>liga · país</b>.\n"
+            "• Arriba a la derecha: la <b>dificultad</b> del desafío.\n\n"
+            "En la imagen no hay ni una palabra: la misma figura se envía a quien juega en italiano, español e inglés."
+        ),
         "archive.title": "🗂 <b>Archivo</b>\nVuelve a jugar los desafíos de días pasados: no dan puntos, valen por el gusto de conseguirlo.\nElige un día:",
         "archive.empty": "🗂 Todavía no hay ningún desafío en el archivo.",
         "archive.not_registered": "❗ Regístrate con /start antes de usar el archivo.",
-        "archive.opened": "🗂 Desafío del {date}. Escribe el nombre del futbolista: este no da puntos.\nVuelve al desafío de hoy con /oggi.",
+        "archive.opened": "🗂 Desafío del {date}. Escribe el nombre del futbolista: este no da puntos.\nVuelve al desafío de hoy con /today.",
         "archive.missing_day": "❗ Ese desafío ya no está disponible.",
-        "archive.correct": "✅ ¡Bien! Desafío del {date} recuperado en {attempts} intentos.\nElige otro día con /archivio o vuelve a hoy con /oggi.",
+        "archive.correct": "✅ ¡Bien! Desafío del {date} recuperado en {attempts} intentos.\nElige otro día con /archive o vuelve a hoy con /today.",
         "archive.wrong": "❌ No. Intentos restantes en este desafío: {attempts_left}.",
-        "archive.wrong_last": "❌ Se acabaron los intentos: era {answer}.\nElige otro día con /archivio o vuelve a hoy con /oggi.",
-        "archive.already_solved": "✅ Este desafío ya lo habías recuperado. Elige otro con /archivio.",
-        "archive.no_attempts": "❌ Se acabaron tus intentos en este desafío. Elige otro con /archivio.",
+        "archive.wrong_last": "❌ Se acabaron los intentos: era {answer}.\nElige otro día con /archive o vuelve a hoy con /today.",
+        "archive.already_solved": "✅ Este desafío ya lo habías recuperado. Elige otro con /archive.",
+        "archive.no_attempts": "❌ Se acabaron tus intentos en este desafío. Elige otro con /archive.",
         "archive.exited": "👋 Volvemos al desafío de hoy: /show para verlo.",
-        "archive.not_in_archive": "No estás jugando ningún desafío del archivo. Abre uno con /archivio.",
+        "archive.not_in_archive": "No estás jugando ningún desafío del archivo. Abre uno con /archive.",
         "archive.button_today": "🎯 Volver a hoy",
         "cmd.today": "Vuelve al desafío de hoy",
 
         # --- leghe private ---
-        "league.intro": "👥 <b>Tus ligas</b>\nUna liga es una clasificación privada entre amigos: cuentan los puntos que haces desde que entras.\n\nCrea la tuya con <code>/lega_crea Nombre de la liga</code> o entra en una con <code>/lega_entra CÓDIGO</code>.",
-        "league.none": "👥 No estás en ninguna liga.\n\nCrea una con <code>/lega_crea Nombre de la liga</code>, o entra en una existente con <code>/lega_entra CÓDIGO</code>.",
-        "league.usage_create": "Uso: <code>/lega_crea Nombre de la liga</code>",
-        "league.usage_join": "Uso: <code>/lega_entra CÓDIGO</code>",
-        "league.usage_leave": "Uso: <code>/lega_esci CÓDIGO</code>",
+        "league.intro": "👥 <b>Tus ligas</b>\nUna liga es una clasificación privada entre amigos: cuentan los puntos que haces desde que entras.\n\nCrea la tuya con <code>/league_create Nombre de la liga</code> o entra en una con <code>/league_join CÓDIGO</code>.",
+        "league.none": "👥 No estás en ninguna liga.\n\nCrea una con <code>/league_create Nombre de la liga</code>, o entra en una existente con <code>/league_join CÓDIGO</code>.",
+        "league.usage_create": "Uso: <code>/league_create Nombre de la liga</code>",
+        "league.usage_join": "Uso: <code>/league_join CÓDIGO</code>",
+        "league.usage_leave": "Uso: <code>/league_leave CÓDIGO</code>",
         "league.name_too_long": "❗ El nombre de la liga puede tener como máximo {max} caracteres.",
         "league.created": "✅ ¡Liga <b>{name}</b> creada!\nCódigo: <code>{code}</code>\n\nInvita a quien quieras con este enlace:\n{link}",
-        "league.invite": "🔗 Invita a la liga <b>{name}</b>:\n{link}\n\nO que usen <code>/lega_entra {code}</code>.",
-        "league.joined": "✅ ¡Has entrado en la liga <b>{name}</b>! Mira la clasificación con /lega.",
-        "league.already_member": "Ya formas parte de esta liga. Mira la clasificación con /lega.",
+        "league.invite": "🔗 Invita a la liga <b>{name}</b>:\n{link}\n\nO que usen <code>/league_join {code}</code>.",
+        "league.joined": "✅ ¡Has entrado en la liga <b>{name}</b>! Mira la clasificación con /league.",
+        "league.already_member": "Ya formas parte de esta liga. Mira la clasificación con /league.",
         "league.not_found": "❗ No hay ninguna liga con el código <code>{code}</code>.",
         "league.full": "❗ Esta liga está llena ({max} miembros).",
-        "league.limit_reached": "❗ Puedes estar como máximo en {max} ligas. Sal de una con <code>/lega_esci CÓDIGO</code>.",
+        "league.limit_reached": "❗ Puedes estar como máximo en {max} ligas. Sal de una con <code>/league_leave CÓDIGO</code>.",
         "league.left": "👋 Has dejado la liga <b>{name}</b>.",
         "league.not_member": "❗ No formas parte de esta liga.",
         "league.leaderboard_title": "👥 <b>{name}</b>\nCódigo: <code>{code}</code>\n\n",
@@ -580,11 +708,15 @@ TRANSLATIONS = {
             "/stats - Your stats, streak and trophies.\n"
             "/top - The global and monthly leaderboards.\n"
             "/events - The events hub.\n"
-            "/archivio - Replay past challenges (no points).\n"
-            "/oggi - Leave the archive and go back to today's challenge.\n"
-            "/lega - Your private leagues; /lega_crea and /lega_entra to create or join one.\n"
+            "/archive - Replay past challenges (no points).\n"
+            "/training - Past challenges back to back, no points.\n"
+            "/round - In a group: one round for everyone, first correct answer wins.\n"
+            "/standings - In a group: that group's standings.\n"
+            "/today - Leave the archive or training and go back to today's challenge.\n"
+            "/league - Your private leagues; /league_create and /league_join to create or join one.\n"
             "/notify - Turn notifications on or off.\n"
             "/language - Change the bot's language.\n"
+            "/legend - How to read the career path picture.\n"
         ),
 
         "language.prompt": "🌐 Choose the bot's language:",
@@ -738,6 +870,7 @@ TRANSLATIONS = {
         "menu.top": "🏆 Leaderboard",
         "menu.events": "🎊 Events",
         "menu.archive": "🗂 Archive",
+        "menu.training": "🏋️ Training",
         "menu.leagues": "👥 Leagues",
         "menu.notify": "🔔 Notifications",
         "menu.language": "🌐 Language",
@@ -752,6 +885,7 @@ TRANSLATIONS = {
         "cmd.top": "Global leaderboard",
         "cmd.events": "Event hub",
         "cmd.archive": "Replay past challenges",
+        "cmd.training": "Past challenges back to back",
         "cmd.league": "Your private leagues",
         "cmd.notify": "Turn notifications on or off",
         "cmd.language": "Change language",
@@ -768,35 +902,87 @@ TRANSLATIONS = {
         "share.button": "📤 Share your result",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.archive_title": "🗄 Guess the Player #{number} (archive)",
+
+        "feedback.header": "🔎 Compared with {name}:",
+        "feedback.nationality_same": "🌍 Nationality: the same",
+        "feedback.nationality_diff": "🌍 Nationality: different",
+        "feedback.position_same": "🎽 Position: the same",
+        "feedback.position_diff": "🎽 Position: different",
+        "feedback.birth_same": "🎂 Same birth year ({year})",
+        "feedback.birth_before": "⬆️ Older: born before {year}",
+        "feedback.birth_after": "⬇️ Younger: born after {year}",
+
+        "training.button_next": "🎲 Another one",
+        "training.button_reveal": "👀 Reveal",
+        "training.private_only": "Training is played in a private chat with me.",
+        "training.not_registered": "❗ Sign up with /start before training.",
+        "training.empty": "🏋️ There are no past challenges to replay yet: come back in a few days.",
+        "training.opened": "🏋️ <b>Training</b>: type the player's name.\nNo points, and it doesn't touch today's challenge. You have {attempts} attempts.\nBack to today's challenge with /today.",
+        "training.correct": "✅ Got it in {attempts} attempts!\nNo points: this is training.",
+        "training.wrong": "❌ No. Attempts left: {attempts_left}.",
+        "training.wrong_last": "❌ Out of attempts: it was {answer}.",
+        "training.revealed": "👀 It was {answer}.",
+        "training.not_open": "You have no training challenge open: /training to start one.",
+        "training.gone": "❗ That training challenge is no longer available: /training for another one.",
+        "training.exited": "👋 Training closed: /show for today's challenge.",
+
+        "group.private_hint": "👥 This is a group mode: add me to a group and type /round. Here in private there is /training.",
+        "group.empty": "👥 There are no past challenges to turn into a round yet.",
+        "group.round_opened": "👥 <b>Round #{number}</b> — {difficulty} ({points} points)\nFirst correct answer wins. Answer with <code>/guess name</code>, {attempts} attempts each.\nThe points stay in this group.",
+        "group.no_round": "👥 No round is open: type /round to start one.",
+        "group.usage": "👥 Answer like this: <code>/guess Maldini</code>",
+        "group.already_solved": "👥 {winner} already won this round. /round for the next one.",
+        "group.no_attempts": "❌ {name}, you are out of attempts for this round.",
+        "group.wrong": "❌ {name}: no. Attempts left: {attempts_left}.",
+        "group.correct": "🏆 <b>{name}</b> wins round #{number}: +{points} points in the group standings.\n/round for the next one, /standings to see where you stand.",
+        "group.standings_title": "👥 <b>Group standings</b>\n(they only count here: the global one is /top)\n\n",
+        "group.standings_line": "{medal} {name} — {points} points ({rounds} rounds)\n",
+        "group.standings_empty": "👥 Nobody has won a round here: /round to get started.",
+        "group.button_private": "🎯 Play today's challenge",
+        "group.button_new_round": "🔁 Another round",
+
+        "legend.button": "ℹ️ How to read it",
+        "legend.text": (
+            "ℹ️ <b>How to read the career path</b>\n\n"
+            "Each row is a stop, top to bottom in chronological order.\n\n"
+            "• <b>2016 – 2019</b>: the years at that club. <b>2016 – …</b> means he is still there.\n"
+            "• <b>→ 2016 – 2017</b>: the arrow, together with the dashed bar on the left, marks a <b>loan</b>.\n"
+            "• <b>33 (22)</b>: appearances and, in brackets, <b>league</b> goals (the Wikipedia convention). For goalkeepers only appearances are shown.\n"
+            "• The <b>bar</b> replaces the numbers when we do not have appearances and goals: its length is how long the stop lasted.\n"
+            "• Under the club name: <b>league · country</b>.\n"
+            "• Top right: the <b>difficulty</b> of the challenge.\n\n"
+            "There is not a single word in the picture: the same image goes to people playing in Italian, Spanish and English."
+        ),
         "archive.title": "🗂 <b>Archive</b>\nReplay past challenges: they award no points, they're just for the satisfaction.\nPick a day:",
         "archive.empty": "🗂 There's nothing in the archive yet.",
         "archive.not_registered": "❗ Sign up with /start before using the archive.",
-        "archive.opened": "🗂 Challenge from {date}. Type the player's name: this one awards no points.\nGo back to today's challenge with /oggi.",
+        "archive.opened": "🗂 Challenge from {date}. Type the player's name: this one awards no points.\nGo back to today's challenge with /today.",
         "archive.missing_day": "❗ That challenge isn't available any more.",
-        "archive.correct": "✅ Got it! Challenge from {date} solved in {attempts} attempts.\nPick another day with /archivio, or go back to today with /oggi.",
+        "archive.correct": "✅ Got it! Challenge from {date} solved in {attempts} attempts.\nPick another day with /archive, or go back to today with /today.",
         "archive.wrong": "❌ Nope. Attempts left on this one: {attempts_left}.",
-        "archive.wrong_last": "❌ Out of attempts: it was {answer}.\nPick another day with /archivio, or go back to today with /oggi.",
-        "archive.already_solved": "✅ You already solved this one. Pick another with /archivio.",
-        "archive.no_attempts": "❌ No attempts left on this challenge. Pick another with /archivio.",
+        "archive.wrong_last": "❌ Out of attempts: it was {answer}.\nPick another day with /archive, or go back to today with /today.",
+        "archive.already_solved": "✅ You already solved this one. Pick another with /archive.",
+        "archive.no_attempts": "❌ No attempts left on this challenge. Pick another with /archive.",
         "archive.exited": "👋 Back to today's challenge: /show to see it.",
-        "archive.not_in_archive": "You're not playing an archive challenge. Open one with /archivio.",
+        "archive.not_in_archive": "You're not playing an archive challenge. Open one with /archive.",
         "archive.button_today": "🎯 Back to today",
         "cmd.today": "Back to today's challenge",
 
         # --- leghe private ---
-        "league.intro": "👥 <b>Your leagues</b>\nA league is a private leaderboard among friends: it counts the points you score from the moment you join.\n\nCreate one with <code>/lega_crea League name</code>, or join one with <code>/lega_entra CODE</code>.",
-        "league.none": "👥 You're not in any league.\n\nCreate one with <code>/lega_crea League name</code>, or join an existing one with <code>/lega_entra CODE</code>.",
-        "league.usage_create": "Usage: <code>/lega_crea League name</code>",
-        "league.usage_join": "Usage: <code>/lega_entra CODE</code>",
-        "league.usage_leave": "Usage: <code>/lega_esci CODE</code>",
+        "league.intro": "👥 <b>Your leagues</b>\nA league is a private leaderboard among friends: it counts the points you score from the moment you join.\n\nCreate one with <code>/league_create League name</code>, or join one with <code>/league_join CODE</code>.",
+        "league.none": "👥 You're not in any league.\n\nCreate one with <code>/league_create League name</code>, or join an existing one with <code>/league_join CODE</code>.",
+        "league.usage_create": "Usage: <code>/league_create League name</code>",
+        "league.usage_join": "Usage: <code>/league_join CODE</code>",
+        "league.usage_leave": "Usage: <code>/league_leave CODE</code>",
         "league.name_too_long": "❗ A league name can be at most {max} characters long.",
         "league.created": "✅ League <b>{name}</b> created!\nCode: <code>{code}</code>\n\nInvite anyone with this link:\n{link}",
-        "league.invite": "🔗 Invite people to <b>{name}</b>:\n{link}\n\nOr have them use <code>/lega_entra {code}</code>.",
-        "league.joined": "✅ You joined the league <b>{name}</b>! See the standings with /lega.",
-        "league.already_member": "You're already in this league. See the standings with /lega.",
+        "league.invite": "🔗 Invite people to <b>{name}</b>:\n{link}\n\nOr have them use <code>/league_join {code}</code>.",
+        "league.joined": "✅ You joined the league <b>{name}</b>! See the standings with /league.",
+        "league.already_member": "You're already in this league. See the standings with /league.",
         "league.not_found": "❗ No league with code <code>{code}</code>.",
         "league.full": "❗ This league is full ({max} members).",
-        "league.limit_reached": "❗ You can be in at most {max} leagues. Leave one with <code>/lega_esci CODE</code>.",
+        "league.limit_reached": "❗ You can be in at most {max} leagues. Leave one with <code>/league_leave CODE</code>.",
         "league.left": "👋 You left the league <b>{name}</b>.",
         "league.not_member": "❗ You're not a member of this league.",
         "league.leaderboard_title": "👥 <b>{name}</b>\nCode: <code>{code}</code>\n\n",

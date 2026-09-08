@@ -19,13 +19,24 @@ primo prende un punto in piu'.
 | `/stats` | punti, striscia, trofei |
 | `/top` | classifica generale e mensile |
 | `/events` | centro eventi |
-| `/archivio` (`/archive`) | rigioca le sfide dei giorni scorsi |
-| `/oggi` (`/today`) | esci dall'archivio |
-| `/lega` (`/league`) | le tue leghe private |
-| `/lega_crea <nome>`, `/lega_entra <codice>`, `/lega_esci <codice>` | crea, entra, esci |
+| `/archive` (`/archivio`) | rigioca le sfide dei giorni scorsi |
+| `/training` (`/allenamento`) | sfide a raffica, senza punti |
+| `/round` (`/sfida`) | **in un gruppo**: apre un round per tutti |
+| `/standings` (`/classifica`) | **in un gruppo**: la classifica di quel gruppo |
+| `/today` (`/oggi`) | esci dall'archivio o dall'allenamento |
+| `/league` (`/lega`) | le tue leghe private |
+| `/league_create <nome>`, `/league_join <codice>`, `/league_leave <codice>` | crea, entra, esci |
+| `/legend` (`/legenda`) | come si legge l'immagine del percorso |
 | `/notify`, `/language` | notifiche e lingua |
 
-Il menu "/" di Telegram (`set_my_commands`) viene impostato all'avvio nelle tre lingue.
+Il menu "/" di Telegram (`set_my_commands`) viene impostato all'avvio nelle tre lingue: le
+**descrizioni** sono tradotte, i **nomi dei comandi** no — sono in inglese per tutti. Un bot
+trilingue con tre serie di comandi diversi obbligherebbe a scrivere ogni messaggio in tre
+versioni ("torna a oggi con /oggi" per un italiano, "con /today" per un inglese), e chi cambia
+lingua si ritroverebbe i comandi che ha imparato a non funzionare più. Gli alias italiani della
+prima versione (`/archivio`, `/oggi`, `/lega`, `/lega_crea`, `/allenamento`, `/sfida`,
+`/classifica`, `/legenda`) restano registrati e funzionanti: semplicemente non sono più quelli
+che il bot suggerisce.
 
 ### Risposte tollerate, ma non regalate
 
@@ -39,6 +50,39 @@ i test lo verificano su una lista di coppie insidiose. Non viene mai suggerito i
 Un messaggio che non ha la forma di un nome (un link, una frase lunga) non consuma tentativi:
 il bot risponde con una riga di spiegazione.
 
+### Cosa lascia un tentativo sbagliato
+
+Prima non lasciava niente ("sbagliato, te ne restano due"): su una giornata difficile
+l'unica strategia possibile era sparare nomi. Adesso, se il calciatore scritto e' nel
+dataset, `services/guess_feedback.py` lo confronta con la soluzione e risponde come Wordle:
+
+```
+❌ Risposta sbagliata, riprova! Hai 2 tentativi rimasti.
+
+🔎 Rispetto a Alessandro Del Piero:
+🌍 Nazionalità: diversa
+🎽 Ruolo: stesso
+⬇️ Più giovane: nato dopo il 1974
+```
+
+Il confronto e' **relativo al nome scritto dall'utente**, e questo decide due cose. La
+prima: non c'e' niente da tradurre (chi ha scritto "Del Piero" sa gia' di che nazionalita'
+e ruolo sia), quindi il blocco funziona uguale nelle tre lingue senza tradurre 53 paesi. La
+seconda: le squadre **non** si confrontano mai. Sono gia' tutte nell'immagine — dirle
+sarebbe ripetere quello che si vede — e le informazioni che l'immagine non da' sono
+esattamente nazionalita', ruolo ed eta'.
+
+Il nome tentato viene risolto sul dataset con la stessa tolleranza ai refusi delle risposte,
+e il blocco riporta in testa la scheda che il bot ha capito: e' l'unico modo che ha l'utente
+di accorgersi che "Ronaldo" e' stato inteso come un altro Ronaldo. Se il nome non e' nel
+dataset — o se la sfida e' cosi' vecchia da non avere `player_id` — il confronto non c'e' e
+il messaggio resta quello di prima. Chi volesse usarlo come oracolo ("questo calciatore e'
+nel dataset?") ha tre tentativi al giorno per farlo, che e' un prezzo abbastanza alto da
+rendere la cosa inutile.
+
+Lo stesso confronto vale nell'archivio: recuperare una sfida passata non deve essere piu'
+difficile del gioco vero.
+
 ### Striscia, condivisione, archivio
 
 - **Striscia** (`services/streak.py`): giorni consecutivi indovinati, con un bonus a soglie
@@ -46,16 +90,88 @@ il bot risponde con una riga di spiegazione.
   il modo principale di fare punti. Si calcola nella stessa transazione che assegna i punti.
 - **Card del risultato** (`services/share.py`): i quadratini stile Wordle (🟥🟩⬜ 2/3) con il
   numero della sfida, da incollare in un gruppo senza rivelare la risposta. Il bottone e' un
-  link a `t.me/share/url`, quindi non serve la inline mode del bot.
+  link a `t.me/share/url`, quindi non serve la inline mode del bot. C'e' anche per chi **non**
+  ci e' arrivato (🟥🟥🟥 X/3): la giornata persa e' meta' di quello che si incolla in un
+  gruppo, ed e' l'unica riga che non puo' spoilerare niente. Le sfide recuperate
+  dall'archivio si condividono marcate come tali, cosi' in un gruppo dove quella di oggi e'
+  ancora aperta non sembrano il risultato di oggi.
 - **Archivio** (`handlers/archive_handler.py`): rigiocare i giorni passati **senza punti**.
   Aprire un giorno mette l'utente in "modalita' archivio" (`archive_day` sul suo documento,
   non in memoria: su Cloud Run l'istanza puo' sparire fra un messaggio e l'altro), e da li' le
-  risposte valgono per quella sfida finche' non la risolve o non fa `/oggi`. A tentativi finiti
+  risposte valgono per quella sfida finche' non la risolve o non fa `/today`. A tentativi finiti
   la risposta si puo' dire: quella giornata e' gia' passata.
+
+### Allenamento e partite di gruppo
+
+Due modalità con lo stesso motore (`services/practice_content.py`) e la stessa regola: si
+gioca solo su materiale che **non può spoilerare la sfida del giorno**, e non si tocca la
+classifica generale.
+
+Il problema da risolvere è questo: pescare un giocatore qualsiasi dal dataset mostrerebbe il
+percorso di carriera di qualcuno che non è ancora uscito, e chi lo ha visto — il giorno in cui
+esce — lo riconosce in due secondi e si prende pure il bonus del primo. È un danno diretto
+alla classifica. Le due sorgenti ammesse lo evitano in due modi diversi:
+
+1. **il pool riservato** — i calciatori con `"practice_only": true` in `data/players.json`
+   (80 sui 323 di oggi, bilanciati fra le quattro fasce di difficoltà) **non escono mai** come
+   sfida del giorno né dentro un evento. Allenarsi su di loro non dà nessun vantaggio, per
+   costruzione. È materiale disponibile subito e non costa **nessuna lettura**: le schede sono
+   nel file, dentro il container. `python scripts/reserve_practice_players.py` è ciò che ha
+   assegnato la fetta, e la scelta sta nel dataset — non calcolata a runtime, perché se la
+   regola cambiasse un giocatore passerebbe da una parte all'altra e lo spoiler tornerebbe.
+   Per lo stesso motivo `scripts/import_players.py` non perde il flag reimportando una scheda.
+   I nomi da copertina (`popularity` 5) non si riservano mai: sono quelli che fanno venire
+   voglia di rispondere a chi apre il bot la prima volta, e toglierli per sempre dalla sfida
+   del giorno costerebbe piu' di quanto renda averli in allenamento;
+2. **le sfide già passate** — pubbliche per costruzione: l'archivio le mostra, il broadcast di
+   mezzanotte dice la risposta di ieri. Entrano una volta su quattro
+   (`practice_past_challenge_ratio` in `data/config.json`), perché sono le partite vere e
+   ritrovarne una ha un sapore diverso da un esercizio.
+
+Anche la seconda sorgente costa **una lettura**: l'id del documento *è* la data, quindi si
+estrae una data a caso e si legge quel documento. Scaricare l'elenco dei giorni passati per
+sceglierne uno costerebbe fino a trecento letture a partita. Se il giorno estratto è vuoto (il
+bot non c'era ancora, o la pulizia ha tolto quel documento) si riprova, e dopo qualche
+tentativo a vuoto si ripiega su una query sola sui giorni recenti.
+
+Le due sorgenti escono dal servizio con la stessa forma, chiave compresa (`pool:maldini`,
+`day:2026-09-07`): chi le usa non sa da dove vengono, e la chiave è quello che si salva sul
+documento utente o sul round per riprendere la partita dopo che l'istanza Cloud Run è sparita.
+
+**Allenamento** (`/training`, `handlers/training_handler.py`): chi installa il bot oggi
+gioca *una* partita e poi aspetta ventiquattro ore, ed è il minuto in cui si decide se
+restare. Qui invece si preme un bottone e arriva un'altra sfida, per sempre. Nessun punto, il
+confronto dopo ogni errore, cinque tentativi e poi la risposta — che si può anche chiedere
+subito con "👀 Rivela", visto che quella giornata è passata. I tentativi sono cinque e non
+infiniti anche per una ragione meno ovvia: un campo che accetta nomi all'infinito e risponde
+"stessa nazionalità, ruolo diverso" sarebbe un modo comodo per sondare il dataset.
+
+**Partita di gruppo** (`/round`, `handlers/group_handler.py`): un round alla volta nel
+gruppo, vince chi risponde per primo, punti per difficoltà come nel gioco vero. **Non** è la
+sfida di oggi ripubblicata — la risposta comparirebbe in chiaro davanti a chi non ha ancora
+giocato, bruciando la giornata anche a chi non stava guardando. Le altre tre conseguenze della stessa scelta:
+
+- **i punti restano nel gruppo** (`group_rounds/{chat}/players/{utente}`, `/standings`) e non
+  toccano né la classifica generale né quella del mese: un gruppo creato con un account
+  secondario non sposta niente di quello che conta;
+- **si risponde con `/guess`**, non a messaggio libero: leggere i messaggi liberi di un gruppo
+  vorrebbe dire spegnere la privacy mode in BotFather, cioè ricevere *tutti* i messaggi di
+  *tutti* i gruppi in cui il bot è dentro. I comandi arrivano lo stesso;
+- **non serve essersi registrati**: in gruppo non c'è niente da salvare sull'utente, e
+  chiedere `/start` prima di poter rispondere toglierebbe alla modalità l'unica cosa che la
+  rende utile.
+
+Tre tentativi a testa per round, contati su un documento per giocatore (come i partecipanti a
+un evento, e per lo stesso motivo: in un gruppo che risponde a raffica una mappa sola dentro
+il round sarebbe un punto di contesa in scrittura). Si azzerano da soli quando comincia un
+round nuovo, perché il documento porta il numero del round a cui si riferisce — lo stesso
+meccanismo dei contatori giornalieri con `last_played_day`. Il round lo vince una persona
+sola anche se in due rispondono nello stesso istante: è la stessa transazione del bonus del
+primo.
 
 ### Leghe private
 
-Una classifica fra amici (`handlers/league_handler.py`): `/lega_crea` genera un codice di sei
+Una classifica fra amici (`handlers/league_handler.py`): `/league_create` genera un codice di sei
 caratteri senza `0/O` e `1/I` (si detta a voce) e un link d'invito `t.me/<bot>?start=lega_CODICE`
 che iscrive chi lo apre. I punti di una lega stanno sul documento del membro e vengono sommati
 quando l'utente indovina — la classifica e' quindi una query ordinata invece di una lettura per
@@ -96,6 +212,9 @@ services/dataset_health.py   -> salute del pool: autonomia, difficoltà scoperte
 services/path_image.py       -> disegna le immagini (Pillow): percorso, banner evento, palmarès, avatar
 services/fonts.py            -> trova un TrueType di sistema per le immagini (fallback compreso)
 services/matching.py         -> confronto tollerante fra risposta scritta e risposte accettate
+services/guess_feedback.py   -> confronto fra il calciatore tentato e la soluzione (nazionalità, ruolo, età)
+services/past_challenges.py  -> sceglie una sfida già passata, a una lettura invece che con una query
+services/practice_content.py -> il materiale di allenamento e gruppo: pool riservato + sfide passate, una forma sola
 services/streak.py           -> regole della striscia di giorni consecutivi
 services/share.py            -> card del risultato in quadratini e link di condivisione
 services/webapp_auth.py      -> verifica la firma dei dati che manda la mini app Telegram
@@ -104,16 +223,23 @@ services/daily_generator.py  -> sceglie il calciatore del giorno (con anti-ripet
 services/event_generator.py  -> sceglie un template evento a rotazione e lo riempie con giocatori validi
 services/manual_event_service.py -> eventi creati a mano dalla chat (coppie padre/figlio)
 services/content_admin.py    -> dettaglio e correzione di sfide/eventi gia' programmati (usato dalla dashboard locale)
+services/dataset_editor.py   -> modifiche al dataset e alla taratura della difficolta' (usato dalla dashboard locale)
 
 scripts/generate_content.py  -> entrypoint per generare il buffer a mano (debug/backfill)
 scripts/import_players.py    -> importa nuovi calciatori nel dataset con validazione e anti-duplicati
+scripts/reserve_practice_players.py -> riserva all'allenamento una fetta del dataset, bilanciata per difficoltà
 scripts/dataset_report.py    -> report sullo stato del dataset (usato anche dalla CI)
 scripts/migrate_firestore.py -> migrazione una tantum dei dati esistenti al modello nuovo
+scripts/backup_firestore.py  -> export JSON del database, sotto-collezioni comprese (usato dal workflow settimanale)
+scripts/cleanup_daily_paths.py -> cancella le sfide oltre l'anno e i documenti pre-migrazione
 handlers/daily_job.py        -> job di mezzanotte chiamato da Cloud Scheduler: broadcast, reset, e generazione
 handlers/guess_handler.py    -> tentativi sulla sfida del giorno (comando e messaggio libero)
 handlers/archive_handler.py  -> sfide passate rigiocate senza punti
+handlers/training_handler.py -> allenamento: sfide passate a raffica, in privato
+handlers/group_handler.py    -> partite di gruppo: un round alla volta, punti solo dentro il gruppo
 handlers/league_handler.py   -> leghe private, codici d'invito, classifiche
 handlers/keyboards.py        -> tastiera del menu e menu comandi di Telegram
+handlers/legend_handler.py   -> la legenda dell'immagine (bottone sotto la sfida e /legend)
 handlers/menu_handler.py     -> i bottoni del menu, collegati agli handler dei comandi
 handlers/admin_handler.py    -> tutti i comandi Telegram /admin_* (al posto di una dashboard web)
 webapp/index.html            -> la mini app Telegram (servita da FastAPI su /app)
@@ -143,6 +269,15 @@ admin_ui.py                  -> dashboard locale Streamlit: stato dettagliato e 
   descrizione, tipo di gameplay (`path`/`career`/`transfer_guess`/`father_son`), regole di
   filtro sul pool di giocatori (es. minimo 6 squadre, solo big-5, solo nazionalità sudamericane),
   durata e punti giornalieri.
+- **Nome e descrizione sono tradotti** (`name_i18n`, `description_i18n`): erano gli ultimi testi
+  che restavano in italiano per tutti, perché sono contenuto e non passavano da
+  `services/i18n.py` — quindi nemmeno dal test che tiene allineate le tre lingue. Ora c'è un
+  test apposta ([`tests/test_event_translations.py`](tests/test_event_translations.py)) che
+  fallisce se un template nuovo arriva senza traduzioni. `name` e `description` restano il
+  testo italiano: sono il ripiego per gli eventi generati prima, ed è quello che legge
+  l'amministrazione. Le traduzioni vengono **copiate sul documento dell'evento** al momento
+  della generazione, come il nome: un evento già partito resta quello che era anche se il
+  template cambia sotto.
 - `services/event_generator.py` sceglie un template **non usato di recente** (vedi
   `event_history_no_repeat_templates`), rispetta un intervallo minimo tra un evento e l'altro
   (`event_min_gap_days`) e — se il template lo richiede — solo nel weekend (`weekend_only`).
@@ -172,6 +307,14 @@ divisione asiatica. Pesi, soglie e liste sono in `data/config.json` e si ritaran
 toccare il codice: `python scripts/dataset_report.py` mostra come si distribuisce il dataset
 fra le quattro fasce, e `explain_difficulty(player)` scompone il punteggio di una singola
 scheda. I punti assegnati per difficoltà sono invariati rispetto al gioco esistente (1/2/3/4).
+
+Quando una fascia non convince, la sezione *Dataset* della
+[dashboard locale](#dashboard-locale-streamlit) fa le stesse cose senza aprire il file:
+elenca tutte le schede con il punteggio già scomposto in "da notorietà" e "dal percorso",
+permette di correggere notorietà e campionato di una tappa, e mostra **chi cambia fascia
+prima** di salvare. La logica sta in `services/dataset_editor.py`, che scrive
+`data/players.json` con una copia di sicurezza in `backup/` e rifiuta le modifiche che
+renderebbero il dataset incoerente.
 
 ## Comandi amministrativi
 
@@ -221,7 +364,7 @@ in chat sarebbero scomode. **Scrive sul database di produzione.**
 | Eventi | stato (programmato/in corso/concluso), giorno corrente su totale, giorno per giorno con risposte, punti e bonus, elenco dei giorni **senza contenuto**, classifica dei partecipanti | attiva/disattiva, sposta le date (rimappa anche i contenuti e il giorno dei trofei), correggi le risposte di un giorno, riapri/chiudi il bonus di giornata, elimina, crea un evento manuale |
 | Utenti | classifiche, ricerca per id o per nome, scheda completa con striscia, trofei, leghe e archivio | punti totali e del mese, striscia, lingua, notifiche, azzeramento dei tentativi di oggi |
 | Leghe | leghe private con numero di membri e classifica interna | — |
-| Dataset | report di salute, difficoltà, candidati per template, sfoglia i giocatori con il punteggio di difficoltà, config in uso | — |
+| Dataset | quattro schede: salute del pool, **elenco completo** dei giocatori con difficoltà e punteggio scomposto, scheda singola con le tappe e il peso di ogni campionato, taratura della formula | notorietà (`popularity`), *verificato*, *solo allenamento*, campionato di una tappa; pesi e soglie della difficoltà, con anteprima di chi cambia fascia |
 | Giocatori sospesi | chi è escluso dalla selezione automatica | sospendi / riammetti |
 | Coppie padre/figlio | coppie salvate e in quali eventi sono state usate | aggiungi (foto via bot) / elimina |
 
@@ -255,13 +398,18 @@ decidere quando parte invece di aspettare la rotazione:
 
 ## Ampliare il dataset dei calciatori
 
-Il dataset è pensato per crescere nel tempo: oggi contiene **161 calciatori** (144
-selezionabili in automatico), cioè più di 140 giorni di sfide senza mai ripetere nessuno,
-contro i 60 giorni della finestra anti-ripetizione.
+Il dataset è pensato per crescere nel tempo: oggi contiene **323 calciatori**, tutti
+verificati. 243 alimentano il gioco vero — 243 giorni di sfide senza mai ripetere nessuno,
+contro i 60 giorni della finestra anti-ripetizione — e 80 sono riservati all'allenamento e ai
+round di gruppo, dove non possono spoilerare niente.
 
 ### Il flusso di import
 
-Non si modifica `data/players.json` a mano: si prepara un file di batch e lo si importa.
+Per **aggiungere** calciatori non si modifica `data/players.json` a mano: si prepara un file
+di batch e lo si importa. Per **correggere** una scheda già dentro (notorietà sbagliata,
+campionato scritto male) c'è la sezione *Dataset* della
+[dashboard locale](#dashboard-locale-streamlit), che scrive lo stesso file con gli stessi
+controlli.
 
 ```bash
 # 1. prepara il batch (stesso schema di data/players.json, vedi gli esempi in data/incoming/)
@@ -317,6 +465,12 @@ Ogni tappa ha tre campi facoltativi: `loan` (prestito), `apps` (presenze) e `goa
 Presenze e gol sono quelli di **campionato**, come li conta Wikipedia: alla Juventus Del
 Piero risulta con ~478 presenze, non con le ~700 di tutte le competizioni.
 
+`practice_only: true` toglie un calciatore dal gioco quotidiano e lo mette fra il materiale
+di allenamento (vedi [Allenamento e partite di gruppo](#allenamento-e-partite-di-gruppo)). Non
+si mette a mano: lo assegna `scripts/reserve_practice_players.py`, che tiene la fetta
+bilanciata fra le fasce di difficoltà. Una volta riservato, un giocatore resta riservato — è
+la ragione per cui il flag sopravvive a un reimport.
+
 `one_club_career: true` serve a distinguere una **bandiera** (Totti, Maldini, Puyol: una sola
 squadra e i dati sono completi) da una **scheda incompleta**: senza questo flag un percorso
 di una squadra sola viene scartato come dato mancante. È anche ciò che rende possibile
@@ -339,6 +493,11 @@ segno, non un'etichetta:
 | Tappa ancora in corso | `2016 – …` |
 | Presenze e gol | `33 (22)`, la convenzione di Wikipedia; per i portieri le sole presenze |
 | Durata della tappa | barra proporzionale, mostrata solo quando mancano presenze e gol |
+
+Che questi segni vogliano dire qualcosa, pero', bisogna dirlo: sotto ogni sfida (e sotto
+ogni sfida d'archivio) c'e' il bottone **"Come si legge"**, e c'e' il comando `/legend`
+(`handlers/legend_handler.py`). Prima la notazione non era scritta da nessuna parte, nemmeno
+in `/help`: chi apriva la sfida stava indovinando anche quella.
 
 Il layout si adatta al numero di tappe: fino a 12 righe larghe, da 13 in su righe compatte.
 Una carriera da 20 tappe sta in 900×1952 px — sopra le ~2000 px Telegram rimpicciolisce
@@ -378,6 +537,11 @@ In breve:
   di 1 MB e niente contesa in scrittura.
 - Le **classifiche** si leggono con `order_by(...).limit(10)` più un `count()` per la
   posizione personale, invece di scaricare tutti gli utenti.
+- `group_rounds/{chat_id}` — il round in corso di un gruppo, con la sotto-collection
+  `players` (un documento per partecipante: punti del gruppo, round vinti, tentativi del
+  round corrente). Sul round si copiano risposte accettate, difficoltà e `player_id`, così
+  ogni tentativo costa **una** lettura invece di due; il percorso di carriera no, si
+  ridisegna al momento.
 
 ### Migrazione dei dati esistenti
 
@@ -397,6 +561,38 @@ eventi in sotto-collection.
 SDK, che le ignora) e [`firestore.indexes.json`](firestore.indexes.json) contiene i due
 indici compositi necessari.
 
+### Backup e pulizia
+
+L'export gestito di Firestore richiede il piano Blaze e un bucket; il database qui è piccolo
+(utenti, un documento per giorno di gioco, qualche evento), quindi il backup è un JSON alla
+settimana, archiviato come artifact di GitHub Actions
+([`.github/workflows/backup.yml`](.github/workflows/backup.yml), lunedì alle 03:30 UTC, o a
+mano con *Run workflow*). Si autentica con la stessa Workload Identity Federation del deploy:
+nessuna chiave di servizio nei secret.
+
+```bash
+python scripts/backup_firestore.py            # copia in backup/, sotto-collezioni comprese
+```
+
+L'export segue le **sotto-collezioni** (`participants`, `members`, `archive`): sono metà dei
+dati del gioco, e un backup che si ferma al primo livello sarebbe un backup finto.
+
+`daily_path` cresce di 365 documenti l'anno e non si guarda indietro — l'archivio mostra dieci
+giorni, l'anti-ripetizione sessanta, il numero della sfida è calcolato dalla data:
+
+```bash
+python scripts/cleanup_daily_paths.py --dry-run       # cosa cancellerebbe
+python scripts/cleanup_daily_paths.py                 # sfide oltre l'anno
+python scripts/cleanup_daily_paths.py --drop-legacy   # anche i documenti pre-migrazione
+```
+
+Lo script distingue due cose: le sfide **vecchie** (oltre la finestra da conservare, un anno
+di default) e i documenti **inservibili** — id non in ISO, oppure senza percorso di carriera
+o senza risposte accettate. Sono quelli che nell'archivio danno "sfida non più disponibile", e
+si cancellano solo chiedendolo esplicitamente. La sfida di oggi e i giorni futuri già generati
+non si toccano mai, e prima di cancellare viene scritto un JSON con tutto quello che sta per
+sparire.
+
 ## Test
 
 ```bash
@@ -415,8 +611,14 @@ sola, limiti giornalieri), il reset "pigro" dei contatori, il reset mensile, il 
 mezzanotte, le classifiche e le trasformazioni della migrazione Firestore.
 
 Sulle funzioni aggiunte dopo: tolleranza ai refusi (con la lista di coppie che **non** devono
-essere confuse), messaggi liberi trattati come tentativo, striscia e relativo bonus, quadratini
-della card condivisibile, flusso completo dell'archivio (nessun punto, la giornata di oggi non
+essere confuse), messaggi liberi trattati come tentativo, confronto dopo un tentativo sbagliato
+(compresi i casi in cui **non** deve uscire: nome fuori dal dataset, sfida senza `player_id`),
+striscia e relativo bonus, quadratini della card condivisibile — vinta e persa —, backup con
+le sotto-collezioni e regole di cancellazione dei `daily_path`, scelta di una sfida passata
+(mai dal futuro, mai un documento senza percorso, e il ripiego quando le date estratte sono
+vuote), allenamento (nessun punto, risposta svelata all'ultimo tentativo) e round di gruppo
+(un solo vincitore, punti che non entrano nella classifica generale, nome con HTML dentro),
+flusso completo dell'archivio (nessun punto, la giornata di oggi non
 viene toccata, la risposta rivelata solo a tentativi finiti), leghe private (codici, limiti,
 classifica, link d'invito che iscrive da `/start`), firma `initData` della mini app (dato
 manomesso, token sbagliato, dati scaduti) e allineamento delle tre lingue: se una chiave o un
@@ -477,11 +679,9 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
 
 ## Limiti noti / cosa resta da fare
 
-- **Dataset**: 161 calciatori, 144 selezionabili (oltre 140 giorni senza ripetizioni). 17
-  schede sono `verified: false` e aspettano un controllo sulle date (`/admin_review`): sono
-  soprattutto carriere lunghissime piene di prestiti (Vieri, Anelka, Crespo, Veron,
-  Materazzi, Kvaratskhelia), dove il rischio di sbagliare un anno è alto. Il pool va
-  comunque ampliato periodicamente: il segnale è l'avviso di `/admin_pool`.
+- **Dataset**: 323 calciatori, tutti verificati e selezionabili (323 giorni senza
+  ripetizioni). Il pool va comunque ampliato periodicamente: il segnale è l'avviso di
+  `/admin_pool`, non il calendario.
 - **Eventi "coppie padre/figlio"**: restano manuali per scelta, perché non esiste un dataset
   di immagini di coppie. La creazione però non richiede più di scrivere documenti su
   Firestore a mano: si fa da Telegram con `/admin_fs_add` + `/admin_event_create`.
@@ -503,6 +703,17 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   qualche secondo di latenza in più per il cold start.
 - **Database**: gli interventi della revisione sono stati applicati al codice, ma la
   **migrazione dei dati esistenti va eseguita a mano** (`scripts/migrate_firestore.py`) e le
-  regole/indici vanno deployati. Restano da fare un export ricorrente di backup e una pulizia
-  dei `daily_path` più vecchi di un anno: dettagli in
-  [`docs/firebase_review.md`](docs/firebase_review.md).
+  regole/indici vanno deployati. Backup ricorrente e pulizia dello storico invece ci sono
+  ora, vedi [Backup e pulizia](#backup-e-pulizia).
+- **Materiale per allenamento e gruppo**: il grosso è il pool riservato (80 calciatori, fissi
+  finché non se ne riservano altri); le sfide passate sono la parte che cresce, e oggi ce n'è
+  **una sola**. I 111 documenti scritti dalla versione precedente del bot (dal 26/04/25 al
+  14/08/25) non erano utilizzabili — hanno le risposte ma non il percorso di carriera, solo un
+  `image_url` su un hosting esterno — e sono stati rimossi con
+  `scripts/cleanup_daily_paths.py`: comparivano anche nell'archivio, come giornate che si
+  aprivano senza immagine e senza modo di giocarle. Il pool riservato si allarga rieseguendo
+  `scripts/reserve_practice_players.py --ratio`, al prezzo di altrettanti giorni di autonomia
+  del gioco quotidiano.
+- **Confronto dopo un tentativo sbagliato**: vale sulla sfida del giorno, sull'archivio,
+  sull'allenamento e sui round di gruppo, non sugli eventi tematici. Gli eventi `career` e `transfer_guess` non chiedono un calciatore
+  ma una squadra, quindi il confronto per nazionalità/ruolo/età non avrebbe senso così com'è.

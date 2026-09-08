@@ -8,9 +8,19 @@
       "type": "path",
       "category": "percorso_lungo",
       "difficulty": "hard",
-      "rules": {"min_teams": 6},
+      "rules": {
+        "min_teams": 6
+      },
       "duration_days": 5,
-      "points_per_day": 2
+      "points_per_day": 2,
+      "name_i18n": {
+        "es": "Trotamundos",
+        "en": "Globetrotters"
+      },
+      "description_i18n": {
+        "es": "Futbolistas que han dado la vuelta al mundo: trayectorias con muchos equipos distintos.",
+        "en": "Players who travelled the world: career paths with many different clubs."
+      }
     },
     {
       "id": "un_amore_una_maglia",
@@ -19,9 +29,19 @@
       "type": "path",
       "category": "one_club_man",
       "difficulty": "medium",
-      "rules": {"max_teams": 2},
+      "rules": {
+        "max_teams": 2
+      },
       "duration_days": 4,
-      "points_per_day": 1
+      "points_per_day": 1,
+      "name_i18n": {
+        "es": "Un amor, una camiseta",
+        "en": "One love, one shirt"
+      },
+      "description_i18n": {
+        "es": "Emblemas: futbolistas ligados (casi) toda su carrera a un solo club.",
+        "en": "One-club men: players tied to a single club for (almost) their whole career."
+      }
     },
     {
       "id": "campionato_top",
@@ -30,9 +50,19 @@
       "type": "path",
       "category": "top_league",
       "difficulty": "medium",
-      "rules": {"leagues_only_top": true},
+      "rules": {
+        "leagues_only_top": true
+      },
       "duration_days": 4,
-      "points_per_day": 1
+      "points_per_day": 1,
+      "name_i18n": {
+        "es": "Solo grandes ligas",
+        "en": "Top leagues only"
+      },
+      "description_i18n": {
+        "es": "Trayectorias jugadas por completo en las 5 grandes ligas europeas.",
+        "en": "Careers played entirely in the five major European leagues."
+      }
     },
     {
       "id": "sudamerica",
@@ -41,9 +71,23 @@
       "type": "path",
       "category": "nazionalita",
       "difficulty": "medium",
-      "rules": {"nationality_in": ["Argentina", "Brasile", "Uruguay"]},
+      "rules": {
+        "nationality_in": [
+          "Argentina",
+          "Brasile",
+          "Uruguay"
+        ]
+      },
       "duration_days": 5,
-      "points_per_day": 1
+      "points_per_day": 1,
+      "name_i18n": {
+        "es": "Sudamérica protagonista",
+        "en": "South America in the spotlight"
+      },
+      "description_i18n": {
+        "es": "Futbolistas con raíces o etapas en Sudamérica.",
+        "en": "Players with South American roots or spells there."
+      }
     },
     {
       "id": "squadra_sorpresa",
@@ -52,9 +96,19 @@
       "type": "path",
       "category": "squadra_sorpresa",
       "difficulty": "hard",
-      "rules": {"requires_minor_league": true},
+      "rules": {
+        "requires_minor_league": true
+      },
       "duration_days": 5,
-      "points_per_day": 2
+      "points_per_day": 2,
+      "name_i18n": {
+        "es": "El equipo sorpresa",
+        "en": "The surprise club"
+      },
+      "description_i18n": {
+        "es": "Trayectorias con al menos una etapa en una liga menor o poco conocida.",
+        "en": "Career paths with at least one stop in a minor or little-known league."
+      }
     },
     {
       "id": "carriera_a_squadre",
@@ -63,10 +117,20 @@
       "type": "career",
       "category": "career_mode",
       "difficulty": "hard",
-      "rules": {"min_teams": 4},
+      "rules": {
+        "min_teams": 4
+      },
       "duration_days": 5,
       "points_per_day": 2,
-      "min_correct_ratio": 0.5
+      "min_correct_ratio": 0.5,
+      "name_i18n": {
+        "es": "Modo Carrera",
+        "en": "Career Mode"
+      },
+      "description_i18n": {
+        "es": "Adivina al menos la mitad de los equipos en los que jugó el futbolista misterioso.",
+        "en": "Guess at least half of the clubs the mystery player turned out for."
+      }
     },
     {
       "id": "weekend_transfer",
@@ -75,10 +139,20 @@
       "type": "transfer_guess",
       "category": "weekend_special",
       "difficulty": "medium",
-      "rules": {"min_teams": 3},
+      "rules": {
+        "min_teams": 3
+      },
       "duration_days": 2,
       "points_per_day": 2,
-      "weekend_only": true
+      "weekend_only": true,
+      "name_i18n": {
+        "es": "Fin de semana del traspaso",
+        "en": "Transfer weekend"
+      },
+      "description_i18n": {
+        "es": "Evento relámpago del fin de semana: adivina al futbolista a partir de un solo traspaso sonado.",
+        "en": "Weekend flash event: name the player from a single stunning transfer."
+      }
     },
     {
       "id": "esperti_del_pallone",
@@ -87,9 +161,20 @@
       "type": "path",
       "category": "difficolta_estrema",
       "difficulty": "impossible",
-      "rules": {"max_popularity": 2, "min_teams": 3},
+      "rules": {
+        "max_popularity": 2,
+        "min_teams": 3
+      },
       "duration_days": 4,
-      "points_per_day": 3
+      "points_per_day": 3,
+      "name_i18n": {
+        "es": "Expertos del balón",
+        "en": "Football experts"
+      },
+      "description_i18n": {
+        "es": "Evento reservado a los veteranos: solo futbolistas poco conocidos por el gran público.",
+        "en": "For the veterans only: players the wider public has never heard of."
+      }
     },
     {
       "id": "coppie_leggendarie",
@@ -102,7 +187,15 @@
       "duration_days": 4,
       "points_per_day": 1,
       "manual_only": true,
-      "manual_reason": "Richiede un dataset di coppie padre/figlio con immagini non ancora disponibile: creare l'evento manualmente da admin finche' il dataset non viene aggiunto."
+      "manual_reason": "Richiede un dataset di coppie padre/figlio con immagini non ancora disponibile: creare l'evento manualmente da admin finche' il dataset non viene aggiunto.",
+      "name_i18n": {
+        "es": "Parejas legendarias",
+        "en": "Legendary pairs"
+      },
+      "description_i18n": {
+        "es": "Adivina la pareja padre/hijo a partir de la imagen mostrada.",
+        "en": "Guess the father/son pair from the picture shown."
+      }
     }
   ]
 }

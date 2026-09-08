@@ -185,12 +185,21 @@ sola su dati veri, quindi devono essere giuste al primo colpo.
 
 ## Cosa resta da fare
 
-- **Export ricorrente**: l'export automatico di Firestore richiede il piano Blaze. In
-  alternativa, un workflow GitHub Actions settimanale che esegue la parte di backup dello
-  script di migrazione e archivia il JSON.
-- **Pulizia storica**: `daily_path` cresce di circa 365 documenti l'anno. Non è un problema
-  di costo, ma prima o poi conviene una regola TTL (o una cancellazione annuale) sui giorni
-  più vecchi di un anno.
+- ~~**Export ricorrente**~~ ✅ fatto: [`scripts/backup_firestore.py`](../scripts/backup_firestore.py)
+  esporta tutto in JSON — sotto-collezioni comprese, quindi anche i partecipanti agli eventi e
+  i membri delle leghe, che il backup dello script di migrazione non prendeva — e
+  [`.github/workflows/backup.yml`](../.github/workflows/backup.yml) lo esegue ogni lunedì
+  archiviando il file come artifact (365 giorni di conservazione). Si autentica con la stessa
+  Workload Identity Federation del deploy, quindi nessuna chiave di servizio nei secret: per
+  questo `firebase_service` ripiega sulle credenziali di default dell'ambiente quando il file
+  di chiave non c'è.
+- ~~**Pulizia storica**~~ ✅ fatto: [`scripts/cleanup_daily_paths.py`](../scripts/cleanup_daily_paths.py)
+  cancella le sfide oltre la finestra da conservare (un anno di default) e, se lo si chiede con
+  `--drop-legacy`, i documenti che il gioco non sa più aprire (id non ISO, percorso o risposte
+  mancanti). La sfida di oggi e il buffer dei giorni futuri sono esclusi per costruzione, e
+  prima di ogni cancellazione viene scritto un JSON con i documenti che stanno per sparire.
+  Non è un TTL automatico di proposito: una cancellazione ricorrente che nessuno guarda, su
+  una collezione che contiene le soluzioni, è il tipo di automatismo che si scopre rotto tardi.
 - **`show_stats_handler`** legge l'utente ad ogni apertura delle statistiche e ad ogni
   navigazione dei trofei: si può servire dalla `context.user_data` già presente, ma è una
   lettura per interazione, non per utente registrato — bassa priorità.

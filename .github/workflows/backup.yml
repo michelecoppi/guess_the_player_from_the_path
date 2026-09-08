@@ -1,0 +1,51 @@
+name: Backup Firestore
+
+# Export settimanale del database in un artifact. L'export gestito di Firestore richiede il
+# piano Blaze e un bucket; il database qui e' piccolo e un JSON alla settimana e' un backup
+# che si legge e si ripristina. Vedi docs/firebase_review.md.
+#
+# L'autenticazione e' la stessa del deploy (Workload Identity Federation, WIF_PROVIDER /
+# WIF_SERVICE_ACCOUNT): nessuna chiave di servizio nei secret. Il service account deve poter
+# leggere Firestore (ruolo roles/datastore.viewer).
+on:
+  schedule:
+    - cron: "30 3 * * 1"   # ogni lunedi' alle 03:30 UTC
+  workflow_dispatch:        # e a mano, quando serve una copia prima di toccare i dati
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installa le dipendenze
+        run: pip install -r requirements.txt
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Esporta Firestore
+        env:
+          # Senza file di chiave services/firebase_service.py ripiega sulle credenziali
+          # dell'ambiente, che qui sono quelle appena ottenute con WIF.
+          GOOGLE_CLOUD_PROJECT: guess-the-player-from-path-bot
+        run: python scripts/backup_firestore.py --out backup
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firestore-backup
+          path: backup/*.json
+          # Un anno di copie settimanali: abbastanza per accorgersi di un danno fatto mesi
+          # prima, che e' il caso in cui un backup serve davvero.
+          retention-days: 365

@@ -15,6 +15,7 @@ Convenzioni del modello dati (vedi docs/firebase_review.md per il perche'):
   una mappa dentro l'evento: niente limite di 1 MB e niente contesa in scrittura.
 """
 import logging
+import os
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -42,6 +43,21 @@ FATHER_SON_COLLECTION = "father_son_pairs"
 ARCHIVE_SUBCOLLECTION = "archive"
 LEAGUES_COLLECTION = "leagues"
 MEMBERS_SUBCOLLECTION = "members"
+GROUP_ROUNDS_COLLECTION = "group_rounds"
+GROUP_PLAYERS_SUBCOLLECTION = "players"
+
+
+def _credentials():
+    """Il file di chiave se c'e', altrimenti le credenziali di default dell'ambiente.
+
+    Il file resta il modo normale (sviluppo e Cloud Run). Il ripiego serve a chi gira senza
+    chiave perche' l'identita' gliela da' l'ambiente: il workflow di backup su GitHub
+    Actions si autentica con Workload Identity Federation, e una chiave di servizio in un
+    secret sarebbe esattamente il file che quel meccanismo esiste per non avere."""
+    if FIREBASE_CREDENTIALS_PATH and os.path.exists(FIREBASE_CREDENTIALS_PATH):
+        return credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+    logging.info("[FIREBASE] Nessun file di credenziali: uso le credenziali di default dell'ambiente")
+    return credentials.ApplicationDefault()
 
 
 class _LazyFirestoreClient:
@@ -53,9 +69,8 @@ class _LazyFirestoreClient:
 
     def _ensure(self):
         if _LazyFirestoreClient._client is None:
-            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
             if not firebase_admin._apps:
-                firebase_admin.initialize_app(cred)
+                firebase_admin.initialize_app(_credentials())
             _LazyFirestoreClient._client = firestore.client()
         return _LazyFirestoreClient._client
 
@@ -397,8 +412,12 @@ def set_archive_day(user_id, day_iso):
     """Il giorno d'archivio che l'utente sta giocando, o None per tornare a oggi.
 
     Sta sul documento utente e non in memoria di processo perche' su Cloud Run l'istanza
-    puo' sparire fra un messaggio e l'altro: la partita in corso deve sopravvivere."""
-    user_ref(user_id).update({"archive_day": day_iso})
+    puo' sparire fra un messaggio e l'altro: la partita in corso deve sopravvivere.
+
+    Aprire una sfida d'archivio chiude l'allenamento (e viceversa, vedi
+    `set_training_day`): con due partite aperte insieme bisognerebbe decidere ad ogni
+    messaggio a quale delle due risponde, che e' una regola che nessuno puo' indovinare."""
+    user_ref(user_id).update({"archive_day": day_iso, "training_key": None})
 
 
 def get_archive_result(user_id, day_iso):
@@ -448,6 +467,171 @@ def get_upcoming_daily_paths(limit=7):
         "day", direction=firestore.Query.DESCENDING
     ).limit(limit).stream()
     return [doc.to_dict() for doc in docs]
+
+
+# ---------------------------------------------------------------------------
+# Allenamento (sfide passate, infinite, senza punti)
+# ---------------------------------------------------------------------------
+
+def set_training_key(user_id, key):
+    """Apre una sessione di allenamento sulla sfida indicata.
+
+    La chiave dice anche da dove viene la sfida (`pool:maldini` o `day:2026-09-07`), quindi
+    riprendere la sessione non richiede di indovinare la sorgente.
+
+    Come per l'archivio lo stato sta sul documento utente e non in memoria: su Cloud Run
+    l'istanza puo' sparire fra un messaggio e l'altro. Aprire l'allenamento chiude
+    l'archivio (e viceversa): due partite aperte contemporaneamente vorrebbero dire
+    decidere ad ogni messaggio a quale delle due risponde, che e' una regola che nessuno
+    puo' indovinare."""
+    user_ref(user_id).update({"training_key": key, "training_attempts": 0, "archive_day": None})
+
+
+def clear_training_key(user_id):
+    user_ref(user_id).update({"training_key": None, "training_attempts": 0})
+
+
+def register_training_attempt(user_id):
+    """Un tentativo di allenamento. Non e' una transazione perche' non c'e' niente da
+    proteggere: nessun punto, nessun bonus, e chi si allena e' uno solo davanti alla
+    propria chat."""
+    user_ref(user_id).update({"training_attempts": firestore.Increment(1)})
+
+
+def register_training_solved(user_id):
+    """Nessun punto, come l'archivio: si tiene solo il conto, che finisce in /stats."""
+    user_ref(user_id).update({
+        "training_key": None,
+        "training_attempts": 0,
+        "training_solved": firestore.Increment(1),
+    })
+
+
+# ---------------------------------------------------------------------------
+# Partite di gruppo (sfide passate, punteggio solo dentro il gruppo)
+# ---------------------------------------------------------------------------
+
+def group_round_ref(chat_id):
+    return db.collection(GROUP_ROUNDS_COLLECTION).document(str(chat_id))
+
+
+def group_player_ref(chat_id, user_id):
+    return group_round_ref(chat_id).collection(GROUP_PLAYERS_SUBCOLLECTION).document(str(user_id))
+
+
+def get_group_round(chat_id):
+    snapshot = group_round_ref(chat_id).get()
+    return snapshot.to_dict() if snapshot.exists else None
+
+
+def start_group_round(chat_id, challenge, recent_kept=30):
+    """Apre un round nuovo e ritorna il documento salvato.
+
+    Sul round si copiano le risposte accettate, la difficolta' e il `player_id`: cosi' ogni
+    tentativo del gruppo costa la lettura del round e basta, invece di quella del round
+    **piu'** quella della sfida originale. Il percorso di carriera invece non si copia: si
+    ridisegna al momento, e duplicarlo farebbe crescere un documento che viene riletto ad
+    ogni risposta.
+
+    `number` e' il contatore dei round del gruppo: serve ad azzerare i tentativi dei
+    giocatori senza scrivere su ogni loro documento (chi ha un numero vecchio riparte da
+    zero da solo, come i contatori giornalieri con `last_played_day`)."""
+    previous = get_group_round(chat_id) or {}
+    key = challenge["key"]
+    recent = [entry for entry in previous.get("recent_keys", []) if entry != key]
+    recent.append(key)
+
+    doc = {
+        "chat_id": chat_id,
+        "number": previous.get("number", 0) + 1,
+        "key": key,
+        "player_id": challenge.get("player_id"),
+        "difficulty": challenge.get("difficulty"),
+        "correct_answers": challenge.get("correct_answers", []),
+        "solved_by": None,
+        "solved_name": None,
+        "started_at": firestore.SERVER_TIMESTAMP,
+        "recent_keys": recent[-recent_kept:],
+    }
+    group_round_ref(chat_id).set(doc)
+    logging.info(f"[GROUP] Round {doc['number']} aperto in {chat_id} su {key}")
+    return doc
+
+
+def begin_group_attempt(chat_id, user_id, round_number, name, max_attempts):
+    """Consuma un tentativo del giocatore in questo round.
+
+    Un documento per giocatore (come i partecipanti a un evento) e non una mappa dentro il
+    round: in un gruppo che risponde a raffica una mappa sola sarebbe un punto di contesa
+    in scrittura, e prima o poi il limite di 1 MB."""
+    ref = group_player_ref(chat_id, user_id)
+
+    @firestore.transactional
+    def _attempt(transaction):
+        snapshot = ref.get(transaction=transaction)
+        data = snapshot.to_dict() if snapshot.exists else {}
+
+        # Tentativi di un round precedente: valgono zero senza averli azzerati.
+        same_round = data.get("round") == round_number
+        attempts = data.get("attempts", 0) if same_round else 0
+
+        if attempts >= max_attempts:
+            return {"ok": False, "reason": "no_attempts"}
+
+        transaction.set(ref, {
+            "telegram_id": user_id,
+            "name": name,
+            "round": round_number,
+            "attempts": attempts + 1,
+            "points": data.get("points", 0),
+            "rounds_won": data.get("rounds_won", 0),
+        }, merge=True)
+        return {"ok": True, "attempts_used": attempts + 1, "attempts_left": max_attempts - (attempts + 1)}
+
+    return _attempt(db.transaction())
+
+
+def claim_group_round(chat_id, round_number, user_id, name):
+    """Assegna il round a chi ha risposto per primo, una volta sola.
+
+    Stessa transazione del bonus del primo sulla sfida del giorno: in un gruppo due
+    risposte giuste nello stesso istante sono la norma, non l'eccezione."""
+    ref = group_round_ref(chat_id)
+
+    @firestore.transactional
+    def _claim(transaction):
+        snapshot = ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return False
+        data = snapshot.to_dict()
+        if data.get("number") != round_number or data.get("solved_by"):
+            return False
+        transaction.update(ref, {"solved_by": user_id, "solved_name": name})
+        return True
+
+    return _claim(db.transaction())
+
+
+def add_group_points(chat_id, user_id, name, points):
+    """I punti restano dentro il gruppo: non toccano ne' la classifica generale ne' quella
+    del mese. E' quello che rende la modalita' non farmabile - un gruppo con un account
+    secondario non sposta niente di quello che conta."""
+    group_player_ref(chat_id, user_id).set({
+        "telegram_id": user_id,
+        "name": name,
+        "points": firestore.Increment(points),
+        "rounds_won": firestore.Increment(1),
+    }, merge=True)
+
+
+def get_group_leaderboard(chat_id, limit=10):
+    query = (
+        group_round_ref(chat_id)
+        .collection(GROUP_PLAYERS_SUBCOLLECTION)
+        .order_by("points", direction=firestore.Query.DESCENDING)
+        .limit(limit)
+    )
+    return [doc.to_dict() for doc in query.stream()]
 
 
 # ---------------------------------------------------------------------------

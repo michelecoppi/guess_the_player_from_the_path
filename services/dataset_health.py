@@ -12,6 +12,7 @@ from services.player_pool import (
     _load_raw_players,
     filter_players,
     get_all_players,
+    is_practice_only,
     load_config,
     validate_dataset,
 )
@@ -83,7 +84,10 @@ def build_report(exclude_ids=None):
         "total": len(raw_players),
         "verified": sum(1 for p in raw_players if p.get("verified")),
         "selectable": len(selectable),
-        "excluded": len(raw_players) - len(selectable),
+        # Riservati e scartati vanno contati separatamente: i primi sono una scelta (fanno
+        # da materiale per l'allenamento), i secondi un problema da guardare.
+        "practice_reserved": sum(1 for p in raw_players if is_practice_only(p)),
+        "excluded": len(raw_players) - len(selectable) - sum(1 for p in raw_players if is_practice_only(p)),
         "history_days_no_repeat": history_days,
         "autonomy_days": len(selectable),
         "by_difficulty": by_difficulty,
@@ -98,6 +102,7 @@ def format_report_text(report):
         f"Giocatori nel dataset: {report['total']}",
         f"  verificati: {report['verified']}",
         f"  selezionabili in automatico: {report['selectable']}",
+        f"  riservati all'allenamento (mai come sfida del giorno): {report['practice_reserved']}",
         f"  esclusi (non verificati o dati incompleti): {report['excluded']}",
         "",
         f"Autonomia senza ripetizioni: {report['autonomy_days']} giorni "

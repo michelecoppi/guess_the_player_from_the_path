@@ -86,6 +86,8 @@ def build_father_son_event(pairs, start_date, template, duration_days=None):
         "template_id": template["id"],
         "name": template["name"],
         "description": template["description"],
+        "name_i18n": template.get("name_i18n", {}),
+        "description_i18n": template.get("description_i18n", {}),
         "type": template["type"],
         "category": template.get("category"),
         "difficulty": template.get("difficulty"),

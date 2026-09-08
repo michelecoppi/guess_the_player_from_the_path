@@ -18,14 +18,24 @@ from services.i18n import resolve_language, t
 CALLBACK_PREFIX = "menu_"
 
 # Comando -> chiave della descrizione mostrata nel menu "/" di Telegram.
+#
+# I nomi sono in **inglese**, anche nel menu italiano: la descrizione accanto e' tradotta,
+# il comando no. Un bot che parla tre lingue con tre serie di comandi diversi obbligherebbe
+# a scriverne una versione per lingua in ogni messaggio ("torna a oggi con /oggi" per un
+# italiano, "con /today" per un inglese), e chi cambia lingua si ritroverebbe i comandi che
+# ha imparato a non funzionare piu'.
+#
+# Gli alias italiani restano registrati in bot.py (/archivio, /oggi, /lega...): chi li ha
+# imparati continua a usarli, semplicemente non sono piu' quelli che il bot suggerisce.
 COMMAND_KEYS = (
     ("start", "cmd.start"),
     ("show", "cmd.show"),
     ("stats", "cmd.stats"),
     ("top", "cmd.top"),
     ("events", "cmd.events"),
-    ("archivio", "cmd.archive"),
-    ("lega", "cmd.league"),
+    ("archive", "cmd.archive"),
+    ("training", "cmd.training"),
+    ("league", "cmd.league"),
     ("notify", "cmd.notify"),
     ("language", "cmd.language"),
     ("help", "cmd.help"),
@@ -48,9 +58,9 @@ def menu_keyboard(lang):
     rows = [
         [_button(lang, "menu.play", "play"), _button(lang, "menu.events", "events")],
         [_button(lang, "menu.stats", "stats"), _button(lang, "menu.top", "top")],
-        [_button(lang, "menu.archive", "archive"), _button(lang, "menu.leagues", "leagues")],
-        [_button(lang, "menu.notify", "notify"), _button(lang, "menu.language", "language")],
-        [_button(lang, "menu.help", "help")],
+        [_button(lang, "menu.archive", "archive"), _button(lang, "menu.training", "training")],
+        [_button(lang, "menu.leagues", "leagues"), _button(lang, "menu.notify", "notify")],
+        [_button(lang, "menu.language", "language"), _button(lang, "menu.help", "help")],
     ]
     if WEBAPP_URL:
         # La mini app e' un di piu': se non e' configurata il menu resta identico a prima.

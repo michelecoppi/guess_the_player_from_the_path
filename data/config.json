@@ -59,5 +59,6 @@
     "extra_countries": 0.5,
     "extra_teams": 0.2
   },
+  "practice_past_challenge_ratio": 0.25,
   "game_epoch": "2025-06-08"
 }

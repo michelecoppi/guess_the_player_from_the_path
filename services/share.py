@@ -33,8 +33,12 @@ def bot_link():
     return f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else ""
 
 
-def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0):
-    lines = [t(lang, "share.title", number=number)]
+def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0, archive=False):
+    """`archive=True` marca il risultato come recuperato dall'archivio: il numero della
+    sfida basterebbe a distinguerlo da quella di oggi, ma in un gruppo dove la sfida di
+    oggi e' ancora aperta la riga va letta al volo, non confrontata con un calendario."""
+    title_key = "share.archive_title" if archive else "share.title"
+    lines = [t(lang, title_key, number=number)]
 
     score = f"{attempts_used}/{max_attempts}" if solved else f"X/{max_attempts}"
     line = f"{result_squares(attempts_used, max_attempts, solved)} {score}"

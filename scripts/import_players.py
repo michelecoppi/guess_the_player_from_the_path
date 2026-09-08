@@ -120,6 +120,13 @@ def import_players(paths, update=False, force_verified=False, dry_run=False):
             if not update:
                 skipped.append(player_id)
                 continue
+            # `practice_only` non si perde reimportando la scheda: se un giocatore riservato
+            # all'allenamento tornasse nel giro delle sfide, chi si e' allenato su di lui si
+            # ritroverebbe la risposta gia' pronta il giorno in cui esce. Per toglierlo dalla
+            # riserva bisogna dirlo esplicitamente nel batch.
+            previous = existing[by_id[player_id]]
+            if previous.get("practice_only") and "practice_only" not in raw_player:
+                player["practice_only"] = True
             existing[by_id[player_id]] = player
             updated.append(player_id)
         else:

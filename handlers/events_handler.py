@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 
 from services import firebase_service
 from services.dates import to_display, today_iso
-from services.i18n import resolve_language, t
+from services.i18n import content_text, resolve_language, t
 from services.matching import find_match, normalize
 from services.path_image import render_career_path_image, render_event_banner
 
@@ -91,10 +91,16 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
     )
 
 
+def _event_name(event, lang):
+    """Il nome dell'evento nella lingua di chi guarda: sta nel documento dell'evento
+    (`name_i18n`), non fra le traduzioni, ed e' l'italiano se manca."""
+    return content_text(event, "name", lang, default=t(lang, "events.unnamed"))
+
+
 def _event_banner(event, lang, badge_key="image.badge_event"):
     return render_event_banner(
-        event.get("name", t(lang, "events.unnamed")),
-        event.get("description", "") if badge_key == "image.badge_event" else "",
+        _event_name(event, lang),
+        content_text(event, "description", lang) if badge_key == "image.badge_event" else "",
         badge_text=t(lang, badge_key),
     )
 
@@ -107,8 +113,8 @@ def _lang_for(telegram_user):
 
 
 def get_event_home_message(event, lang="it"):
-    name = event.get("name", t(lang, "events.unnamed"))
-    description = event.get("description", "")
+    name = _event_name(event, lang)
+    description = content_text(event, "description", lang)
     dates = event.get("dates", [])
     end_date = to_display(dates[-1]) if dates else t(lang, "events.no_end_date")
 
@@ -135,8 +141,8 @@ def get_today_player_message(event, lang="it"):
             career_path,
             title=t(lang, "image.path_title"),
             subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
-            badge=event.get("name", "").upper()[:22] or None,
-            footer=event.get("name"),
+            badge=_event_name(event, lang).upper()[:22] or None,
+            footer=_event_name(event, lang),
         )
     elif today_data.get("image_url"):
         image_url = today_data["image_url"]

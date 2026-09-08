@@ -975,7 +975,8 @@
           "apps": 275,
           "goals": 27
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "salah",
@@ -1511,7 +1512,8 @@
           "apps": 12,
           "goals": 10
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "bale",
@@ -1641,7 +1643,8 @@
           "apps": 4,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "dybala",
@@ -2075,7 +2078,8 @@
           "apps": 91,
           "goals": 36
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "zidane",
@@ -2373,7 +2377,8 @@
           "apps": 21,
           "goals": 13
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "eto_o",
@@ -2618,7 +2623,8 @@
           "end_year": null,
           "apps": 391
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "casillas",
@@ -2674,7 +2680,8 @@
           "goals": 12
         }
       ],
-      "one_club_career": true
+      "one_club_career": true,
+      "practice_only": true
     },
     {
       "id": "ramos",
@@ -2853,7 +2860,8 @@
           "apps": 306,
           "goals": 22
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "muller",
@@ -2937,7 +2945,8 @@
           "apps": 30,
           "goals": 6
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "gerrard",
@@ -2970,7 +2979,8 @@
           "apps": 34,
           "goals": 5
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "lampard",
@@ -3271,7 +3281,8 @@
           "apps": 29,
           "goals": 7
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "firmino",
@@ -3727,7 +3738,8 @@
           "apps": 5,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "chiellini",
@@ -3972,7 +3984,8 @@
           "apps": 38,
           "goals": 5
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "donnarumma",
@@ -4372,7 +4385,8 @@
           "apps": 28,
           "goals": 8
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "fernando_torres",
@@ -4462,7 +4476,8 @@
           "apps": 35,
           "goals": 5
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "david_villa",
@@ -4674,7 +4689,8 @@
           "apps": 79,
           "goals": 5
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "jordi_alba",
@@ -4735,7 +4751,8 @@
           "apps": 65,
           "goals": 11
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "de_gea",
@@ -4937,7 +4954,8 @@
           "apps": 43,
           "goals": 5
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "deco",
@@ -5094,7 +5112,8 @@
           "apps": 132,
           "goals": 7
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "bruno_fernandes",
@@ -5816,7 +5835,8 @@
           "apps": 13,
           "goals": 2
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "batistuta",
@@ -6784,7 +6804,8 @@
           "apps": 119,
           "goals": 4
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "ronaldo_nazario",
@@ -7007,7 +7028,8 @@
           "end_year": null,
           "apps": 258
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "marcelo",
@@ -7092,7 +7114,8 @@
           "apps": 270,
           "goals": 134
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "julian_alvarez",
@@ -7268,7 +7291,8 @@
           "apps": 106,
           "goals": 12
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "crespo",
@@ -7375,7 +7399,8 @@
           "apps": 46,
           "goals": 10
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "veron",
@@ -7501,7 +7526,8 @@
           "apps": 0,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "van_basten",
@@ -7534,7 +7560,8 @@
           "apps": 147,
           "goals": 90
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "bergkamp",
@@ -7723,7 +7750,8 @@
           "apps": 58,
           "goals": 16
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "sneijder",
@@ -8142,7 +8170,8 @@
           "apps": 3,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "courtois",
@@ -8260,7 +8289,8 @@
           "apps": 14,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "schweinsteiger",
@@ -8362,7 +8392,8 @@
           "apps": 139,
           "goals": 54
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "podolski",
@@ -8529,7 +8560,8 @@
           "apps": 35,
           "goals": 2
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "gotze",
@@ -8589,7 +8621,8 @@
           "apps": 107,
           "goals": 9
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "reus",
@@ -8800,7 +8833,8 @@
           "loan": true,
           "apps": 4
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "lahm",
@@ -9051,7 +9085,8 @@
           "apps": 247,
           "goals": 51
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "vidic",
@@ -9370,7 +9405,8 @@
           "apps": 9,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "shevchenko",
@@ -9613,7 +9649,8 @@
           "apps": 90,
           "goals": 23
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "yaya_toure",
@@ -10103,7 +10140,8 @@
           "apps": 24,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "odegaard",
@@ -10235,7 +10273,8 @@
           "apps": 228,
           "goals": 68
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "rashford",
@@ -10442,7 +10481,8 @@
           "apps": 3,
           "goals": 4
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "recoba",
@@ -11353,7 +11393,8 @@
           "goals": 10
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "kanu",
@@ -11537,7 +11578,8 @@
           "goals": 0
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "panucci",
@@ -11626,7 +11668,8 @@
           "goals": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "montella",
@@ -12220,7 +12263,8 @@
           "goals": 2
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "burdisso",
@@ -12280,7 +12324,8 @@
           "goals": 0
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "maxi_rodriguez",
@@ -12359,7 +12404,8 @@
           "goals": 9
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "muntari",
@@ -12902,7 +12948,8 @@
           "goals": 35
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "dunga",
@@ -13197,7 +13244,8 @@
           "goals": 0
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "hidetoshi_nakata",
@@ -13277,7 +13325,8 @@
           "goals": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "shunsuke_nakamura",
@@ -13639,7 +13688,8 @@
           "goals": 4
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "freddy_adu",
@@ -14877,7 +14927,8 @@
           "goals": 0
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "pato",
@@ -15056,7 +15107,8 @@
           "apps": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "jankto",
@@ -15402,7 +15454,8 @@
           "goals": 10
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "candreva",
@@ -15659,7 +15712,8 @@
           "goals": 14
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "duvan_zapata",
@@ -15958,7 +16012,8 @@
           "goals": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "kalinic",
@@ -16243,7 +16298,8 @@
           "goals": 0
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "drinkwater",
@@ -16365,7 +16421,8 @@
           "goals": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "ross_barkley",
@@ -16455,7 +16512,8 @@
           "goals": 6
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "andros_townsend",
@@ -17021,7 +17079,8 @@
           "goals": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "aduriz",
@@ -17109,7 +17168,8 @@
           "goals": 96
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "vitolo",
@@ -18073,7 +18133,7 @@
       "nationality": "Serbia",
       "position": "Attaccante",
       "birth_year": 1991,
-      "popularity": 2,
+      "popularity": 3,
       "career": [
         {
           "team": "Partizan",
@@ -18189,7 +18249,7 @@
       "nationality": "Argentina",
       "position": "Difensore",
       "birth_year": 1986,
-      "popularity": 1,
+      "popularity": 3,
       "career": [
         {
           "team": "Newell's Old Boys",
@@ -18278,7 +18338,7 @@
       "nationality": "Cile",
       "position": "Attaccante",
       "birth_year": 1984,
-      "popularity": 1,
+      "popularity": 3,
       "career": [
         {
           "team": "Universidad de Chile",
@@ -18489,7 +18549,7 @@
       "nationality": "Argentina",
       "position": "Attaccante",
       "birth_year": 1993,
-      "popularity": 1,
+      "popularity": 2,
       "career": [
         {
           "team": "Cerro Porteno",
@@ -18625,7 +18685,7 @@
       "nationality": "Brasile",
       "position": "Difensore",
       "birth_year": 1990,
-      "popularity": 1,
+      "popularity": 2,
       "career": [
         {
           "team": "Bragantino",
@@ -18920,7 +18980,8 @@
           "goals": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "bebe",
@@ -19077,7 +19138,8 @@
           "goals": 9
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "royston_drenthe",
@@ -20559,7 +20621,8 @@
           "apps": 69,
           "goals": 1
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "maxi_moralez",
@@ -20853,7 +20916,8 @@
           "apps": 79,
           "goals": 6
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "giovanni_sio",
@@ -21145,7 +21209,7 @@
       "nationality": "Jugoslavia",
       "position": "Difensore",
       "birth_year": 1973,
-      "popularity": 3,
+      "popularity": 1,
       "verified": true,
       "career": [
         {
@@ -23088,7 +23152,8 @@
           "apps": 13,
           "goals": 2
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "andrija_delibasic",
@@ -23100,7 +23165,7 @@
       "nationality": "Montenegro",
       "position": "Attaccante",
       "birth_year": 1981,
-      "popularity": 3,
+      "popularity": 1,
       "verified": true,
       "career": [
         {
@@ -23548,7 +23613,8 @@
           "apps": 7,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "jhon_cordoba",
@@ -23665,7 +23731,8 @@
           "apps": 121,
           "goals": 65
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "rony_lopes",
@@ -23890,7 +23957,8 @@
           "apps": 18,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "abdul_kader_keita",
@@ -23986,7 +24054,8 @@
           "apps": 2,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "giovanni",
@@ -24260,7 +24329,8 @@
           "apps": 0,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "fernando_baiano",
@@ -24527,7 +24597,8 @@
           "apps": 49,
           "goals": 16
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "paulo_rink",
@@ -24660,7 +24731,8 @@
           "apps": 13,
           "goals": 1
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "jimmy_durmaz",
@@ -25156,7 +25228,8 @@
           "apps": 14,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "ali_adnan_kadhim",
@@ -25279,7 +25352,8 @@
           "start_year": 2026,
           "end_year": null
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "joao_victor",
@@ -25644,7 +25718,7 @@
       "nationality": "Georgia",
       "position": "Difensore",
       "birth_year": 1981,
-      "popularity": 3,
+      "popularity": 1,
       "verified": true,
       "career": [
         {
@@ -26430,7 +26504,8 @@
           "apps": 4,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "christopher_wreh",
@@ -26989,7 +27064,8 @@
           "apps": 16,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "karim_hafez",
@@ -27100,7 +27176,8 @@
           "apps": 79,
           "goals": 3
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "ismael_bangoura",
@@ -27609,7 +27686,8 @@
           "apps": 11,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "derek_boateng",
@@ -27829,7 +27907,8 @@
           "apps": 7,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "julian_jeanvier",
@@ -28023,6 +28102,2297 @@
           "end_year": 2008,
           "apps": 11,
           "goals": 2
+        }
+      ],
+      "practice_only": true
+    },
+    {
+      "id": "maradona",
+      "full_name": "Diego Armando Maradona",
+      "aliases": [
+        "maradona",
+        "diego maradona",
+        "diego armando maradona",
+        "el pibe de oro"
+      ],
+      "nationality": "Argentina",
+      "position": "Attaccante",
+      "birth_year": 1960,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Argentinos Juniors",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1976,
+          "end_year": 1981,
+          "apps": 166,
+          "goals": 116
+        },
+        {
+          "team": "Boca Juniors",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1981,
+          "end_year": 1982,
+          "apps": 40,
+          "goals": 28
+        },
+        {
+          "team": "Barcelona",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1982,
+          "end_year": 1984,
+          "apps": 58,
+          "goals": 38
+        },
+        {
+          "team": "Napoli",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1984,
+          "end_year": 1991,
+          "apps": 259,
+          "goals": 115
+        },
+        {
+          "team": "Siviglia",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1992,
+          "end_year": 1993,
+          "apps": 26,
+          "goals": 5
+        },
+        {
+          "team": "Newell's Old Boys",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1993,
+          "end_year": 1994,
+          "apps": 5,
+          "goals": 0
+        },
+        {
+          "team": "Boca Juniors",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1995,
+          "end_year": 1997,
+          "apps": 30,
+          "goals": 7
+        }
+      ]
+    },
+    {
+      "id": "pele",
+      "full_name": "Edson Arantes do Nascimento",
+      "aliases": [
+        "pele",
+        "edson arantes do nascimento",
+        "o rei"
+      ],
+      "nationality": "Brasile",
+      "position": "Attaccante",
+      "birth_year": 1940,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Santos",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1956,
+          "end_year": 1974,
+          "apps": 636,
+          "goals": 619
+        },
+        {
+          "team": "New York Cosmos",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1975,
+          "end_year": 1977,
+          "apps": 64,
+          "goals": 37
+        }
+      ]
+    },
+    {
+      "id": "cruyff",
+      "full_name": "Johan Cruyff",
+      "aliases": [
+        "cruyff",
+        "johan cruyff",
+        "cruijff"
+      ],
+      "nationality": "Olanda",
+      "position": "Attaccante",
+      "birth_year": 1947,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Ajax",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 1964,
+          "end_year": 1973,
+          "apps": 240,
+          "goals": 190
+        },
+        {
+          "team": "Barcelona",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1973,
+          "end_year": 1978,
+          "apps": 143,
+          "goals": 48
+        },
+        {
+          "team": "Los Angeles Aztecs",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1979,
+          "end_year": 1980,
+          "apps": 27,
+          "goals": 14
+        },
+        {
+          "team": "Washington Diplomats",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1980,
+          "end_year": 1981,
+          "apps": 24,
+          "goals": 10
+        },
+        {
+          "team": "Levante",
+          "country": "Spagna",
+          "league": "Segunda Division",
+          "start_year": 1981,
+          "end_year": 1981,
+          "apps": 10,
+          "goals": 2
+        },
+        {
+          "team": "Ajax",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 1981,
+          "end_year": 1983,
+          "apps": 36,
+          "goals": 14
+        },
+        {
+          "team": "Feyenoord",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 1983,
+          "end_year": 1984,
+          "apps": 33,
+          "goals": 11
+        }
+      ]
+    },
+    {
+      "id": "beckenbauer",
+      "full_name": "Franz Beckenbauer",
+      "aliases": [
+        "beckenbauer",
+        "franz beckenbauer",
+        "der kaiser"
+      ],
+      "nationality": "Germania",
+      "position": "Difensore",
+      "birth_year": 1945,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Bayern Monaco",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1964,
+          "end_year": 1977,
+          "apps": 427,
+          "goals": 60
+        },
+        {
+          "team": "New York Cosmos",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1977,
+          "end_year": 1980,
+          "apps": 105,
+          "goals": 18
+        },
+        {
+          "team": "Amburgo",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1980,
+          "end_year": 1982,
+          "apps": 55,
+          "goals": 5
+        },
+        {
+          "team": "New York Cosmos",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1983,
+          "end_year": 1983,
+          "apps": 27,
+          "goals": 1
+        }
+      ]
+    },
+    {
+      "id": "gullit",
+      "full_name": "Ruud Gullit",
+      "aliases": [
+        "gullit",
+        "ruud gullit"
+      ],
+      "nationality": "Olanda",
+      "position": "Centrocampista",
+      "birth_year": 1962,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Haarlem",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 1979,
+          "end_year": 1982,
+          "apps": 91,
+          "goals": 32
+        },
+        {
+          "team": "Feyenoord",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 1982,
+          "end_year": 1985,
+          "apps": 85,
+          "goals": 30
+        },
+        {
+          "team": "PSV Eindhoven",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 1985,
+          "end_year": 1987,
+          "apps": 68,
+          "goals": 46
+        },
+        {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1987,
+          "end_year": 1993,
+          "apps": 117,
+          "goals": 33
+        },
+        {
+          "team": "Sampdoria",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1993,
+          "end_year": 1994,
+          "apps": 25,
+          "goals": 6
+        },
+        {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1994,
+          "end_year": 1995,
+          "apps": 22,
+          "goals": 2
+        },
+        {
+          "team": "Sampdoria",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1995,
+          "end_year": 1996,
+          "apps": 14,
+          "goals": 1
+        },
+        {
+          "team": "Chelsea",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1995,
+          "end_year": 1998,
+          "apps": 49,
+          "goals": 5
+        }
+      ]
+    },
+    {
+      "id": "platini",
+      "full_name": "Michel Platini",
+      "aliases": [
+        "platini",
+        "michel platini"
+      ],
+      "nationality": "Francia",
+      "position": "Centrocampista",
+      "birth_year": 1955,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Nancy",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1972,
+          "end_year": 1979,
+          "apps": 181,
+          "goals": 98
+        },
+        {
+          "team": "Saint-Etienne",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1979,
+          "end_year": 1982,
+          "apps": 104,
+          "goals": 58
+        },
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1982,
+          "end_year": 1987,
+          "apps": 147,
+          "goals": 68
+        }
+      ]
+    },
+    {
+      "id": "shearer",
+      "full_name": "Alan Shearer",
+      "aliases": [
+        "shearer",
+        "alan shearer"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Attaccante",
+      "birth_year": 1970,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Southampton",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1988,
+          "end_year": 1992,
+          "apps": 118,
+          "goals": 23
+        },
+        {
+          "team": "Blackburn Rovers",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1992,
+          "end_year": 1996,
+          "apps": 138,
+          "goals": 112
+        },
+        {
+          "team": "Newcastle United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1996,
+          "end_year": 2006,
+          "apps": 303,
+          "goals": 148
+        }
+      ]
+    },
+    {
+      "id": "baresi",
+      "full_name": "Franco Baresi",
+      "aliases": [
+        "baresi",
+        "franco baresi"
+      ],
+      "nationality": "Italia",
+      "position": "Difensore",
+      "birth_year": 1960,
+      "popularity": 4,
+      "verified": true,
+      "one_club_career": true,
+      "career": [
+        {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1977,
+          "end_year": 1997,
+          "apps": 531,
+          "goals": 33
+        }
+      ]
+    },
+    {
+      "id": "zanetti",
+      "full_name": "Javier Zanetti",
+      "aliases": [
+        "zanetti",
+        "javier zanetti"
+      ],
+      "nationality": "Argentina",
+      "position": "Difensore",
+      "birth_year": 1973,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Independiente",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1992,
+          "end_year": 1995,
+          "apps": 87,
+          "goals": 3
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1995,
+          "end_year": 2014,
+          "apps": 615,
+          "goals": 18
+        }
+      ]
+    },
+    {
+      "id": "kahn",
+      "full_name": "Oliver Kahn",
+      "aliases": [
+        "kahn",
+        "oliver kahn"
+      ],
+      "nationality": "Germania",
+      "position": "Portiere",
+      "birth_year": 1969,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Karlsruhe",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1987,
+          "end_year": 1994,
+          "apps": 180,
+          "goals": 0
+        },
+        {
+          "team": "Bayern Monaco",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1994,
+          "end_year": 2008,
+          "apps": 429,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "charlton",
+      "full_name": "Bobby Charlton",
+      "aliases": [
+        "charlton",
+        "bobby charlton"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Centrocampista",
+      "birth_year": 1937,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Manchester United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1956,
+          "end_year": 1973,
+          "apps": 606,
+          "goals": 249
+        },
+        {
+          "team": "Preston North End",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 1974,
+          "end_year": 1975,
+          "apps": 38,
+          "goals": 8
+        }
+      ]
+    },
+    {
+      "id": "matthaus",
+      "full_name": "Lothar Matthaus",
+      "aliases": [
+        "matthaus",
+        "lothar matthaus"
+      ],
+      "nationality": "Germania",
+      "position": "Centrocampista",
+      "birth_year": 1961,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Borussia Monchengladbach",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1979,
+          "end_year": 1984,
+          "apps": 158,
+          "goals": 39
+        },
+        {
+          "team": "Bayern Monaco",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1984,
+          "end_year": 1988,
+          "apps": 138,
+          "goals": 42
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1988,
+          "end_year": 1992,
+          "apps": 115,
+          "goals": 29
+        },
+        {
+          "team": "Bayern Monaco",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1992,
+          "end_year": 2000,
+          "apps": 224,
+          "goals": 43
+        },
+        {
+          "team": "New York/New Jersey MetroStars",
+          "country": "USA",
+          "league": "MLS",
+          "start_year": 2000,
+          "end_year": 2000,
+          "apps": 20,
+          "goals": 1
+        }
+      ]
+    },
+    {
+      "id": "best",
+      "full_name": "George Best",
+      "aliases": [
+        "best",
+        "george best"
+      ],
+      "nationality": "Irlanda del Nord",
+      "position": "Attaccante",
+      "birth_year": 1946,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Manchester United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1963,
+          "end_year": 1974,
+          "apps": 470,
+          "goals": 179
+        },
+        {
+          "team": "Fulham",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 1976,
+          "end_year": 1978,
+          "apps": 46,
+          "goals": 10
+        },
+        {
+          "team": "Los Angeles Aztecs",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1976,
+          "end_year": 1978,
+          "apps": 68,
+          "goals": 34
+        },
+        {
+          "team": "San Jose Earthquakes",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1980,
+          "end_year": 1981,
+          "apps": 56,
+          "goals": 27
+        }
+      ]
+    },
+    {
+      "id": "eusebio",
+      "full_name": "Eusebio da Silva Ferreira",
+      "aliases": [
+        "eusebio",
+        "eusebio da silva ferreira",
+        "la pantera nera"
+      ],
+      "nationality": "Portogallo",
+      "position": "Attaccante",
+      "birth_year": 1942,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Benfica",
+          "country": "Portogallo",
+          "league": "Primeira Liga",
+          "start_year": 1961,
+          "end_year": 1975,
+          "apps": 301,
+          "goals": 317
+        },
+        {
+          "team": "Boston Minutemen",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1975,
+          "end_year": 1975,
+          "apps": 24,
+          "goals": 18
+        },
+        {
+          "team": "Toronto Metros-Croatia",
+          "country": "Canada",
+          "league": "NASL",
+          "start_year": 1976,
+          "end_year": 1976,
+          "apps": 24,
+          "goals": 12
+        },
+        {
+          "team": "Las Vegas Quicksilvers",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1977,
+          "end_year": 1977,
+          "apps": 24,
+          "goals": 12
+        }
+      ]
+    },
+    {
+      "id": "romario",
+      "full_name": "Romario de Souza Faria",
+      "aliases": [
+        "romario",
+        "romario de souza faria"
+      ],
+      "nationality": "Brasile",
+      "position": "Attaccante",
+      "birth_year": 1966,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Vasco da Gama",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1985,
+          "end_year": 1988,
+          "apps": 123,
+          "goals": 100
+        },
+        {
+          "team": "PSV Eindhoven",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 1988,
+          "end_year": 1993,
+          "apps": 148,
+          "goals": 165
+        },
+        {
+          "team": "Barcelona",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1993,
+          "end_year": 1995,
+          "apps": 65,
+          "goals": 39
+        },
+        {
+          "team": "Flamengo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1995,
+          "end_year": 1996,
+          "apps": 62,
+          "goals": 62
+        },
+        {
+          "team": "Flamengo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1998,
+          "end_year": 1999,
+          "apps": 60,
+          "goals": 42
+        },
+        {
+          "team": "Vasco da Gama",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 2000,
+          "end_year": 2003,
+          "apps": 150,
+          "goals": 148
+        },
+        {
+          "team": "Fluminense",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 2005,
+          "end_year": 2006,
+          "apps": 45,
+          "goals": 30
+        }
+      ]
+    },
+    {
+      "id": "klinsmann",
+      "full_name": "Jurgen Klinsmann",
+      "aliases": [
+        "klinsmann",
+        "jurgen klinsmann"
+      ],
+      "nationality": "Germania",
+      "position": "Attaccante",
+      "birth_year": 1964,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "VfB Stoccarda",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1984,
+          "end_year": 1989,
+          "apps": 156,
+          "goals": 79
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1989,
+          "end_year": 1992,
+          "apps": 95,
+          "goals": 33
+        },
+        {
+          "team": "Monaco",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1992,
+          "end_year": 1994,
+          "apps": 65,
+          "goals": 29
+        },
+        {
+          "team": "Tottenham Hotspur",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1994,
+          "end_year": 1995,
+          "apps": 41,
+          "goals": 21
+        },
+        {
+          "team": "Bayern Monaco",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1995,
+          "end_year": 1997,
+          "apps": 65,
+          "goals": 31
+        },
+        {
+          "team": "Sampdoria",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1997,
+          "end_year": 1998,
+          "apps": 21,
+          "goals": 6
+        },
+        {
+          "team": "Tottenham Hotspur",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1998,
+          "end_year": 1998,
+          "apps": 15,
+          "goals": 9
+        }
+      ]
+    },
+    {
+      "id": "michael_owen",
+      "full_name": "Michael Owen",
+      "aliases": [
+        "michael owen",
+        "owen"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Attaccante",
+      "birth_year": 1979,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Liverpool",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1996,
+          "end_year": 2004,
+          "apps": 297,
+          "goals": 158
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2004,
+          "end_year": 2005,
+          "apps": 44,
+          "goals": 16
+        },
+        {
+          "team": "Newcastle United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2005,
+          "end_year": 2009,
+          "apps": 79,
+          "goals": 26
+        },
+        {
+          "team": "Manchester United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2009,
+          "end_year": 2012,
+          "apps": 52,
+          "goals": 17
+        },
+        {
+          "team": "Stoke City",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2012,
+          "end_year": 2013,
+          "apps": 8,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "rio_ferdinand",
+      "full_name": "Rio Ferdinand",
+      "aliases": [
+        "rio ferdinand",
+        "ferdinand"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Difensore",
+      "birth_year": 1978,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "West Ham United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1996,
+          "end_year": 2000,
+          "apps": 127,
+          "goals": 3
+        },
+        {
+          "team": "Leeds United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2000,
+          "end_year": 2002,
+          "apps": 76,
+          "goals": 1
+        },
+        {
+          "team": "Manchester United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2002,
+          "end_year": 2014,
+          "apps": 455,
+          "goals": 8
+        },
+        {
+          "team": "Queens Park Rangers",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 2014,
+          "end_year": 2015,
+          "apps": 24,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "desailly",
+      "full_name": "Marcel Desailly",
+      "aliases": [
+        "desailly",
+        "marcel desailly"
+      ],
+      "nationality": "Francia",
+      "position": "Difensore",
+      "birth_year": 1968,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Nantes",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1986,
+          "end_year": 1992,
+          "apps": 106,
+          "goals": 5
+        },
+        {
+          "team": "Marsiglia",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1992,
+          "end_year": 1993,
+          "apps": 32,
+          "goals": 1
+        },
+        {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1993,
+          "end_year": 1998,
+          "apps": 154,
+          "goals": 4
+        },
+        {
+          "team": "Chelsea",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1998,
+          "end_year": 2004,
+          "apps": 158,
+          "goals": 4
+        },
+        {
+          "team": "Al-Gharafa",
+          "country": "Qatar",
+          "league": "Qatar Stars League",
+          "start_year": 2004,
+          "end_year": 2005,
+          "apps": 18,
+          "goals": 1
+        }
+      ]
+    },
+    {
+      "id": "pires",
+      "full_name": "Robert Pires",
+      "aliases": [
+        "pires",
+        "robert pires"
+      ],
+      "nationality": "Francia",
+      "position": "Centrocampista",
+      "birth_year": 1973,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Metz",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1992,
+          "end_year": 1998,
+          "apps": 173,
+          "goals": 33
+        },
+        {
+          "team": "Marsiglia",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1998,
+          "end_year": 2000,
+          "apps": 62,
+          "goals": 19
+        },
+        {
+          "team": "Arsenal",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2000,
+          "end_year": 2006,
+          "apps": 189,
+          "goals": 62
+        },
+        {
+          "team": "Villarreal",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2006,
+          "end_year": 2010,
+          "apps": 111,
+          "goals": 17
+        },
+        {
+          "team": "Aston Villa",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2010,
+          "end_year": 2011,
+          "apps": 17,
+          "goals": 1
+        }
+      ]
+    },
+    {
+      "id": "djorkaeff",
+      "full_name": "Youri Djorkaeff",
+      "aliases": [
+        "djorkaeff",
+        "youri djorkaeff"
+      ],
+      "nationality": "Francia",
+      "position": "Centrocampista",
+      "birth_year": 1968,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Grenoble",
+          "country": "Francia",
+          "league": "Ligue 2",
+          "start_year": 1986,
+          "end_year": 1989,
+          "apps": 88,
+          "goals": 20
+        },
+        {
+          "team": "Strasburgo",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1989,
+          "end_year": 1995,
+          "apps": 191,
+          "goals": 61
+        },
+        {
+          "team": "Monaco",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1995,
+          "end_year": 1995,
+          "apps": 15,
+          "goals": 3
+        },
+        {
+          "team": "Paris Saint-Germain",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1995,
+          "end_year": 1996,
+          "apps": 32,
+          "goals": 20
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1996,
+          "end_year": 1999,
+          "apps": 84,
+          "goals": 25
+        },
+        {
+          "team": "Kaiserslautern",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1999,
+          "end_year": 2002,
+          "apps": 74,
+          "goals": 26
+        },
+        {
+          "team": "Bolton Wanderers",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2002,
+          "end_year": 2006,
+          "apps": 105,
+          "goals": 21
+        },
+        {
+          "team": "New York/New Jersey MetroStars",
+          "country": "USA",
+          "league": "MLS",
+          "start_year": 2005,
+          "end_year": 2006,
+          "apps": 33,
+          "goals": 6
+        },
+        {
+          "team": "Blackburn Rovers",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2006,
+          "end_year": 2006,
+          "apps": 5,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "hierro",
+      "full_name": "Fernando Hierro",
+      "aliases": [
+        "hierro",
+        "fernando hierro"
+      ],
+      "nationality": "Spagna",
+      "position": "Difensore",
+      "birth_year": 1968,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Valladolid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1987,
+          "end_year": 1989,
+          "apps": 61,
+          "goals": 6
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1989,
+          "end_year": 2003,
+          "apps": 439,
+          "goals": 121
+        },
+        {
+          "team": "Al-Rayyan",
+          "country": "Qatar",
+          "league": "Qatar Stars League",
+          "start_year": 2003,
+          "end_year": 2005,
+          "apps": 40,
+          "goals": 8
+        },
+        {
+          "team": "Bolton Wanderers",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2005,
+          "end_year": 2006,
+          "apps": 24,
+          "goals": 2
+        }
+      ]
+    },
+    {
+      "id": "cazorla",
+      "full_name": "Santi Cazorla",
+      "aliases": [
+        "cazorla",
+        "santi cazorla"
+      ],
+      "nationality": "Spagna",
+      "position": "Centrocampista",
+      "birth_year": 1984,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Villarreal",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2003,
+          "end_year": 2011,
+          "apps": 220,
+          "goals": 44
+        },
+        {
+          "team": "Malaga",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2011,
+          "end_year": 2012,
+          "apps": 37,
+          "goals": 8
+        },
+        {
+          "team": "Arsenal",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2012,
+          "end_year": 2018,
+          "apps": 180,
+          "goals": 29
+        },
+        {
+          "team": "Villarreal",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2018,
+          "end_year": 2022,
+          "apps": 133,
+          "goals": 24
+        }
+      ]
+    },
+    {
+      "id": "crouch",
+      "full_name": "Peter Crouch",
+      "aliases": [
+        "crouch",
+        "peter crouch"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Attaccante",
+      "birth_year": 1981,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Tottenham Hotspur",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2000,
+          "end_year": 2002,
+          "apps": 33,
+          "goals": 3
+        },
+        {
+          "team": "Portsmouth",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 2001,
+          "end_year": 2002,
+          "loan": true,
+          "apps": 20,
+          "goals": 8
+        },
+        {
+          "team": "Norwich City",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 2002,
+          "end_year": 2002,
+          "loan": true,
+          "apps": 9,
+          "goals": 2
+        },
+        {
+          "team": "Aston Villa",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2002,
+          "end_year": 2005,
+          "apps": 90,
+          "goals": 24
+        },
+        {
+          "team": "Southampton",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2005,
+          "end_year": 2005,
+          "apps": 25,
+          "goals": 16
+        },
+        {
+          "team": "Liverpool",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2005,
+          "end_year": 2008,
+          "apps": 134,
+          "goals": 42
+        },
+        {
+          "team": "Portsmouth",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2008,
+          "end_year": 2009,
+          "apps": 37,
+          "goals": 11
+        },
+        {
+          "team": "Tottenham Hotspur",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2009,
+          "end_year": 2011,
+          "apps": 74,
+          "goals": 20
+        },
+        {
+          "team": "Stoke City",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2011,
+          "end_year": 2018,
+          "apps": 217,
+          "goals": 42
+        },
+        {
+          "team": "Burnley",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2018,
+          "end_year": 2019,
+          "apps": 14,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "heskey",
+      "full_name": "Emile Heskey",
+      "aliases": [
+        "heskey",
+        "emile heskey"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Attaccante",
+      "birth_year": 1978,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Leicester City",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1995,
+          "end_year": 2000,
+          "apps": 165,
+          "goals": 40
+        },
+        {
+          "team": "Liverpool",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2000,
+          "end_year": 2004,
+          "apps": 154,
+          "goals": 39
+        },
+        {
+          "team": "Birmingham City",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2004,
+          "end_year": 2006,
+          "apps": 76,
+          "goals": 20
+        },
+        {
+          "team": "Wigan Athletic",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2006,
+          "end_year": 2009,
+          "apps": 105,
+          "goals": 24
+        },
+        {
+          "team": "Aston Villa",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2009,
+          "end_year": 2012,
+          "apps": 88,
+          "goals": 8
+        },
+        {
+          "team": "Newcastle Jets",
+          "country": "Australia",
+          "league": "A-League",
+          "start_year": 2012,
+          "end_year": 2013,
+          "apps": 22,
+          "goals": 2
+        },
+        {
+          "team": "Bolton Wanderers",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 2013,
+          "end_year": 2014,
+          "apps": 4,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "cisse_djibril",
+      "full_name": "Djibril Cisse",
+      "aliases": [
+        "djibril cisse",
+        "cisse"
+      ],
+      "nationality": "Francia",
+      "position": "Attaccante",
+      "birth_year": 1981,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Auxerre",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1999,
+          "end_year": 2004,
+          "apps": 130,
+          "goals": 70
+        },
+        {
+          "team": "Liverpool",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2004,
+          "end_year": 2006,
+          "apps": 51,
+          "goals": 15
+        },
+        {
+          "team": "Marsiglia",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2006,
+          "end_year": 2009,
+          "apps": 78,
+          "goals": 30
+        },
+        {
+          "team": "Sunderland",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2008,
+          "end_year": 2009,
+          "loan": true,
+          "apps": 14,
+          "goals": 2
+        },
+        {
+          "team": "Panathinaikos",
+          "country": "Grecia",
+          "league": "Super League Grecia",
+          "start_year": 2009,
+          "end_year": 2013,
+          "apps": 116,
+          "goals": 54
+        },
+        {
+          "team": "Lazio",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2012,
+          "end_year": 2013,
+          "loan": true,
+          "apps": 10,
+          "goals": 1
+        },
+        {
+          "team": "Queens Park Rangers",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 2013,
+          "end_year": 2014,
+          "apps": 22,
+          "goals": 2
+        },
+        {
+          "team": "Yeni Malatyaspor",
+          "country": "Turchia",
+          "league": "Super Lig",
+          "start_year": 2014,
+          "end_year": 2016,
+          "apps": 40,
+          "goals": 15
+        }
+      ]
+    },
+    {
+      "id": "fellaini",
+      "full_name": "Marouane Fellaini",
+      "aliases": [
+        "fellaini",
+        "marouane fellaini"
+      ],
+      "nationality": "Belgio",
+      "position": "Centrocampista",
+      "birth_year": 1987,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Standard Liegi",
+          "country": "Belgio",
+          "league": "Belgian Pro League",
+          "start_year": 2004,
+          "end_year": 2008,
+          "apps": 122,
+          "goals": 20
+        },
+        {
+          "team": "Everton",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2008,
+          "end_year": 2013,
+          "apps": 177,
+          "goals": 27
+        },
+        {
+          "team": "Manchester United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2013,
+          "end_year": 2019,
+          "apps": 177,
+          "goals": 23
+        },
+        {
+          "team": "Shandong Taishan",
+          "country": "Cina",
+          "league": "Chinese Super League",
+          "start_year": 2019,
+          "end_year": 2024,
+          "apps": 118,
+          "goals": 26
+        }
+      ]
+    },
+    {
+      "id": "cassano",
+      "full_name": "Antonio Cassano",
+      "aliases": [
+        "cassano",
+        "antonio cassano",
+        "fantantonio"
+      ],
+      "nationality": "Italia",
+      "position": "Attaccante",
+      "birth_year": 1982,
+      "popularity": 2,
+      "verified": true,
+      "career": [
+        {
+          "team": "Bari",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1999,
+          "end_year": 2001,
+          "apps": 63,
+          "goals": 20
+        },
+        {
+          "team": "Roma",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2001,
+          "end_year": 2006,
+          "apps": 155,
+          "goals": 39
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2006,
+          "end_year": 2008,
+          "apps": 55,
+          "goals": 12
+        },
+        {
+          "team": "Sampdoria",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2008,
+          "end_year": 2011,
+          "apps": 96,
+          "goals": 26
+        },
+        {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2011,
+          "end_year": 2013,
+          "apps": 41,
+          "goals": 4
+        },
+        {
+          "team": "Parma",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2013,
+          "end_year": 2015,
+          "apps": 46,
+          "goals": 10
+        },
+        {
+          "team": "Sampdoria",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2015,
+          "end_year": 2016,
+          "apps": 27,
+          "goals": 3
+        },
+        {
+          "team": "Verona",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2016,
+          "end_year": 2017,
+          "apps": 12,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "gallas",
+      "full_name": "William Gallas",
+      "aliases": [
+        "gallas",
+        "william gallas"
+      ],
+      "nationality": "Francia",
+      "position": "Difensore",
+      "birth_year": 1977,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Caen",
+          "country": "Francia",
+          "league": "Ligue 2",
+          "start_year": 1995,
+          "end_year": 1997,
+          "apps": 38,
+          "goals": 2
+        },
+        {
+          "team": "Marsiglia",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1997,
+          "end_year": 2001,
+          "apps": 89,
+          "goals": 6
+        },
+        {
+          "team": "Chelsea",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2001,
+          "end_year": 2006,
+          "apps": 175,
+          "goals": 12
+        },
+        {
+          "team": "Arsenal",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2006,
+          "end_year": 2010,
+          "apps": 137,
+          "goals": 15
+        },
+        {
+          "team": "Tottenham Hotspur",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2010,
+          "end_year": 2013,
+          "apps": 90,
+          "goals": 4
+        },
+        {
+          "team": "Perth Glory",
+          "country": "Australia",
+          "league": "A-League",
+          "start_year": 2013,
+          "end_year": 2014,
+          "apps": 18,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "joaquin",
+      "full_name": "Joaquin Sanchez",
+      "aliases": [
+        "joaquin",
+        "joaquin sanchez"
+      ],
+      "nationality": "Spagna",
+      "position": "Attaccante",
+      "birth_year": 1981,
+      "popularity": 2,
+      "verified": true,
+      "career": [
+        {
+          "team": "Real Betis",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2000,
+          "end_year": 2006,
+          "apps": 178,
+          "goals": 34
+        },
+        {
+          "team": "Valencia",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2006,
+          "end_year": 2013,
+          "apps": 217,
+          "goals": 26
+        },
+        {
+          "team": "Malaga",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2013,
+          "end_year": 2015,
+          "apps": 65,
+          "goals": 6
+        },
+        {
+          "team": "Fiorentina",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2015,
+          "end_year": 2015,
+          "apps": 15,
+          "goals": 0
+        },
+        {
+          "team": "Real Betis",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2015,
+          "end_year": 2023,
+          "apps": 267,
+          "goals": 21
+        }
+      ]
+    },
+    {
+      "id": "nainggolan",
+      "full_name": "Radja Nainggolan",
+      "aliases": [
+        "nainggolan",
+        "radja nainggolan",
+        "ninja"
+      ],
+      "nationality": "Belgio",
+      "position": "Centrocampista",
+      "birth_year": 1988,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Piacenza",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 2005,
+          "end_year": 2010,
+          "apps": 108,
+          "goals": 10
+        },
+        {
+          "team": "Cagliari",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2010,
+          "end_year": 2014,
+          "apps": 143,
+          "goals": 12
+        },
+        {
+          "team": "Roma",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2014,
+          "end_year": 2018,
+          "apps": 152,
+          "goals": 29
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2018,
+          "end_year": 2019,
+          "apps": 26,
+          "goals": 2
+        },
+        {
+          "team": "Cagliari",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2019,
+          "end_year": 2020,
+          "loan": true,
+          "apps": 32,
+          "goals": 3
+        },
+        {
+          "team": "Anderlecht",
+          "country": "Belgio",
+          "league": "Belgian Pro League",
+          "start_year": 2021,
+          "end_year": 2022,
+          "apps": 22,
+          "goals": 3
+        },
+        {
+          "team": "SPAL",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 2022,
+          "end_year": 2023,
+          "apps": 20,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "lentini",
+      "full_name": "Gianluigi Lentini",
+      "aliases": [
+        "lentini",
+        "gianluigi lentini"
+      ],
+      "nationality": "Italia",
+      "position": "Centrocampista",
+      "birth_year": 1969,
+      "popularity": 1,
+      "verified": true,
+      "career": [
+        {
+          "team": "Torino",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1987,
+          "end_year": 1992,
+          "apps": 128,
+          "goals": 21
+        },
+        {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1992,
+          "end_year": 1997,
+          "apps": 68,
+          "goals": 5
+        },
+        {
+          "team": "Atalanta",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1996,
+          "end_year": 1997,
+          "loan": true,
+          "apps": 12,
+          "goals": 0
+        },
+        {
+          "team": "Piacenza",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1997,
+          "end_year": 1998,
+          "apps": 25,
+          "goals": 2
+        },
+        {
+          "team": "Avellino",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1999,
+          "end_year": 2000,
+          "apps": 22,
+          "goals": 1
+        }
+      ]
+    },
+    {
+      "id": "sidney_govou",
+      "full_name": "Sidney Govou",
+      "aliases": [
+        "sidney govou",
+        "govou"
+      ],
+      "nationality": "Francia",
+      "position": "Attaccante",
+      "birth_year": 1979,
+      "popularity": 1,
+      "verified": true,
+      "career": [
+        {
+          "team": "Lione",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1998,
+          "end_year": 2011,
+          "apps": 356,
+          "goals": 79
+        },
+        {
+          "team": "Panathinaikos",
+          "country": "Grecia",
+          "league": "Super League Grecia",
+          "start_year": 2011,
+          "end_year": 2012,
+          "apps": 20,
+          "goals": 1
+        },
+        {
+          "team": "Rennes",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2012,
+          "end_year": 2013,
+          "apps": 15,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "rigobert_song",
+      "full_name": "Rigobert Song",
+      "aliases": [
+        "rigobert song",
+        "song"
+      ],
+      "nationality": "Camerun",
+      "position": "Difensore",
+      "birth_year": 1976,
+      "popularity": 1,
+      "verified": true,
+      "career": [
+        {
+          "team": "Metz",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1993,
+          "end_year": 1998,
+          "apps": 129,
+          "goals": 3
+        },
+        {
+          "team": "Salernitana",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1998,
+          "end_year": 1999,
+          "apps": 25,
+          "goals": 0
+        },
+        {
+          "team": "West Ham United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1999,
+          "end_year": 2000,
+          "apps": 21,
+          "goals": 0
+        },
+        {
+          "team": "Liverpool",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2000,
+          "end_year": 2000,
+          "apps": 5,
+          "goals": 0
+        },
+        {
+          "team": "Colonia",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 2001,
+          "end_year": 2003,
+          "apps": 45,
+          "goals": 1
+        },
+        {
+          "team": "Galatasaray",
+          "country": "Turchia",
+          "league": "Super Lig",
+          "start_year": 2003,
+          "end_year": 2004,
+          "apps": 24,
+          "goals": 0
+        },
+        {
+          "team": "Lens",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2004,
+          "end_year": 2007,
+          "apps": 76,
+          "goals": 1
+        },
+        {
+          "team": "Trabzonspor",
+          "country": "Turchia",
+          "league": "Super Lig",
+          "start_year": 2007,
+          "end_year": 2009,
+          "apps": 45,
+          "goals": 2
+        },
+        {
+          "team": "Samsunspor",
+          "country": "Turchia",
+          "league": "Super Lig",
+          "start_year": 2009,
+          "end_year": 2010,
+          "apps": 18,
+          "goals": 0
+        }
+      ]
+    },
+    {
+      "id": "benni_mccarthy",
+      "full_name": "Benni McCarthy",
+      "aliases": [
+        "benni mccarthy",
+        "mccarthy"
+      ],
+      "nationality": "Sudafrica",
+      "position": "Attaccante",
+      "birth_year": 1977,
+      "popularity": 1,
+      "verified": true,
+      "career": [
+        {
+          "team": "Ajax Cape Town",
+          "country": "Sudafrica",
+          "league": "South African Premier Division",
+          "start_year": 1996,
+          "end_year": 1997,
+          "apps": 40,
+          "goals": 15
+        },
+        {
+          "team": "Celta Vigo",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1997,
+          "end_year": 2001,
+          "apps": 121,
+          "goals": 41
+        },
+        {
+          "team": "Porto",
+          "country": "Portogallo",
+          "league": "Primeira Liga",
+          "start_year": 2001,
+          "end_year": 2006,
+          "apps": 130,
+          "goals": 71
+        },
+        {
+          "team": "Blackburn Rovers",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2006,
+          "end_year": 2010,
+          "apps": 141,
+          "goals": 40
+        },
+        {
+          "team": "West Ham United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2010,
+          "end_year": 2011,
+          "apps": 15,
+          "goals": 1
+        },
+        {
+          "team": "Orlando Pirates",
+          "country": "Sudafrica",
+          "league": "South African Premier Division",
+          "start_year": 2012,
+          "end_year": 2013,
+          "apps": 20,
+          "goals": 6
+        }
+      ]
+    },
+    {
+      "id": "aboutrika",
+      "full_name": "Mohamed Aboutrika",
+      "aliases": [
+        "aboutrika",
+        "mohamed aboutrika"
+      ],
+      "nationality": "Egitto",
+      "position": "Centrocampista",
+      "birth_year": 1978,
+      "popularity": 1,
+      "verified": true,
+      "career": [
+        {
+          "team": "Tersana",
+          "country": "Egitto",
+          "league": "Egyptian Premier League",
+          "start_year": 1998,
+          "end_year": 2004,
+          "apps": 90,
+          "goals": 30
+        },
+        {
+          "team": "Al Ahly",
+          "country": "Egitto",
+          "league": "Egyptian Premier League",
+          "start_year": 2004,
+          "end_year": 2013,
+          "apps": 220,
+          "goals": 110
+        }
+      ]
+    },
+    {
+      "id": "eder_euro2016",
+      "full_name": "Eder Citadin Martins",
+      "aliases": [
+        "eder",
+        "eder citadin martins"
+      ],
+      "nationality": "Portogallo",
+      "position": "Attaccante",
+      "birth_year": 1987,
+      "popularity": 1,
+      "verified": true,
+      "career": [
+        {
+          "team": "Academica",
+          "country": "Portogallo",
+          "league": "Primeira Liga",
+          "start_year": 2010,
+          "end_year": 2013,
+          "apps": 55,
+          "goals": 12
+        },
+        {
+          "team": "Braga",
+          "country": "Portogallo",
+          "league": "Primeira Liga",
+          "start_year": 2013,
+          "end_year": 2015,
+          "apps": 61,
+          "goals": 17
+        },
+        {
+          "team": "Swansea City",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2015,
+          "end_year": 2016,
+          "apps": 22,
+          "goals": 3
+        },
+        {
+          "team": "Lille",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2016,
+          "end_year": 2019,
+          "apps": 84,
+          "goals": 22
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2019,
+          "end_year": 2020,
+          "loan": true,
+          "apps": 8,
+          "goals": 0
+        },
+        {
+          "team": "Jiangsu Suning",
+          "country": "Cina",
+          "league": "Chinese Super League",
+          "start_year": 2020,
+          "end_year": 2020,
+          "apps": 9,
+          "goals": 3
+        },
+        {
+          "team": "Basaksehir",
+          "country": "Turchia",
+          "league": "Super Lig",
+          "start_year": 2021,
+          "end_year": 2023,
+          "apps": 44,
+          "goals": 12
         }
       ]
     }
