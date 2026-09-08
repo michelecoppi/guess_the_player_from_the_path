@@ -30,7 +30,9 @@ from services.player_pool import (  # noqa: E402
     validate_player,
 )
 
-CAREER_KEYS = ("team", "country", "league", "start_year", "end_year")
+# "loan" e' opzionale ma va tenuto: senza, un prestito sarebbe indistinguibile da un
+# trasferimento, sia nei dati sia nell'immagine del percorso.
+CAREER_KEYS = ("team", "country", "league", "start_year", "end_year", "loan", "apps", "goals")
 
 
 def _normalize_player(player):

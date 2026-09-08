@@ -2,6 +2,10 @@ from PIL import Image
 
 from services import fonts
 from services.path_image import (
+    COMPACT_FROM_ROWS,
+    MAX_ROWS,
+    _stats_label,
+    _years_label,
     render_avatar,
     render_career_path_image,
     render_event_banner,
@@ -63,3 +67,56 @@ def test_a_truetype_font_is_used_when_available():
     """Se questo test fallisce sul container, manca il pacchetto dei font (Dockerfile):
     l'immagine esce comunque, ma con il font bitmap di Pillow."""
     assert fonts.get_font(24) is not None
+
+
+def test_twenty_stops_stay_readable_in_a_telegram_bubble():
+    """Il tetto pratico e' l'altezza, non i limiti di Telegram.
+
+    Telegram scala la foto alla larghezza della bolla: con le righe larghe una carriera da
+    20 tappe usciva alta 2588 px e in chat diventava illeggibile. Il layout compatto la
+    tiene sotto i ~2000 px, che e' la ragione per cui esiste COMPACT_FROM_ROWS.
+    """
+    career = [
+        {"team": f"Squadra {i}", "country": "Italia", "league": "Serie A",
+         "start_year": 2000 + i, "end_year": 2001 + i}
+        for i in range(MAX_ROWS)
+    ]
+    image = Image.open(render_career_path_image(career))
+    assert image.height <= 2000
+    # limiti di Telegram per le foto: lato+lato <= 10000 e rapporto <= 20
+    assert image.width + image.height <= 10000
+    assert image.height / image.width <= 20
+
+
+def test_compact_layout_kicks_in_only_when_there_are_many_stops():
+    def height(rows):
+        career = [
+            {"team": "A", "country": "Italia", "league": "Serie A",
+             "start_year": 2000 + i, "end_year": 2001 + i}
+            for i in range(rows)
+        ]
+        return Image.open(render_career_path_image(career)).height
+
+    # una riga in piu' oltre la soglia deve far *scendere* l'altezza per riga
+    per_row_wide = (height(COMPACT_FROM_ROWS - 1) - height(1)) / (COMPACT_FROM_ROWS - 2)
+    per_row_compact = (height(COMPACT_FROM_ROWS + 4) - height(COMPACT_FROM_ROWS)) / 4
+    assert per_row_compact < per_row_wide
+
+
+def test_loans_are_marked_without_words():
+    """Il prestito deve vedersi senza scrivere "prestito": la stessa PNG va a utenti
+    italiani, inglesi e spagnoli."""
+    permanent = {"team": "A", "country": "Italia", "league": "Serie A", "start_year": 2010, "end_year": 2012}
+    loaned = dict(permanent, loan=True)
+    assert _years_label(permanent) == "2010 – 2012"
+    assert _years_label(loaned).startswith("→")
+    # la tappa ancora in corso non deve usare la stessa freccia del prestito
+    ongoing = {"team": "A", "start_year": 2010, "end_year": None}
+    assert "→" not in _years_label(ongoing)
+
+
+def test_appearances_and_goals_use_the_wikipedia_convention():
+    assert _stats_label({"apps": 33, "goals": 22}) == "33 (22)"
+    # portieri: solo presenze, perche' i gol dell'infobox sono quelli *segnati*
+    assert _stats_label({"apps": 152}) == "152"
+    assert _stats_label({}) is None

@@ -78,6 +78,16 @@ def validate_player(player, min_teams=2):
             if entry.get(key) in (None, ""):
                 problems.append(f"tappa carriera incompleta ({team_label}): manca '{key}'")
 
+        if "loan" in entry and not isinstance(entry["loan"], bool):
+            problems.append(f"tappa {team_label}: 'loan' deve essere true/false ({entry['loan']})")
+
+        # Presenze e gol sono facoltativi (non tutte le schede li hanno), ma se ci sono
+        # devono essere numeri non negativi: finiscono disegnati nell'immagine.
+        for key in ("apps", "goals"):
+            value = entry.get(key)
+            if value is not None and (not isinstance(value, int) or isinstance(value, bool) or value < 0):
+                problems.append(f"tappa {team_label}: '{key}' deve essere un intero >= 0 ({value})")
+
         start_year = entry.get("start_year")
         end_year = entry.get("end_year")
 
