@@ -85,6 +85,7 @@ di chiunque. Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' config
 data/players.json          -> pool di calciatori curato (carriera, nazionalità, popolarità, verified)
 data/event_templates.json  -> regole configurabili per generare gli eventi a rotazione
 data/config.json           -> parametri di gioco (difficoltà, buffer giorni, anti-ripetizione, ecc.)
+docs/difficolta.md         -> come si assegnano notorietà e difficoltà (da leggere prima di ampliare il dataset)
 
 services/dates.py            -> un solo posto in cui si decide come si scrive una data (ISO sul db, gg/mm/aa a schermo)
 services/firebase_service.py -> tutti gli accessi a Firestore (transazioni comprese)
@@ -102,6 +103,7 @@ services/webapp_api.py       -> i dati che la mini app mostra, in una risposta s
 services/daily_generator.py  -> sceglie il calciatore del giorno (con anti-ripetizione) e genera N giorni in anticipo
 services/event_generator.py  -> sceglie un template evento a rotazione e lo riempie con giocatori validi
 services/manual_event_service.py -> eventi creati a mano dalla chat (coppie padre/figlio)
+services/content_admin.py    -> dettaglio e correzione di sfide/eventi gia' programmati (usato dalla dashboard locale)
 
 scripts/generate_content.py  -> entrypoint per generare il buffer a mano (debug/backfill)
 scripts/import_players.py    -> importa nuovi calciatori nel dataset con validazione e anti-duplicati
@@ -115,6 +117,7 @@ handlers/keyboards.py        -> tastiera del menu e menu comandi di Telegram
 handlers/menu_handler.py     -> i bottoni del menu, collegati agli handler dei comandi
 handlers/admin_handler.py    -> tutti i comandi Telegram /admin_* (al posto di una dashboard web)
 webapp/index.html            -> la mini app Telegram (servita da FastAPI su /app)
+admin_ui.py                  -> dashboard locale Streamlit: stato dettagliato e modifiche ai dati
 ```
 
 ### Come viene scelto il calciatore del giorno
@@ -152,22 +155,30 @@ webapp/index.html            -> la mini app Telegram (servita da FastAPI su /app
 
 ### Difficoltà
 
-Calcolata in `services/difficulty.py`. Il fattore dominante è la **notorietà** del calciatore
-(`popularity` 1-5): un percorso lungo di un giocatore famosissimo resta facile da indovinare,
-mentre poche tappe in campionati poco seguiti sono difficili. Gli altri fattori pesano come
-modificatori e sono normalizzati sulla lunghezza della carriera (quota di tappe fuori dai
-"top 5" europei, numero di paesi oltre i primi due, squadre oltre le prime quattro), così il
-punteggio non cresce solo perché un calciatore ha cambiato molte squadre.
+**Come si assegnano notorietà e difficoltà è definito in
+[`docs/difficolta.md`](docs/difficolta.md)**: è il riferimento da leggere prima di aggiungere
+un giocatore o di ritarare i pesi, e contiene la scala `popularity` 1-5 con gli esempi.
 
-Pesi e soglie sono in `data/config.json` (`difficulty_weights`, `difficulty_thresholds`) e si
-possono ritarare senza toccare il codice: `python scripts/dataset_report.py` mostra come si
-distribuisce il dataset fra le quattro fasce. I punti assegnati per difficoltà sono invariati
-rispetto al gioco esistente (1/2/3/4).
+In breve: la difficoltà è calcolata in `services/difficulty.py` e non è un campo del dataset.
+La **notorietà** (`popularity` 1-5) fissa la fascia a passi di 4 punti; il percorso (quota di
+tappe fuori dai campionati noti, paesi, squadre) pesa come modificatore per un massimo di 5.5
+punti, cioè **può spostare un giocatore di una fascia, mai di due**. È il vincolo che evita i
+due errori tipici: il campione girovago che risulta "impossibile" e lo sconosciuto con
+carriera lineare che risulta "facile".
+
+I campionati valgono su tre livelli — `top_leagues` (i top 5), `known_leagues` (Eredivisie,
+Primeira Liga, Brasileirão, MLS...) e tutto il resto — così l'Ajax non pesa come una seconda
+divisione asiatica. Pesi, soglie e liste sono in `data/config.json` e si ritarano senza
+toccare il codice: `python scripts/dataset_report.py` mostra come si distribuisce il dataset
+fra le quattro fasce, e `explain_difficulty(player)` scompone il punteggio di una singola
+scheda. I punti assegnati per difficoltà sono invariati rispetto al gioco esistente (1/2/3/4).
 
 ## Comandi amministrativi
 
 Riservati agli ID Telegram elencati in `ADMIN_TELEGRAM_IDS` (env var, separati da virgola).
-Non c'è (e non serve) una dashboard web: tutto passa dalla chat.
+Non c'è (e non serve) una dashboard **web** esposta pubblicamente: si amministra dalla chat,
+oppure dalla [dashboard locale](#dashboard-locale-streamlit) quando serve vedere i dettagli o
+correggere qualcosa a mano.
 
 | Comando | Cosa fa |
 |---|---|
@@ -190,6 +201,36 @@ Non c'è (e non serve) una dashboard web: tutto passa dalla chat.
 `/admin_block` scrive su Firestore (`admin_settings/dataset_overrides`), quindi ha effetto
 **subito**, senza redeploy: utile quando un utente segnala una carriera sbagliata. Le sfide
 già presenti nel buffer non cambiano, si controllano con `/admin_next`.
+
+## Dashboard locale (Streamlit)
+
+```bash
+pip install -r requirements-dev.txt
+streamlit run admin_ui.py
+```
+
+Gira **sul proprio PC** con le stesse credenziali del bot (`.env` + `firebase-key.json`) e
+non viene mai esposta: non ha login perché non è raggiungibile da fuori. Usa gli stessi
+servizi dei comandi Telegram — nessuna logica duplicata — e in più permette le correzioni che
+in chat sarebbero scomode. **Scrive sul database di produzione.**
+
+| Sezione | Cosa mostra | Cosa permette di modificare |
+|---|---|---|
+| Stato generale | sfida di oggi con la soluzione, giorni coperti dal buffer, evento in corso, salute del dataset, utenti | genera subito sfide/eventi mancanti |
+| Sfide giornaliere | ogni giorno della finestra scelta **buchi compresi**: numero della sfida, soluzione, difficoltà e punti, tappe di carriera, origine (auto/manuale), stato del bonus del primo, anteprima dell'immagine inviata agli utenti | sostituisci il giocatore, rigenera con le regole automatiche, correggi le risposte accettate, cambia la difficoltà, riapri/chiudi il bonus, elimina o programma una sfida in una data qualsiasi |
+| Eventi | stato (programmato/in corso/concluso), giorno corrente su totale, giorno per giorno con risposte, punti e bonus, elenco dei giorni **senza contenuto**, classifica dei partecipanti | attiva/disattiva, sposta le date (rimappa anche i contenuti e il giorno dei trofei), correggi le risposte di un giorno, riapri/chiudi il bonus di giornata, elimina, crea un evento manuale |
+| Utenti | classifiche, ricerca per id o per nome, scheda completa con striscia, trofei, leghe e archivio | punti totali e del mese, striscia, lingua, notifiche, azzeramento dei tentativi di oggi |
+| Leghe | leghe private con numero di membri e classifica interna | — |
+| Dataset | report di salute, difficoltà, candidati per template, sfoglia i giocatori con il punteggio di difficoltà, config in uso | — |
+| Giocatori sospesi | chi è escluso dalla selezione automatica | sospendi / riammetti |
+| Coppie padre/figlio | coppie salvate e in quali eventi sono state usate | aggiungi (foto via bot) / elimina |
+
+Le regole del gioco valgono anche qui, e stanno in `services/content_admin.py`, non
+nell'interfaccia: la sfida di oggi non si elimina (è in gioco), un evento in corso si
+disattiva invece di essere cancellato, sostituire il giocatore di una giornata già vinta non
+rimette in palio il bonus del primo, e spostare un evento sposta insieme date, contenuti e
+giorno dei trofei. Le letture stanno dietro una cache di 45 secondi (le letture Firestore si
+pagano); ogni modifica la svuota.
 
 ## Eventi "coppie padre/figlio" (manuali)
 
@@ -240,6 +281,18 @@ il bot gliela rifiuta. I nuovi arrivi restano `"verified": false` (e quindi fuor
 selezione automatica) finché qualcuno non ha controllato le date: `--verified` salta questo
 passaggio, `/admin_review` elenca chi è in attesa di revisione.
 
+Per **rivedere davvero** le schede in attesa serve vederne la carriera, non solo il nome:
+
+```bash
+python scripts/dataset_report.py --pending   # schede da approvare, tappa per tappa
+```
+
+Quando le date tornano, si approva reimportando lo stesso batch:
+
+```bash
+python scripts/import_players.py data/incoming/<batch>.json --update --verified
+```
+
 ### Schema di una scheda
 
 ```json
@@ -250,19 +303,47 @@ passaggio, `/admin_review` elenca chi è in attesa di revisione.
   "nationality": "Italia",
   "position": "Difensore",
   "birth_year": 1968,
-  "popularity": 4,
+  "popularity": 5,
   "verified": true,
   "one_club_career": true,
   "career": [
-    {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 1985, "end_year": 2009}
+    {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 1985, "end_year": 2009,
+     "apps": 647, "goals": 29}
   ]
 }
 ```
+
+Ogni tappa ha tre campi facoltativi: `loan` (prestito), `apps` (presenze) e `goals` (gol).
+Presenze e gol sono quelli di **campionato**, come li conta Wikipedia: alla Juventus Del
+Piero risulta con ~478 presenze, non con le ~700 di tutte le competizioni.
 
 `one_club_career: true` serve a distinguere una **bandiera** (Totti, Maldini, Puyol: una sola
 squadra e i dati sono completi) da una **scheda incompleta**: senza questo flag un percorso
 di una squadra sola viene scartato come dato mancante. È anche ciò che rende possibile
 l'evento "Un amore, una maglia".
+
+`popularity` è l'unico campo che decide la difficoltà, quindi è anche l'unico che si può
+sbagliare in modo silenzioso: **la scala con gli esempi è in
+[`docs/difficolta.md`](docs/difficolta.md)**, che contiene anche la checklist da seguire
+prima di scrivere una scheda nuova. La difficoltà, invece, non è un campo: è calcolata.
+
+### Cosa si vede nell'immagine
+
+Il percorso è disegnato da `services/path_image.py` **senza una parola**, perché la stessa
+PNG viene inviata a utenti italiani, inglesi e spagnoli. Quindi ogni informazione ha un
+segno, non un'etichetta:
+
+| Informazione | Come appare |
+|---|---|
+| Prestito | barretta laterale **tratteggiata** e freccia `→` davanti agli anni |
+| Tappa ancora in corso | `2016 – …` |
+| Presenze e gol | `33 (22)`, la convenzione di Wikipedia; per i portieri le sole presenze |
+| Durata della tappa | barra proporzionale, mostrata solo quando mancano presenze e gol |
+
+Il layout si adatta al numero di tappe: fino a 12 righe larghe, da 13 in su righe compatte.
+Una carriera da 20 tappe sta in 900×1952 px — sopra le ~2000 px Telegram rimpicciolisce
+l'immagine al punto da renderla illeggibile in chat, ed è il motivo per cui esiste la
+soglia.
 
 ### Controlli automatici
 
@@ -404,9 +485,12 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
 - **Eventi "coppie padre/figlio"**: restano manuali per scelta, perché non esiste un dataset
   di immagini di coppie. La creazione però non richiede più di scrivere documenti su
   Firestore a mano: si fa da Telegram con `/admin_fs_add` + `/admin_event_create`.
-- **Interfaccia di amministrazione**: oltre ai comandi Telegram `/admin_*`, c'è una dashboard
-  locale (`streamlit run admin_ui.py`) che riusa gli stessi servizi; va lanciata sulla propria
-  macchina con le credenziali del bot, non è esposta pubblicamente.
+- **Interfaccia di amministrazione**: oltre ai comandi Telegram `/admin_*`, c'è una
+  [dashboard locale](#dashboard-locale-streamlit) (`streamlit run admin_ui.py`) che riusa gli
+  stessi servizi e permette di correggere sfide ed eventi già programmati; va lanciata sulla
+  propria macchina con le credenziali del bot, non è esposta pubblicamente. Non ha
+  autenticazione propria: chi ha accesso al PC e al `firebase-key.json` ha accesso al
+  database, quindi non va aperta su una macchina condivisa.
 - **Font delle immagini**: sul container arrivano da `fonts-dejavu-core` (Dockerfile). Se il
   pacchetto sparisce, Pillow ripiega sul font bitmap di default: le immagini escono comunque,
   ma brutte. `services/fonts.py` accetta anche un font messo in `assets/fonts/` o indicato con

@@ -66,3 +66,26 @@ def test_answer_aliases_include_full_name():
     aliases = get_answer_aliases(player)
     assert "lionel messi" in aliases
     assert "messi" in aliases
+
+
+def _player_with_stop(**stop_fields):
+    stop = {"team": "A", "country": "Italia", "league": "Serie A", "start_year": 2010, "end_year": 2012}
+    stop.update(stop_fields)
+    return {
+        "id": "x", "full_name": "X", "aliases": ["x"], "nationality": "Italia",
+        "career": [stop, {"team": "B", "country": "Italia", "league": "Serie A", "start_year": 2012}],
+    }
+
+
+def test_loan_appearances_and_goals_are_accepted():
+    assert validate_player(_player_with_stop(loan=True, apps=33, goals=22)) == []
+    # tutti e tre sono facoltativi: le schede vecchie non li hanno
+    assert validate_player(_player_with_stop()) == []
+
+
+def test_malformed_loan_and_stats_are_flagged():
+    """Finiscono disegnati nell'immagine: un valore sbagliato qui si vede dagli utenti."""
+    assert any("loan" in p for p in validate_player(_player_with_stop(loan="si")))
+    assert any("apps" in p for p in validate_player(_player_with_stop(apps=-1)))
+    assert any("apps" in p for p in validate_player(_player_with_stop(apps="33")))
+    assert any("goals" in p for p in validate_player(_player_with_stop(goals=1.5)))

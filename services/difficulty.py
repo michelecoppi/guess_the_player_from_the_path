@@ -2,41 +2,82 @@ from services.player_pool import load_config
 
 DIFFICULTY_ORDER = ["easy", "medium", "hard", "impossible"]
 
+# Scala di notorieta' usata in tutto il dataset. La definizione discorsiva, con gli esempi
+# e i criteri per assegnarla, sta in docs/difficolta.md: e' il documento di riferimento,
+# qui teniamo solo i numeri.
+POPULARITY_MIN = 1
+POPULARITY_MAX = 5
+DEFAULT_POPULARITY = 3
 
-def compute_difficulty_score(player):
-    """Punteggio piu' alto = piu' difficile da indovinare.
+# Peso di una tappa in base al campionato: 0 = top 5 europeo, 1 = campionato che il
+# pubblico del bot fatica a collocare. I campionati "noti ma non top" (Eredivisie,
+# Primeira Liga, Liga Argentina, Brasileirao, MLS...) stanno in mezzo: Ajax, Porto e Boca
+# non possono pesare come una seconda divisione asiatica.
+LEAGUE_TIER_TOP = 0.0
+LEAGUE_TIER_KNOWN = 0.5
+LEAGUE_TIER_OBSCURE = 1.0
 
-    Il fattore dominante e' la notorieta' del calciatore (popularity 1-5): un percorso lungo
-    di un giocatore famosissimo resta facile, mentre poche tappe in campionati poco seguiti
-    sono difficili. Gli altri fattori pesano come "modificatori" e sono normalizzati sulla
-    lunghezza della carriera, altrimenti il punteggio cresce solo perche' un calciatore ha
-    cambiato molte squadre.
+
+def league_tier_weight(league, top_leagues, known_leagues):
+    if league in top_leagues:
+        return LEAGUE_TIER_TOP
+    if league in known_leagues:
+        return LEAGUE_TIER_KNOWN
+    return LEAGUE_TIER_OBSCURE
+
+
+def _score_components(player):
+    """I quattro addendi del punteggio, tenuti in un posto solo.
+
+    Il modello e' volutamente semplice ed e' documentato in docs/difficolta.md:
+
+    - la **notorieta'** (`popularity` 1-5) fissa la fascia di partenza, a passi di 4 punti:
+      un pop 5 parte da 0, un pop 1 da 16;
+    - il **percorso** (campionati poco noti, paesi, numero di squadre) e' solo un
+      modificatore, con un tetto complessivo di 5.5 punti: puo' spostare un giocatore al
+      massimo di una fascia, mai di due.
+
+    E' la regola che tiene allineati dataset e difficolta' percepita: una carriera esotica
+    non basta a rendere "impossibile" un giocatore famoso (Forlan, Ibrahimovic), e una
+    carriera lineare non basta a rendere "facile" un giocatore che nessuno conosce.
     """
     config = load_config()
     top_leagues = set(config.get("top_leagues", []))
+    known_leagues = set(config.get("known_leagues", []))
     weights = config.get("difficulty_weights", {})
     career = player.get("career", [])
-
-    teams_count = len(career)
-    if teams_count == 0:
-        return 0.0
-
     countries = {entry.get("country") for entry in career if entry.get("country")}
-    minor_league_ratio = sum(1 for entry in career if entry.get("league") not in top_leagues) / teams_count
-    popularity = player.get("popularity", 3)
+    popularity = player.get("popularity", DEFAULT_POPULARITY)
 
-    score = (
-        (6 - popularity) * weights.get("popularity", 3.0)
-        + minor_league_ratio * weights.get("minor_leagues", 4.0)
-        + min(max(len(countries) - 2, 0), 3) * weights.get("extra_countries", 1.0)
-        + min(max(teams_count - 4, 0), 4) * weights.get("extra_teams", 0.5)
+    # La quota di tappe "esotiche" e' una media, non una somma: una carriera lunga non deve
+    # pesare di piu' solo perche' e' lunga (a quello pensa gia', con molta moderazione, il
+    # termine sulle squadre).
+    league_obscurity = (
+        sum(league_tier_weight(entry.get("league"), top_leagues, known_leagues) for entry in career) / len(career)
+        if career
+        else 0.0
     )
-    return score
+
+    components = {
+        "popularity": (POPULARITY_MAX - popularity) * weights.get("popularity", 4.0),
+        "minor_leagues": league_obscurity * weights.get("minor_leagues", 3.0),
+        "extra_countries": min(max(len(countries) - 2, 0), 3) * weights.get("extra_countries", 0.5),
+        "extra_teams": min(max(len(career) - 5, 0), 5) * weights.get("extra_teams", 0.2),
+    }
+    return components, league_obscurity, countries
+
+
+def compute_difficulty_score(player):
+    """Punteggio piu' alto = piu' difficile da indovinare (vedi _score_components)."""
+    if not player.get("career"):
+        return 0.0
+    components, _, _ = _score_components(player)
+    return sum(components.values())
 
 
 def bucket_for_score(score, thresholds=None):
     config = load_config()
-    thresholds = thresholds or config.get("difficulty_thresholds", {"easy": 8.5, "medium": 12, "hard": 15})
+    thresholds = thresholds or config.get("difficulty_thresholds", {"easy": 5, "medium": 9, "hard": 13})
 
     if score < thresholds["easy"]:
         return "easy"
@@ -49,6 +90,27 @@ def bucket_for_score(score, thresholds=None):
 
 def compute_difficulty(player):
     return bucket_for_score(compute_difficulty_score(player))
+
+
+def explain_difficulty(player):
+    """Scompone il punteggio nei suoi quattro addendi.
+
+    Serve quando una difficolta' sembra sbagliata (il caso tipico: "perche' questo e'
+    impossibile?"): mostra subito se a pesare e' la notorieta' o il percorso, senza dover
+    rifare i conti a mano. La procedura completa e' in docs/difficolta.md, sezione 5.
+    """
+    career = player.get("career", [])
+    components, league_obscurity, countries = _score_components(player)
+    score = sum(components.values())
+    return {
+        "score": score,
+        "difficulty": bucket_for_score(score),
+        "components": components,
+        "popularity": player.get("popularity", DEFAULT_POPULARITY),
+        "teams": len(career),
+        "countries": len(countries),
+        "league_obscurity": league_obscurity,
+    }
 
 
 def group_players_by_difficulty(players):

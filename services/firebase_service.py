@@ -888,3 +888,129 @@ def mark_father_son_pairs_used(pair_ids, event_code):
         db.collection(FATHER_SON_COLLECTION).document(pair_id).update(
             {"used_in_events": firestore.ArrayUnion([event_code])}
         )
+
+
+# ---------------------------------------------------------------------------
+# Amministrazione contenuti (dashboard locale admin_ui.py)
+#
+# Lettura e modifica dei documenti gia' scritti: la dashboard deve poter correggere una
+# sfida sbagliata o spostare un evento senza aprire la console di Firebase. Le scritture
+# usano update() e non set(): se il documento non esiste e' un errore da mostrare, non un
+# documento nuovo mezzo vuoto creato per sbaglio.
+# ---------------------------------------------------------------------------
+
+def get_daily_paths_range(start_day_iso, end_day_iso, limit=180):
+    """Le sfide di una finestra di date, in ordine cronologico. Filtro e ordinamento sono
+    sullo stesso campo (`day`), quindi non serve nessun indice composito."""
+    query = (
+        db.collection(DAILY_PATH_COLLECTION)
+        .where("day", ">=", start_day_iso)
+        .where("day", "<=", end_day_iso)
+        .order_by("day")
+        .limit(limit)
+    )
+    return [doc.to_dict() for doc in query.stream()]
+
+
+def update_daily_path(day_iso, fields):
+    """Modifica parziale di una sfida esistente (risposte, difficolta', flag del bonus)."""
+    daily_path_ref(day_iso).update(dict(fields))
+    logging.info(f"[ADMIN] daily_path {day_iso} aggiornata: {sorted(fields)}")
+
+
+def delete_daily_path(day_iso):
+    ref = daily_path_ref(day_iso)
+    if not ref.get().exists:
+        return False
+    ref.delete()
+    logging.info(f"[ADMIN] daily_path {day_iso} eliminata")
+    return True
+
+
+def count_day_winners(day_iso):
+    """Quanti utenti hanno indovinato la sfida di quel giorno.
+
+    I contatori giornalieri non vengono azzerati (portano con se' `last_played_day`), quindi
+    il numero e' attendibile solo per il giorno corrente: per i giorni passati i documenti
+    sono gia' stati sovrascritti dal gioco dei giorni successivi."""
+    query = (
+        db.collection(USERS_COLLECTION)
+        .where("last_played_day", "==", day_iso)
+        .where("has_guessed_today", "==", True)
+    )
+    return _count_collection(query)
+
+
+def update_event(event_code, fields):
+    event_ref(event_code).update(dict(fields))
+    logging.info(f"[ADMIN] evento {event_code} aggiornato: {sorted(fields)}")
+
+
+def delete_event(event_code):
+    """Elimina l'evento e i suoi partecipanti: Firestore non cancella le sottocollection
+    insieme al documento padre, altrimenti resterebbero documenti orfani."""
+    ref = event_ref(event_code)
+    if not ref.get().exists:
+        return False
+    for participant in ref.collection(PARTICIPANTS_SUBCOLLECTION).stream():
+        participant.reference.delete()
+    ref.delete()
+    logging.info(f"[ADMIN] evento {event_code} eliminato (con i partecipanti)")
+    return True
+
+
+def get_event_participants(event_code, limit=200):
+    query = event_ref(event_code).collection(PARTICIPANTS_SUBCOLLECTION).order_by(
+        "points", direction=firestore.Query.DESCENDING
+    ).limit(limit)
+    participants = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        data["id"] = doc.id
+        participants.append(data)
+    return participants
+
+
+def list_leagues(limit=50):
+    query = db.collection(LEAGUES_COLLECTION).order_by(
+        "members_count", direction=firestore.Query.DESCENDING
+    ).limit(limit)
+    leagues = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        data["code"] = doc.id
+        leagues.append(data)
+    return leagues
+
+
+def update_user_fields(user_id, fields):
+    """Correzione manuale di un documento utente dalla dashboard (punti, striscia, lingua).
+    Volutamente senza Increment: dalla dashboard si scrive il valore che si vuole vedere."""
+    user_ref(user_id).update(dict(fields))
+    logging.info(f"[ADMIN] utente {user_id} aggiornato: {sorted(fields)}")
+
+
+def find_users_by_first_name(prefix, limit=20):
+    """Ricerca per prefisso del nome: e' una query di intervallo su un solo campo, quindi
+    costa come una lettura ordinata e non richiede indici aggiuntivi."""
+    if not prefix:
+        return []
+    query = (
+        db.collection(USERS_COLLECTION)
+        .order_by("first_name")
+        .start_at([prefix])
+        .end_at([prefix + ""])
+        .limit(limit)
+    )
+    return [doc.to_dict() for doc in query.stream()]
+
+
+def get_archive_days(user_id, limit=100):
+    """Tutte le sfide d'archivio giocate da un utente (anche quelle non risolte)."""
+    query = user_ref(user_id).collection(ARCHIVE_SUBCOLLECTION).limit(limit)
+    days = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        data["day"] = data.get("day") or doc.id
+        days.append(data)
+    return sorted(days, key=lambda d: d["day"], reverse=True)

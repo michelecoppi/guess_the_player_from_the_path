@@ -23,6 +23,13 @@ HEADER_HEIGHT = 150
 FOOTER_HEIGHT = 58
 PADDING = 34
 
+# Oltre questa soglia la card passa al layout compatto. Serve perche' Telegram scala
+# l'immagine alla larghezza della bolla: con le righe piene, una carriera da 20 tappe
+# diventa alta 2588 px e in chat si legge male. Il tetto e' ~1950 px, che scalato resta
+# leggibile su un telefono senza costringere a ingrandire.
+COMPACT_FROM_ROWS = 13
+MAX_ROWS = 20
+
 TIMELINE_X = 60
 CARD_X = 104
 CARD_RIGHT = WIDTH - PADDING
@@ -84,10 +91,54 @@ def _stint_years(stop):
 
 def _years_label(stop):
     """Etichetta degli anni, senza parole: l'immagine e' la stessa per utenti italiani,
-    spagnoli e inglesi, quindi niente "oggi" o "present" dentro il disegno."""
+    spagnoli e inglesi, quindi niente "oggi" o "present" dentro il disegno.
+
+    Per lo stesso motivo un prestito e' marcato con la freccia davanti agli anni (la
+    convenzione di Wikipedia e dei siti di calciomercato) invece che con la parola
+    "prestito". La tappa ancora in corso finisce con i puntini e non con una freccia:
+    altrimenti in una carriera piena di prestiti le due frecce si confonderebbero.
+
+    Sono glifi scelti anche per il font di produzione (DejaVu nel Dockerfile, non lo stesso
+    di uno sviluppatore su Windows): niente frecce esotiche che diventerebbero un
+    rettangolo vuoto sul server."""
     start = stop.get("start_year", "?")
     end = stop.get("end_year")
-    return f"{start} – {end}" if end else f"{start} →"
+    span = f"{start} – {end}" if end else f"{start} – …"
+    return f"→ {span}" if stop.get("loan") else span
+
+
+def _layout_for(rows):
+    """Misure delle righe in base a quante tappe ci sono.
+
+    Una carriera corta merita righe generose; una da 15-20 tappe (esistono: Kevin-Prince
+    Boateng ne ha 15) va compattata, altrimenti l'immagine diventa una colonna altissima che
+    Telegram rimpicciolisce fino a renderla illeggibile."""
+    if rows >= COMPACT_FROM_ROWS:
+        return {
+            "row_height": 76, "row_gap": 10, "badge": 46,
+            "team_size": 25, "meta_size": 17, "years_size": 19,
+            "bar_max": 130, "show_meta": True,
+        }
+    return {
+        "row_height": ROW_HEIGHT, "row_gap": ROW_GAP, "badge": 58,
+        "team_size": 30, "meta_size": 21, "years_size": 23,
+        "bar_max": 170, "show_meta": True,
+    }
+
+
+def _stats_label(stop):
+    """Presenze e gol come "33 (22)", la convenzione di Wikipedia e dei siti di statistiche.
+
+    Niente parole ("pres.", "gol") per lo stesso motivo degli anni: la stessa PNG va a
+    utenti italiani, inglesi e spagnoli. Se mancano i gol (o non hanno senso, come per un
+    portiere) si mostrano le sole presenze."""
+    apps = stop.get("apps")
+    goals = stop.get("goals")
+    if not isinstance(apps, int):
+        return None
+    if isinstance(goals, int):
+        return f"{apps} ({goals})"
+    return str(apps)
 
 
 def _draw_header(draw, title, subtitle, badge=None):
@@ -121,7 +172,9 @@ def render_career_path_image(career, title="Percorso misterioso", subtitle=None,
     `career` e' la lista di tappe come in players.json."""
     career = list(career or [])
     rows = len(career)
-    body_height = rows * ROW_HEIGHT + max(rows - 1, 0) * ROW_GAP
+    layout = _layout_for(rows)
+    row_height, row_gap = layout["row_height"], layout["row_gap"]
+    body_height = rows * row_height + max(rows - 1, 0) * row_gap
     height = HEADER_HEIGHT + PADDING + body_height + FOOTER_HEIGHT
 
     img = _vertical_gradient(WIDTH, height, BG_TOP, BG_BOTTOM)
@@ -132,62 +185,98 @@ def render_career_path_image(career, title="Percorso misterioso", subtitle=None,
     _draw_header(draw, title, subtitle, badge)
 
     longest = max((_stint_years(stop) for stop in career), default=1)
-    team_font = get_font(30, bold=True)
-    meta_font = get_font(21)
-    years_font = get_font(23, bold=True)
+    team_font = get_font(layout["team_size"], bold=True)
+    meta_font = get_font(layout["meta_size"])
+    years_font = get_font(layout["years_size"], bold=True)
 
     # La linea della timeline va disegnata prima dei nodi, altrimenti li attraversa.
-    centers = [HEADER_HEIGHT + PADDING + i * (ROW_HEIGHT + ROW_GAP) + ROW_HEIGHT / 2 for i in range(rows)]
+    centers = [HEADER_HEIGHT + PADDING + i * (row_height + row_gap) + row_height / 2 for i in range(rows)]
     if len(centers) > 1:
         draw.line([TIMELINE_X, centers[0], TIMELINE_X, centers[-1]], fill=TRACK_COLOR, width=3)
 
     for index, stop in enumerate(career):
-        y0 = HEADER_HEIGHT + PADDING + index * (ROW_HEIGHT + ROW_GAP)
-        y1 = y0 + ROW_HEIGHT
+        y0 = HEADER_HEIGHT + PADDING + index * (row_height + row_gap)
+        y1 = y0 + row_height
         center_y = centers[index]
 
         team_name = stop.get("team", "?")
         club_color = _color_for_team(team_name)
 
-        draw.rounded_rectangle([CARD_X, y0, CARD_RIGHT, y1], radius=18, fill=CARD_COLOR, outline=CARD_EDGE)
-        draw.rounded_rectangle([CARD_X, y0, CARD_X + 8, y1], radius=4, fill=club_color)
+        is_loan = bool(stop.get("loan"))
 
-        badge_size = 58
+        draw.rounded_rectangle([CARD_X, y0, CARD_RIGHT, y1], radius=18, fill=CARD_COLOR, outline=CARD_EDGE)
+        # Barretta piena = tappa a titolo definitivo, tratteggiata = prestito. E' il secondo
+        # segnale (l'altro e' la freccia sugli anni): a colpo d'occhio si distingue una
+        # carriera fatta di prestiti da una fatta di trasferimenti.
+        if is_loan:
+            dash, gap = 14, 9
+            edge_y = y0 + 6
+            while edge_y < y1 - 6:
+                draw.rounded_rectangle(
+                    [CARD_X, edge_y, CARD_X + 8, min(edge_y + dash, y1 - 6)], radius=4, fill=club_color
+                )
+                edge_y += dash + gap
+        else:
+            draw.rounded_rectangle([CARD_X, y0, CARD_X + 8, y1], radius=4, fill=club_color)
+
+        badge_size = layout["badge"]
         badge_x = CARD_X + 26
         badge_y = center_y - badge_size / 2
         draw.ellipse([badge_x, badge_y, badge_x + badge_size, badge_y + badge_size], fill=club_color)
         draw.text(
             (badge_x + badge_size / 2, badge_y + badge_size / 2),
             _initials(team_name),
-            font=get_font(24, bold=True),
+            font=get_font(int(badge_size * 0.41), bold=True),
             fill=(16, 24, 32),
             anchor="mm",
         )
 
         years_text = _years_label(stop)
         years_width = draw.textlength(years_text, font=years_font)
-        draw.text((CARD_RIGHT - 26, center_y - 14), years_text, font=years_font, fill=TEXT_COLOR, anchor="rm")
+        draw.text(
+            (CARD_RIGHT - 26, center_y - row_height * 0.13),
+            years_text, font=years_font, fill=TEXT_COLOR, anchor="rm",
+        )
 
         text_x = badge_x + badge_size + 22
         text_limit = CARD_RIGHT - 26 - years_width - 30 - text_x
 
-        draw.text((text_x, y0 + 22), _truncate(draw, team_name, team_font, text_limit), font=team_font, fill=TEXT_COLOR)
+        draw.text(
+            (text_x, y0 + row_height * 0.21),
+            _truncate(draw, team_name, team_font, text_limit), font=team_font, fill=TEXT_COLOR,
+        )
 
         league = stop.get("league") or ""
         country = stop.get("country") or ""
         meta_line = " · ".join(part for part in (league, country) if part)
         if meta_line:
-            draw.text((text_x, y0 + 60), _truncate(draw, meta_line, meta_font, text_limit), font=meta_font, fill=MUTED_COLOR)
+            draw.text(
+                (text_x, y0 + row_height * 0.58),
+                _truncate(draw, meta_line, meta_font, text_limit), font=meta_font, fill=MUTED_COLOR,
+            )
 
-        # Barra proporzionale agli anni della tappa: dice "quanto e' rimasto" senza scrivere
-        # una parola, quindi vale identica in tutte le lingue.
-        bar_y = y1 - 20
-        bar_max = 170
+        # Sotto gli anni: presenze e gol se li abbiamo, altrimenti la barra proporzionale
+        # alla durata della tappa. Non entrambi — occupano lo stesso posto, e le due
+        # informazioni si sovrapporrebbero. Fra le due vincono i numeri: dicono qualcosa che
+        # gli anni non dicono gia' (un titolare e una comparsa possono restare i soliti tre
+        # anni), mentre la barra e' solo un altro modo di leggere le date.
+        stats_text = _stats_label(stop)
+        bar_y = y1 - row_height * 0.19
+        bar_max = layout["bar_max"]
         bar_x0 = CARD_RIGHT - 26 - bar_max
-        draw.rounded_rectangle([bar_x0, bar_y, CARD_RIGHT - 26, bar_y + 6], radius=3, fill=TRACK_COLOR)
-        filled = max(int(bar_max * _stint_years(stop) / longest), 8)
-        draw.rounded_rectangle([bar_x0, bar_y, bar_x0 + filled, bar_y + 6], radius=3, fill=club_color)
+        if stats_text:
+            draw.text(
+                (CARD_RIGHT - 26, bar_y + 3), stats_text,
+                font=get_font(layout["meta_size"]), fill=MUTED_COLOR, anchor="rm",
+            )
+        else:
+            draw.rounded_rectangle([bar_x0, bar_y, CARD_RIGHT - 26, bar_y + 6], radius=3, fill=TRACK_COLOR)
+            filled = max(int(bar_max * _stint_years(stop) / longest), 8)
+            draw.rounded_rectangle([bar_x0, bar_y, bar_x0 + filled, bar_y + 6], radius=3, fill=club_color)
 
+        # Il prestito e' gia' detto due volte (barretta tratteggiata e freccia sugli anni):
+        # differenziare anche il nodo con un anello piu' sottile non si distingueva a
+        # occhio, quindi sarebbe stato un segnale finto.
         draw.ellipse([TIMELINE_X - 11, center_y - 11, TIMELINE_X + 11, center_y + 11], fill=club_color)
         draw.ellipse([TIMELINE_X - 5, center_y - 5, TIMELINE_X + 5, center_y + 5], fill=HEADER_COLOR)
 

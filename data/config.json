@@ -16,19 +16,48 @@
     "Bundesliga",
     "Ligue 1"
   ],
+  "known_leagues": [
+    "Eredivisie",
+    "Primeira Liga",
+    "Liga Profesional",
+    "Brasileirao",
+    "MLS",
+    "Championship",
+    "Super Lig",
+    "Belgian Pro League",
+    "Scottish Premiership",
+    "Saudi Pro League",
+    "Russian Premier League",
+    "Serie B",
+    "Segunda Division",
+    "Liga MX",
+    "2. Bundesliga",
+    "Ligue 2",
+    "Austrian Bundesliga",
+    "Swiss Super League",
+    "Super League Grecia",
+    "Ekstraklasa",
+    "Uruguayan Primera Division",
+    "Premier League Ucraina",
+    "Czech First League",
+    "HNL",
+    "Allsvenskan",
+    "Eliteserien",
+    "Superligaen"
+  ],
   "difficulty_thresholds": {
-    "easy": 8.5,
-    "medium": 12,
-    "hard": 15
+    "easy": 5,
+    "medium": 9,
+    "hard": 13
   },
   "event_min_gap_days": 10,
   "event_default_duration_days": 5,
   "event_history_no_repeat_templates": 3,
   "difficulty_weights": {
-    "popularity": 3.0,
-    "minor_leagues": 4.0,
-    "extra_countries": 1.0,
-    "extra_teams": 0.5
+    "popularity": 4.0,
+    "minor_leagues": 3.0,
+    "extra_countries": 0.5,
+    "extra_teams": 0.2
   },
   "game_epoch": "2025-06-08"
 }
