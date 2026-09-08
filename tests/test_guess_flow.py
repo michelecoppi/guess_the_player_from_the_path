@@ -37,7 +37,12 @@ def firebase(monkeypatch):
     """Sostituto in memoria delle sole funzioni Firestore usate da /guess."""
     calls = {"registered": [], "claims": 0, "attempts": []}
 
-    state = {"attempt": {"ok": True, "attempts_used": 1, "attempts_left": 2}, "first_free": True}
+    state = {
+        "attempt": {"ok": True, "attempts_used": 1, "attempts_left": 2, "hints_used": 0},
+        "first_free": True,
+        # `None` = utente non ancora registrato, cioe' il caso dei test gia' scritti.
+        "user": None,
+    }
 
     def begin_guess_attempt(user_id, day, max_attempts):
         calls["attempts"].append((user_id, day, max_attempts))
@@ -50,13 +55,25 @@ def firebase(monkeypatch):
             return True
         return False
 
-    def register_correct_guess(user_id, points, bonus, day, monthly=True):
-        calls["registered"].append({"user_id": user_id, "points": points, "bonus": bonus, "day": day})
+    def register_correct_guess(user_id, points, bonus, day, monthly=True, attempts=None):
+        calls["registered"].append({
+            "user_id": user_id, "points": points, "bonus": bonus, "day": day, "attempts": attempts,
+        })
 
     monkeypatch.setattr(guess_handler.firebase_service, "begin_guess_attempt", begin_guess_attempt)
     monkeypatch.setattr(guess_handler.firebase_service, "claim_daily_first_correct", claim_daily_first_correct)
     monkeypatch.setattr(guess_handler.firebase_service, "register_correct_guess", register_correct_guess)
-    monkeypatch.setattr(guess_handler.firebase_service, "get_user_data", lambda uid: None)
+    monkeypatch.setattr(guess_handler.firebase_service, "get_user_data", lambda uid: state["user"])
+    monkeypatch.setattr(
+        guess_handler.firebase_service, "register_daily_outcome",
+        lambda day, solved: calls.setdefault("outcomes", []).append((day, solved)),
+    )
+    monkeypatch.setattr(
+        guess_handler.firebase_service, "record_daily_history",
+        lambda uid, day, solved, attempts, hints=0: calls.setdefault("history", []).append(
+            {"day": day, "solved": solved, "attempts": attempts, "hints": hints}
+        ),
+    )
     monkeypatch.setattr(
         guess_handler.firebase_service, "add_points_to_leagues",
         lambda uid, codes, points, name=None: calls.setdefault("leagues", []).append((codes, points)),
@@ -91,15 +108,19 @@ def test_wrong_answer_reports_remaining_attempts(firebase):
     asyncio.run(guess_handler.guess(update, None))
 
     assert firebase.calls["registered"] == []
-    assert "2 tentativi rimasti" in message.replies[0]
+    assert "Tentativi rimasti: 2" in message.replies[0]
 
 
-def test_last_wrong_attempt_says_the_day_is_over(firebase):
+def test_last_wrong_attempt_says_when_the_answer_will_be_revealed(firebase):
+    """Tentativi finiti: non si rivela (la giornata e' aperta per tutti gli altri) ma si dice
+    quando e come si scopre la risposta. Prima era solo "riprova domani"."""
     firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0}
     update, message = make_update("/guess ronaldo")
     asyncio.run(guess_handler.guess(update, None))
 
-    assert "esaurito i tentativi" in message.replies[0]
+    assert "tentativi finiti" in message.replies[0].lower()
+    assert "/solution" in message.replies[0]
+    assert "Messi" not in message.replies[0]
 
 
 @pytest.mark.parametrize("reason,expected", [
@@ -178,7 +199,7 @@ def test_another_player_is_still_wrong(firebase):
     asyncio.run(guess_handler.guess(update, None))
 
     assert firebase.calls["registered"] == []
-    assert "2 tentativi rimasti" in message.replies[0]
+    assert "Tentativi rimasti: 2" in message.replies[0]
 
 
 # ---------------------------------------------------------------------------
@@ -234,4 +255,154 @@ def test_a_challenge_without_player_id_answers_exactly_like_before(firebase):
     update, message = make_update("/guess Del Piero")
     asyncio.run(guess_handler.guess(update, None))
 
-    assert message.replies[0] == "\u274c Risposta sbagliata, riprova! Hai 2 tentativi rimasti."
+    assert message.replies[0] == "\u274c Risposta sbagliata, riprova! Tentativi rimasti: 2."
+
+
+# ---------------------------------------------------------------------------
+# Indizi
+# ---------------------------------------------------------------------------
+
+def _callbacks(markup):
+    return [b.callback_data for row in markup.inline_keyboard for b in row if b.callback_data] if markup else []
+
+
+@pytest.fixture
+def with_player_id(monkeypatch):
+    """Una sfida di cui si sa **chi** era: e' la condizione per avere indizi e confronto."""
+    monkeypatch.setattr(guess_handler, "get_today_challenge", lambda: dict(CHALLENGE, player_id="messi"))
+
+
+def test_a_wrong_answer_offers_a_hint(firebase, with_player_id):
+    update, message = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert _callbacks(message.markups[0]) == ["hint_daily"]
+
+
+def test_the_hint_is_not_offered_once_they_are_used_up(firebase, with_player_id):
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 2, "attempts_left": 1, "hints_used": 2}
+    update, message = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert _callbacks(message.markups[0]) == []
+
+
+def test_the_hint_is_not_offered_when_the_attempts_are_over(firebase, with_player_id, shareable):
+    """A tentativi finiti un indizio non servirebbe a niente e costerebbe comunque un punto."""
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0, "hints_used": 0}
+    update, message = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert "hint_daily" not in _callbacks(message.markups[0])
+
+
+def test_the_hints_are_paid_out_of_the_points(firebase):
+    """Gli indizi si scalano solo se si indovina: su una sfida persa non c'era niente da
+    togliere."""
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 2, "attempts_left": 1, "hints_used": 2}
+    update, message = make_update("/guess messi")
+    asyncio.run(guess_handler.guess(update, None))
+
+    # medium (2) - 2 indizi = pavimento a 1, piu' il bonus del primo.
+    assert firebase.calls["registered"][0]["points"] == 2
+
+
+def test_without_hints_the_points_do_not_change(firebase):
+    update, _ = make_update("/guess messi")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls["registered"][0]["points"] == 3  # medium (2) + bonus (1)
+
+
+def test_the_shared_card_shows_the_hints_used(firebase, shareable):
+    """Due "1/3" identici non sono la stessa partita se uno dei due si e' fatto aiutare."""
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 1, "attempts_left": 2, "hints_used": 1}
+    update, message = make_update("/guess messi")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert "%F0%9F%92%A1" in message.markups[0].inline_keyboard[0][0].url  # la lampadina
+
+
+# ---------------------------------------------------------------------------
+# "Avvisami a mezzanotte"
+# ---------------------------------------------------------------------------
+
+def test_losing_offers_the_notifications_to_who_has_them_off(firebase, shareable):
+    """Il messaggio dice "te lo dico a mezzanotte": a chi le notifiche non le ha, quella
+    frase da sola non varrebbe niente."""
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0, "hints_used": 0}
+    firebase.state["user"] = {"notifications_enabled": False}
+    update, message = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert "notify_on" in _callbacks(message.markups[0])
+
+
+def test_who_already_has_the_notifications_is_not_asked_again(firebase, shareable):
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0, "hints_used": 0}
+    firebase.state["user"] = {"notifications_enabled": True}
+    update, message = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert "notify_on" not in _callbacks(message.markups[0])
+
+
+# ---------------------------------------------------------------------------
+# Contatori della giornata (la percentuale mostrata a giornata chiusa)
+# ---------------------------------------------------------------------------
+
+def test_the_first_attempt_of_the_day_counts_the_player(firebase):
+    update, _ = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    day = firebase.calls["attempts"][0][1]
+    assert firebase.calls["outcomes"] == [(day, False)]
+
+
+def test_the_following_attempts_do_not_count_again(firebase):
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 2, "attempts_left": 1, "hints_used": 0}
+    update, _ = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls.get("outcomes", []) == []
+
+
+def test_a_correct_answer_counts_as_solved(firebase):
+    update, _ = make_update("/guess messi")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert [solved for _, solved in firebase.calls["outcomes"]] == [False, True]
+
+
+def test_the_day_is_recorded_when_it_closes(firebase):
+    """Il calendario della mini app deve poter dire "questa l'hai presa al secondo": dai
+    contatori sul documento utente non si ricava, li sovrascrive il giorno dopo."""
+    update, _ = make_update("/guess messi")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls["history"] == [{"day": firebase.calls["attempts"][0][1], "solved": True, "attempts": 1, "hints": 0}]
+
+
+def test_a_lost_day_is_recorded_too(firebase):
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0, "hints_used": 1}
+    update, _ = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls["history"][0]["solved"] is False
+    assert firebase.calls["history"][0]["hints"] == 1
+
+
+def test_a_day_still_open_is_not_recorded_yet(firebase):
+    """Si scrive una volta sola, quando la giornata si chiude: non ad ogni tentativo."""
+    update, _ = make_update("/guess ronaldo")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls.get("history", []) == []
+
+
+def test_the_attempt_count_feeds_the_distribution(firebase):
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 2, "attempts_left": 1, "hints_used": 0}
+    update, _ = make_update("/guess messi")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls["registered"][0]["attempts"] == 2

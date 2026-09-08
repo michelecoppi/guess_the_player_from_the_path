@@ -212,3 +212,42 @@ def test_broadcast_renders_monthly_results_in_each_users_language(monkeypatch):
 
 async def _no_sleep(_seconds):
     return None
+
+
+def test_broadcast_says_how_many_got_it(monkeypatch):
+    """La giornata e' chiusa e la percentuale e' definitiva: dirla non anticipa niente."""
+    import asyncio
+
+    sent = []
+
+    class FakeBot:
+        async def send_message(self, chat_id, text):
+            sent.append(text)
+
+    monkeypatch.setattr(daily_job, "get_bot", lambda: FakeBot())
+    monkeypatch.setattr(daily_job.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr(daily_job.firebase_service, "get_broadcast_users", lambda day: [
+        {"chat_id": 1, "has_guessed_today": False},
+    ])
+
+    asyncio.run(daily_job._broadcast("2026-09-06", "Messi", None, None, (100, 41)))
+    assert "41%" in sent[0]
+
+
+def test_broadcast_says_nothing_when_there_are_too_few_players(monkeypatch):
+    import asyncio
+
+    sent = []
+
+    class FakeBot:
+        async def send_message(self, chat_id, text):
+            sent.append(text)
+
+    monkeypatch.setattr(daily_job, "get_bot", lambda: FakeBot())
+    monkeypatch.setattr(daily_job.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr(daily_job.firebase_service, "get_broadcast_users", lambda day: [
+        {"chat_id": 1, "has_guessed_today": False},
+    ])
+
+    asyncio.run(daily_job._broadcast("2026-09-06", "Messi", None, None, (2, 1)))
+    assert "%" not in sent[0]

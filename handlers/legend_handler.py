@@ -12,7 +12,8 @@ per chi la cerca dopo.
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from services.i18n import resolve_language, t
+from handlers.keyboards import language_for
+from services.i18n import t
 
 CALLBACK_DATA = "legend"
 
@@ -25,14 +26,14 @@ def legend_keyboard(lang, extra_rows=None):
 
 
 async def legend(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = resolve_language(getattr(update.effective_user, "language_code", None))
+    lang = language_for(update)
     await update.effective_message.reply_text(t(lang, "legend.text"), parse_mode="HTML")
 
 
 async def legend_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    lang = resolve_language(getattr(query.from_user, "language_code", None))
+    lang = language_for(update)
     # Messaggio nuovo invece di modificare quello della sfida: l'immagine deve restare
     # visibile mentre si legge come si interpreta.
     await query.message.reply_text(t(lang, "legend.text"), parse_mode="HTML")

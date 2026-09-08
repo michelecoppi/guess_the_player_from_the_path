@@ -15,6 +15,7 @@ from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
 from services import firebase_service
 from services.daily_challenge import invalidate as invalidate_daily_cache
 from services.daily_generator import ensure_daily_buffer
+from services.daily_stats import solve_percent
 from services.dates import now_italy, shift_iso, to_display, today_iso
 from services.event_generator import maybe_generate_event
 from services.i18n import DEFAULT_LANGUAGE, content_text, month_label, t
@@ -49,6 +50,9 @@ async def update_daily_challenge():
     invalidate_daily_cache()
 
     yesterday_player = firebase_service.get_display_name_for_day(yesterday)
+    # Quanti l'hanno indovinata: si legge una volta sola qui e si passa al broadcast, invece
+    # di rileggerla per ognuno dei destinatari.
+    yesterday_stats = firebase_service.get_daily_stats(yesterday)
     current_event = firebase_service.get_current_event(today)
     # I trofei si assegnano quando l'evento e' finito davvero, cioe' il giorno dopo la sua
     # ultima giornata: assegnarli all'inizio dell'ultimo giorno premierebbe una classifica
@@ -57,7 +61,9 @@ async def update_daily_challenge():
 
     monthly_result = handle_monthly_reset(now)
 
-    messages_sent, errors = await _broadcast(yesterday, yesterday_player, current_event, monthly_result)
+    messages_sent, errors = await _broadcast(
+        yesterday, yesterday_player, current_event, monthly_result, yesterday_stats
+    )
 
     if finished_event:
         try:
@@ -74,9 +80,13 @@ async def update_daily_challenge():
     )
 
 
-async def _broadcast(reference_day, yesterday_player, current_event, monthly_result):
+async def _broadcast(reference_day, yesterday_player, current_event, monthly_result, stats=(0, 0)):
     """`monthly_result` (se non None) e' {'month_name', 'year', 'winners'}: il podio viene
-    reso nella lingua di ciascun destinatario, non e' piu' un testo unico precomposto."""
+    reso nella lingua di ciascun destinatario, non e' piu' un testo unico precomposto.
+
+    `stats` e' (giocatori, risolutori) della giornata appena chiusa: diventa la riga "l'ha
+    indovinato il 41%". Qui la giornata e' chiusa e la percentuale e' definitiva, quindi
+    dirla non anticipa niente a nessuno."""
     broadcast_users = firebase_service.get_broadcast_users(reference_day)
 
     sent = 0
@@ -90,6 +100,10 @@ async def _broadcast(reference_day, yesterday_player, current_event, monthly_res
             text = t(lang, "job.congrats", player=player_label)
         else:
             text = t(lang, "job.missed", player=player_label)
+
+        percent = solve_percent(*stats)
+        if percent is not None:
+            text += t(lang, "job.rate_line", percent=percent)
 
         if current_event:
             event_name = content_text(current_event, "name", lang, default=t(lang, "job.unknown_event"))

@@ -16,6 +16,9 @@ from services.i18n import t
 CORRECT = "🟩"
 WRONG = "🟥"
 UNUSED = "⬜"
+# Un indizio chiesto = una lampadina. Come i quadratini, e' un segno e non una parola:
+# nella card non c'e' niente da tradurre.
+HINT = "💡"
 
 
 def result_squares(attempts_used, max_attempts, solved=True):
@@ -33,15 +36,26 @@ def bot_link():
     return f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else ""
 
 
-def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0, archive=False):
+def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0, archive=False, hints=0):
     """`archive=True` marca il risultato come recuperato dall'archivio: il numero della
     sfida basterebbe a distinguerlo da quella di oggi, ma in un gruppo dove la sfida di
-    oggi e' ancora aperta la riga va letta al volo, non confrontata con un calendario."""
+    oggi e' ancora aperta la riga va letta al volo, non confrontata con un calendario.
+
+    `hints` aggiunge una lampadina per indizio chiesto. Non e' una punizione: e' quello che
+    rende confrontabili due righe uguali. Senza, "1/3" di chi si e' fatto dire nazionalita' e
+    ruolo e "1/3" di chi l'ha preso al buio si leggono allo stesso modo, e il gruppo non ha
+    modo di accorgersene.
+
+    La percentuale di chi ha indovinato resta fuori di proposito (services/daily_stats.py):
+    e' un'informazione sulla difficolta' della sfida, e la card la legge anche chi oggi non
+    ha ancora giocato."""
     title_key = "share.archive_title" if archive else "share.title"
     lines = [t(lang, title_key, number=number)]
 
     score = f"{attempts_used}/{max_attempts}" if solved else f"X/{max_attempts}"
     line = f"{result_squares(attempts_used, max_attempts, solved)} {score}"
+    if hints > 0:
+        line += "  " + HINT * hints
     if streak >= 2:
         line += "  " + t(lang, "share.streak", streak=streak)
     lines.append(line)

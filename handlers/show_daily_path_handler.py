@@ -1,15 +1,16 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from handlers.keyboards import language_for
 from handlers.legend_handler import legend_keyboard
-from services.daily_challenge import bonus_available, challenge_number, get_today_challenge
+from services.daily_challenge import MAX_ATTEMPTS, bonus_available, challenge_number, get_today_challenge
 from services.difficulty import points_for_difficulty
-from services.i18n import difficulty_label, resolve_language, t
+from services.i18n import difficulty_label, t
 from services.path_image import render_career_path_image
 
 
 async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = resolve_language(getattr(update.effective_user, "language_code", None))
+    lang = language_for(update)
 
     # get_today_challenge genera la sfida al volo se manca (es. GitHub Action non eseguita).
     challenge = get_today_challenge()
@@ -28,7 +29,10 @@ async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
     points = points_for_difficulty(challenge.get("difficulty"))
     bonus_info = t(lang, "show.bonus_info") if bonus_available() else ""
 
-    caption = t(lang, "show.caption", difficulty=difficulty, points=points, bonus_info=bonus_info)
+    caption = t(
+        lang, "show.caption",
+        difficulty=difficulty, points=points, bonus_info=bonus_info, attempts=MAX_ATTEMPTS,
+    )
 
     photo = image_url
     if career_path:
@@ -38,6 +42,7 @@ async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
             subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
             badge=difficulty.upper(),
             footer=f"Guess the Player #{challenge_number()}",
+            lang=lang,
         )
 
     # La legenda sta sotto l'immagine perche' e' li' che nasce la domanda: cosa vuol dire

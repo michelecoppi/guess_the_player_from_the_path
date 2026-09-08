@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from handlers import league_handler, start_handler
+from services import leagues as league_rules
 
 
 class FakeMessage:
@@ -60,8 +61,8 @@ def firebase(monkeypatch):
 
 def test_the_code_avoids_characters_that_get_confused_when_dictated():
     for _ in range(50):
-        code = league_handler.generate_code()
-        assert len(code) == league_handler.CODE_LENGTH
+        code = league_rules.generate_code()
+        assert len(code) == league_rules.CODE_LENGTH
         assert not set(code) & set("O0I1")
 
 

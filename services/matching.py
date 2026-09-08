@@ -83,15 +83,17 @@ def find_match(guess, accepted_answers):
     return {"answer": best[1], "typo": True}
 
 
-def looks_like_an_answer(text):
-    """Filtro per la risposta libera (senza /guess): serve a distinguere un tentativo da un
-    messaggio qualsiasi, cosi' un "grazie!" o un link non consumano un tentativo.
+# Quante voci puo' avere un elenco separato da virgole. E' il limite degli eventi "career"
+# (dove la risposta e' un elenco di squadre): oltre, non e' piu' una risposta ma un
+# messaggio con delle virgole dentro.
+MAX_LIST_PARTS = 5
 
-    Un nome di calciatore e' corto e fatto di poche parole: qui si accettano da 1 a 4
-    parole, niente cifre isolate, niente link, niente a capo."""
-    if not text:
+
+def _looks_like_a_single_answer(text):
+    """Il filtro su una risposta sola: un nome di calciatore e' corto e di poche parole."""
+    stripped = (text or "").strip()
+    if not stripped:
         return False
-    stripped = text.strip()
     if len(stripped) > 40 or "\n" in stripped or "://" in stripped or stripped.startswith("/"):
         return False
 
@@ -107,3 +109,23 @@ def looks_like_an_answer(text):
 
     letters = sum(1 for char in normalized if char.isalpha())
     return letters >= max(3, len(normalized) - 2)
+
+
+def looks_like_an_answer(text):
+    """Filtro per la risposta libera (senza comando): serve a distinguere un tentativo da un
+    messaggio qualsiasi, cosi' un "grazie!" o un link non consumano un tentativo.
+
+    Accetta anche un **elenco separato da virgole** ("Roma, Manchester United, Toronto FC"),
+    che e' la forma della risposta negli eventi "career": ogni voce deve reggere da sola il
+    filtro, quindi "ciao, come stai" resta fuori. E' un filtro grossolano di proposito - dice
+    se il messaggio ha la forma di un tentativo, non se e' giusto - e sta prima di qualunque
+    lettura del database: un messaggio qualsiasi non deve costare niente."""
+    if not text:
+        return False
+    if "," not in text:
+        return _looks_like_a_single_answer(text)
+
+    parts = [part for part in text.split(",") if part.strip()]
+    if not 1 <= len(parts) <= MAX_LIST_PARTS:
+        return False
+    return all(_looks_like_a_single_answer(part) for part in parts)

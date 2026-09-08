@@ -17,6 +17,7 @@ from handlers.league_handler import leagues
 from handlers.notify_handler import notify
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats
+from handlers.solution_handler import solution
 from handlers.top_users_handler import top
 from handlers.training_handler import training
 from services.i18n import t
@@ -31,6 +32,7 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 ACTIONS = {
     "play": show,
+    "solution": solution,
     "events": events,
     "archive": archive,
     "training": training,

@@ -5,25 +5,30 @@ privata (scrivere il nome e basta). La seconda esiste perche' digitare il comand
 tentativo era l'attrito piu' inutile del gioco; un messaggio che non somiglia a un nome
 (link, frasi lunghe) non consuma un tentativo, viene solo spiegato come si gioca.
 
+Qui passano **tutte** le risposte, non solo quelle di oggi: se l'utente ha una partita
+aperta altrove (archivio, allenamento, evento) il messaggio vale per quella. Le tre sessioni
+si escludono a vicenda (services/firebase_service.py), quindi l'ordine dei controlli non e'
+una precedenza da ricordare: al massimo una e' aperta.
+
 Il confronto con la risposta passa da services/matching.py: un refuso non brucia piu' un
 tentativo. Non si dice mai qual era la risposta giusta, nemmeno per suggerire la
-correzione: sarebbe rivelare la soluzione.
+correzione: sarebbe rivelare la soluzione. Chi finisce i tentativi la scopre a mezzanotte,
+o con /solution a giornata chiusa (handlers/solution_handler.py).
 """
-import logging
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from handlers.archive_handler import process_archive_answer
+from handlers.events_handler import process_event_answer
 from handlers.group_handler import process_group_answer
+from handlers.hint_handler import hint_keyboard
+from handlers.notify_handler import ENABLE_INLINE, notifications_enabled
 from handlers.training_handler import process_training_answer
-from services import firebase_service
+from services import firebase_service, game
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number, get_today_challenge
-from services.dates import today_iso
-from services.difficulty import points_for_difficulty
-from services.guess_feedback import build_comparison, comparison_text
+from services.guess_feedback import comparison_text
 from services.i18n import resolve_language, t
-from services.matching import find_match, looks_like_an_answer
+from services.matching import looks_like_an_answer
 from services.share import share_text, share_url
 
 
@@ -81,8 +86,8 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
     user_data = firebase_service.get_user_data(user_id)
     lang = _language_for(update, user_data)
 
-    # Con una sfida d'archivio (o di allenamento) aperta la risposta vale per quella: e'
-    # l'unico modo di rispondere a una sfida passata senza inventare un secondo comando.
+    # Con una partita aperta altrove la risposta vale per quella: e' l'unico modo di
+    # rispondere a una sfida che non e' quella di oggi senza inventare un comando per ognuna.
     if user_data and user_data.get("archive_day"):
         await process_archive_answer(update, context, user_answer, user_data)
         return
@@ -91,79 +96,112 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
         await process_training_answer(update, context, user_answer, user_data)
         return
 
+    if user_data and user_data.get("event_key"):
+        await process_event_answer(update, context, user_answer, user_data)
+        return
+
+    # Le regole (tentativi, punti, indizi, striscia) stanno in services/game.py: le stesse
+    # che usa la mini app. Qui resta solo la resa in un messaggio Telegram.
     challenge = get_today_challenge()
     if not challenge:
         await message.reply_text(t(lang, "common.no_challenge"))
         return
 
-    day_iso = today_iso()
-
-    # Il tentativo viene consumato in transazione: contatori corretti anche con due risposte
-    # inviate nello stesso istante, e nessun bisogno di azzerarli con un job notturno.
-    attempt = firebase_service.begin_guess_attempt(user_id, day_iso, MAX_ATTEMPTS)
-    if not attempt["ok"]:
-        await message.reply_text(_attempt_error_message(lang, attempt["reason"]))
-        return
-
-    logging.info(f"[GUESS] Risposta dell'utente: {user_answer}")
-
-    match = find_match(user_answer, challenge.get("correct_answers", []))
-    if not match:
-        attempts_left = attempt["attempts_left"]
-        # Il confronto con il calciatore scritto (nazionalita', ruolo, eta') e' l'unica cosa
-        # che l'utente si porta via da un tentativo sbagliato: senza, tre tentativi su una
-        # sfida difficile sono tre nomi sparati a caso.
-        comparison = comparison_text(lang, build_comparison(user_answer, challenge.get("player_id")))
-        if attempts_left == 0:
-            # A tentativi finiti la card si condivide comunque: "X/3" e' meta' del gioco in
-            # un gruppo, e non rivela niente della soluzione.
-            await message.reply_text(
-                t(lang, "guess.wrong_last") + comparison,
-                reply_markup=_share_keyboard(lang, attempt["attempts_used"], streak=0, solved=False),
-            )
-        else:
-            await message.reply_text(t(lang, "guess.wrong_remaining", attempts_left=attempts_left) + comparison)
-        return
-
-    points = points_for_difficulty(challenge.get("difficulty"))
-    # Il bonus del primo va assegnato una volta sola: chi vince la transazione lo prende.
-    bonus = 1 if firebase_service.claim_daily_first_correct(day_iso) else 0
-
-    # I punti della striscia li calcola la transazione che la aggiorna: qui non sappiamo (e
-    # non possiamo sapere senza leggere) a che giorno consecutivo siamo arrivati.
-    result = firebase_service.register_correct_guess(user_id, points + bonus, bonus, day_iso) or {}
-    awarded = result.get("points_awarded", points + bonus)
-    streak = result.get("current_streak", 0)
-
-    # Le leghe private tengono il loro punteggio: i codici sono gia' sul documento utente,
-    # quindi non serve nessuna query per sapere dove sommarli.
-    firebase_service.add_points_to_leagues(
-        user_id, (user_data or {}).get("leagues", []), awarded, name=update.effective_user.first_name
+    result = game.play_daily(
+        user_id, user_data, user_answer,
+        first_name=update.effective_user.first_name, challenge=challenge,
     )
 
-    bonus_message = t(lang, "guess.bonus", bonus=bonus) if bonus else ""
-    text = t(lang, "guess.correct", points=awarded, bonus_message=bonus_message)
-    if result.get("streak_bonus"):
+    if result["status"] == "no_challenge":
+        await message.reply_text(t(lang, "common.no_challenge"))
+        return
+
+    if result["status"] == "refused":
+        await message.reply_text(_attempt_error_message(lang, result["reason"]))
+        return
+
+    if result["status"] == "wrong":
+        await _reply_wrong(message, lang, challenge, result, user_data)
+        return
+
+    bonus_message = t(lang, "guess.bonus", bonus=result["bonus"]) if result["bonus"] else ""
+    text = t(lang, "guess.correct", points=result["points_awarded"], bonus_message=bonus_message)
+    streak = result["streak"]
+    if result["streak_bonus"]:
         text += t(lang, "guess.streak_bonus", streak=streak, bonus=result["streak_bonus"])
     elif streak > 1:
         text += t(lang, "guess.streak", streak=streak)
-    if match["typo"]:
+    if result["typo"]:
         text += t(lang, "guess.typo_note", written=user_answer)
 
-    await message.reply_text(text, reply_markup=_share_keyboard(lang, attempt["attempts_used"], streak))
+    await message.reply_text(
+        text,
+        reply_markup=_share_keyboard(
+            lang, result["attempts_used"], streak, hints=result["hints_used"]
+        ),
+    )
 
 
-def _share_keyboard(lang, attempts_used, streak, solved=True):
+async def _reply_wrong(message, lang, challenge, result, user_data):
+    """Il messaggio dopo una risposta sbagliata.
+
+    Non e' mai solo un "no": porta il confronto con il calciatore scritto, e un bottone che
+    cambia a seconda di dove si e' arrivati. Con tentativi ancora disponibili offre un
+    indizio; a tentativi finiti offre la condivisione e - a chi non le ha - le notifiche,
+    che sono il modo in cui a mezzanotte scoprira' chi era."""
+    # Il confronto con il calciatore scritto (nazionalita', ruolo, eta') e' l'unica cosa che
+    # l'utente si porta via da un tentativo sbagliato: senza, tre tentativi su una sfida
+    # difficile sono tre nomi sparati a caso.
+    comparison = comparison_text(lang, result["comparison"])
+    hints_used = result["hints_used"]
+
+    if result["attempts_left"] > 0:
+        await message.reply_text(
+            t(lang, "guess.wrong_remaining", attempts_left=result["attempts_left"]) + comparison,
+            reply_markup=hint_keyboard(lang, challenge, hints_used),
+        )
+        return
+
+    # A tentativi finiti la card si condivide comunque: "X/3" e' meta' del gioco in un
+    # gruppo, e non rivela niente della soluzione.
+    await message.reply_text(
+        t(lang, "guess.wrong_last") + comparison,
+        reply_markup=_lost_keyboard(lang, result["attempts_used"], hints_used, user_data),
+    )
+
+
+def _lost_keyboard(lang, attempts_used, hints_used, user_data):
+    """Condivisione e, per chi non ha le notifiche, il bottone per attivarle.
+
+    Il secondo bottone e' li' perche' il messaggio dice "te lo dico a mezzanotte": a chi le
+    notifiche non le ha, quella frase non varrebbe niente."""
+    rows = []
+    share = _share_button(lang, attempts_used, streak=0, solved=False, hints=hints_used)
+    if share:
+        rows.append([share])
+    if not notifications_enabled(user_data or {}):
+        rows.append([InlineKeyboardButton(t(lang, "guess.button_notify"), callback_data=ENABLE_INLINE)])
+    return InlineKeyboardMarkup(rows) if rows else None
+
+
+def _share_button(lang, attempts_used, streak, solved, hints=0):
+    text = share_text(
+        lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints
+    )
+    url = share_url(text)
+    if not url:
+        return None
+    return InlineKeyboardButton(t(lang, "share.button"), url=url)
+
+
+def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0):
     """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta.
 
     Vale anche per chi non ci e' arrivato (`solved=False`, cioe' "X/3"): la sconfitta e'
     meta' di quello che si condivide in un gruppo, ed e' l'unica riga che non puo'
     spoilerare niente."""
-    text = share_text(lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=solved, streak=streak)
-    url = share_url(text)
-    if not url:
-        return None
-    return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "share.button"), url=url)]])
+    button = _share_button(lang, attempts_used, streak, solved, hints)
+    return InlineKeyboardMarkup([[button]]) if button else None
 
 
 def _attempt_error_message(lang, reason):

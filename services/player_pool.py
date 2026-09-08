@@ -1,6 +1,7 @@
 import json
 import os
 
+from services.content_i18n import untranslated_values
 from services.matching import find_match, normalize
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -121,10 +122,15 @@ def validate_player(player, min_teams=2):
 
 def validate_dataset(players=None, min_teams=None):
     """Controlli che hanno senso solo sull'intero dataset (non sul singolo giocatore):
-    id duplicati e alias condivisi fra giocatori diversi.
+    id duplicati, alias condivisi fra giocatori diversi, valori senza traduzione.
 
     Un alias condiviso e' il bug piu' insidioso del gioco: la risposta "ronaldo" sarebbe
-    corretta per due calciatori diversi, ma il bot ne accetta solo uno."""
+    corretta per due calciatori diversi, ma il bot ne accetta solo uno.
+
+    I valori senza traduzione (services/content_i18n.py) sono l'altro difetto che nessuno
+    nota da solo: il dataset e' scritto in italiano e il paese finisce **dentro l'immagine**,
+    quindi un paese nuovo non tradotto arriva in italiano a inglesi e spagnoli senza che
+    niente si rompa. Meglio che lo dica /admin_pool al primo import."""
     if players is None:
         players = _load_raw_players()
     if min_teams is None:
@@ -156,6 +162,8 @@ def validate_dataset(players=None, min_teams=None):
     for player in players:
         for problem in validate_player(player, min_teams=min_teams):
             problems.append(f"{player.get('id', '?')}: {problem}")
+
+    problems.extend(untranslated_values(players))
 
     return problems
 

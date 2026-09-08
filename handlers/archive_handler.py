@@ -117,14 +117,15 @@ async def _send_challenge(message, challenge, day_iso, lang):
         subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
         badge=difficulty_label(lang, challenge.get("difficulty")).upper(),
         footer=f"{to_display(day_iso)}  ({points_for_difficulty(challenge.get('difficulty'))})",
+        lang=lang,
     )
     await message.reply_photo(photo=photo, caption=caption, reply_markup=legend_keyboard(lang))
 
 
 async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """/oggi: esce dall'archivio o dall'allenamento, cioe' da qualunque partita che non sia
-    quella di oggi. E' un comando solo perche' all'utente la differenza non interessa: vuole
-    tornare alla sfida del giorno."""
+    """/oggi: esce da qualunque partita che non sia quella di oggi - archivio, allenamento o
+    evento. E' un comando solo perche' all'utente la differenza non interessa: vuole tornare
+    alla sfida del giorno."""
     user_id = update.effective_user.id
     user_data = firebase_service.get_user_data(user_id)
     lang = _lang_for(update, user_data)
@@ -133,21 +134,22 @@ async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(t(lang, "archive.not_registered"))
         return
 
-    in_archive = bool(user_data.get("archive_day"))
-    in_training = bool(user_data.get("training_key"))
-
-    if not in_archive and not in_training:
+    # Le tre sessioni si escludono a vicenda (services/firebase_service.py), quindi al
+    # massimo una di queste e' vera e il messaggio di uscita non e' mai ambiguo.
+    if user_data.get("archive_day"):
+        firebase_service.set_archive_day(user_id, None)
+        message_key = "archive.exited"
+    elif user_data.get("training_key"):
+        firebase_service.clear_training_key(user_id)
+        message_key = "training.exited"
+    elif user_data.get("event_key"):
+        firebase_service.clear_event_key(user_id)
+        message_key = "events.exited"
+    else:
         await update.effective_message.reply_text(t(lang, "archive.not_in_archive"))
         return
 
-    if in_training:
-        firebase_service.clear_training_key(user_id)
-    if in_archive:
-        firebase_service.set_archive_day(user_id, None)
-
-    await update.effective_message.reply_text(
-        t(lang, "archive.exited" if in_archive else "training.exited")
-    )
+    await update.effective_message.reply_text(t(lang, message_key))
 
 
 async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, user_answer, user_data):

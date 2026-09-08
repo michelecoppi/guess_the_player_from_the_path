@@ -1,7 +1,7 @@
 """Striscia di giorni consecutivi e card del risultato."""
 import pytest
 
-from services.share import CORRECT, UNUSED, WRONG, result_squares, share_text
+from services.share import CORRECT, HINT, UNUSED, WRONG, result_squares, share_text
 from services.streak import next_streak, next_threshold, streak_bonus
 
 
@@ -59,3 +59,23 @@ def test_the_shared_text_never_contains_the_answer():
 def test_the_streak_appears_only_when_there_is_one():
     assert "🔥" not in share_text("en", 1, 1, 3, streak=1)
     assert "🔥" in share_text("en", 1, 1, 3, streak=4)
+
+
+def test_the_hints_appear_as_lightbulbs():
+    """Serve a distinguere due "1/3" identici: uno dei due si e' fatto aiutare."""
+    assert HINT not in share_text("it", 1, 1, 3)
+    assert share_text("it", 1, 1, 3, hints=1).count(HINT) == 1
+    assert share_text("it", 1, 1, 3, hints=2).count(HINT) == 2
+
+
+def test_the_hints_never_leak_the_answer_either():
+    text = share_text("it", 142, 3, 3, solved=False, hints=2)
+    assert "X/3" in text
+    assert "messi" not in text.lower()
+    assert "Argentina" not in text
+
+
+def test_the_percentage_of_solvers_stays_out_of_the_shared_card():
+    """E' un'informazione sulla **difficolta' di oggi**, e la card la legge anche chi non ha
+    ancora giocato: dirla li' sarebbe mezzo spoiler."""
+    assert "%" not in share_text("it", 142, 1, 3, hints=1, streak=3)

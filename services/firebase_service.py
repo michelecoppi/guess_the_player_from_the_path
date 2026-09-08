@@ -41,6 +41,7 @@ ADMIN_SETTINGS_COLLECTION = "admin_settings"
 DATASET_OVERRIDES_DOC = "dataset_overrides"
 FATHER_SON_COLLECTION = "father_son_pairs"
 ARCHIVE_SUBCOLLECTION = "archive"
+HISTORY_SUBCOLLECTION = "history"
 LEAGUES_COLLECTION = "leagues"
 MEMBERS_SUBCOLLECTION = "members"
 GROUP_ROUNDS_COLLECTION = "group_rounds"
@@ -159,6 +160,11 @@ def begin_guess_attempt(user_id, day_iso, max_attempts):
 
     Ritorna un dizionario con 'ok' e, quando ok e' False, il motivo:
     'not_registered' | 'already_guessed' | 'no_attempts'.
+
+    Fra i dati di ritorno c'e' anche `hints_used`, cioe' quanti indizi l'utente ha chiesto
+    oggi: serve a scalare i punti se il tentativo e' quello giusto. Viene da qui e non da una
+    lettura a parte perche' la transazione il documento lo sta gia' leggendo, e perche' un
+    indizio preso **dopo** la lettura del chiamante non deve poter passare gratis.
     """
     ref = user_ref(user_id)
 
@@ -172,11 +178,12 @@ def begin_guess_attempt(user_id, day_iso, max_attempts):
         same_day = normalize_day(data.get("last_played_day")) == day_iso
         attempts = data.get("daily_attempts", 0) if same_day else 0
         has_guessed = data.get("has_guessed_today", False) if same_day else False
+        hints = data.get("daily_hints", 0) if same_day else 0
 
         if has_guessed:
             return {"ok": False, "reason": "already_guessed"}
         if attempts >= max_attempts:
-            return {"ok": False, "reason": "no_attempts", "attempts_used": attempts}
+            return {"ok": False, "reason": "no_attempts", "attempts_used": attempts, "hints_used": hints}
 
         transaction.update(ref, {
             "daily_attempts": attempts + 1,
@@ -187,17 +194,67 @@ def begin_guess_attempt(user_id, day_iso, max_attempts):
             "ok": True,
             "attempts_used": attempts + 1,
             "attempts_left": max_attempts - (attempts + 1),
+            "hints_used": hints,
         }
 
     return _attempt(db.transaction())
 
 
-def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True):
+def take_daily_hint(user_id, day_iso, max_hints, max_attempts):
+    """Consuma un indizio sulla sfida di oggi e dice quale spetta.
+
+    Transazione per lo stesso motivo del tentativo: due tocchi rapidi sul bottone non devono
+    valere un indizio solo (l'utente pagherebbe due punti per uno) ne' due volte lo stesso.
+
+    Gli indizi si sbloccano **dopo** un tentativo sbagliato: senza questa condizione
+    diventerebbero il modo piu' comodo per farsi dire nazionalita' e ruolo di ogni sfida
+    senza mai giocarla. Come per i tentativi, il contatore si azzera da solo al cambio di
+    giorno (`last_played_day`): non c'e' niente da ripulire a mezzanotte.
+
+    Ritorna {'ok': True, 'index', 'hints_used'} oppure {'ok': False, 'reason'} con
+    'not_registered' | 'needs_attempt' | 'already_guessed' | 'no_attempts' | 'no_more'.
+    """
+    ref = user_ref(user_id)
+
+    @firestore.transactional
+    def _take(transaction):
+        snapshot = ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return {"ok": False, "reason": "not_registered"}
+
+        data = snapshot.to_dict()
+        same_day = normalize_day(data.get("last_played_day")) == day_iso
+        attempts = data.get("daily_attempts", 0) if same_day else 0
+        has_guessed = data.get("has_guessed_today", False) if same_day else False
+        hints = data.get("daily_hints", 0) if same_day else 0
+
+        if has_guessed:
+            return {"ok": False, "reason": "already_guessed"}
+        if attempts <= 0:
+            return {"ok": False, "reason": "needs_attempt"}
+        if attempts >= max_attempts:
+            # Bottone vecchio premuto a tentativi finiti: l'indizio non servirebbe a niente
+            # e costerebbe comunque un punto.
+            return {"ok": False, "reason": "no_attempts"}
+        if hints >= max_hints:
+            return {"ok": False, "reason": "no_more"}
+
+        transaction.update(ref, {"daily_hints": hints + 1, "last_played_day": day_iso})
+        return {"ok": True, "index": hints + 1, "hints_used": hints + 1}
+
+    return _take(db.transaction())
+
+
+def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True, attempts=None):
     """Registra la risposta giusta e aggiorna la striscia di giorni consecutivi.
 
     E' una transazione perche' la striscia e' un leggi-e-scrivi: va calcolata sul valore
     che c'e' in quel momento, non su uno letto prima. I punti restano incrementi, cosi'
     due scritture ravvicinate non si sovrascrivono.
+
+    `attempts` (in quanti tentativi ci e' arrivato) alimenta l'istogramma "di solito la
+    prendo al secondo" della mini app. E' un contatore per valore dentro `solved_in`, non una
+    lista di partite: costa niente da scrivere e niente da leggere, e non cresce mai.
 
     Ritorna quanto e' stato assegnato davvero: {'points_awarded', 'streak_bonus',
     'current_streak', 'best_streak'}."""
@@ -225,6 +282,8 @@ def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True):
         }
         if bonus > 0:
             update_data["bonus_first_guessed"] = firestore.Increment(1)
+        if attempts:
+            update_data[f"solved_in.{attempts}"] = firestore.Increment(1)
         if monthly:
             update_data["monthly_points"] = firestore.Increment(awarded)
         transaction.update(ref, update_data)
@@ -374,6 +433,43 @@ def claim_daily_first_correct(day_iso):
     return _claim(db.transaction())
 
 
+def register_daily_outcome(day_iso, solved):
+    """Tiene il conto di quanti hanno **giocato** e quanti hanno **indovinato** una giornata.
+
+    Serve alla riga "l'ha indovinato il 41%" che compare nella soluzione e nel messaggio di
+    mezzanotte. E' la sola statistica del gioco che dice qualcosa sulla sfida invece che sul
+    singolo, ed e' anche quella che rende interessante un risultato condiviso.
+
+    Perche' due contatori sul documento della sfida e non una query sugli utenti: i contatori
+    giornalieri dell'utente non vengono azzerati ma sovrascritti dal giorno dopo
+    (`last_played_day`), quindi contarli a posteriori funziona **solo per oggi** - ed e'
+    esattamente il giorno di cui non serve saperlo. Qui invece il numero resta scritto dove
+    sta la sfida, e vale per sempre.
+
+    `solved=None` conta solo il giocatore (primo tentativo della giornata), `solved=True`
+    conta anche la risposta giusta. Sono due `Increment`: nessuna lettura, e due risposte
+    nello stesso istante non si sovrascrivono."""
+    fields = {}
+    if solved:
+        fields["solved_count"] = firestore.Increment(1)
+    else:
+        fields["players_count"] = firestore.Increment(1)
+    try:
+        daily_path_ref(day_iso).update(fields)
+    except GoogleAPICallError as e:
+        # Una statistica non deve mai far fallire una risposta giusta.
+        logging.warning(f"[STATS] contatore di {day_iso} non aggiornato: {e}")
+
+
+def get_daily_stats(day_iso):
+    """Quanti hanno giocato e quanti hanno indovinato quella giornata: (players, solved).
+
+    (0, 0) per le giornate precedenti all'introduzione dei contatori: chi mostra il dato
+    deve trattarlo come "non lo sappiamo", non come "non l'ha indovinato nessuno"."""
+    data = get_daily_path(day_iso) or {}
+    return data.get("players_count", 0), data.get("solved_count", 0)
+
+
 def get_display_name_for_day(day_iso):
     data = get_daily_path(day_iso)
     if not data:
@@ -414,10 +510,11 @@ def set_archive_day(user_id, day_iso):
     Sta sul documento utente e non in memoria di processo perche' su Cloud Run l'istanza
     puo' sparire fra un messaggio e l'altro: la partita in corso deve sopravvivere.
 
-    Aprire una sfida d'archivio chiude l'allenamento (e viceversa, vedi
-    `set_training_day`): con due partite aperte insieme bisognerebbe decidere ad ogni
-    messaggio a quale delle due risponde, che e' una regola che nessuno puo' indovinare."""
-    user_ref(user_id).update({"archive_day": day_iso, "training_key": None})
+    Aprire una sfida d'archivio chiude l'allenamento e l'evento (e viceversa, vedi
+    `set_training_key` e `set_event_key`): con due partite aperte insieme bisognerebbe
+    decidere ad ogni messaggio a quale delle due risponde, che e' una regola che nessuno
+    puo' indovinare."""
+    user_ref(user_id).update({"archive_day": day_iso, "training_key": None, "event_key": None})
 
 
 def get_archive_result(user_id, day_iso):
@@ -461,6 +558,39 @@ def register_archive_solved(user_id, day_iso, attempts):
     user_ref(user_id).update({"archive_solved": firestore.Increment(1)})
 
 
+def history_ref(user_id, day_iso):
+    return user_ref(user_id).collection(HISTORY_SUBCOLLECTION).document(day_iso)
+
+
+def record_daily_history(user_id, day_iso, solved, attempts, hints=0):
+    """Com'e' andata **quella** giornata a **quell'** utente: un documento per giorno.
+
+    Serve al calendario della mini app, che deve poter dire "questa l'hai presa al secondo,
+    questa l'hai persa, questa non l'hai giocata". Dai contatori sul documento utente non si
+    ricava: quelli portano un giorno solo (`last_played_day`) e il giorno dopo sono
+    sovrascritti.
+
+    Si scrive una volta sola per giornata, quando la giornata si **chiude** per quell'utente
+    (indovinata o tentativi finiti): non ad ogni tentativo."""
+    history_ref(user_id, day_iso).set({
+        "day": day_iso,
+        "solved": bool(solved),
+        "attempts": attempts,
+        "hints": hints,
+    })
+
+
+def get_daily_history(user_id, limit=60):
+    """Lo storico dal giorno piu' recente. Il limite e' quello del calendario mostrato: e'
+    una query sola, e la si fa solo quando la mini app apre la scheda dell'archivio."""
+    query = (
+        user_ref(user_id).collection(HISTORY_SUBCOLLECTION)
+        .order_by("day", direction=firestore.Query.DESCENDING)
+        .limit(limit)
+    )
+    return [doc.to_dict() for doc in query.stream()]
+
+
 def get_upcoming_daily_paths(limit=7):
     """Le sfide gia' generate, dalla piu' lontana nel futuro: serve a /admin_next."""
     docs = db.collection(DAILY_PATH_COLLECTION).order_by(
@@ -481,10 +611,12 @@ def set_training_key(user_id, key):
 
     Come per l'archivio lo stato sta sul documento utente e non in memoria: su Cloud Run
     l'istanza puo' sparire fra un messaggio e l'altro. Aprire l'allenamento chiude
-    l'archivio (e viceversa): due partite aperte contemporaneamente vorrebbero dire
-    decidere ad ogni messaggio a quale delle due risponde, che e' una regola che nessuno
-    puo' indovinare."""
-    user_ref(user_id).update({"training_key": key, "training_attempts": 0, "archive_day": None})
+    l'archivio e l'evento (e viceversa): due partite aperte contemporaneamente vorrebbero
+    dire decidere ad ogni messaggio a quale delle due risponde, che e' una regola che
+    nessuno puo' indovinare."""
+    user_ref(user_id).update({
+        "training_key": key, "training_attempts": 0, "archive_day": None, "event_key": None,
+    })
 
 
 def clear_training_key(user_id):
@@ -505,6 +637,25 @@ def register_training_solved(user_id):
         "training_attempts": 0,
         "training_solved": firestore.Increment(1),
     })
+
+
+def set_event_key(user_id, key):
+    """Apre una sessione sull'evento in corso, cosi' che i messaggi liberi valgano per la
+    sfida dell'evento e non per quella del giorno.
+
+    La chiave e' `<codice evento>:<giorno>`: porta con se' **quale** giornata dell'evento si
+    sta giocando, quindi a mezzanotte la sessione di ieri non risponde piu' per quella di
+    oggi e va riaperta - che e' esattamente quello che si vuole, perche' l'immagine da
+    indovinare e' cambiata.
+
+    Come archivio e allenamento chiude le altre due sessioni: le tre si escludono."""
+    user_ref(user_id).update({
+        "event_key": key, "archive_day": None, "training_key": None, "training_attempts": 0,
+    })
+
+
+def clear_event_key(user_id):
+    user_ref(user_id).update({"event_key": None})
 
 
 # ---------------------------------------------------------------------------

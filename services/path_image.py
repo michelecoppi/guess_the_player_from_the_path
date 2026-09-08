@@ -14,7 +14,10 @@ import io
 
 from PIL import Image, ImageDraw
 
+from services.career_order import order_career
+from services.content_i18n import localize_career
 from services.fonts import get_font
+from services.i18n import DEFAULT_LANGUAGE
 
 WIDTH = 900
 ROW_HEIGHT = 104
@@ -167,10 +170,19 @@ def _draw_footer(draw, y, text):
     draw.text((PADDING, y + 18), text, font=get_font(20), fill=(96, 116, 136))
 
 
-def render_career_path_image(career, title="Percorso misterioso", subtitle=None, badge=None, footer=None):
+def render_career_path_image(career, title="Percorso misterioso", subtitle=None, badge=None, footer=None, lang=DEFAULT_LANGUAGE):
     """Immagine PNG (bytes) del percorso di squadre/anni, senza mai rivelare il calciatore.
-    `career` e' la lista di tappe come in players.json."""
-    career = list(career or [])
+    `career` e' la lista di tappe come in players.json.
+
+    `lang` traduce l'unico dato del dataset che finisce disegnato: il **paese** sotto il nome
+    della squadra. Il resto della card e' gia' senza parole (vedi `_years_label`), ma il
+    paese nel dataset e' scritto in italiano, quindi senza questo passaggio un inglese
+    leggerebbe "La Liga · Spagna". Il campionato non si tocca: e' un nome proprio.
+
+    L'ordine delle tappe si normalizza qui e non solo nel dataset (services/career_order.py):
+    le sfide gia' generate portano dentro la copia del percorso com'era quando sono nate,
+    quindi una card vecchia si disegna comunque nell'ordine giusto."""
+    career = localize_career(order_career(career), lang)
     rows = len(career)
     layout = _layout_for(rows)
     row_height, row_gap = layout["row_height"], layout["row_gap"]
@@ -308,14 +320,14 @@ def render_event_banner(name, description="", badge_text="EVENTO"):
     return _to_buffer(img, "event_banner.png")
 
 
-def render_transfer_image(stop_from, stop_to, title="Trasferimento misterioso", subtitle=None):
+def render_transfer_image(stop_from, stop_to, title="Trasferimento misterioso", subtitle=None, lang=DEFAULT_LANGUAGE):
     """Evento transfer_guess: si mostra solo la squadra di arrivo con l'anno.
 
     Titolo e sottotitolo arrivano da chi chiama (services/i18n.py, chiavi `image.transfer_*`):
     il sottotitolo era fisso in italiano, e sarebbe finito cosi' anche dentro l'immagine di
     un utente inglese o spagnolo."""
     return render_career_path_image(
-        [stop_to], title=title, subtitle=subtitle or "Chi si è trasferito qui?"
+        [stop_to], title=title, subtitle=subtitle or "Chi si è trasferito qui?", lang=lang
     )
 
 

@@ -309,6 +309,15 @@
           "goals": 16
         },
         {
+          "team": "Chelsea",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2012,
+          "end_year": 2014,
+          "apps": 3,
+          "goals": 0
+        },
+        {
           "team": "Werder Bremen",
           "country": "Germania",
           "league": "Bundesliga",
@@ -317,15 +326,6 @@
           "loan": true,
           "apps": 33,
           "goals": 10
-        },
-        {
-          "team": "Chelsea",
-          "country": "Inghilterra",
-          "league": "Premier League",
-          "start_year": 2012,
-          "end_year": 2014,
-          "apps": 3,
-          "goals": 0
         },
         {
           "team": "Wolfsburg",
@@ -370,6 +370,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Dinamo Zagreb",
+          "country": "Croazia",
+          "league": "HNL",
+          "start_year": 2003,
+          "end_year": 2008,
+          "apps": 94,
+          "goals": 26
+        },
+        {
           "team": "Zrinjski Mostar",
           "country": "Bosnia",
           "league": "Premijer Liga",
@@ -378,15 +387,6 @@
           "loan": true,
           "apps": 25,
           "goals": 8
-        },
-        {
-          "team": "Dinamo Zagreb",
-          "country": "Croazia",
-          "league": "HNL",
-          "start_year": 2003,
-          "end_year": 2008,
-          "apps": 94,
-          "goals": 26
         },
         {
           "team": "Inter Zaprešić",
@@ -1574,7 +1574,8 @@
           "apps": 12,
           "goals": 2
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "ozil",
@@ -1782,6 +1783,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Napoli",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2010,
+          "end_year": 2022,
+          "apps": 337,
+          "goals": 96
+        },
+        {
           "team": "Cavese",
           "country": "Italia",
           "league": "Serie C",
@@ -1800,15 +1810,6 @@
           "loan": true,
           "apps": 33,
           "goals": 19
-        },
-        {
-          "team": "Napoli",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2010,
-          "end_year": 2022,
-          "apps": 337,
-          "goals": 96
         },
         {
           "team": "Pescara",
@@ -2395,6 +2396,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1997,
+          "end_year": 2000,
+          "apps": 3,
+          "goals": 0
+        },
+        {
           "team": "Leganes",
           "country": "Spagna",
           "league": "La Liga",
@@ -2403,15 +2413,6 @@
           "loan": true,
           "apps": 28,
           "goals": 3
-        },
-        {
-          "team": "Real Madrid",
-          "country": "Spagna",
-          "league": "La Liga",
-          "start_year": 1997,
-          "end_year": 2000,
-          "apps": 3,
-          "goals": 0
         },
         {
           "team": "Espanyol",
@@ -2894,7 +2895,8 @@
           "apps": 26,
           "goals": 14
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "rooney",
@@ -2996,6 +2998,15 @@
       "verified": true,
       "career": [
         {
+          "team": "West Ham",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1995,
+          "end_year": 2001,
+          "apps": 148,
+          "goals": 24
+        },
+        {
           "team": "Swansea",
           "country": "Inghilterra",
           "league": "Premier League",
@@ -3004,15 +3015,6 @@
           "loan": true,
           "apps": 9,
           "goals": 1
-        },
-        {
-          "team": "West Ham",
-          "country": "Inghilterra",
-          "league": "Premier League",
-          "start_year": 1995,
-          "end_year": 2001,
-          "apps": 148,
-          "goals": 24
         },
         {
           "team": "Chelsea",
@@ -3177,6 +3179,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2008,
+          "end_year": 2013,
+          "apps": 28,
+          "goals": 3
+        },
+        {
           "team": "Vasco da Gama",
           "country": "Brasile",
           "league": "Brasileirao",
@@ -3185,15 +3196,6 @@
           "loan": true,
           "apps": 36,
           "goals": 4
-        },
-        {
-          "team": "Inter",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2008,
-          "end_year": 2013,
-          "apps": 28,
-          "goals": 3
         },
         {
           "team": "Espanyol",
@@ -3644,7 +3646,8 @@
           "apps": 3,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "gattuso",
@@ -3783,6 +3786,15 @@
           "goals": 4
         },
         {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2004,
+          "end_year": 2022,
+          "apps": 425,
+          "goals": 27
+        },
+        {
           "team": "Fiorentina",
           "country": "Italia",
           "league": "Serie A",
@@ -3791,15 +3803,6 @@
           "loan": true,
           "apps": 37,
           "goals": 3
-        },
-        {
-          "team": "Juventus",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2004,
-          "end_year": 2022,
-          "apps": 425,
-          "goals": 27
         },
         {
           "team": "Los Angeles FC",
@@ -3930,6 +3933,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Hellas Verona",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 2010,
+          "end_year": 2014,
+          "apps": 89,
+          "goals": 11
+        },
+        {
           "team": "Sambonifacese",
           "country": "Italia",
           "league": "Serie C",
@@ -3938,15 +3950,6 @@
           "loan": true,
           "apps": 31,
           "goals": 1
-        },
-        {
-          "team": "Hellas Verona",
-          "country": "Italia",
-          "league": "Serie B",
-          "start_year": 2010,
-          "end_year": 2014,
-          "apps": 89,
-          "goals": 11
         },
         {
           "team": "Napoli",
@@ -4582,6 +4585,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Valencia",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2004,
+          "end_year": 2010,
+          "apps": 119,
+          "goals": 21
+        },
+        {
           "team": "Eibar",
           "country": "Spagna",
           "league": "La Liga",
@@ -4590,15 +4602,6 @@
           "loan": true,
           "apps": 35,
           "goals": 4
-        },
-        {
-          "team": "Valencia",
-          "country": "Spagna",
-          "league": "La Liga",
-          "start_year": 2004,
-          "end_year": 2010,
-          "apps": 119,
-          "goals": 21
         },
         {
           "team": "Celta Vigo",
@@ -4909,6 +4912,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Benfica",
+          "country": "Portogallo",
+          "league": "Primeira Liga",
+          "start_year": 1990,
+          "end_year": 1994,
+          "apps": 78,
+          "goals": 13
+        },
+        {
           "team": "Fafe",
           "country": "Portogallo",
           "league": "Primeira Liga",
@@ -4917,15 +4929,6 @@
           "loan": true,
           "apps": 38,
           "goals": 6
-        },
-        {
-          "team": "Benfica",
-          "country": "Portogallo",
-          "league": "Primeira Liga",
-          "start_year": 1990,
-          "end_year": 1994,
-          "apps": 78,
-          "goals": 13
         },
         {
           "team": "Fiorentina",
@@ -5701,7 +5704,8 @@
           "apps": 6,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "anelka",
@@ -7264,6 +7268,15 @@
           "goals": 2
         },
         {
+          "team": "Brighton",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2019,
+          "end_year": 2023,
+          "apps": 98,
+          "goals": 16
+        },
+        {
           "team": "Boca Juniors",
           "country": "Argentina",
           "league": "Liga Profesional",
@@ -7272,15 +7285,6 @@
           "loan": true,
           "apps": 13,
           "goals": 1
-        },
-        {
-          "team": "Brighton",
-          "country": "Inghilterra",
-          "league": "Premier League",
-          "start_year": 2019,
-          "end_year": 2023,
-          "apps": 98,
-          "goals": 16
         },
         {
           "team": "Liverpool",
@@ -8195,6 +8199,14 @@
           "apps": 41
         },
         {
+          "team": "Chelsea",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2011,
+          "end_year": 2018,
+          "apps": 126
+        },
+        {
           "team": "Atletico Madrid",
           "country": "Spagna",
           "league": "La Liga",
@@ -8202,14 +8214,6 @@
           "end_year": 2014,
           "loan": true,
           "apps": 111
-        },
-        {
-          "team": "Chelsea",
-          "country": "Inghilterra",
-          "league": "Premier League",
-          "start_year": 2011,
-          "end_year": 2018,
-          "apps": 126
         },
         {
           "team": "Real Madrid",
@@ -9102,6 +9106,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Red Star Belgrade",
+          "country": "Serbia",
+          "league": "Serbian SuperLiga",
+          "start_year": 2000,
+          "end_year": 2004,
+          "apps": 67,
+          "goals": 12
+        },
+        {
           "team": "Spartak Subotica",
           "country": "Serbia",
           "league": "Serbian SuperLiga",
@@ -9110,15 +9123,6 @@
           "loan": true,
           "apps": 27,
           "goals": 6
-        },
-        {
-          "team": "Red Star Belgrade",
-          "country": "Serbia",
-          "league": "Serbian SuperLiga",
-          "start_year": 2000,
-          "end_year": 2004,
-          "apps": 67,
-          "goals": 12
         },
         {
           "team": "Spartak Moscow",
@@ -11104,7 +11108,8 @@
           "goals": 6
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "hakan_sukur",
@@ -11838,6 +11843,15 @@
       "popularity": 4,
       "career": [
         {
+          "team": "Cobresal",
+          "country": "Cile",
+          "league": "Primera Division Cile",
+          "start_year": 1985,
+          "end_year": 1988,
+          "apps": 45,
+          "goals": 22
+        },
+        {
           "team": "Cobreandino",
           "country": "Cile",
           "league": "Primera Division Cile",
@@ -11846,15 +11860,6 @@
           "loan": true,
           "apps": 29,
           "goals": 27
-        },
-        {
-          "team": "Cobresal",
-          "country": "Cile",
-          "league": "Primera Division Cile",
-          "start_year": 1985,
-          "end_year": 1988,
-          "apps": 45,
-          "goals": 22
         },
         {
           "team": "San Gallo",
@@ -14127,6 +14132,15 @@
           "goals": 1
         },
         {
+          "team": "Kawasaki Frontale",
+          "country": "Giappone",
+          "league": "J1 League",
+          "start_year": 2006,
+          "end_year": 2008,
+          "apps": 2,
+          "goals": 0
+        },
+        {
           "team": "Consadole Sapporo",
           "country": "Giappone",
           "league": "J2 League",
@@ -14145,15 +14159,6 @@
           "loan": true,
           "apps": 42,
           "goals": 37
-        },
-        {
-          "team": "Kawasaki Frontale",
-          "country": "Giappone",
-          "league": "J1 League",
-          "start_year": 2006,
-          "end_year": 2008,
-          "apps": 2,
-          "goals": 0
         },
         {
           "team": "Tokyo Verdy",
@@ -14490,7 +14495,8 @@
           "goals": 1
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "kezman",
@@ -15123,6 +15129,15 @@
       "popularity": 3,
       "career": [
         {
+          "team": "Udinese",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2015,
+          "end_year": 2019,
+          "apps": 65,
+          "goals": 9
+        },
+        {
           "team": "Ascoli",
           "country": "Italia",
           "league": "Serie B",
@@ -15131,15 +15146,6 @@
           "loan": true,
           "apps": 34,
           "goals": 5
-        },
-        {
-          "team": "Udinese",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2015,
-          "end_year": 2019,
-          "apps": 65,
-          "goals": 9
         },
         {
           "team": "Sampdoria",
@@ -15618,6 +15624,15 @@
           "goals": 9
         },
         {
+          "team": "Udinese",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2010,
+          "end_year": 2015,
+          "apps": 57,
+          "goals": 15
+        },
+        {
           "team": "Granada",
           "country": "Spagna",
           "league": "La Liga",
@@ -15626,15 +15641,6 @@
           "loan": true,
           "apps": 7,
           "goals": 0
-        },
-        {
-          "team": "Udinese",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2010,
-          "end_year": 2015,
-          "apps": 57,
-          "goals": 15
         },
         {
           "team": "Lecce",
@@ -15846,6 +15852,15 @@
           "goals": 0
         },
         {
+          "team": "Sampdoria",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2015,
+          "end_year": 2018,
+          "apps": 71,
+          "goals": 4
+        },
+        {
           "team": "Pescara",
           "country": "Italia",
           "league": "Serie B",
@@ -15853,15 +15868,6 @@
           "end_year": 2016,
           "loan": true,
           "apps": 29,
-          "goals": 4
-        },
-        {
-          "team": "Sampdoria",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2015,
-          "end_year": 2018,
-          "apps": 71,
           "goals": 4
         },
         {
@@ -15965,6 +15971,15 @@
           "goals": 3
         },
         {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2020,
+          "end_year": 2022,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "Udinese",
           "country": "Italia",
           "league": "Serie A",
@@ -15972,15 +15987,6 @@
           "end_year": 2021,
           "loan": true,
           "apps": 10,
-          "goals": 0
-        },
-        {
-          "team": "Juventus",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2020,
-          "end_year": 2022,
-          "apps": 0,
           "goals": 0
         },
         {
@@ -16140,7 +16146,8 @@
           "goals": 10
         }
       ],
-      "verified": true
+      "verified": true,
+      "practice_only": true
     },
     {
       "id": "bernardeschi",
@@ -16155,6 +16162,15 @@
       "popularity": 3,
       "career": [
         {
+          "team": "Fiorentina",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2013,
+          "end_year": 2017,
+          "apps": 72,
+          "goals": 14
+        },
+        {
           "team": "Crotone",
           "country": "Italia",
           "league": "Serie B",
@@ -16163,15 +16179,6 @@
           "loan": true,
           "apps": 38,
           "goals": 12
-        },
-        {
-          "team": "Fiorentina",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2013,
-          "end_year": 2017,
-          "apps": 72,
-          "goals": 14
         },
         {
           "team": "Juventus",
@@ -16314,6 +16321,15 @@
       "popularity": 3,
       "career": [
         {
+          "team": "Manchester United",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2009,
+          "end_year": 2012,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "Huddersfield Town",
           "country": "Inghilterra",
           "league": "Championship",
@@ -16322,15 +16338,6 @@
           "loan": true,
           "apps": 33,
           "goals": 2
-        },
-        {
-          "team": "Manchester United",
-          "country": "Inghilterra",
-          "league": "Premier League",
-          "start_year": 2009,
-          "end_year": 2012,
-          "apps": 0,
-          "goals": 0
         },
         {
           "team": "Cardiff City",
@@ -16528,6 +16535,15 @@
       "popularity": 3,
       "career": [
         {
+          "team": "Tottenham",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2009,
+          "end_year": 2016,
+          "apps": 50,
+          "goals": 3
+        },
+        {
           "team": "Yeovil Town",
           "country": "Inghilterra",
           "league": "Championship",
@@ -16546,15 +16562,6 @@
           "loan": true,
           "apps": 22,
           "goals": 2
-        },
-        {
-          "team": "Tottenham",
-          "country": "Inghilterra",
-          "league": "Premier League",
-          "start_year": 2009,
-          "end_year": 2016,
-          "apps": 50,
-          "goals": 3
         },
         {
           "team": "Milton Keynes Dons",
@@ -16870,6 +16877,15 @@
       "popularity": 3,
       "career": [
         {
+          "team": "Bayer Leverkusen",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 2010,
+          "end_year": 2011,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "Greuther Fürth",
           "country": "Germania",
           "league": "2. Bundesliga",
@@ -16877,15 +16893,6 @@
           "end_year": 2010,
           "loan": true,
           "apps": 1,
-          "goals": 0
-        },
-        {
-          "team": "Bayer Leverkusen",
-          "country": "Germania",
-          "league": "Bundesliga",
-          "start_year": 2010,
-          "end_year": 2011,
-          "apps": 0,
           "goals": 0
         },
         {
@@ -17707,6 +17714,15 @@
           "goals": 1
         },
         {
+          "team": "Atalanta",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2009,
+          "end_year": 2013,
+          "apps": 53,
+          "goals": 2
+        },
+        {
           "team": "Cesena",
           "country": "Italia",
           "league": "Serie A",
@@ -17715,15 +17731,6 @@
           "loan": true,
           "apps": 57,
           "goals": 6
-        },
-        {
-          "team": "Atalanta",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2009,
-          "end_year": 2013,
-          "apps": 53,
-          "goals": 2
         },
         {
           "team": "Catania",
@@ -17736,6 +17743,15 @@
           "goals": 1
         },
         {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2013,
+          "end_year": 2015,
+          "apps": 12,
+          "goals": 1
+        },
+        {
           "team": "Sassuolo",
           "country": "Italia",
           "league": "Serie A",
@@ -17743,15 +17759,6 @@
           "end_year": 2014,
           "loan": true,
           "apps": 11,
-          "goals": 1
-        },
-        {
-          "team": "Inter",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2013,
-          "end_year": 2015,
-          "apps": 12,
           "goals": 1
         },
         {
@@ -17890,6 +17897,15 @@
           "goals": 5
         },
         {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2015,
+          "end_year": 2018,
+          "apps": 44,
+          "goals": 2
+        },
+        {
           "team": "Atalanta",
           "country": "Italia",
           "league": "Serie A",
@@ -17898,15 +17914,6 @@
           "loan": true,
           "apps": 24,
           "goals": 1
-        },
-        {
-          "team": "AC Milan",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2015,
-          "end_year": 2018,
-          "apps": 44,
-          "goals": 2
         },
         {
           "team": "Jiangsu Suning",
@@ -17942,6 +17949,15 @@
       "popularity": 2,
       "career": [
         {
+          "team": "Treviso",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 2001,
+          "end_year": 2002,
+          "apps": 27,
+          "goals": 12
+        },
+        {
           "team": "Triestina",
           "country": "Italia",
           "league": "Serie C",
@@ -17950,15 +17966,6 @@
           "loan": true,
           "apps": 9,
           "goals": 2
-        },
-        {
-          "team": "Treviso",
-          "country": "Italia",
-          "league": "Serie B",
-          "start_year": 2001,
-          "end_year": 2002,
-          "apps": 27,
-          "goals": 12
         },
         {
           "team": "Milan",
@@ -18688,6 +18695,15 @@
       "popularity": 2,
       "career": [
         {
+          "team": "Audax Sao Paulo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 2010,
+          "end_year": 2012,
+          "apps": 26,
+          "goals": 2
+        },
+        {
           "team": "Bragantino",
           "country": "Brasile",
           "league": "Brasileirao",
@@ -18696,15 +18712,6 @@
           "loan": true,
           "apps": 6,
           "goals": 1
-        },
-        {
-          "team": "Audax Sao Paulo",
-          "country": "Brasile",
-          "league": "Brasileirao",
-          "start_year": 2010,
-          "end_year": 2012,
-          "apps": 26,
-          "goals": 2
         },
         {
           "team": "Guarani",
@@ -18806,6 +18813,15 @@
           "goals": 13
         },
         {
+          "team": "Palermo",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2012,
+          "end_year": 2016,
+          "apps": 104,
+          "goals": 22
+        },
+        {
           "team": "Rayo Vallecano",
           "country": "Spagna",
           "league": "La Liga",
@@ -18814,15 +18830,6 @@
           "loan": true,
           "apps": 18,
           "goals": 3
-        },
-        {
-          "team": "Palermo",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2012,
-          "end_year": 2016,
-          "apps": 104,
-          "goals": 22
         },
         {
           "team": "Siviglia",
@@ -18885,6 +18892,15 @@
           "goals": 1
         },
         {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2013,
+          "end_year": 2016,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "Bologna",
           "country": "Italia",
           "league": "Serie A",
@@ -18893,15 +18909,6 @@
           "loan": true,
           "apps": 15,
           "goals": 2
-        },
-        {
-          "team": "Inter",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2013,
-          "end_year": 2016,
-          "apps": 0,
-          "goals": 0
         },
         {
           "team": "Empoli",
@@ -19694,21 +19701,21 @@
       "popularity": 1,
       "career": [
         {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2007,
+          "end_year": 2010,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "Chievo",
           "country": "Italia",
           "league": "Serie A",
           "start_year": 2007,
           "end_year": 2008,
           "loan": true,
-          "apps": 0,
-          "goals": 0
-        },
-        {
-          "team": "Inter",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2007,
-          "end_year": 2010,
           "apps": 0,
           "goals": 0
         },
@@ -20168,6 +20175,15 @@
           "goals": 4
         },
         {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 2011,
+          "end_year": 2015,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "Fenerbahce",
           "country": "Turchia",
           "league": "Super Lig",
@@ -20176,15 +20192,6 @@
           "loan": true,
           "apps": 38,
           "goals": 1
-        },
-        {
-          "team": "Juventus",
-          "country": "Italia",
-          "league": "Serie A",
-          "start_year": 2011,
-          "end_year": 2015,
-          "apps": 0,
-          "goals": 0
         },
         {
           "team": "Lokomotiv Moscow",
@@ -20439,6 +20446,14 @@
           "apps": 57
         },
         {
+          "team": "PAOK",
+          "country": "Grecia",
+          "league": "Super League Greece",
+          "start_year": 2013,
+          "end_year": 2015,
+          "apps": 35
+        },
+        {
           "team": "Konyaspor",
           "country": "Turchia",
           "league": "Super Lig",
@@ -20446,14 +20461,6 @@
           "end_year": 2014,
           "loan": true,
           "apps": 33
-        },
-        {
-          "team": "PAOK",
-          "country": "Grecia",
-          "league": "Super League Greece",
-          "start_year": 2013,
-          "end_year": 2015,
-          "apps": 35
         },
         {
           "team": "Caykur Rizespor",
@@ -20719,7 +20726,8 @@
           "apps": 69,
           "goals": 4
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "omar_colley",
@@ -20850,6 +20858,15 @@
           "goals": 0
         },
         {
+          "team": "Tombense",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 2013,
+          "end_year": 2017,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "América Mineiro",
           "country": "Brasile",
           "league": "Brasileirao",
@@ -20858,15 +20875,6 @@
           "loan": true,
           "apps": 75,
           "goals": 9
-        },
-        {
-          "team": "Tombense",
-          "country": "Brasile",
-          "league": "Brasileirao",
-          "start_year": 2013,
-          "end_year": 2017,
-          "apps": 0,
-          "goals": 0
         },
         {
           "team": "Palmeiras",
@@ -21337,6 +21345,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Bordeaux",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2008,
+          "end_year": 2016,
+          "apps": 127,
+          "goals": 50
+        },
+        {
           "team": "Ajaccio",
           "country": "Francia",
           "league": "Ligue 1",
@@ -21345,15 +21362,6 @@
           "loan": true,
           "apps": 30,
           "goals": 14
-        },
-        {
-          "team": "Bordeaux",
-          "country": "Francia",
-          "league": "Ligue 1",
-          "start_year": 2008,
-          "end_year": 2016,
-          "apps": 127,
-          "goals": 50
         },
         {
           "team": "Nancy",
@@ -21446,6 +21454,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Liverpool",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2001,
+          "end_year": 2006,
+          "apps": 38,
+          "goals": 4
+        },
+        {
           "team": "Le Havre",
           "country": "Francia",
           "league": "Ligue 2",
@@ -21454,15 +21471,6 @@
           "loan": true,
           "apps": 42,
           "goals": 7
-        },
-        {
-          "team": "Liverpool",
-          "country": "Inghilterra",
-          "league": "Premier League",
-          "start_year": 2001,
-          "end_year": 2006,
-          "apps": 38,
-          "goals": 4
         },
         {
           "team": "Blackburn",
@@ -21493,6 +21501,15 @@
           "goals": 5
         },
         {
+          "team": "Sporting CP",
+          "country": "Portogallo",
+          "league": "Primeira Liga",
+          "start_year": 2010,
+          "end_year": 2012,
+          "apps": 5,
+          "goals": 1
+        },
+        {
           "team": "Zaragoza",
           "country": "Spagna",
           "league": "La Liga",
@@ -21501,15 +21518,6 @@
           "loan": true,
           "apps": 24,
           "goals": 4
-        },
-        {
-          "team": "Sporting CP",
-          "country": "Portogallo",
-          "league": "Primeira Liga",
-          "start_year": 2010,
-          "end_year": 2012,
-          "apps": 5,
-          "goals": 1
         },
         {
           "team": "Saint-Etienne",
@@ -22333,6 +22341,15 @@
           "goals": 1
         },
         {
+          "team": "Paris Saint-Germain",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2000,
+          "end_year": 2004,
+          "apps": 113,
+          "goals": 2
+        },
+        {
           "team": "Aris Salonicco",
           "country": "Grecia",
           "league": "Super League Grecia",
@@ -22341,15 +22358,6 @@
           "loan": true,
           "apps": 11,
           "goals": 0
-        },
-        {
-          "team": "Paris Saint-Germain",
-          "country": "Francia",
-          "league": "Ligue 1",
-          "start_year": 2000,
-          "end_year": 2004,
-          "apps": 113,
-          "goals": 2
         },
         {
           "team": "Sunderland",
@@ -22863,6 +22871,15 @@
           "goals": 20
         },
         {
+          "team": "Lens",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2007,
+          "end_year": 2011,
+          "apps": 67,
+          "goals": 5
+        },
+        {
           "team": "Marsiglia",
           "country": "Francia",
           "league": "Ligue 1",
@@ -22871,15 +22888,6 @@
           "loan": true,
           "apps": 19,
           "goals": 1
-        },
-        {
-          "team": "Lens",
-          "country": "Francia",
-          "league": "Ligue 1",
-          "start_year": 2007,
-          "end_year": 2011,
-          "apps": 67,
-          "goals": 5
         },
         {
           "team": "Recreativo Huelva",
@@ -22934,6 +22942,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Valencia",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2004,
+          "end_year": 2008,
+          "apps": 17,
+          "goals": 0
+        },
+        {
           "team": "Tenerife",
           "country": "Spagna",
           "league": "Segunda División",
@@ -22942,15 +22959,6 @@
           "loan": true,
           "apps": 30,
           "goals": 3
-        },
-        {
-          "team": "Valencia",
-          "country": "Spagna",
-          "league": "La Liga",
-          "start_year": 2004,
-          "end_year": 2008,
-          "apps": 17,
-          "goals": 0
         },
         {
           "team": "Getafe",
@@ -23316,6 +23324,15 @@
           "goals": 5
         },
         {
+          "team": "Deportivo La Coruna",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2018,
+          "end_year": 2021,
+          "apps": 4,
+          "goals": 2
+        },
+        {
           "team": "Leganes",
           "country": "Spagna",
           "league": "La Liga",
@@ -23324,15 +23341,6 @@
           "loan": true,
           "apps": 6,
           "goals": 0
-        },
-        {
-          "team": "Deportivo La Coruna",
-          "country": "Spagna",
-          "league": "La Liga",
-          "start_year": 2018,
-          "end_year": 2021,
-          "apps": 4,
-          "goals": 2
         },
         {
           "team": "Alavés",
@@ -25964,6 +25972,15 @@
       "verified": true,
       "career": [
         {
+          "team": "Porto",
+          "country": "Portogallo",
+          "league": "Primeira Liga",
+          "start_year": 2015,
+          "end_year": 2018,
+          "apps": 10,
+          "goals": 0
+        },
+        {
           "team": "Académica",
           "country": "Portogallo",
           "league": "Liga Portugal 2",
@@ -25972,15 +25989,6 @@
           "loan": true,
           "apps": 27,
           "goals": 3
-        },
-        {
-          "team": "Porto",
-          "country": "Portogallo",
-          "league": "Primeira Liga",
-          "start_year": 2015,
-          "end_year": 2018,
-          "apps": 10,
-          "goals": 0
         },
         {
           "team": "Olympiacos",
@@ -26271,6 +26279,15 @@
           "goals": 11
         },
         {
+          "team": "Universitatea Craiova",
+          "country": "Romania",
+          "league": "Liga I",
+          "start_year": 2020,
+          "end_year": 2022,
+          "apps": 43,
+          "goals": 13
+        },
+        {
           "team": "Ajman",
           "country": "Emirati Arabi Uniti",
           "league": "UAE Pro League",
@@ -26279,15 +26296,6 @@
           "loan": true,
           "apps": 7,
           "goals": 0
-        },
-        {
-          "team": "Universitatea Craiova",
-          "country": "Romania",
-          "league": "Liga I",
-          "start_year": 2020,
-          "end_year": 2022,
-          "apps": 43,
-          "goals": 13
         },
         {
           "team": "Tractor",
@@ -27120,6 +27128,15 @@
           "goals": 2
         },
         {
+          "team": "Wadi Degla",
+          "country": "Egitto",
+          "league": "Egyptian Premier League",
+          "start_year": 2018,
+          "end_year": 2020,
+          "apps": 0,
+          "goals": 0
+        },
+        {
           "team": "Istanbul Basaksehir",
           "country": "Turchia",
           "league": "Super Lig",
@@ -27127,15 +27144,6 @@
           "end_year": 2019,
           "loan": true,
           "apps": 1,
-          "goals": 0
-        },
-        {
-          "team": "Wadi Degla",
-          "country": "Egitto",
-          "league": "Egyptian Premier League",
-          "start_year": 2018,
-          "end_year": 2020,
-          "apps": 0,
           "goals": 0
         },
         {
@@ -27238,6 +27246,15 @@
           "goals": 10
         },
         {
+          "team": "Nantes",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2012,
+          "end_year": 2015,
+          "apps": 40,
+          "goals": 4
+        },
+        {
           "team": "Umm Salal",
           "country": "Qatar",
           "league": "Qatar Stars League",
@@ -27246,15 +27263,6 @@
           "loan": true,
           "apps": 6,
           "goals": 0
-        },
-        {
-          "team": "Nantes",
-          "country": "Francia",
-          "league": "Ligue 1",
-          "start_year": 2012,
-          "end_year": 2015,
-          "apps": 40,
-          "goals": 4
         },
         {
           "team": "Al-Raed",
@@ -28520,7 +28528,8 @@
           "apps": 303,
           "goals": 148
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "baresi",
@@ -30213,7 +30222,8 @@
           "apps": 18,
           "goals": 0
         }
-      ]
+      ],
+      "practice_only": true
     },
     {
       "id": "benni_mccarthy",

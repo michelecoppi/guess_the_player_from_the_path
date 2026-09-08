@@ -91,6 +91,11 @@ def _build_daily_data_for_type(event_type, dates, rules, points_per_day, min_cor
             daily_data[date_str] = {
                 "correct_answers": get_answer_aliases(player),
                 "career_path": career_shown,
+                # Serve al confronto dopo un tentativo sbagliato, come nella sfida del
+                # giorno: senza l'id non si sa **chi** era e non si puo' confrontare niente.
+                # Gli eventi generati prima che questo campo esistesse continuano a
+                # funzionare, semplicemente senza confronto.
+                "player_id": player["id"],
                 "points": points_per_day,
                 "first_correct_user": False,
             }

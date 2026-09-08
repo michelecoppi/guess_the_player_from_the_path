@@ -102,6 +102,7 @@ TRANSLATIONS = {
             "📋 Comandi:\n"
             "/menu - Apre il menu con tutto quello che si può fare.\n"
             "/show - Mostra la sfida di oggi.\n"
+            "/solution - Chi era il calciatore di una giornata gia' chiusa.\n"
             "/guess <risposta> - Il vecchio modo di rispondere, se ci sei affezionato.\n"
             "/stats - Le tue statistiche, la striscia e i trofei.\n"
             "/top - La classifica generale e quella del mese.\n"
@@ -121,8 +122,14 @@ TRANSLATIONS = {
         "language.confirm": "✅ Lingua impostata su Italiano.",
 
         "guess.missing_answer": "❗ Devi scrivere anche il nome del calciatore dopo /guess!",
-        "guess.wrong_last": "❌ Risposta sbagliata, hai esaurito i tentativi per oggi! Riprova domani.",
-        "guess.wrong_remaining": "❌ Risposta sbagliata, riprova! Hai {attempts_left} tentativi rimasti.",
+        "guess.wrong_last": (
+            "❌ Risposta sbagliata: tentativi finiti per oggi.\n"
+            "🔒 Chi era te lo dico a mezzanotte, quando la giornata si chiude: da quel momento "
+            "lo trovi anche con /solution."
+        ),
+        # "Hai 1 tentativi rimasti" era sbagliato: la forma con i due punti regge sia il
+        # singolare sia il plurale, in tutte e tre le lingue.
+        "guess.wrong_remaining": "❌ Risposta sbagliata, riprova! Tentativi rimasti: {attempts_left}.",
         "guess.correct": "✅ Corretto! Hai guadagnato {points} punti.\n{bonus_message}",
         "guess.bonus": "💎 Bonus: +{bonus} punto perchè sei il primo ad indovinare!",
         "guess.error.not_registered": "❗ Devi registrarti prima di giocare! Usa /start.",
@@ -131,7 +138,13 @@ TRANSLATIONS = {
         "guess.error.default": "❗ Non è stato possibile registrare il tentativo, riprova.",
 
         "show.bonus_info": "💎 Bonus: +1 punto se sei il primo a rispondere!",
-        "show.caption": "🎯 Difficoltà: {difficulty}\n🏆 Punti: {points}\n{bonus_info}\n\n🔍 Indovina la carriera con il comando /guess <risposta> in privato al bot!\n",
+        "show.caption": (
+            "🎯 Difficoltà: {difficulty}\n"
+            "🏆 Punti: {points}\n"
+            "{bonus_info}\n\n"
+            "✍️ Scrivi qui il nome del calciatore: non serve nessun comando.\n"
+            "🔢 Hai {attempts} tentativi. Dopo il primo sbagliato puoi chiedere un indizio."
+        ),
 
         "stats.not_registered": "❗ Non sei registrato! Usa /start per registrarti.",
         "stats.message": (
@@ -211,34 +224,39 @@ TRANSLATIONS = {
             "👀 Indovina chi è questo calciatore!\n"
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato inserendo il nome del calciatore."
+            "✍️ Scrivi il nome qui in privato: hai {attempts} tentativi.\n"
+            "Con /today torni alla sfida di oggi."
         ),
         "events.player_message.career": (
             "🧠 <b>Modalità carriera</b>\n\n"
             "👤 Indovina almeno <b>{min_correct}</b> delle squadre in cui ha giocato {player_name}!\n"
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Scrivi le squadre in privato al bot separate da virgole, es: /events Roma, Manchester United, Toronto FC (massimo 5 squadre a tentativo)"
+            "✍️ Scrivi qui le squadre separate da virgole, es: Roma, Manchester United, Toronto FC\n"
+            "(massimo {max_answers} a tentativo). Hai {attempts} tentativi; con /today torni alla sfida di oggi."
         ),
         "events.player_message.father_son": (
             "👨‍👦 <b>Modalità padre-figlio</b>\n\n"
             "👤 Indovina la coppia padre/figlio dall'immagine!\n"
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato inserendo il nome della coppia padre/figlio."
+            "✍️ Scrivi qui il nome della coppia: hai {attempts} tentativi.\n"
+            "Con /today torni alla sfida di oggi."
         ),
         "events.player_message.transfer_guess": (
             "🔄 <b>Modalità trasferimento</b>\n\n"
             "👤 Indovina il calciatore dal trasferimento mostrato!\n"
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato inserendo il nome del calciatore."
+            "✍️ Scrivi il nome qui in privato: hai {attempts} tentativi.\n"
+            "Con /today torni alla sfida di oggi."
         ),
         "events.player_message.default": (
             "🎮 <b>Sfida del giorno</b>\n\n"
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato al bot."
+            "✍️ Scrivi qui la tua risposta: hai {attempts} tentativi.\n"
+            "Con /today torni alla sfida di oggi."
         ),
 
         "job.congrats": "🎉 Complimenti per aver indovinato il calciatore {player} ieri!\nÈ disponibile una nuova sfida giornaliera!\n👉 Usa /show e prova a essere il primo!",
@@ -389,6 +407,52 @@ TRANSLATIONS = {
         "league.button_invite": "🔗 Invita",
         "cmd.league_create": "Crea una lega privata",
         "cmd.league_join": "Entra in una lega con il codice",
+
+        # Soluzione di una giornata gia' chiusa (/solution)
+        "solution.usage": (
+            "🗝 <b>Soluzione</b>\n"
+            "/solution — la giornata di ieri.\n"
+            "/solution 06/09/26 — una giornata precisa, se e' gia' chiusa."
+        ),
+        "solution.not_registered": "❗ Devi registrarti con /start prima.",
+        "solution.bad_date": "❗ Non ho capito la data: scrivila come 06/09/26, oppure usa /solution da solo per la giornata di ieri.",
+        "solution.still_open": "🔒 Quella giornata è ancora aperta: la soluzione arriva a mezzanotte, quando si chiude. Intanto giocala con /show.",
+        "solution.missing": "❗ Per il {date} non risulta nessuna sfida.",
+        "solution.caption": (
+            "🗝 <b>Sfida del {date}</b> (#{number})\n\n"
+            "👤 Era <b>{answer}</b>.\n"
+            "🎯 {difficulty} · {points} punti\n"
+            "{rate_line}"
+        ),
+        "solution.rate": "📊 L'ha indovinato il {percent}% di chi ci ha provato ({solved} su {players}).",
+        "solution.rate_unknown": "📊 Troppo pochi tentativi per dire quanti l'hanno indovinato.",
+        "solution.button_archive": "🗂 Le altre giornate",
+
+        # Indizi sulla sfida del giorno
+        "hint.button": "💡 Indizio (-1 punto)",
+        "hint.header": "💡 <b>Indizio {index} di {total}</b>",
+        "hint.nationality": "🌍 Nazionalità: <b>{value}</b>",
+        "hint.position": "🧭 Ruolo: <b>{value}</b>",
+        "hint.cost": "\n\n➖ Ti costa 1 punto: se indovini adesso ne prendi {points} invece di {full_points}.",
+        "hint.no_more": "💡 Hai già usato tutti gli indizi di oggi ({max_hints}).",
+        "hint.needs_attempt": "💡 Gli indizi si sbloccano dopo un tentativo sbagliato: prova un nome.",
+        "hint.already_guessed": "✅ Hai già indovinato oggi: gli indizi non ti servono più.",
+        "hint.no_attempts": "❌ Tentativi finiti: un indizio non ti servirebbe più.",
+        "hint.unavailable": "💡 Per questa sfida non ho indizi da darti.",
+        "hint.not_registered": "❗ Devi registrarti con /start prima.",
+
+        # Notifiche attivate dal messaggio di sconfitta
+        "guess.button_notify": "🔔 Avvisami a mezzanotte",
+        "notify.enabled_inline": "🔔 Fatto: a mezzanotte ti dico chi era, e ti avviso della sfida nuova.",
+        "notify.already_enabled": "🔔 Le notifiche sono già attive: a mezzanotte ti dico chi era.",
+
+        # Eventi: sessione aperta e uscita
+        "events.exited": "👋 Evento chiuso: /show per la sfida di oggi.",
+        "events.not_open": "❗ Quell'evento non è più in corso: /events per vedere quello attivo.",
+
+        "menu.solution": "🗝 Soluzione",
+        "cmd.solution": "La soluzione di una giornata già chiusa",
+        "job.rate_line": "\n📊 L'ha indovinato il {percent}% di chi ci ha provato.",
     },
     "es": {
         "common.private_only": "❗ Este comando solo se puede usar en un chat privado.",
@@ -403,6 +467,7 @@ TRANSLATIONS = {
             "📋 Comandos:\n"
             "/menu - Abre el menú con todo lo que se puede hacer.\n"
             "/show - Muestra el desafío de hoy.\n"
+            "/solution - Quién era el futbolista de un día ya cerrado.\n"
             "/guess <respuesta> - La forma clásica de responder, si le tienes cariño.\n"
             "/stats - Tus estadísticas, la racha y los trofeos.\n"
             "/top - La clasificación general y la del mes.\n"
@@ -422,8 +487,12 @@ TRANSLATIONS = {
         "language.confirm": "✅ Idioma configurado en Español.",
 
         "guess.missing_answer": "❗ ¡Tienes que escribir también el nombre del futbolista después de /guess!",
-        "guess.wrong_last": "❌ Respuesta incorrecta, ¡has agotado los intentos de hoy! Vuelve mañana.",
-        "guess.wrong_remaining": "❌ Respuesta incorrecta, ¡inténtalo de nuevo! Te quedan {attempts_left} intentos.",
+        "guess.wrong_last": (
+            "❌ Respuesta incorrecta: se acabaron los intentos de hoy.\n"
+            "🔒 Quién era te lo digo a medianoche, cuando el día se cierra: a partir de ahí "
+            "también lo tienes con /solution."
+        ),
+        "guess.wrong_remaining": "❌ Respuesta incorrecta, ¡inténtalo de nuevo! Intentos restantes: {attempts_left}.",
         "guess.correct": "✅ ¡Correcto! Has ganado {points} puntos.\n{bonus_message}",
         "guess.bonus": "💎 Bono: +{bonus} punto por ser el primero en acertar!",
         "guess.error.not_registered": "❗ ¡Tienes que registrarte antes de jugar! Usa /start.",
@@ -432,7 +501,13 @@ TRANSLATIONS = {
         "guess.error.default": "❗ No se ha podido registrar el intento, inténtalo de nuevo.",
 
         "show.bonus_info": "💎 Bono: +1 punto si eres el primero en responder!",
-        "show.caption": "🎯 Dificultad: {difficulty}\n🏆 Puntos: {points}\n{bonus_info}\n\n🔍 ¡Adivina la carrera con el comando /guess <respuesta> en privado al bot!\n",
+        "show.caption": (
+            "🎯 Dificultad: {difficulty}\n"
+            "🏆 Puntos: {points}\n"
+            "{bonus_info}\n\n"
+            "✍️ Escribe aquí el nombre del futbolista: no hace falta ningún comando.\n"
+            "🔢 Tienes {attempts} intentos. Tras el primer fallo puedes pedir una pista."
+        ),
 
         "stats.not_registered": "❗ ¡No estás registrado! Usa /start para registrarte.",
         "stats.message": (
@@ -512,34 +587,39 @@ TRANSLATIONS = {
             "👀 ¡Adivina quién es este futbolista!\n"
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Para adivinar, usa el comando /events en privado escribiendo el nombre del futbolista."
+            "✍️ Escribe el nombre aquí en privado: tienes {attempts} intentos.\n"
+            "Con /today vuelves al desafío de hoy."
         ),
         "events.player_message.career": (
             "🧠 <b>Modo carrera</b>\n\n"
             "👤 ¡Adivina al menos <b>{min_correct}</b> de los equipos en los que jugó {player_name}!\n"
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Escribe los equipos en privado al bot separados por comas, ej: /events Roma, Manchester United, Toronto FC (máximo 5 equipos por intento)"
+            "✍️ Escribe aquí los equipos separados por comas, ej: Roma, Manchester United, Toronto FC\n"
+            "(máximo {max_answers} por intento). Tienes {attempts} intentos; con /today vuelves al desafío de hoy."
         ),
         "events.player_message.father_son": (
             "👨‍👦 <b>Modo padre-hijo</b>\n\n"
             "👤 ¡Adivina la pareja padre/hijo a partir de la imagen!\n"
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Para adivinar, usa el comando /events en privado escribiendo el nombre de la pareja padre/hijo."
+            "✍️ Escribe aquí el nombre de la pareja: tienes {attempts} intentos.\n"
+            "Con /today vuelves al desafío de hoy."
         ),
         "events.player_message.transfer_guess": (
             "🔄 <b>Modo traspaso</b>\n\n"
             "👤 ¡Adivina el futbolista a partir del traspaso mostrado!\n"
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Para adivinar, usa el comando /events en privado escribiendo el nombre del futbolista."
+            "✍️ Escribe el nombre aquí en privado: tienes {attempts} intentos.\n"
+            "Con /today vuelves al desafío de hoy."
         ),
         "events.player_message.default": (
             "🎮 <b>Desafío del día</b>\n\n"
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Para adivinar, usa el comando /events en privado al bot."
+            "✍️ Escribe aquí tu respuesta: tienes {attempts} intentos.\n"
+            "Con /today vuelves al desafío de hoy."
         ),
 
         "job.congrats": "🎉 ¡Felicidades por adivinar al futbolista {player} de ayer!\n¡Hay un nuevo desafío diario disponible!\n👉 ¡Usa /show e intenta ser el primero!",
@@ -690,6 +770,52 @@ TRANSLATIONS = {
         "league.button_invite": "🔗 Invitar",
         "cmd.league_create": "Crea una liga privada",
         "cmd.league_join": "Entra en una liga con el código",
+
+        # Solución de un día ya cerrado (/solution)
+        "solution.usage": (
+            "🗝 <b>Solución</b>\n"
+            "/solution — el día de ayer.\n"
+            "/solution 06/09/26 — un día concreto, si ya está cerrado."
+        ),
+        "solution.not_registered": "❗ Regístrate con /start antes.",
+        "solution.bad_date": "❗ No he entendido la fecha: escríbela como 06/09/26, o usa /solution solo para el día de ayer.",
+        "solution.still_open": "🔒 Ese día sigue abierto: la solución llega a medianoche, cuando se cierra. Mientras tanto, juégalo con /show.",
+        "solution.missing": "❗ No hay ningún desafío para el {date}.",
+        "solution.caption": (
+            "🗝 <b>Desafío del {date}</b> (#{number})\n\n"
+            "👤 Era <b>{answer}</b>.\n"
+            "🎯 {difficulty} · {points} puntos\n"
+            "{rate_line}"
+        ),
+        "solution.rate": "📊 Lo acertó el {percent}% de quienes lo intentaron ({solved} de {players}).",
+        "solution.rate_unknown": "📊 Hay muy pocos intentos para decir cuántos lo acertaron.",
+        "solution.button_archive": "🗂 Los otros días",
+
+        # Pistas sobre el desafío del día
+        "hint.button": "💡 Pista (-1 punto)",
+        "hint.header": "💡 <b>Pista {index} de {total}</b>",
+        "hint.nationality": "🌍 Nacionalidad: <b>{value}</b>",
+        "hint.position": "🧭 Posición: <b>{value}</b>",
+        "hint.cost": "\n\n➖ Te cuesta 1 punto: si aciertas ahora te llevas {points} en vez de {full_points}.",
+        "hint.no_more": "💡 Ya has usado todas las pistas de hoy ({max_hints}).",
+        "hint.needs_attempt": "💡 Las pistas se desbloquean tras un intento fallido: prueba un nombre.",
+        "hint.already_guessed": "✅ Ya has acertado hoy: las pistas ya no te hacen falta.",
+        "hint.no_attempts": "❌ Se acabaron los intentos: una pista ya no te serviría.",
+        "hint.unavailable": "💡 Para este desafío no tengo pistas que darte.",
+        "hint.not_registered": "❗ Regístrate con /start antes.",
+
+        # Notificaciones activadas desde el mensaje de derrota
+        "guess.button_notify": "🔔 Avísame a medianoche",
+        "notify.enabled_inline": "🔔 Hecho: a medianoche te digo quién era, y te aviso del desafío nuevo.",
+        "notify.already_enabled": "🔔 Las notificaciones ya están activas: a medianoche te digo quién era.",
+
+        # Eventos: sesión abierta y salida
+        "events.exited": "👋 Evento cerrado: /show para el desafío de hoy.",
+        "events.not_open": "❗ Ese evento ya no está en curso: /events para ver el activo.",
+
+        "menu.solution": "🗝 Solución",
+        "cmd.solution": "La solución de un día ya cerrado",
+        "job.rate_line": "\n📊 Lo acertó el {percent}% de quienes lo intentaron.",
     },
     "en": {
         "common.private_only": "❗ This command can only be used in a private chat.",
@@ -704,6 +830,7 @@ TRANSLATIONS = {
             "📋 Commands:\n"
             "/menu - Opens the menu with everything you can do.\n"
             "/show - Show today's challenge.\n"
+            "/solution - Who the player was on a day that has already closed.\n"
             "/guess <answer> - The old way to answer, if you're attached to it.\n"
             "/stats - Your stats, streak and trophies.\n"
             "/top - The global and monthly leaderboards.\n"
@@ -723,8 +850,12 @@ TRANSLATIONS = {
         "language.confirm": "✅ Language set to English.",
 
         "guess.missing_answer": "❗ You also need to write the player's name after /guess!",
-        "guess.wrong_last": "❌ Wrong answer, you've used up today's attempts! Try again tomorrow.",
-        "guess.wrong_remaining": "❌ Wrong answer, try again! You have {attempts_left} attempts left.",
+        "guess.wrong_last": (
+            "❌ Wrong answer: no attempts left for today.\n"
+            "🔒 I'll tell you who it was at midnight, when the day closes: from then on "
+            "/solution has it too."
+        ),
+        "guess.wrong_remaining": "❌ Wrong answer, try again! Attempts left: {attempts_left}.",
         "guess.correct": "✅ Correct! You earned {points} points.\n{bonus_message}",
         "guess.bonus": "💎 Bonus: +{bonus} point for being the first to guess!",
         "guess.error.not_registered": "❗ You need to register before playing! Use /start.",
@@ -733,7 +864,13 @@ TRANSLATIONS = {
         "guess.error.default": "❗ Couldn't register the attempt, please try again.",
 
         "show.bonus_info": "💎 Bonus: +1 point if you're the first to answer!",
-        "show.caption": "🎯 Difficulty: {difficulty}\n🏆 Points: {points}\n{bonus_info}\n\n🔍 Guess the career with the command /guess <answer> in a private chat with the bot!\n",
+        "show.caption": (
+            "🎯 Difficulty: {difficulty}\n"
+            "🏆 Points: {points}\n"
+            "{bonus_info}\n\n"
+            "✍️ Just type the player's name here: no command needed.\n"
+            "🔢 You have {attempts} attempts. After the first wrong one you can ask for a hint."
+        ),
 
         "stats.not_registered": "❗ You're not registered! Use /start to register.",
         "stats.message": (
@@ -813,34 +950,39 @@ TRANSLATIONS = {
             "👀 Guess who this player is!\n"
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "To guess, use /events in a private chat with the player's name."
+            "✍️ Just type the name here in private: you have {attempts} attempts.\n"
+            "Use /today to go back to today's challenge."
         ),
         "events.player_message.career": (
             "🧠 <b>Career mode</b>\n\n"
             "👤 Guess at least <b>{min_correct}</b> of the teams {player_name} has played for!\n"
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "Write the teams in a private chat with the bot separated by commas, e.g.: /events Roma, Manchester United, Toronto FC (max 5 teams per attempt)"
+            "✍️ Type the teams here separated by commas, e.g.: Roma, Manchester United, Toronto FC\n"
+            "(max {max_answers} per attempt). You have {attempts} attempts; use /today to go back to today's challenge."
         ),
         "events.player_message.father_son": (
             "👨‍👦 <b>Father-son mode</b>\n\n"
             "👤 Guess the father/son pair from the image!\n"
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "To guess, use /events in a private chat with the father/son pair's name."
+            "✍️ Type the pair's name here: you have {attempts} attempts.\n"
+            "Use /today to go back to today's challenge."
         ),
         "events.player_message.transfer_guess": (
             "🔄 <b>Transfer mode</b>\n\n"
             "👤 Guess the player from the transfer shown!\n"
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "To guess, use /events in a private chat with the player's name."
+            "✍️ Just type the name here in private: you have {attempts} attempts.\n"
+            "Use /today to go back to today's challenge."
         ),
         "events.player_message.default": (
             "🎮 <b>Challenge of the day</b>\n\n"
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
-            "To guess, use /events in a private chat with the bot."
+            "✍️ Type your answer here: you have {attempts} attempts.\n"
+            "Use /today to go back to today's challenge."
         ),
 
         "job.congrats": "🎉 Congrats for guessing yesterday's player, {player}!\nA new daily challenge is available!\n👉 Use /show and try to be the first!",
@@ -991,5 +1133,51 @@ TRANSLATIONS = {
         "league.button_invite": "🔗 Invite",
         "cmd.league_create": "Create a private league",
         "cmd.league_join": "Join a league with its code",
+
+        # Solution of a day that has already closed (/solution)
+        "solution.usage": (
+            "🗝 <b>Solution</b>\n"
+            "/solution — yesterday.\n"
+            "/solution 06/09/26 — a specific day, once it has closed."
+        ),
+        "solution.not_registered": "❗ Sign up with /start first.",
+        "solution.bad_date": "❗ I didn't understand the date: write it as 06/09/26, or use /solution on its own for yesterday.",
+        "solution.still_open": "🔒 That day is still open: the solution comes at midnight, when it closes. In the meantime, play it with /show.",
+        "solution.missing": "❗ There is no challenge for {date}.",
+        "solution.caption": (
+            "🗝 <b>Challenge of {date}</b> (#{number})\n\n"
+            "👤 It was <b>{answer}</b>.\n"
+            "🎯 {difficulty} · {points} points\n"
+            "{rate_line}"
+        ),
+        "solution.rate": "📊 {percent}% of the people who tried got it ({solved} out of {players}).",
+        "solution.rate_unknown": "📊 Too few attempts to say how many got it.",
+        "solution.button_archive": "🗂 The other days",
+
+        # Hints on the daily challenge
+        "hint.button": "💡 Hint (-1 point)",
+        "hint.header": "💡 <b>Hint {index} of {total}</b>",
+        "hint.nationality": "🌍 Nationality: <b>{value}</b>",
+        "hint.position": "🧭 Position: <b>{value}</b>",
+        "hint.cost": "\n\n➖ It costs you 1 point: if you get it now you take {points} instead of {full_points}.",
+        "hint.no_more": "💡 You have already used all of today's hints ({max_hints}).",
+        "hint.needs_attempt": "💡 Hints unlock after a wrong attempt: try a name.",
+        "hint.already_guessed": "✅ You have already got it today: you don't need hints any more.",
+        "hint.no_attempts": "❌ No attempts left: a hint would not help you now.",
+        "hint.unavailable": "💡 I have no hints to give you for this challenge.",
+        "hint.not_registered": "❗ Sign up with /start first.",
+
+        # Notifications turned on from the losing message
+        "guess.button_notify": "🔔 Tell me at midnight",
+        "notify.enabled_inline": "🔔 Done: at midnight I'll tell you who it was, and let you know about the new challenge.",
+        "notify.already_enabled": "🔔 Notifications are already on: at midnight I'll tell you who it was.",
+
+        # Events: open session and exit
+        "events.exited": "👋 Event closed: /show for today's challenge.",
+        "events.not_open": "❗ That event is no longer running: /events to see the active one.",
+
+        "menu.solution": "🗝 Solution",
+        "cmd.solution": "The solution of a day that has already closed",
+        "job.rate_line": "\n📊 {percent}% of the people who tried got it.",
     },
 }

@@ -42,7 +42,7 @@ def firebase(monkeypatch):
         "user": {"telegram_id": 42, "language": "it", "archive_day": DAY},
         "attempt": {"ok": True, "attempts_used": 1, "attempts_left": 2},
     }
-    calls = {"solved": [], "archive_day": [], "daily_registered": []}
+    calls = {"solved": [], "archive_day": [], "daily_registered": [], "closed": []}
 
     monkeypatch.setattr(archive_handler.firebase_service, "get_user_data", lambda uid: state["user"])
     monkeypatch.setattr(archive_handler.firebase_service, "get_daily_path", lambda day: CHALLENGE if day == DAY else None)
@@ -56,6 +56,14 @@ def firebase(monkeypatch):
         lambda uid, day: calls["archive_day"].append(day),
     )
     monkeypatch.setattr(archive_handler.firebase_service, "get_display_name_for_day", lambda day: "Messi")
+    monkeypatch.setattr(
+        archive_handler.firebase_service, "clear_training_key",
+        lambda uid: calls["closed"].append("training"),
+    )
+    monkeypatch.setattr(
+        archive_handler.firebase_service, "clear_event_key",
+        lambda uid: calls["closed"].append("event"),
+    )
     monkeypatch.setattr(guess_handler.firebase_service, "get_user_data", lambda uid: state["user"])
     monkeypatch.setattr(
         guess_handler.firebase_service, "register_correct_guess",
@@ -158,3 +166,37 @@ def test_a_wrong_archive_answer_is_compared_too(firebase, monkeypatch):
 
     assert "Del Piero" in message.replies[0]
     assert "messi" not in message.replies[0].lower()
+
+
+# ---------------------------------------------------------------------------
+# /today chiude qualunque partita che non sia quella di oggi
+# ---------------------------------------------------------------------------
+
+def test_today_closes_an_open_training(firebase):
+    firebase.state["user"] = {"telegram_id": 42, "language": "it", "training_key": "pool:maldini"}
+    update, message = make_update()
+    asyncio.run(archive_handler.back_to_today(update, None))
+
+    assert firebase.calls["closed"] == ["training"]
+    assert "llenamento" in message.replies[0]
+
+
+def test_today_closes_an_open_event(firebase):
+    """L'evento e' la terza sessione: prima di questa tranche /today non la chiudeva, e un
+    utente restava a rispondere all'evento senza capire perche'."""
+    firebase.state["user"] = {"telegram_id": 42, "language": "it", "event_key": "giramondo:2026-09-08"}
+    update, message = make_update()
+    asyncio.run(archive_handler.back_to_today(update, None))
+
+    assert firebase.calls["closed"] == ["event"]
+    assert "vento" in message.replies[0]
+
+
+def test_today_says_so_when_there_is_nothing_to_close(firebase):
+    firebase.state["user"] = {"telegram_id": 42, "language": "it"}
+    update, message = make_update()
+    asyncio.run(archive_handler.back_to_today(update, None))
+
+    assert firebase.calls["closed"] == []
+    assert firebase.calls["archive_day"] == []
+    assert "/archive" in message.replies[0]

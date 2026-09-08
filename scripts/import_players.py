@@ -22,6 +22,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from services.career_order import order_career  # noqa: E402
 from services.player_pool import (  # noqa: E402
     _PLAYERS_PATH,
     get_answer_aliases,
@@ -60,7 +61,9 @@ def _normalize_player(player):
             if stop.get(key):
                 stop[key] = str(stop[key]).strip()
         career.append(stop)
-    normalized["career"] = career
+    # Le tappe si riordinano all'import (prestiti dopo il club che li ha generati): le
+    # schede scritte a mano arrivano quasi sempre in ordine di anno e basta.
+    normalized["career"] = order_career(career)
 
     return normalized
 

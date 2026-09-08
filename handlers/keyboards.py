@@ -30,6 +30,7 @@ CALLBACK_PREFIX = "menu_"
 COMMAND_KEYS = (
     ("start", "cmd.start"),
     ("show", "cmd.show"),
+    ("solution", "cmd.solution"),
     ("stats", "cmd.stats"),
     ("top", "cmd.top"),
     ("events", "cmd.events"),
@@ -55,12 +56,15 @@ def _button(lang, key, action):
 
 
 def menu_keyboard(lang):
+    # La soluzione sta accanto a "Gioca": sono le due facce della stessa sfida, quella di
+    # oggi da giocare e quella di ieri da scoprire.
     rows = [
-        [_button(lang, "menu.play", "play"), _button(lang, "menu.events", "events")],
+        [_button(lang, "menu.play", "play"), _button(lang, "menu.solution", "solution")],
+        [_button(lang, "menu.events", "events"), _button(lang, "menu.training", "training")],
+        [_button(lang, "menu.archive", "archive"), _button(lang, "menu.leagues", "leagues")],
         [_button(lang, "menu.stats", "stats"), _button(lang, "menu.top", "top")],
-        [_button(lang, "menu.archive", "archive"), _button(lang, "menu.training", "training")],
-        [_button(lang, "menu.leagues", "leagues"), _button(lang, "menu.notify", "notify")],
-        [_button(lang, "menu.language", "language"), _button(lang, "menu.help", "help")],
+        [_button(lang, "menu.notify", "notify"), _button(lang, "menu.language", "language")],
+        [_button(lang, "menu.help", "help")],
     ]
     if WEBAPP_URL:
         # La mini app e' un di piu': se non e' configurata il menu resta identico a prima.

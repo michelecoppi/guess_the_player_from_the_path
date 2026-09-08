@@ -38,6 +38,7 @@ def test_admin_is_allowed(monkeypatch):
     monkeypatch.setattr(admin_handler, "ADMIN_TELEGRAM_IDS", [111])
     monkeypatch.setattr(admin_handler, "get_current_event", lambda: None)
     monkeypatch.setattr(admin_handler, "get_incomplete_or_unverified_players", lambda: [])
+    monkeypatch.setattr(admin_handler.firebase_service, "get_upcoming_daily_paths", lambda limit: [])
 
     update, message = make_update(111)
     asyncio.run(admin_handler.admin_status(update, None))

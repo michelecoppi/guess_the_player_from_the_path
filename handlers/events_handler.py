@@ -1,14 +1,34 @@
+"""Eventi tematici: la home a schede, la sfida del giorno dell'evento e i tentativi.
+
+Fino a ieri gli eventi erano l'unica modalita' in cui bisognava ancora scrivere un comando
+per rispondere (`/events Messi`), mentre dappertutto altrove bastava scrivere il nome. Ora
+aprire la scheda "Giocatore" apre una **sessione** sul documento utente (`event_key`,
+come `archive_day` e `training_key`): da quel momento i messaggi liberi valgono per
+l'evento, e si torna alla sfida di oggi con /today. Il comando resta, per chi lo ha
+imparato.
+
+La chiave porta con se' anche il **giorno** (`codice:2026-09-08`): a mezzanotte l'immagine
+dell'evento cambia, quindi una sessione di ieri non deve rispondere per la sfida di oggi.
+"""
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import ContextTypes
 
+from handlers.legend_handler import legend_keyboard
 from services import firebase_service
 from services.dates import to_display, today_iso
+from services.guess_feedback import build_comparison, comparison_text
 from services.i18n import content_text, resolve_language, t
 from services.matching import find_match, normalize
 from services.path_image import render_career_path_image, render_event_banner
 
 MAX_EVENT_ATTEMPTS = 3
 MAX_CAREER_ANSWERS_PER_ATTEMPT = 5
+
+# I tipi di evento in cui la risposta e' un **calciatore del dataset**: solo per questi ha
+# senso il confronto per nazionalita'/ruolo/eta' dopo un tentativo sbagliato. Negli eventi
+# "career" si risponde con delle squadre, e nei "father_son" con una coppia che nel dataset
+# non c'e': li' il confronto non avrebbe niente su cui lavorare.
+PLAYER_ANSWER_TYPES = ("path", "transfer_guess")
 
 
 async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,6 +87,10 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
     elif data == "event_player":
         message, image_url = get_today_player_message(event, lang)
         active = "player"
+        # Aprire la scheda del giocatore apre la sessione: da qui in poi un messaggio
+        # libero e' un tentativo su questo evento, non sulla sfida del giorno.
+        if (event.get("daily_data") or {}).get(today_iso()):
+            firebase_service.set_event_key(update.effective_user.id, session_key(event["code"]))
     elif data == "event_leaderboard":
         # La classifica si legge sempre fresca: e' l'unica parte dell'evento che cambia
         # mentre l'utente naviga.
@@ -77,18 +101,33 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
     else:
         return
 
-    keyboard = [
-        [
-            InlineKeyboardButton(t(lang, "events.button_home") + (" ✅" if active == "home" else ""), callback_data="event_home"),
-            InlineKeyboardButton(t(lang, "events.button_player") + (" ✅" if active == "player" else ""), callback_data="event_player"),
-            InlineKeyboardButton(t(lang, "events.button_leaderboard") + (" ✅" if active == "leaderboard" else ""), callback_data="event_leaderboard"),
-        ]
+    tabs = [
+        InlineKeyboardButton(t(lang, "events.button_home") + (" ✅" if active == "home" else ""), callback_data="event_home"),
+        InlineKeyboardButton(t(lang, "events.button_player") + (" ✅" if active == "player" else ""), callback_data="event_player"),
+        InlineKeyboardButton(t(lang, "events.button_leaderboard") + (" ✅" if active == "leaderboard" else ""), callback_data="event_leaderboard"),
     ]
+
+    # La legenda solo sulla scheda del giocatore, e solo quando l'immagine e' davvero un
+    # percorso di carriera: sotto un banner o una foto di coppia non spiegherebbe niente.
+    shows_career_path = active == "player" and bool(
+        ((event.get("daily_data") or {}).get(today_iso()) or {}).get("career_path")
+    )
+    reply_markup = (
+        legend_keyboard(lang, extra_rows=[tabs]) if shows_career_path else InlineKeyboardMarkup([tabs])
+    )
 
     await query.edit_message_media(
         media=InputMediaPhoto(media=image_url, caption=message, parse_mode="HTML"),
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        reply_markup=reply_markup,
     )
+
+
+def session_key(event_code, day_iso=None):
+    """La chiave della sessione: quale evento e **quale giornata** dell'evento.
+
+    Il giorno c'e' perche' a mezzanotte la sfida dell'evento cambia: senza, la sessione
+    aperta ieri risponderebbe per l'immagine di oggi, che l'utente non ha nemmeno visto."""
+    return f"{event_code}:{day_iso or today_iso()}"
 
 
 def _event_name(event, lang):
@@ -143,6 +182,7 @@ def get_today_player_message(event, lang="it"):
             subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
             badge=_event_name(event, lang).upper()[:22] or None,
             footer=_event_name(event, lang),
+            lang=lang,
         )
     elif today_data.get("image_url"):
         image_url = today_data["image_url"]
@@ -155,23 +195,22 @@ def get_today_player_message(event, lang="it"):
 
     event_type = event.get("type", "path")
 
-    if event_type == "career":
-        message = t(
-            lang, "events.player_message.career",
-            min_correct=today_data.get("min_correct", 1),
-            player_name=today_data.get("player_name"),
-            points=points,
-            bonus_msg=bonus_msg,
-        )
-    elif event_type == "father_son":
-        message = t(lang, "events.player_message.father_son", points=points, bonus_msg=bonus_msg)
-    elif event_type == "transfer_guess":
-        message = t(lang, "events.player_message.transfer_guess", points=points, bonus_msg=bonus_msg)
-    elif event_type == "path":
-        message = t(lang, "events.player_message.path", points=points, bonus_msg=bonus_msg)
-    else:
-        message = t(lang, "events.player_message.default", points=points, bonus_msg=bonus_msg)
+    key = {
+        "career": "events.player_message.career",
+        "father_son": "events.player_message.father_son",
+        "transfer_guess": "events.player_message.transfer_guess",
+        "path": "events.player_message.path",
+    }.get(event_type, "events.player_message.default")
 
+    message = t(
+        lang, key,
+        points=points,
+        bonus_msg=bonus_msg,
+        attempts=MAX_EVENT_ATTEMPTS,
+        max_answers=MAX_CAREER_ANSWERS_PER_ATTEMPT,
+        min_correct=today_data.get("min_correct", 1),
+        player_name=today_data.get("player_name"),
+    )
     return message, image_url
 
 
@@ -217,6 +256,34 @@ def evaluate_event_guess(event_type, guess, today_data):
 
 
 async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, event: dict, lang=None):
+    """`/events <risposta>`: il modo classico di rispondere, tenuto per chi lo ha imparato."""
+    await _process_guess(update, event, " ".join(context.args), lang)
+
+
+async def process_event_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, user_answer, user_data):
+    """Tentativo dal messaggio libero, quando l'utente ha una sessione evento aperta.
+
+    La chiama il flusso normale delle risposte (handlers/guess_handler.py), come per
+    l'archivio e l'allenamento."""
+    lang = user_data.get("language") or _lang_for(update.effective_user)
+    key = user_data.get("event_key") or ""
+    event_code, _, day_iso = key.partition(":")
+
+    event = firebase_service.get_current_event()
+    # La sessione vale per **quella** giornata di **quell'** evento: se l'evento e' finito o
+    # se e' passata la mezzanotte, la sfida che l'utente ha davanti non c'e' piu'.
+    if not event or event.get("code") != event_code or day_iso != today_iso():
+        firebase_service.clear_event_key(update.effective_user.id)
+        await update.effective_message.reply_text(t(lang, "events.not_open"))
+        return
+
+    await _process_guess(update, event, user_answer, lang, close_session=True)
+
+
+async def _process_guess(update: Update, event: dict, raw_answer, lang=None, close_session=False):
+    """`close_session` chiude la sessione evento quando la risposta e' giusta. Vale solo
+    per il testo libero: chi risponde con `/events <nome>` una sessione non l'ha mai
+    aperta, e chiuderla sarebbe una scrittura per niente."""
     if lang is None:
         lang = _lang_for(update.effective_user)
 
@@ -225,7 +292,7 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     user = update.effective_user
-    guess = " ".join(context.args).strip().lower()
+    guess = (raw_answer or "").strip().lower()
 
     event_code = event["code"]
     day_iso = today_iso()
@@ -253,12 +320,21 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
         feedback = t(lang, "events.wrong", used=attempt["attempts_used"], max_attempts=MAX_EVENT_ATTEMPTS)
         if event_type == "career":
             feedback += t(lang, "events.wrong_career_extra", matched=matched, total=total_answers)
+        # Lo stesso confronto della sfida del giorno, dove la risposta e' un calciatore:
+        # senza, un tentativo sbagliato dentro un evento lascia meno di uno fuori.
+        if event_type in PLAYER_ANSWER_TYPES:
+            feedback += comparison_text(lang, build_comparison(guess, today_data.get("player_id")))
         await update.effective_message.reply_text(feedback)
         return
 
     bonus = 1 if firebase_service.claim_event_first_correct(event_code, day_iso) else 0
     earned_points = today_data.get("points", 1) + bonus
     firebase_service.register_event_correct_guess(event_code, user.id, earned_points, day_iso)
+
+    # Indovinata: la sessione si chiude da sola, cosi' i messaggi successivi tornano a
+    # valere per la sfida del giorno senza dover ricordarsi di /today.
+    if close_session:
+        firebase_service.clear_event_key(user.id)
 
     bonus_tag = t(lang, "events.bonus_tag") if bonus else ""
     await update.effective_message.reply_text(t(lang, "events.correct", points=earned_points, bonus_tag=bonus_tag))

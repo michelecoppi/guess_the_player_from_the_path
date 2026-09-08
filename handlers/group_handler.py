@@ -92,6 +92,7 @@ async def group_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE):
         subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
         badge=difficulty.upper(),
         footer=f"{difficulty} ({points_for_difficulty(challenge.get('difficulty'))})",
+        lang=lang,
     )
     await message.reply_photo(
         photo=photo,

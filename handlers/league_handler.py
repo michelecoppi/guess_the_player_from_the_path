@@ -14,8 +14,6 @@ Scelte che vale la pena spiegare:
 - l'elenco delle leghe di un utente e' un array sul suo documento (`leagues`), quindi
   aggiornare i punti non richiede nessuna query per sapere dove scriverli.
 """
-import random
-import string
 from urllib.parse import quote
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -23,23 +21,14 @@ from telegram.ext import ContextTypes
 
 from config import BOT_USERNAME
 from services import firebase_service
+from services import leagues as league_rules
 from services.i18n import resolve_language, t
+from services.leagues import MAX_LEAGUES_PER_USER, MAX_MEMBERS, MAX_NAME_LENGTH
 
-MAX_LEAGUES_PER_USER = 5
-MAX_MEMBERS = 50
-MAX_NAME_LENGTH = 30
-CODE_LENGTH = 6
 CALLBACK_PREFIX = "lg_"
 DEEP_LINK_PREFIX = "lega_"
 
-# Niente 0/O e 1/I: il codice si detta a voce e si copia a mano.
-CODE_ALPHABET = "".join(c for c in string.ascii_uppercase + string.digits if c not in "O0I1")
-
 MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
-
-
-def generate_code():
-    return "".join(random.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))
 
 
 def invite_link(code):
@@ -109,25 +98,23 @@ async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     name = " ".join(context.args).strip() if context.args else ""
-    if not name:
+    status, code = league_rules.create(user.id, user_data, name, user.first_name)
+
+    if status == "ok":
+        await message.reply_text(
+            t(lang, "league.created", name=name, code=code, link=invite_link(code) or code),
+            parse_mode="HTML",
+        )
+        return
+    if status == "no_name":
         await message.reply_text(t(lang, "league.usage_create"), parse_mode="HTML")
         return
-    if len(name) > MAX_NAME_LENGTH:
+    if status == "name_too_long":
         await message.reply_text(t(lang, "league.name_too_long", max=MAX_NAME_LENGTH))
         return
-    if len(user_data.get("leagues", [])) >= MAX_LEAGUES_PER_USER:
+    if status == "limit":
         await message.reply_text(t(lang, "league.limit_reached", max=MAX_LEAGUES_PER_USER), parse_mode="HTML")
         return
-
-    # Un paio di tentativi bastano: lo spazio dei codici e' enorme rispetto al numero di leghe.
-    for _ in range(5):
-        code = generate_code()
-        if firebase_service.create_league(code, name, user.id, user.first_name):
-            await message.reply_text(
-                t(lang, "league.created", name=name, code=code, link=invite_link(code) or code),
-                parse_mode="HTML",
-            )
-            return
 
     await message.reply_text(t(lang, "league.not_found", code="?"), parse_mode="HTML")
 
@@ -142,28 +129,26 @@ async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=N
         await message.reply_text(t(lang, "league.not_registered"))
         return
 
-    code = (code or (context.args[0] if context.args else "")).strip().upper()
-    if not code:
+    code = league_rules.normalize_code(code or (context.args[0] if context.args else ""))
+    status, league = league_rules.join(user.id, user_data, code, user.first_name)
+
+    if status == "ok":
+        await message.reply_text(t(lang, "league.joined", name=league.get("name", code)), parse_mode="HTML")
+        return
+    if status == "no_code":
         await message.reply_text(t(lang, "league.usage_join"), parse_mode="HTML")
         return
-    if len(user_data.get("leagues", [])) >= MAX_LEAGUES_PER_USER:
+    if status == "limit":
         await message.reply_text(t(lang, "league.limit_reached", max=MAX_LEAGUES_PER_USER), parse_mode="HTML")
         return
-
-    result = firebase_service.join_league(code, user.id, user.first_name, MAX_MEMBERS)
-
-    if result == "not_found":
-        await message.reply_text(t(lang, "league.not_found", code=code), parse_mode="HTML")
-        return
-    if result == "already_member":
+    if status == "already_member":
         await message.reply_text(t(lang, "league.already_member"))
         return
-    if result == "full":
+    if status == "full":
         await message.reply_text(t(lang, "league.full", max=MAX_MEMBERS))
         return
 
-    league = firebase_service.get_league(code) or {"name": code}
-    await message.reply_text(t(lang, "league.joined", name=league.get("name", code)), parse_mode="HTML")
+    await message.reply_text(t(lang, "league.not_found", code=code), parse_mode="HTML")
 
 
 async def league_leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -172,21 +157,20 @@ async def league_leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = _lang_for(update, user_data)
     message = update.effective_message
 
-    code = (context.args[0] if context.args else "").strip().upper()
-    if not code:
+    code = league_rules.normalize_code(context.args[0] if context.args else "")
+    status, league = league_rules.leave(user_id, code)
+
+    if status == "ok":
+        await message.reply_text(t(lang, "league.left", name=league.get("name", code)), parse_mode="HTML")
+        return
+    if status == "no_code":
         await message.reply_text(t(lang, "league.usage_leave"), parse_mode="HTML")
         return
-
-    league = firebase_service.get_league(code)
-    if not league:
-        await message.reply_text(t(lang, "league.not_found", code=code), parse_mode="HTML")
-        return
-
-    if not firebase_service.leave_league(code, user_id):
+    if status == "not_member":
         await message.reply_text(t(lang, "league.not_member"))
         return
 
-    await message.reply_text(t(lang, "league.left", name=league.get("name", code)), parse_mode="HTML")
+    await message.reply_text(t(lang, "league.not_found", code=code), parse_mode="HTML")
 
 
 async def league_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):

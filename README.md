@@ -8,13 +8,21 @@ da indovinare, con classifiche, statistiche personali, eventi tematici a tempo e
 Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. In chat
 privata **basta scrivere il nome**: non serve nessun comando (`/guess <nome>` continua a
 funzionare). Tre tentativi al giorno, i punti dipendono dalla difficolta', chi indovina per
-primo prende un punto in piu'.
+primo prende un punto in piu'. Dopo un tentativo sbagliato si puo' chiedere un **indizio**, che
+costa un punto. Chi non ci arriva scopre chi era a mezzanotte, o con `/solution` a giornata
+chiusa.
+
+Si gioca in due posti, con le stesse identiche regole: la **chat del bot** e la **mini app**
+(`webapp/index.html`), che aggiunge il completamento automatico sui nomi e il calendario delle
+giornate passate. Le regole stanno in un modulo solo (`services/game.py`), quindi non esistono
+due versioni del punteggio da tenere allineate.
 
 | Comando | Cosa fa |
 |---|---|
 | `/start` | registrazione e menu; apre anche i link d'invito alle leghe |
 | `/menu` | la tastiera con tutto quello che si puo' fare |
 | `/show` | la sfida di oggi |
+| `/solution` (`/soluzione`) | chi era il calciatore di una giornata gia' chiusa |
 | `/guess <risposta>` | il modo classico di rispondere |
 | `/stats` | punti, striscia, trofei |
 | `/top` | classifica generale e mensile |
@@ -23,7 +31,7 @@ primo prende un punto in piu'.
 | `/training` (`/allenamento`) | sfide a raffica, senza punti |
 | `/round` (`/sfida`) | **in un gruppo**: apre un round per tutti |
 | `/standings` (`/classifica`) | **in un gruppo**: la classifica di quel gruppo |
-| `/today` (`/oggi`) | esci dall'archivio o dall'allenamento |
+| `/today` (`/oggi`) | esci dall'archivio, dall'allenamento o da un evento |
 | `/league` (`/lega`) | le tue leghe private |
 | `/league_create <nome>`, `/league_join <codice>`, `/league_leave <codice>` | crea, entra, esci |
 | `/legend` (`/legenda`) | come si legge l'immagine del percorso |
@@ -57,12 +65,14 @@ l'unica strategia possibile era sparare nomi. Adesso, se il calciatore scritto e
 dataset, `services/guess_feedback.py` lo confronta con la soluzione e risponde come Wordle:
 
 ```
-❌ Risposta sbagliata, riprova! Hai 2 tentativi rimasti.
+❌ Risposta sbagliata, riprova! Tentativi rimasti: 2.
 
 🔎 Rispetto a Alessandro Del Piero:
 🌍 Nazionalità: diversa
 🎽 Ruolo: stesso
 ⬇️ Più giovane: nato dopo il 1974
+
+                        [ 💡 Indizio (-1 punto) ]
 ```
 
 Il confronto e' **relativo al nome scritto dall'utente**, e questo decide due cose. La
@@ -80,8 +90,52 @@ il messaggio resta quello di prima. Chi volesse usarlo come oracolo ("questo cal
 nel dataset?") ha tre tentativi al giorno per farlo, che e' un prezzo abbastanza alto da
 rendere la cosa inutile.
 
-Lo stesso confronto vale nell'archivio: recuperare una sfida passata non deve essere piu'
-difficile del gioco vero.
+Lo stesso confronto vale nell'archivio, nell'allenamento, nei round di gruppo e negli eventi in
+cui si indovina un calciatore (`path` e `transfer_guess`): recuperare una sfida passata non deve
+essere piu' difficile del gioco vero. Negli eventi `career` e `father_son` non c'e', perche' li'
+non si risponde con un calciatore ma con delle squadre o con una coppia padre/figlio.
+
+### Indizi, e perche' costano
+
+Il confronto qui sopra e' **relativo**: dice "stessa nazionalita'" rispetto al nome scritto, e
+quindi non serve a chi non ha idee. L'indizio (`services/hints.py`) e' **assoluto** — dice la
+nazionalita' e basta — ed e' per questo che costa un punto. Tre regole tengono in piedi
+l'equilibrio:
+
+1. si sbloccano **dopo un tentativo sbagliato**. Senza, sarebbero il modo piu' comodo per farsi
+   dire nazionalita' e ruolo di ogni sfida senza mai giocarla, e toglierebbero valore a chi la
+   prende al primo colpo;
+2. costano **1 punto l'uno con il pavimento a 1**: chi indovina dopo due indizi su una sfida
+   "easy" (che ne vale 1) prende comunque il suo punto. Non si va mai sotto;
+3. sono **due**, e sono nazionalita' e ruolo. La scala e' un dato (`HINT_LADDER`), quindi
+   allungarla e' una riga — ma vuol dire anche rendere piu' facile ogni sfida difficile, che e'
+   una scelta di gioco e non un dettaglio tecnico.
+
+Gli indizi si pagano **solo se si indovina**: su una sfida persa non c'era niente da togliere.
+E si vedono nella card condivisa (una 💡 per indizio): due "1/3" identici non sono la stessa
+partita se uno dei due si e' fatto aiutare.
+
+### Chi era? (`/solution`)
+
+Prima la risposta della sfida del giorno si scopriva in un modo solo: il messaggio di
+mezzanotte, che pero' arriva **solo a chi ha le notifiche attive**. Chi non le aveva, e aveva
+finito i tre tentativi, non lo sapeva mai — a meno di riaprire quel giorno in archivio e
+sbagliare di nuovo tre volte. Tre tentativi buttati e nessuna risposta e' il modo piu' rapido
+per smettere di giocare.
+
+`/solution` mostra la soluzione di **qualsiasi giornata gia' chiusa** (senza argomenti: ieri),
+con il percorso, la difficolta' e la percentuale di chi l'ha indovinata. La giornata di oggi non
+si rivela mai: sarebbe incollabile in un gruppo dieci minuti dopo la mezzanotte. Per lo stesso
+motivo, dopo l'ultimo tentativo sbagliato il bot non dice il nome ma offre un bottone
+"🔔 Avvisami a mezzanotte", che e' il modo in cui quella frase diventa vera per chi le notifiche
+non le ha.
+
+La percentuale (`services/daily_stats.py`) e' l'unico numero del gioco che parla della **sfida**
+invece che del giocatore: "3/3" da solo non dice se la giornata era dura, "l'ha indovinato il
+12%" si'. Compare a giornata chiusa e mai prima — durante la giornata direbbe a chi non ha
+ancora giocato quanto e' facile la sfida di oggi — e per la stessa ragione non finisce nella
+card da condividere. I contatori stanno sul documento della sfida (`players_count`,
+`solved_count`): due `Increment`, nessuna lettura.
 
 ### Striscia, condivisione, archivio
 
@@ -180,11 +234,49 @@ condanna a restare ultimi.
 
 ### Mini app Telegram
 
-`webapp/index.html` e' una pagina servita dallo stesso servizio FastAPI su `/app`: profilo,
-striscia, classifica e leghe in una schermata sola. Chi sia l'utente lo stabilisce **solo** la
-firma di `initData` (`services/webapp_auth.py`, HMAC-SHA256 con il token del bot piu' controllo
-sull'eta' dei dati): il client non manda mai un id, altrimenti chiunque potrebbe chiedere i dati
-di chiunque. Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' configurata.
+`webapp/index.html` e' una pagina sola servita dallo stesso servizio FastAPI su `/app`, con
+quattro schede: **Gioca**, **Archivio**, **Statistiche**, **Leghe**. Non e' piu' una vetrina:
+ci si gioca davvero, con le stesse regole della chat.
+
+Cosa aggiunge rispetto al bot, e perche':
+
+- **completamento automatico sui nomi** (`POST /app/api/players`): e' il salto di qualita' piu'
+  grande. Spariscono il "l'ho scritto giusto?" e il tentativo bruciato su un calciatore che il
+  bot non conosce. Non regala niente: sono **tutte** le schede del dataset, comprese quelle
+  riservate all'allenamento, quindi trovare un nome nell'elenco non dice che sia la risposta;
+- **percorso in HTML invece che come PNG**: le righe si adattano allo schermo e, soprattutto, il
+  paese arriva tradotto invece che cotto dentro l'immagine;
+- **calendario delle giornate passate** con quattro stati distinti — presa, persa, recuperata in
+  archivio, mai giocata — e la possibilita' di rigiocare quelle aperte;
+- **istogramma dei tentativi** ("di solito la prendo al secondo"): i contatori stanno in
+  `solved_in` sul documento utente, scritti quando si indovina, quindi non costa nessuna lettura;
+- **gestione delle leghe**: creare, entrare, uscire, classifica completa e invito con il
+  selettore di chat nativo di Telegram;
+- **integrazione con l'app**: tema di Telegram (`--tg-theme-*`), `MainButton` di sistema al posto
+  di un bottone in pagina, e vibrazione su risposta giusta o sbagliata.
+
+Due vincoli che non si toccano:
+
+1. **chi sia l'utente lo stabilisce solo la firma di `initData`** (`services/webapp_auth.py`,
+   HMAC-SHA256 con il token del bot piu' controllo sull'eta' dei dati). Il client non manda mai
+   un id: adesso che la mini app gioca davvero, potrebbe giocare al posto di un altro;
+2. **dal server non esce mai la risposta**. `services/webapp_api.py` non serializza mai il
+   documento della sfida per intero: ogni card elenca i campi uno per uno, e `correct_answers` e
+   `player_id` non sono fra quelli. Gli indizi arrivano solo dopo essere stati pagati. C'e' un
+   test apposta (`test_the_answer_never_reaches_the_page`), perche' e' il tipo di errore che
+   guardando lo schermo non si nota.
+
+Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' configurata; senza, il bot funziona
+esattamente come prima.
+
+| Endpoint | Cosa fa |
+|---|---|
+| `POST /app/api/me` | profilo, sfida di oggi, classifica, leghe, istogramma |
+| `POST /app/api/players` | i nomi per il completamento automatico |
+| `POST /app/api/guess` | un tentativo (oggi, o una giornata passata con `day`) |
+| `POST /app/api/hint` | un indizio, allo stesso prezzo della chat |
+| `POST /app/api/calendar` | il calendario, o una singola giornata da rigiocare |
+| `POST /app/api/league` | crea / entra / esci |
 
 ## Stack
 
@@ -483,9 +575,8 @@ prima di scrivere una scheda nuova. La difficoltà, invece, non è un campo: è 
 
 ### Cosa si vede nell'immagine
 
-Il percorso è disegnato da `services/path_image.py` **senza una parola**, perché la stessa
-PNG viene inviata a utenti italiani, inglesi e spagnoli. Quindi ogni informazione ha un
-segno, non un'etichetta:
+Il percorso è disegnato da `services/path_image.py` **senza una parola**, perché ogni
+informazione ha un segno e non un'etichetta:
 
 | Informazione | Come appare |
 |---|---|
@@ -493,6 +584,16 @@ segno, non un'etichetta:
 | Tappa ancora in corso | `2016 – …` |
 | Presenze e gol | `33 (22)`, la convenzione di Wikipedia; per i portieri le sole presenze |
 | Durata della tappa | barra proporzionale, mostrata solo quando mancano presenze e gol |
+| Campionato e paese | `Eredivisie · Olanda` sotto il nome della squadra |
+
+L'unica eccezione al "senza una parola" e' l'ultima riga: **campionato e paese**. Il campionato
+e' un nome proprio e non si traduce ("Premier League" e' Premier League ovunque), ma il paese nel
+dataset e' scritto in italiano — e per un po' un inglese si e' letto "La Liga · Spagna". Adesso
+`services/content_i18n.py` traduce paese e ruolo (86 paesi, 4 ruoli) e `render_career_path_image`
+prende un parametro `lang`: la card si genera una volta per lingua, il che non costa niente
+perche' si genera comunque al volo. Il dataset resta in italiano, che e' la lingua in cui lo si
+scrive; a tenere allineata la tabella pensa `validate_dataset`, che segnala come problema di
+integrita' ogni paese o ruolo che non sa tradurre.
 
 Che questi segni vogliano dire qualcosa, pero', bisogna dirlo: sotto ogni sfida (e sotto
 ogni sfida d'archivio) c'e' il bottone **"Come si legge"**, e c'e' il comando `/legend`
@@ -542,6 +643,19 @@ In breve:
   round corrente). Sul round si copiano risposte accettate, difficoltà e `player_id`, così
   ogni tentativo costa **una** lettura invece di due; il percorso di carriera no, si
   ridisegna al momento.
+- `users/{id}/history/{giorno}` — com'è andata **quella** giornata a **quell'** utente
+  (`solved`, `attempts`, `hints`). Serve al calendario della mini app, che deve poter dire
+  "questa l'hai presa al secondo, questa l'hai persa, questa non l'hai giocata": dai contatori
+  sul documento utente non si ricava, perché quelli portano un giorno solo
+  (`last_played_day`) e il giorno dopo sono sovrascritti. Si scrive **una volta sola** per
+  giornata, quando la giornata si chiude per quell'utente, non a ogni tentativo.
+- `daily_path/{giorno}` porta anche `players_count` e `solved_count`, cioè quanti hanno provato
+  e quanti hanno indovinato: sono due `Increment` (nessuna lettura) e restano scritti dove sta
+  la sfida, quindi valgono anche a distanza di mesi. Contarli a posteriori interrogando gli
+  utenti funzionerebbe **solo per oggi**, che è esattamente il giorno di cui non serve saperlo.
+- Sul documento utente: `daily_hints` (indizi chiesti oggi, si azzera da solo come i tentativi),
+  `solved_in` (quante volte ha risolto in 1, 2, 3 tentativi: l'istogramma della mini app) e
+  `event_key` (la sessione su un evento, come `archive_day` e `training_key`).
 
 ### Migrazione dei dati esistenti
 
@@ -715,5 +829,19 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   `scripts/reserve_practice_players.py --ratio`, al prezzo di altrettanti giorni di autonomia
   del gioco quotidiano.
 - **Confronto dopo un tentativo sbagliato**: vale sulla sfida del giorno, sull'archivio,
-  sull'allenamento e sui round di gruppo, non sugli eventi tematici. Gli eventi `career` e `transfer_guess` non chiedono un calciatore
-  ma una squadra, quindi il confronto per nazionalità/ruolo/età non avrebbe senso così com'è.
+  sull'allenamento, sui round di gruppo e sugli eventi in cui si indovina un calciatore
+  (`path` e `transfer_guess`). Resta fuori dagli eventi `career` (si risponde con delle squadre)
+  e `father_son` (la coppia non è una scheda del dataset, quindi non c'è niente da confrontare).
+  Per gli eventi vale solo su quelli generati **da adesso in poi**: il confronto ha bisogno di
+  `player_id` nei dati del giorno, e gli eventi già in calendario non ce l'hanno — continuano a
+  funzionare, semplicemente senza confronto.
+- **Indizi**: solo sulla sfida del giorno. Nell'archivio e nell'allenamento non ci sono perché
+  lì non ci sono punti da spendere, e la risposta si rivela comunque a tentativi finiti.
+- **Traduzione dei contenuti**: `services/content_i18n.py` copre paesi e ruoli, cioè quello che
+  finisce sotto gli occhi dell'utente. I **nomi dei campionati** restano in lingua originale
+  perché sono nomi propri; il dataset però ne contiene qualcuno italianizzato
+  (`Super League Grecia`, `Premier League Ucraina`, `Primera Division Cile`) e qualche doppione
+  di grafia (`Segunda Division` / `Segunda División`). Non è un problema di lingua ma di
+  coerenza del dataset, e ha un effetto collaterale reale: `top_leagues` e `known_leagues` in
+  `data/config.json` si confrontano per stringa esatta, quindi due grafie dello stesso
+  campionato pesano diversamente nel calcolo della difficoltà.
