@@ -26,7 +26,7 @@ def league_tier_weight(league, top_leagues, known_leagues):
     return LEAGUE_TIER_OBSCURE
 
 
-def _score_components(player):
+def _score_components(player, config=None):
     """I quattro addendi del punteggio, tenuti in un posto solo.
 
     Il modello e' volutamente semplice ed e' documentato in docs/difficolta.md:
@@ -40,8 +40,12 @@ def _score_components(player):
     E' la regola che tiene allineati dataset e difficolta' percepita: una carriera esotica
     non basta a rendere "impossibile" un giocatore famoso (Forlan, Ibrahimovic), e una
     carriera lineare non basta a rendere "facile" un giocatore che nessuno conosce.
+
+    `config` serve solo a simulare una taratura diversa da quella in vigore (la dashboard
+    mostra l'effetto di pesi e soglie nuovi **prima** di salvarli in data/config.json):
+    lasciato a None si usa la configurazione reale.
     """
-    config = load_config()
+    config = config or load_config()
     top_leagues = set(config.get("top_leagues", []))
     known_leagues = set(config.get("known_leagues", []))
     weights = config.get("difficulty_weights", {})
@@ -67,16 +71,16 @@ def _score_components(player):
     return components, league_obscurity, countries
 
 
-def compute_difficulty_score(player):
+def compute_difficulty_score(player, config=None):
     """Punteggio piu' alto = piu' difficile da indovinare (vedi _score_components)."""
     if not player.get("career"):
         return 0.0
-    components, _, _ = _score_components(player)
+    components, _, _ = _score_components(player, config=config)
     return sum(components.values())
 
 
-def bucket_for_score(score, thresholds=None):
-    config = load_config()
+def bucket_for_score(score, thresholds=None, config=None):
+    config = config or load_config()
     thresholds = thresholds or config.get("difficulty_thresholds", {"easy": 5, "medium": 9, "hard": 13})
 
     if score < thresholds["easy"]:
@@ -88,11 +92,11 @@ def bucket_for_score(score, thresholds=None):
     return "impossible"
 
 
-def compute_difficulty(player):
-    return bucket_for_score(compute_difficulty_score(player))
+def compute_difficulty(player, config=None):
+    return bucket_for_score(compute_difficulty_score(player, config=config), config=config)
 
 
-def explain_difficulty(player):
+def explain_difficulty(player, config=None):
     """Scompone il punteggio nei suoi quattro addendi.
 
     Serve quando una difficolta' sembra sbagliata (il caso tipico: "perche' questo e'
@@ -100,11 +104,11 @@ def explain_difficulty(player):
     rifare i conti a mano. La procedura completa e' in docs/difficolta.md, sezione 5.
     """
     career = player.get("career", [])
-    components, league_obscurity, countries = _score_components(player)
+    components, league_obscurity, countries = _score_components(player, config=config)
     score = sum(components.values())
     return {
         "score": score,
-        "difficulty": bucket_for_score(score),
+        "difficulty": bucket_for_score(score, config=config),
         "components": components,
         "popularity": player.get("popularity", DEFAULT_POPULARITY),
         "teams": len(career),

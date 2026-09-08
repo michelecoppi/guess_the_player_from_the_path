@@ -170,7 +170,7 @@ Prima di scrivere la scheda:
    controlla).
 4. **Usa i nomi di campionato già presenti nel dataset**, altrimenti la tappa finisce d'ufficio
    nel livello "oscuro" per un errore di battitura. `python scripts/dataset_report.py` elenca
-   quelli in uso.
+   quelli in uso (la dashboard, sezione 5, li propone in una tendina).
 5. **Controlla dove è finito**: se la fascia non ti convince, guarda la scomposizione del
    punteggio (sezione 5) prima di cambiare i pesi globali.
 
@@ -194,6 +194,21 @@ raccolto altri nomi famosi.
 
 ## 5. Quando una difficoltà sembra sbagliata
 
+Il modo più rapido è la sezione **Dataset** della dashboard locale
+(`streamlit run admin_ui.py`, vedi il README): fa esattamente il percorso descritto qui sotto,
+senza aprire il file.
+
+| Scheda | A cosa serve |
+|---|---|
+| *Elenco e modifiche* | tutte le schede con fascia, punteggio e le due colonne **da notorietà** / **dal percorso**: si ordina per punteggio e si vede subito chi è finito nel posto sbagliato. La notorietà si corregge nella tabella, e prima di salvare la dashboard dice **chi cambia fascia** |
+| *Scheda singola* | la scomposizione in quattro addendi di un giocatore e le sue tappe con il **peso di ogni campionato** (0.0 / 0.5 / 1.0): è così che si becca il nome scritto in un modo che non è in lista |
+| *Taratura difficoltà* | pesi e soglie con l'anteprima della **ridistribuzione sull'intero dataset**, che è l'unico modo onesto di toccarli |
+
+Le modifiche finiscono in `data/players.json` (o `data/config.json` per la taratura) passando
+da `services/dataset_editor.py`, che tiene una copia di sicurezza in `backup/` e rifiuta le
+modifiche che renderebbero il dataset incoerente. Da riga di comando l'equivalente della
+prima colonna è:
+
 `explain_difficulty(player)` scompone il punteggio nei suoi quattro addendi e dice subito se
 a pesare è la notorietà o il percorso:
 
@@ -214,7 +229,9 @@ Nell'ordine, le tre cause possibili:
    1.0 invece di 0.5. Si corregge la scheda.
 3. **Taratura da rivedere** — solo se il problema si ripete su molte schede diverse. Allora
    si toccano `difficulty_weights` / `difficulty_thresholds` in `data/config.json` e si
-   ricontrolla la distribuzione con `python scripts/dataset_report.py`.
+   ricontrolla la distribuzione con `python scripts/dataset_report.py` (o si guarda
+   l'anteprima nella scheda *Taratura difficoltà* della dashboard, che la calcola prima di
+   salvare).
 
 **Non risolvere un caso singolo spostando le soglie**: si sistema un giocatore e se ne
 rompono venti. Le soglie si toccano solo guardando la distribuzione dell'intero dataset, che
