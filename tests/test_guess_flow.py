@@ -19,7 +19,12 @@ class FakeMessage:
 
 def make_update(text, user_id=42):
     message = FakeMessage(text)
-    return SimpleNamespace(effective_user=SimpleNamespace(id=user_id), message=message), message
+    update = SimpleNamespace(
+        effective_user=SimpleNamespace(id=user_id, first_name="Anna"),
+        message=message,
+        effective_message=message,
+    )
+    return update, message
 
 
 CHALLENGE = {"correct_answers": ["messi", "lionel messi"], "difficulty": "medium", "career_path": [{}, {}]}
@@ -49,6 +54,11 @@ def firebase(monkeypatch):
     monkeypatch.setattr(guess_handler.firebase_service, "begin_guess_attempt", begin_guess_attempt)
     monkeypatch.setattr(guess_handler.firebase_service, "claim_daily_first_correct", claim_daily_first_correct)
     monkeypatch.setattr(guess_handler.firebase_service, "register_correct_guess", register_correct_guess)
+    monkeypatch.setattr(guess_handler.firebase_service, "get_user_data", lambda uid: None)
+    monkeypatch.setattr(
+        guess_handler.firebase_service, "add_points_to_leagues",
+        lambda uid, codes, points, name=None: calls.setdefault("leagues", []).append((codes, points)),
+    )
     monkeypatch.setattr(guess_handler, "get_today_challenge", lambda: CHALLENGE)
     return SimpleNamespace(calls=calls, state=state)
 
@@ -128,3 +138,37 @@ def test_guess_outside_private_chat_is_refused(firebase):
 
     assert "chat privata" in message.replies[0]
     assert firebase.calls["attempts"] == []
+
+
+def test_a_plain_message_counts_as_a_guess(firebase):
+    """Scrivere il nome senza /guess deve valere come tentativo: era l'attrito principale."""
+    update, message = make_update("Messi")
+    asyncio.run(guess_handler.free_text_guess(update, None))
+
+    assert firebase.calls["registered"][0]["points"] == 3
+    assert "Corretto" in message.replies[0]
+
+
+def test_a_message_that_is_not_an_answer_does_not_consume_an_attempt(firebase):
+    update, message = make_update("https://esempio.it/una-pagina-qualsiasi")
+    asyncio.run(guess_handler.free_text_guess(update, None))
+
+    assert firebase.calls["attempts"] == []
+    assert "Scrivimi il nome" in message.replies[0]
+
+
+def test_a_typo_is_accepted_and_signalled(firebase):
+    update, message = make_update("/guess messsi")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls["registered"][0]["points"] == 3
+    assert "Corretto" in message.replies[0]
+    assert "messsi" in message.replies[0]
+
+
+def test_another_player_is_still_wrong(firebase):
+    update, message = make_update("/guess maldini")
+    asyncio.run(guess_handler.guess(update, None))
+
+    assert firebase.calls["registered"] == []
+    assert "2 tentativi rimasti" in message.replies[0]

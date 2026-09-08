@@ -28,6 +28,8 @@ from services.dates import (
     shift_iso,
     today_iso,
 )
+from services.i18n import DEFAULT_LANGUAGE
+from services.streak import next_streak, streak_bonus
 
 USERS_COLLECTION = "users"
 DAILY_PATH_COLLECTION = "daily_path"
@@ -37,6 +39,9 @@ SEASONS_COLLECTION = "seasons"
 ADMIN_SETTINGS_COLLECTION = "admin_settings"
 DATASET_OVERRIDES_DOC = "dataset_overrides"
 FATHER_SON_COLLECTION = "father_son_pairs"
+ARCHIVE_SUBCOLLECTION = "archive"
+LEAGUES_COLLECTION = "leagues"
+MEMBERS_SUBCOLLECTION = "members"
 
 
 class _LazyFirestoreClient:
@@ -69,16 +74,21 @@ def user_ref(user_id):
     return db.collection(USERS_COLLECTION).document(str(user_id))
 
 
-def save_user(user_id, first_name):
+def save_user(user_id, first_name, language=DEFAULT_LANGUAGE):
     """Crea l'utente se non esiste. E' una transazione: due /start ravvicinati non possono
-    piu' creare due documenti per la stessa persona."""
+    piu' creare due documenti per la stessa persona.
+
+    Se l'utente esiste gia', la lingua passata viene ignorata: resta quella salvata (es.
+    cambiata a mano con /language), non quella rilevata dal client in quel momento.
+    Ritorna {'created': bool, 'language': lingua effettiva dell'utente}."""
     ref = user_ref(user_id)
 
     @firestore.transactional
     def _create(transaction):
         snapshot = ref.get(transaction=transaction)
         if snapshot.exists:
-            return False
+            existing = snapshot.to_dict()
+            return {"created": False, "language": existing.get("language", DEFAULT_LANGUAGE)}
         transaction.set(ref, {
             "first_name": first_name,
             "telegram_id": user_id,
@@ -93,16 +103,23 @@ def save_user(user_id, first_name):
             "trophies": [],
             "players_guessed": 0,
             "bonus_first_guessed": 0,
+            "last_correct_day": None,
+            "current_streak": 0,
+            "best_streak": 0,
+            "language": language,
         })
-        return True
+        return {"created": True, "language": language}
 
-    created = _create(db.transaction())
-    if created:
-        return (
-            f"Benvenuto, {first_name}! Il tuo account è stato creato. "
-            "fai /help per vedere la lista dei comandi disponibili."
-        )
-    return f"Ciao di nuovo, {first_name}!"
+    return _create(db.transaction())
+
+
+def get_user_language(user_id):
+    data = get_user_data(user_id)
+    return (data or {}).get("language", DEFAULT_LANGUAGE)
+
+
+def set_user_language(user_id, language):
+    user_ref(user_id).update({"language": language})
 
 
 def get_user_data(user_id):
@@ -161,18 +178,50 @@ def begin_guess_attempt(user_id, day_iso, max_attempts):
 
 
 def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True):
+    """Registra la risposta giusta e aggiorna la striscia di giorni consecutivi.
+
+    E' una transazione perche' la striscia e' un leggi-e-scrivi: va calcolata sul valore
+    che c'e' in quel momento, non su uno letto prima. I punti restano incrementi, cosi'
+    due scritture ravvicinate non si sovrascrivono.
+
+    Ritorna quanto e' stato assegnato davvero: {'points_awarded', 'streak_bonus',
+    'current_streak', 'best_streak'}."""
     day_iso = day_iso or today_iso()
-    update_data = {
-        "points_totali": firestore.Increment(points),
-        "players_guessed": firestore.Increment(1),
-        "has_guessed_today": True,
-        "last_played_day": day_iso,
-    }
-    if bonus > 0:
-        update_data["bonus_first_guessed"] = firestore.Increment(1)
-    if monthly:
-        update_data["monthly_points"] = firestore.Increment(points)
-    user_ref(user_id).update(update_data)
+    ref = user_ref(user_id)
+
+    @firestore.transactional
+    def _register(transaction):
+        snapshot = ref.get(transaction=transaction)
+        data = snapshot.to_dict() if snapshot.exists else {}
+
+        streak = next_streak(data.get("last_correct_day"), day_iso, data.get("current_streak", 0))
+        extra = streak_bonus(streak)
+        awarded = points + extra
+        best = max(data.get("best_streak", 0), streak)
+
+        update_data = {
+            "points_totali": firestore.Increment(awarded),
+            "players_guessed": firestore.Increment(1),
+            "has_guessed_today": True,
+            "last_played_day": day_iso,
+            "last_correct_day": day_iso,
+            "current_streak": streak,
+            "best_streak": best,
+        }
+        if bonus > 0:
+            update_data["bonus_first_guessed"] = firestore.Increment(1)
+        if monthly:
+            update_data["monthly_points"] = firestore.Increment(awarded)
+        transaction.update(ref, update_data)
+
+        return {
+            "points_awarded": awarded,
+            "streak_bonus": extra,
+            "current_streak": streak,
+            "best_streak": best,
+        }
+
+    return _register(db.transaction())
 
 
 def set_user_notifications(user_id, chat_id, enabled):
@@ -196,7 +245,11 @@ def get_broadcast_users(reference_day_iso=None):
             data.get("has_guessed_today", False)
             and normalize_day(data.get("last_played_day")) == reference_day_iso
         )
-        users.append({"chat_id": data.get("chat_id"), "has_guessed_today": guessed})
+        users.append({
+            "chat_id": data.get("chat_id"),
+            "has_guessed_today": guessed,
+            "language": data.get("language", DEFAULT_LANGUAGE),
+        })
     return users
 
 
@@ -222,6 +275,7 @@ def _public_user(data):
         "username": data.get("first_name", "Sconosciuto"),
         "points": data.get("points_totali", 0),
         "monthly_points": data.get("monthly_points", 0),
+        "language": data.get("language", DEFAULT_LANGUAGE),
     }
 
 
@@ -317,6 +371,75 @@ def get_display_name_for_day(day_iso):
     if solutions:
         return solutions[0].title()
     return None
+
+
+def get_past_daily_paths(limit=10, before_day_iso=None):
+    """Le sfide gia' passate, dalla piu' recente: e' l'elenco dell'archivio.
+
+    L'ordinamento e il filtro sono sullo stesso campo (`day`), quindi non serve nessun
+    indice composito: e' possibile solo perche' le date sono ISO."""
+    before = before_day_iso or today_iso()
+    query = db.collection(DAILY_PATH_COLLECTION).where("day", "<", before).order_by(
+        "day", direction=firestore.Query.DESCENDING
+    ).limit(limit)
+    return [doc.to_dict() for doc in query.stream()]
+
+
+# ---------------------------------------------------------------------------
+# Archivio (sfide passate rigiocate, senza punti)
+# ---------------------------------------------------------------------------
+
+def archive_ref(user_id, day_iso):
+    return user_ref(user_id).collection(ARCHIVE_SUBCOLLECTION).document(day_iso)
+
+
+def set_archive_day(user_id, day_iso):
+    """Il giorno d'archivio che l'utente sta giocando, o None per tornare a oggi.
+
+    Sta sul documento utente e non in memoria di processo perche' su Cloud Run l'istanza
+    puo' sparire fra un messaggio e l'altro: la partita in corso deve sopravvivere."""
+    user_ref(user_id).update({"archive_day": day_iso})
+
+
+def get_archive_result(user_id, day_iso):
+    snapshot = archive_ref(user_id, day_iso).get()
+    return snapshot.to_dict() if snapshot.exists else None
+
+
+def get_solved_archive_days(user_id, limit=50):
+    query = user_ref(user_id).collection(ARCHIVE_SUBCOLLECTION).where("solved", "==", True).limit(limit)
+    return {doc.id for doc in query.stream()}
+
+
+def begin_archive_attempt(user_id, day_iso, max_attempts):
+    """Come begin_guess_attempt, ma su un documento per (utente, giorno d'archivio): qui i
+    tentativi non si azzerano a mezzanotte, la sfida e' gia' passata."""
+    ref = archive_ref(user_id, day_iso)
+
+    @firestore.transactional
+    def _attempt(transaction):
+        snapshot = ref.get(transaction=transaction)
+        data = snapshot.to_dict() if snapshot.exists else {}
+
+        if data.get("solved"):
+            return {"ok": False, "reason": "already_solved"}
+        attempts = data.get("attempts", 0)
+        if attempts >= max_attempts:
+            return {"ok": False, "reason": "no_attempts"}
+
+        transaction.set(ref, {"day": day_iso, "attempts": attempts + 1, "solved": False}, merge=True)
+        return {"ok": True, "attempts_used": attempts + 1, "attempts_left": max_attempts - (attempts + 1)}
+
+    return _attempt(db.transaction())
+
+
+def register_archive_solved(user_id, day_iso, attempts):
+    """Nessun punto: l'archivio non deve permettere di scalare la classifica rigiocando il
+    passato. Si tiene solo il conto delle sfide recuperate, che finisce in /stats."""
+    archive_ref(user_id, day_iso).set(
+        {"day": day_iso, "attempts": attempts, "solved": True}, merge=True
+    )
+    user_ref(user_id).update({"archive_solved": firestore.Increment(1)})
 
 
 def get_upcoming_daily_paths(limit=7):
@@ -513,6 +636,138 @@ def update_users_trophies(event_doc):
         add_user_trophy(telegram_id, trophy_code)
         assigned.append((telegram_id, trophy_code))
     return assigned
+
+
+# ---------------------------------------------------------------------------
+# Leghe private
+# ---------------------------------------------------------------------------
+
+def league_ref(code):
+    return db.collection(LEAGUES_COLLECTION).document(code)
+
+
+def member_ref(code, user_id):
+    return league_ref(code).collection(MEMBERS_SUBCOLLECTION).document(str(user_id))
+
+
+def get_league(code):
+    snapshot = league_ref(code).get()
+    if not snapshot.exists:
+        return None
+    data = snapshot.to_dict()
+    data["code"] = snapshot.id
+    return data
+
+
+def create_league(code, name, owner_id, owner_name):
+    """Crea la lega solo se il codice e' libero: la verifica e la scrittura stanno nella
+    stessa transazione, altrimenti due creazioni simultanee possono prendersi lo stesso
+    codice e una delle due leghe sparisce dentro l'altra."""
+    ref = league_ref(code)
+
+    @firestore.transactional
+    def _create(transaction):
+        if ref.get(transaction=transaction).exists:
+            return False
+        transaction.set(ref, {
+            "code": code,
+            "name": name,
+            "owner_id": owner_id,
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "members_count": 1,
+        })
+        return True
+
+    if not _create(db.transaction()):
+        return False
+
+    member_ref(code, owner_id).set({
+        "telegram_id": owner_id,
+        "name": owner_name,
+        "points": 0,
+        "joined_at": firestore.SERVER_TIMESTAMP,
+    })
+    user_ref(owner_id).update({"leagues": firestore.ArrayUnion([code])})
+    logging.info(f"[LEAGUE] Creata lega {code} da {owner_id}")
+    return True
+
+
+def join_league(code, user_id, name, max_members):
+    """Iscrive a una lega. Il contatore dei membri si aggiorna in transazione, cosi' il
+    limite tiene anche se due persone entrano nello stesso istante."""
+    ref = league_ref(code)
+    member = member_ref(code, user_id)
+
+    @firestore.transactional
+    def _join(transaction):
+        snapshot = ref.get(transaction=transaction)
+        if not snapshot.exists:
+            return "not_found"
+        if member.get(transaction=transaction).exists:
+            return "already_member"
+        if snapshot.to_dict().get("members_count", 0) >= max_members:
+            return "full"
+
+        transaction.set(member, {
+            "telegram_id": user_id,
+            "name": name,
+            "points": 0,
+            "joined_at": firestore.SERVER_TIMESTAMP,
+        })
+        transaction.update(ref, {"members_count": firestore.Increment(1)})
+        return "ok"
+
+    result = _join(db.transaction())
+    if result == "ok":
+        user_ref(user_id).update({"leagues": firestore.ArrayUnion([code])})
+    return result
+
+
+def leave_league(code, user_id):
+    ref = league_ref(code)
+    member = member_ref(code, user_id)
+
+    @firestore.transactional
+    def _leave(transaction):
+        if not member.get(transaction=transaction).exists:
+            return False
+        transaction.delete(member)
+        transaction.update(ref, {"members_count": firestore.Increment(-1)})
+        return True
+
+    left = _leave(db.transaction())
+    if left:
+        user_ref(user_id).update({"leagues": firestore.ArrayRemove([code])})
+    return left
+
+
+def get_league_leaderboard(code, limit=20):
+    query = league_ref(code).collection(MEMBERS_SUBCOLLECTION).order_by(
+        "points", direction=firestore.Query.DESCENDING
+    ).limit(limit)
+    return [doc.to_dict() for doc in query.stream()]
+
+
+def add_points_to_leagues(user_id, codes, points, name=None):
+    """Somma i punti appena guadagnati nelle leghe dell'utente.
+
+    I punti si tengono sul documento del membro (come per i partecipanti agli eventi):
+    cosi' la classifica di una lega e' una query ordinata, invece di una lettura per ogni
+    iscritto ad ogni /lega."""
+    if not codes or points <= 0:
+        return 0
+
+    updated = 0
+    for code in codes:
+        payload = {"points": firestore.Increment(points)}
+        if name:
+            payload["name"] = name
+        try:
+            member_ref(code, user_id).set(payload, merge=True)
+            updated += 1
+        except GoogleAPICallError:
+            logging.exception(f"[LEAGUE] Punti non aggiornati per la lega {code}")
+    return updated
 
 
 # ---------------------------------------------------------------------------

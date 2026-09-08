@@ -3,6 +3,8 @@ from telegram.ext import ContextTypes
 
 from services import firebase_service
 from services.dates import to_display, today_iso
+from services.i18n import resolve_language, t
+from services.matching import find_match, normalize
 from services.path_image import render_career_path_image, render_event_banner
 
 MAX_EVENT_ATTEMPTS = 3
@@ -10,27 +12,29 @@ MAX_CAREER_ANSWERS_PER_ATTEMPT = 5
 
 
 async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    lang = _lang_for(update.effective_user)
+
     event = firebase_service.get_current_event()
     if not event:
-        await update.message.reply_text("❗ Non ci sono eventi attivi al momento.")
+        await update.effective_message.reply_text(t(lang, "events.no_active"))
         return
     if context.args:
-        await process_event_guess(update, context, event)
+        await process_event_guess(update, context, event, lang)
         return
 
-    message = get_event_home_message(event)
-    image_url = event.get("event_img") or render_event_banner(event.get("name", "Evento"), event.get("description", ""))
+    message = get_event_home_message(event, lang)
+    image_url = event.get("event_img") or _event_banner(event, lang)
 
     keyboard = [
         [
-            InlineKeyboardButton("Home ✅", callback_data="event_home"),
-            InlineKeyboardButton("🎮 Giocatore", callback_data="event_player"),
-            InlineKeyboardButton("📊 Classifica", callback_data="event_leaderboard"),
+            InlineKeyboardButton(t(lang, "events.button_home") + " ✅", callback_data="event_home"),
+            InlineKeyboardButton(t(lang, "events.button_player"), callback_data="event_player"),
+            InlineKeyboardButton(t(lang, "events.button_leaderboard"), callback_data="event_leaderboard"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_photo(
+    await update.effective_message.reply_photo(
         photo=image_url,
         caption=message,
         reply_markup=reply_markup,
@@ -38,43 +42,46 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     context.user_data['current_event'] = event
+    context.user_data['lang'] = lang
 
 
 async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    lang = context.user_data.get('lang') or _lang_for(query.from_user)
+
     event = context.user_data.get('current_event')
     if not event:
         await query.delete_message()
-        await query.message.reply_text("❗ Nessun evento attivo al momento.")
+        await query.message.reply_text(t(lang, "events.no_active_nav"))
         return
 
     data = query.data
     image_url = None
 
     if data == "event_home":
-        message = get_event_home_message(event)
-        image_url = event.get("event_img") or render_event_banner(event.get("name", "Evento"), event.get("description", ""))
+        message = get_event_home_message(event, lang)
+        image_url = event.get("event_img") or _event_banner(event, lang)
         active = "home"
     elif data == "event_player":
-        message, image_url = get_today_player_message(event)
+        message, image_url = get_today_player_message(event, lang)
         active = "player"
     elif data == "event_leaderboard":
         # La classifica si legge sempre fresca: e' l'unica parte dell'evento che cambia
         # mentre l'utente naviga.
         podium = firebase_service.get_event_leaderboard(event["code"], limit=3)
-        message = get_event_leaderboard_message(podium)
-        image_url = event.get("leaderboard_img") or render_event_banner(event.get("name", "Evento"), badge_text="CLASSIFICA")
+        message = get_event_leaderboard_message(podium, lang)
+        image_url = event.get("leaderboard_img") or _event_banner(event, lang, "image.badge_leaderboard")
         active = "leaderboard"
     else:
         return
 
     keyboard = [
         [
-            InlineKeyboardButton("🏠 Home" + (" ✅" if active == "home" else ""), callback_data="event_home"),
-            InlineKeyboardButton("🎮 Giocatore" + (" ✅" if active == "player" else ""), callback_data="event_player"),
-            InlineKeyboardButton("📊 Classifica" + (" ✅" if active == "leaderboard" else ""), callback_data="event_leaderboard"),
+            InlineKeyboardButton(t(lang, "events.button_home") + (" ✅" if active == "home" else ""), callback_data="event_home"),
+            InlineKeyboardButton(t(lang, "events.button_player") + (" ✅" if active == "player" else ""), callback_data="event_player"),
+            InlineKeyboardButton(t(lang, "events.button_leaderboard") + (" ✅" if active == "leaderboard" else ""), callback_data="event_leaderboard"),
         ]
     ]
 
@@ -84,136 +91,131 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
     )
 
 
-def get_event_home_message(event):
-    name = event.get("name", "Evento senza nome")
+def _event_banner(event, lang, badge_key="image.badge_event"):
+    return render_event_banner(
+        event.get("name", t(lang, "events.unnamed")),
+        event.get("description", "") if badge_key == "image.badge_event" else "",
+        badge_text=t(lang, badge_key),
+    )
+
+
+def _lang_for(telegram_user):
+    user_data = firebase_service.get_user_data(telegram_user.id)
+    if user_data and user_data.get("language"):
+        return user_data["language"]
+    return resolve_language(getattr(telegram_user, "language_code", None))
+
+
+def get_event_home_message(event, lang="it"):
+    name = event.get("name", t(lang, "events.unnamed"))
     description = event.get("description", "")
     dates = event.get("dates", [])
-    end_date = to_display(dates[-1]) if dates else "Data non disponibile"
+    end_date = to_display(dates[-1]) if dates else t(lang, "events.no_end_date")
+
+    event_type = event.get("type", "path")
+    gameplay_line = t(lang, {
+        "career": "events.gameplay.career",
+        "path": "events.gameplay.path",
+        "father_son": "events.gameplay.father_son",
+        "transfer_guess": "events.gameplay.transfer_guess",
+    }.get(event_type, "events.gameplay.default"))
+
+    return t(lang, "events.home_message", name=name, description=description, end_date=end_date, gameplay_line=gameplay_line)
+
+
+def get_today_player_message(event, lang="it"):
+    today_data = (event.get("daily_data") or {}).get(today_iso())
+
+    if not today_data:
+        return t(lang, "events.no_player_today"), None
+
+    career_path = today_data.get("career_path")
+    if career_path:
+        image_url = render_career_path_image(
+            career_path,
+            title=t(lang, "image.path_title"),
+            subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
+            badge=event.get("name", "").upper()[:22] or None,
+            footer=event.get("name"),
+        )
+    elif today_data.get("image_url"):
+        image_url = today_data["image_url"]
+    else:
+        image_url = _event_banner(event, lang, "image.badge_player")
+
+    points = today_data.get("points", 1)
+    first_correct_user = today_data.get("first_correct_user", False)
+    bonus_msg = t(lang, "events.bonus_available") if not first_correct_user else t(lang, "events.bonus_taken")
 
     event_type = event.get("type", "path")
 
     if event_type == "career":
-        gameplay_line = "🎮 <b>Giocatore</b>: indovina le squadre in cui ha giocato il calciatore"
+        message = t(
+            lang, "events.player_message.career",
+            min_correct=today_data.get("min_correct", 1),
+            player_name=today_data.get("player_name"),
+            points=points,
+            bonus_msg=bonus_msg,
+        )
+    elif event_type == "father_son":
+        message = t(lang, "events.player_message.father_son", points=points, bonus_msg=bonus_msg)
+    elif event_type == "transfer_guess":
+        message = t(lang, "events.player_message.transfer_guess", points=points, bonus_msg=bonus_msg)
     elif event_type == "path":
-        gameplay_line = "🎮 <b>Giocatore</b>: mostra il calciatore del giorno da indovinare"
-    elif event_type == "father_son":
-        gameplay_line = "🎮 <b>Giocatore</b>: indovina la coppia padre/figlio dall'immagine"
-    elif event_type == "transfer_guess":
-        gameplay_line = "🎮 <b>Giocatore</b>: indovina il calciatore dal trasferimento mostrato"
+        message = t(lang, "events.player_message.path", points=points, bonus_msg=bonus_msg)
     else:
-        gameplay_line = "🎮 <b>Giocatore</b>: segui le istruzioni della sfida del giorno"
-
-    message = (
-        f"🎉 <b>{name}</b>\n\n"
-        f"{description}\n\n"
-        f"📅 L'evento termina il <b>{end_date}</b>.\n"
-        f"I primi 3 classificati riceveranno un <b>trofeo speciale</b> 🏆!\n\n"
-        f"📌 Usa i pulsanti qui sotto per navigare:\n"
-        f"- 🏠 <b>Home</b>: questa schermata\n"
-        f"- {gameplay_line}\n"
-        f"- 📊 <b>Classifica</b>: guarda la top 3 dell'evento in tempo reale"
-    )
-    return message
-
-
-def get_today_player_message(event):
-    today_data = (event.get("daily_data") or {}).get(today_iso())
-
-    if not today_data:
-        return "📭 Nessun giocatore disponibile per oggi.", None
-
-    career_path = today_data.get("career_path")
-    if career_path:
-        image_url = render_career_path_image(career_path)
-    elif today_data.get("image_url"):
-        image_url = today_data["image_url"]
-    else:
-        image_url = render_event_banner(event.get("name", "Evento"), badge_text="GIOCATORE DEL GIORNO")
-
-    points = today_data.get("points", 1)
-    first_correct_user = today_data.get("first_correct_user", False)
-    bonus_msg = "⚡ Il primo che indovina riceverà 1 punto bonus!" if not first_correct_user else "✅ Il bonus è già stato assegnato oggi."
-
-    event_type = event.get("type", "path")
-
-    if event_type == "path":
-        message = (
-            f"🎮 <b>Giocatore del giorno</b>\n\n"
-            f"👀 Indovina chi è questo calciatore!\n"
-            f"🏆 Punti disponibili: <b>{points}</b>\n"
-            f"{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato inserendo il nome del calciatore."
-        )
-    elif event_type == "career":
-        message = (
-            f"🧠 <b>Modalità carriera</b>\n\n"
-            f"👤 Indovina almeno <b>{today_data.get('min_correct', 1)}</b> delle squadre in cui ha giocato {today_data.get('player_name')}!\n"
-            f"🏆 Punti disponibili: <b>{points}</b>\n"
-            f"{bonus_msg}\n"
-            "Scrivi le squadre in privato al bot separate da virgole, es: /events Roma, Manchester United, Toronto FC (massimo 5 squadre a tentativo)"
-        )
-    elif event_type == "father_son":
-        message = (
-            f"👨‍👦 <b>Modalità padre-figlio</b>\n\n"
-            f"👤 Indovina la coppia padre/figlio dall'immagine!\n"
-            f"🏆 Punti disponibili: <b>{points}</b>\n"
-            f"{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato inserendo il nome della coppia padre/figlio."
-        )
-    elif event_type == "transfer_guess":
-        message = (
-            f"🔄 <b>Modalità trasferimento</b>\n\n"
-            f"👤 Indovina il calciatore dal trasferimento mostrato!\n"
-            f"🏆 Punti disponibili: <b>{points}</b>\n"
-            f"{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato inserendo il nome del calciatore."
-        )
-    else:
-        message = (
-            f"🎮 <b>Sfida del giorno</b>\n\n"
-            f"🏆 Punti disponibili: <b>{points}</b>\n"
-            f"{bonus_msg}\n"
-            "Per indovinare, usa il comando /events in privato al bot."
-        )
+        message = t(lang, "events.player_message.default", points=points, bonus_msg=bonus_msg)
 
     return message, image_url
 
 
-def get_event_leaderboard_message(podium):
+def get_event_leaderboard_message(podium, lang="it"):
     if not podium:
-        return "📊 <b>Classifica dell’evento</b>:\nNessun partecipante al momento."
+        return t(lang, "events.no_participants")
 
-    message = "📊 <b>Classifica dell’evento</b>:\n\n"
+    message = t(lang, "events.leaderboard_title")
     medals = ["🥇", "🥈", "🥉"]
 
     for i, user in enumerate(podium):
-        name = user.get("name", "Utente sconosciuto")
+        name = user.get("name", t(lang, "events.unknown_user"))
         points = user.get("points", 0)
         medal = medals[i] if i < len(medals) else "🏅"
-        message += f"{medal} <b>{name}</b> - {points} punti\n"
+        message += f"{medal} <b>{name}</b> - {points} {t(lang, 'top.points_suffix')}\n"
 
-    message += "\n🏆 Al termine dell’evento, i primi 3 otterranno un trofeo esclusivo!"
+    message += t(lang, "events.leaderboard_footer")
 
     return message
 
 
 def evaluate_event_guess(event_type, guess, today_data):
     """Separata dal resto per poterla testare senza Telegram e senza Firestore.
-    Ritorna (corretto, quante risposte azzeccate, totale risposte)."""
-    correct_answers = [a.strip().lower() for a in today_data.get("correct_answers", [])]
+    Ritorna (corretto, quante risposte azzeccate, totale risposte).
+
+    Il confronto e' lo stesso della sfida giornaliera (services/matching.py): tollera
+    accenti e refusi. Per gli eventi "career" si contano le **risposte azzeccate**, non le
+    parole scritte: elencare due volte la stessa squadra non fa punteggio."""
+    correct_answers = today_data.get("correct_answers", [])
 
     if event_type != "career":
-        return guess in correct_answers, None, len(correct_answers)
+        return find_match(guess, correct_answers) is not None, None, len(correct_answers)
 
-    user_answers = {part.strip().lower() for part in guess.split(",") if part.strip()}
-    matched = sum(1 for answer in user_answers if answer in correct_answers)
+    matched_answers = set()
+    for part in guess.split(","):
+        match = find_match(part, correct_answers)
+        if match:
+            matched_answers.add(normalize(match["answer"]))
+
+    matched = len(matched_answers)
     min_correct = today_data.get("min_correct", len(correct_answers))
     return matched >= min_correct, matched, len(correct_answers)
 
 
-async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, event: dict):
-    if update.message.chat.type != "private":
-        await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
+async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE, event: dict, lang=None):
+    if lang is None:
+        lang = _lang_for(update.effective_user)
+
+    if update.effective_chat.type != "private":
+        await update.effective_message.reply_text(t(lang, "common.private_only"))
         return
 
     user = update.effective_user
@@ -223,44 +225,44 @@ async def process_event_guess(update: Update, context: ContextTypes.DEFAULT_TYPE
     day_iso = today_iso()
     today_data = (event.get("daily_data") or {}).get(day_iso)
     if not today_data:
-        await update.message.reply_text("⚠️ Nessuna sfida disponibile per oggi.")
+        await update.effective_message.reply_text(t(lang, "events.no_daily_challenge"))
         return
 
     event_type = event.get("type", "path")
 
     if event_type == "career" and len([p for p in guess.split(",") if p.strip()]) > MAX_CAREER_ANSWERS_PER_ATTEMPT:
-        await update.message.reply_text(
-            f"⚠️ Puoi inserire al massimo {MAX_CAREER_ANSWERS_PER_ATTEMPT} squadre separate da virgola."
-        )
+        await update.effective_message.reply_text(t(lang, "events.max_answers", max_answers=MAX_CAREER_ANSWERS_PER_ATTEMPT))
         return
 
     attempt = firebase_service.begin_event_attempt(
         event_code, user.id, user.first_name, day_iso, MAX_EVENT_ATTEMPTS
     )
     if not attempt["ok"]:
-        await update.message.reply_text(_event_attempt_error(attempt["reason"]))
+        await update.effective_message.reply_text(_event_attempt_error(lang, attempt["reason"]))
         return
 
     is_correct, matched, total_answers = evaluate_event_guess(event_type, guess, today_data)
 
     if not is_correct:
-        feedback = f"❌ Risposta sbagliata. Tentativi usati: {attempt['attempts_used']}/{MAX_EVENT_ATTEMPTS}."
+        feedback = t(lang, "events.wrong", used=attempt["attempts_used"], max_attempts=MAX_EVENT_ATTEMPTS)
         if event_type == "career":
-            feedback += f"\n Risposte corrette trovate: {matched}/{total_answers}"
-        await update.message.reply_text(feedback)
+            feedback += t(lang, "events.wrong_career_extra", matched=matched, total=total_answers)
+        await update.effective_message.reply_text(feedback)
         return
 
     bonus = 1 if firebase_service.claim_event_first_correct(event_code, day_iso) else 0
     earned_points = today_data.get("points", 1) + bonus
     firebase_service.register_event_correct_guess(event_code, user.id, earned_points, day_iso)
 
-    await update.message.reply_text(
-        f"✅ Corretto! Hai guadagnato {earned_points} punti! {'(Bonus 1°)' if bonus else ''}"
-    )
+    bonus_tag = t(lang, "events.bonus_tag") if bonus else ""
+    await update.effective_message.reply_text(t(lang, "events.correct", points=earned_points, bonus_tag=bonus_tag))
 
 
-def _event_attempt_error(reason):
-    return {
-        "already_guessed": "❌ Hai già indovinato oggi!",
-        "no_attempts": f"❌ Hai già usato tutti i {MAX_EVENT_ATTEMPTS} tentativi di oggi.",
-    }.get(reason, "❗ Non è stato possibile registrare il tentativo, riprova.")
+def _event_attempt_error(lang, reason):
+    key = {
+        "already_guessed": "events.error.already_guessed",
+        "no_attempts": "events.error.no_attempts",
+    }.get(reason, "events.error.default")
+    if reason == "no_attempts":
+        return t(lang, key, max_attempts=MAX_EVENT_ATTEMPTS)
+    return t(lang, key)

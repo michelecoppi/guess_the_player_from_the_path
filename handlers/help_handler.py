@@ -1,17 +1,10 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from handlers.keyboards import menu_keyboard
+from services.i18n import resolve_language, t
+
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    help_message = (
-        "🛠️ Comandi disponibili:\n\n"
-        "/start - Inizia a usare il bot e registrati.\n"
-        "/guess <risposta> - Indovina la carriera con il comando in privato al bot!\n"
-        "/show - Mostra la sfida giornaliera.\n"
-        "/stats - Mostra le tue statistiche.\n"
-        "/top - Mostra la classifica dei migliori utenti.\n"
-        "/events - Mostra il centro eventi.\n"
-        "/notify - Attiva o disattiva le notifiche.\n"
-    )
-
-    await update.message.reply_text(help_message)
+    lang = resolve_language(getattr(update.effective_user, "language_code", None))
+    await update.effective_message.reply_text(t(lang, "help.message"), reply_markup=menu_keyboard(lang))

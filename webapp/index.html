@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guess the Player</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg-top: #0a131e;
+    --bg-bottom: #132437;
+    --card: #1a2c40;
+    --edge: #273e56;
+    --text: #ecf2f8;
+    --muted: #8ea2b6;
+    --accent: #38bd82;
+    --track: #2c445c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px 14px 32px;
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom) 60%, var(--bg-bottom));
+    min-height: 100vh;
+  }
+  h1, h2 { margin: 0; }
+  .profile { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 22px; color: #101820;
+    background: var(--accent);
+  }
+  .profile h1 { font-size: 20px; }
+  .profile .sub { color: var(--muted); font-size: 13px; }
+  .card {
+    background: var(--card); border: 1px solid var(--edge);
+    border-radius: 16px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+  .today { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .pill {
+    display: inline-block; padding: 6px 12px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; background: var(--track); color: var(--text);
+  }
+  .pill.done { background: var(--accent); color: #0a1a12; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .tile { background: var(--card); border: 1px solid var(--edge); border-radius: 14px; padding: 12px 14px; }
+  .tile .value { font-size: 22px; font-weight: 700; }
+  .tile .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--edge); }
+  .row:last-child { border-bottom: 0; }
+  .row .pos { width: 26px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .row .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .pts { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .row.me { color: var(--accent); font-weight: 600; }
+  .muted { color: var(--muted); }
+  .error { text-align: center; padding: 40px 20px; color: var(--muted); }
+  button.close {
+    width: 100%; margin-top: 8px; padding: 13px; border: 0; border-radius: 14px;
+    background: var(--accent); color: #0a1a12; font-size: 15px; font-weight: 700;
+  }
+</style>
+</head>
+<body>
+<div id="root"><p class="error">Carico i tuoi dati…</p></div>
+
+<script>
+const tg = window.Telegram ? window.Telegram.WebApp : null;
+if (tg) { tg.ready(); tg.expand(); }
+
+const T = {
+  it: { today: "Sfida di oggi", solved: "Indovinata", left: "tentativi rimasti", notPlayed: "Non ancora giocata",
+        none: "Nessuna sfida disponibile", points: "punti", stats: "I tuoi numeri", total: "Punti totali",
+        monthly: "Punti del mese", streak: "Striscia", best: "Record", guessed: "Indovinati", trophies: "Trofei",
+        archive: "Archivio", leaderboard: "Classifica", leagues: "Le tue leghe", noLeagues: "Non fai parte di nessuna lega.",
+        close: "Torna al bot", error: "Apri questa pagina dal bot per vedere i tuoi dati.",
+        notRegistered: "Fai /start nel bot per iniziare a giocare." },
+  en: { today: "Today's challenge", solved: "Solved", left: "attempts left", notPlayed: "Not played yet",
+        none: "No challenge available", points: "points", stats: "Your numbers", total: "Total points",
+        monthly: "Points this month", streak: "Streak", best: "Best", guessed: "Guessed", trophies: "Trophies",
+        archive: "Archive", leaderboard: "Leaderboard", leagues: "Your leagues", noLeagues: "You're not in any league.",
+        close: "Back to the bot", error: "Open this page from the bot to see your data.",
+        notRegistered: "Send /start in the bot to start playing." },
+  es: { today: "Desafío de hoy", solved: "Acertado", left: "intentos restantes", notPlayed: "Sin jugar todavía",
+        none: "No hay desafío disponible", points: "puntos", stats: "Tus números", total: "Puntos totales",
+        monthly: "Puntos del mes", streak: "Racha", best: "Récord", guessed: "Acertados", trophies: "Trofeos",
+        archive: "Archivo", leaderboard: "Clasificación", leagues: "Tus ligas", noLeagues: "No estás en ninguna liga.",
+        close: "Volver al bot", error: "Abre esta página desde el bot para ver tus datos.",
+        notRegistered: "Envía /start en el bot para empezar a jugar." }
+};
+
+function pickLanguage() {
+  const code = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) || "en";
+  const short = code.split("-")[0];
+  return T[short] ? short : "en";
+}
+
+const L = T[pickLanguage()];
+
+function escapeHtml(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, c => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+function initials(name) {
+  return (name || "?").split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
+}
+
+function tile(value, label) {
+  return `<div class="tile"><div class="value">${escapeHtml(value)}</div><div class="label">${escapeHtml(label)}</div></div>`;
+}
+
+function todayCard(today) {
+  let status = L.notPlayed, cls = "";
+  if (!today.available) {
+    status = L.none;
+  } else if (today.solved) {
+    status = L.solved; cls = " done";
+  } else if (today.attempts_used > 0) {
+    status = `${today.attempts_left} ${L.left}`;
+  }
+  const detail = today.available ? `${today.points} ${L.points}` : "";
+  return `<div class="card">
+    <h2>${escapeHtml(L.today)} #${escapeHtml(today.number)}</h2>
+    <div class="today"><span class="muted">${escapeHtml(detail)}</span><span class="pill${cls}">${escapeHtml(status)}</span></div>
+  </div>`;
+}
+
+function leaderboardCard(rows) {
+  if (!rows.length) return "";
+  const items = rows.map(row => `<div class="row${row.me ? " me" : ""}">
+      <span class="pos">${row.position}</span>
+      <span class="name">${escapeHtml(row.name)}</span>
+      <span class="pts">${row.points}</span>
+    </div>`).join("");
+  return `<div class="card"><h2>${escapeHtml(L.leaderboard)}</h2>${items}</div>`;
+}
+
+function leaguesCard(leagues) {
+  const body = leagues.length
+    ? leagues.map(league => `<div class="row">
+        <span class="name">${escapeHtml(league.name)}</span>
+        <span class="muted">${league.position ? "#" + league.position : ""}</span>
+        <span class="pts">${league.points}</span>
+      </div>`).join("")
+    : `<p class="muted" style="margin:0">${escapeHtml(L.noLeagues)}</p>`;
+  return `<div class="card"><h2>${escapeHtml(L.leagues)}</h2>${body}</div>`;
+}
+
+function render(data) {
+  const u = data.user;
+  document.getElementById("root").innerHTML = `
+    <div class="profile">
+      <div class="avatar">${escapeHtml(initials(u.name))}</div>
+      <div>
+        <h1>${escapeHtml(u.name)}</h1>
+        <div class="sub">${u.points} ${escapeHtml(L.points)} · ${u.trophies} ${escapeHtml(L.trophies)}</div>
+      </div>
+    </div>
+    ${todayCard(data.today)}
+    <div class="card"><h2>${escapeHtml(L.stats)}</h2>
+      <div class="grid">
+        ${tile(u.points, L.total)}
+        ${tile(u.monthly_points, L.monthly)}
+        ${tile("🔥 " + u.streak, L.streak)}
+        ${tile(u.best_streak, L.best)}
+        ${tile(u.players_guessed, L.guessed)}
+        ${tile(u.archive_solved, L.archive)}
+      </div>
+    </div>
+    ${leaderboardCard(data.leaderboard)}
+    ${leaguesCard(data.leagues)}
+    <button class="close" type="button">${escapeHtml(L.close)}</button>
+  `;
+  const button = document.querySelector("button.close");
+  if (button) button.addEventListener("click", () => tg && tg.close());
+}
+
+function showMessage(text) {
+  document.getElementById("root").innerHTML = `<p class="error">${escapeHtml(text)}</p>`;
+}
+
+async function load() {
+  const initData = tg && tg.initData;
+  if (!initData) { showMessage(L.error); return; }
+
+  try {
+    const response = await fetch("/app/api/me", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData })
+    });
+    if (response.status === 404) { showMessage(L.notRegistered); return; }
+    if (!response.ok) { showMessage(L.error); return; }
+    render(await response.json());
+  } catch (e) {
+    showMessage(L.error);
+  }
+}
+
+load();
+</script>
+</body>
+</html>

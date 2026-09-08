@@ -3,13 +3,81 @@
 Bot Telegram che ogni giorno propone il percorso professionale (misterioso) di un calciatore
 da indovinare, con classifiche, statistiche personali, eventi tematici a tempo e trofei.
 
+## Come si gioca
+
+Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. In chat
+privata **basta scrivere il nome**: non serve nessun comando (`/guess <nome>` continua a
+funzionare). Tre tentativi al giorno, i punti dipendono dalla difficolta', chi indovina per
+primo prende un punto in piu'.
+
+| Comando | Cosa fa |
+|---|---|
+| `/start` | registrazione e menu; apre anche i link d'invito alle leghe |
+| `/menu` | la tastiera con tutto quello che si puo' fare |
+| `/show` | la sfida di oggi |
+| `/guess <risposta>` | il modo classico di rispondere |
+| `/stats` | punti, striscia, trofei |
+| `/top` | classifica generale e mensile |
+| `/events` | centro eventi |
+| `/archivio` (`/archive`) | rigioca le sfide dei giorni scorsi |
+| `/oggi` (`/today`) | esci dall'archivio |
+| `/lega` (`/league`) | le tue leghe private |
+| `/lega_crea <nome>`, `/lega_entra <codice>`, `/lega_esci <codice>` | crea, entra, esci |
+| `/notify`, `/language` | notifiche e lingua |
+
+Il menu "/" di Telegram (`set_my_commands`) viene impostato all'avvio nelle tre lingue.
+
+### Risposte tollerate, ma non regalate
+
+Il confronto passa da `services/matching.py`: accenti, maiuscole, punteggiatura e apostrofi
+non contano ("Mbappe" = "Mbappé", "N'Golo" = "Ngolo"), e un refuso vicino alla risposta viene
+accettato invece di bruciare un tentativo. La soglia e' alta e c'e' un limite sulla differenza
+di lunghezza, perche' il caso da non sbagliare mai e' accettare *ronaldinho* per *ronaldo*:
+i test lo verificano su una lista di coppie insidiose. Non viene mai suggerito il nome giusto
+("intendevi X?"): sarebbe rivelare la soluzione.
+
+Un messaggio che non ha la forma di un nome (un link, una frase lunga) non consuma tentativi:
+il bot risponde con una riga di spiegazione.
+
+### Striscia, condivisione, archivio
+
+- **Striscia** (`services/streak.py`): giorni consecutivi indovinati, con un bonus a soglie
+  (3, 7, 30 giorni) e un tetto basso di proposito — deve premiare la costanza, non diventare
+  il modo principale di fare punti. Si calcola nella stessa transazione che assegna i punti.
+- **Card del risultato** (`services/share.py`): i quadratini stile Wordle (🟥🟩⬜ 2/3) con il
+  numero della sfida, da incollare in un gruppo senza rivelare la risposta. Il bottone e' un
+  link a `t.me/share/url`, quindi non serve la inline mode del bot.
+- **Archivio** (`handlers/archive_handler.py`): rigiocare i giorni passati **senza punti**.
+  Aprire un giorno mette l'utente in "modalita' archivio" (`archive_day` sul suo documento,
+  non in memoria: su Cloud Run l'istanza puo' sparire fra un messaggio e l'altro), e da li' le
+  risposte valgono per quella sfida finche' non la risolve o non fa `/oggi`. A tentativi finiti
+  la risposta si puo' dire: quella giornata e' gia' passata.
+
+### Leghe private
+
+Una classifica fra amici (`handlers/league_handler.py`): `/lega_crea` genera un codice di sei
+caratteri senza `0/O` e `1/I` (si detta a voce) e un link d'invito `t.me/<bot>?start=lega_CODICE`
+che iscrive chi lo apre. I punti di una lega stanno sul documento del membro e vengono sommati
+quando l'utente indovina — la classifica e' quindi una query ordinata invece di una lettura per
+ogni iscritto — e contano solo **da quando si entra**, cosi' entrare in una lega vecchia non
+condanna a restare ultimi.
+
+### Mini app Telegram
+
+`webapp/index.html` e' una pagina servita dallo stesso servizio FastAPI su `/app`: profilo,
+striscia, classifica e leghe in una schermata sola. Chi sia l'utente lo stabilisce **solo** la
+firma di `initData` (`services/webapp_auth.py`, HMAC-SHA256 con il token del bot piu' controllo
+sull'eta' dei dati): il client non manda mai un id, altrimenti chiunque potrebbe chiedere i dati
+di chiunque. Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' configurata.
+
 ## Stack
 
 - **Bot**: [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) su webhook, servito da **FastAPI** (`bot.py`)
 - **Dati di gioco**: **Firebase Firestore** (`users`, `daily_path`, `events` con la sotto-collection `participants`, `seasons`). Le date sul database sono ISO `YYYY-MM-DD`; agli utenti si mostrano come `gg/mm/aa`
 - **Scheduler**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana (nessun processo interno da tenere sveglio)
-- **Immagini del percorso**: generate a runtime con **Pillow** (`services/path_image.py`), nessun hosting immagini esterno necessario
+- **Immagini**: percorso, banner evento, palmarès e avatar sono generati a runtime con **Pillow** (`services/path_image.py`), con un font TrueType di sistema (`fonts-dejavu-core` nel Dockerfile). Nessuna immagine ospitata fuori dal progetto
 - **Dataset calciatori**: JSON locale versionato in `data/players.json`
+- **Mini app**: pagina statica servita da FastAPI su `/app`, autenticata con la firma `initData` di Telegram
 
 ## Architettura dell'automazione
 
@@ -24,7 +92,13 @@ services/daily_challenge.py  -> sfida del giorno, con cache in memoria della sol
 services/player_pool.py      -> carica e valida il dataset, filtra per le regole di un evento
 services/difficulty.py       -> calcola la difficoltà di un percorso (facile/normale/difficile/esperto)
 services/dataset_health.py   -> salute del pool: autonomia, difficoltà scoperte, eventi senza candidati
-services/path_image.py       -> disegna l'immagine del percorso (Pillow), nessuna immagine caricata a mano
+services/path_image.py       -> disegna le immagini (Pillow): percorso, banner evento, palmarès, avatar
+services/fonts.py            -> trova un TrueType di sistema per le immagini (fallback compreso)
+services/matching.py         -> confronto tollerante fra risposta scritta e risposte accettate
+services/streak.py           -> regole della striscia di giorni consecutivi
+services/share.py            -> card del risultato in quadratini e link di condivisione
+services/webapp_auth.py      -> verifica la firma dei dati che manda la mini app Telegram
+services/webapp_api.py       -> i dati che la mini app mostra, in una risposta sola
 services/daily_generator.py  -> sceglie il calciatore del giorno (con anti-ripetizione) e genera N giorni in anticipo
 services/event_generator.py  -> sceglie un template evento a rotazione e lo riempie con giocatori validi
 services/manual_event_service.py -> eventi creati a mano dalla chat (coppie padre/figlio)
@@ -34,7 +108,13 @@ scripts/import_players.py    -> importa nuovi calciatori nel dataset con validaz
 scripts/dataset_report.py    -> report sullo stato del dataset (usato anche dalla CI)
 scripts/migrate_firestore.py -> migrazione una tantum dei dati esistenti al modello nuovo
 handlers/daily_job.py        -> job di mezzanotte chiamato da Cloud Scheduler: broadcast, reset, e generazione
+handlers/guess_handler.py    -> tentativi sulla sfida del giorno (comando e messaggio libero)
+handlers/archive_handler.py  -> sfide passate rigiocate senza punti
+handlers/league_handler.py   -> leghe private, codici d'invito, classifiche
+handlers/keyboards.py        -> tastiera del menu e menu comandi di Telegram
+handlers/menu_handler.py     -> i bottoni del menu, collegati agli handler dei comandi
 handlers/admin_handler.py    -> tutti i comandi Telegram /admin_* (al posto di una dashboard web)
+webapp/index.html            -> la mini app Telegram (servita da FastAPI su /app)
 ```
 
 ### Come viene scelto il calciatore del giorno
@@ -253,12 +333,21 @@ flusso completo di `/guess` e `/events` (tentativi, bonus del primo assegnato un
 sola, limiti giornalieri), il reset "pigro" dei contatori, il reset mensile, il broadcast di
 mezzanotte, le classifiche e le trasformazioni della migrazione Firestore.
 
+Sulle funzioni aggiunte dopo: tolleranza ai refusi (con la lista di coppie che **non** devono
+essere confuse), messaggi liberi trattati come tentativo, striscia e relativo bonus, quadratini
+della card condivisibile, flusso completo dell'archivio (nessun punto, la giornata di oggi non
+viene toccata, la risposta rivelata solo a tentativi finiti), leghe private (codici, limiti,
+classifica, link d'invito che iscrive da `/start`), firma `initData` della mini app (dato
+manomesso, token sbagliato, dati scaduti) e allineamento delle tre lingue: se una chiave o un
+segnaposto manca in una traduzione, la CI se ne accorge.
+
 ## Deploy
 
 Il bot gira su **Cloud Run** (container, deploy automatico da GitHub Actions dopo i test — vedi
 [`docs/deploy.md`](docs/deploy.md)) e la generazione giornaliera dei contenuti è affidata a
 **Cloud Scheduler**, che chiama un endpoint interno del servizio invece di dipendere da un
-processo sempre acceso.
+processo sempre acceso. Il ciclo completo test → deploy, con le scelte di qualità del codice e
+gestione delle dipendenze, è documentato in [`docs/ci_cd_pipeline.md`](docs/ci_cd_pipeline.md).
 
 | Componente | Dove | Perché |
 |---|---|---|
@@ -274,6 +363,14 @@ Identity Federation, comandi manuali di fallback e variabili d'ambiente del serv
 
 Se cambia l'URL del servizio va aggiornato `WEBHOOK_URL` e il bot deve rieseguire `set_webhook`
 (avviene automaticamente all'avvio, vedi `bot.py`).
+
+Due variabili d'ambiente in piu' (facoltative, vedi [`.env.example`](.env.example)) accendono le
+funzioni che hanno bisogno di sapere dove sta il bot:
+
+| Variabile | Serve a | Se manca |
+|---|---|---|
+| `PUBLIC_BASE_URL` | mini app Telegram (`/app`) | il bottone "Apri l'app" non compare |
+| `BOT_USERNAME` | link di condivisione del risultato e inviti alle leghe | i bottoni di condivisione/invito non compaiono, il resto funziona |
 
 ### 2. Cloud Scheduler (generazione contenuti)
 
@@ -310,6 +407,13 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
 - **Interfaccia di amministrazione**: oltre ai comandi Telegram `/admin_*`, c'è una dashboard
   locale (`streamlit run admin_ui.py`) che riusa gli stessi servizi; va lanciata sulla propria
   macchina con le credenziali del bot, non è esposta pubblicamente.
+- **Font delle immagini**: sul container arrivano da `fonts-dejavu-core` (Dockerfile). Se il
+  pacchetto sparisce, Pillow ripiega sul font bitmap di default: le immagini escono comunque,
+  ma brutte. `services/fonts.py` accetta anche un font messo in `assets/fonts/` o indicato con
+  `FONT_REGULAR_PATH` / `FONT_BOLD_PATH`.
+- **Leghe private**: la classifica di una lega somma i punti fatti da quando si è entrati, e i
+  limiti (50 membri, 5 leghe a testa) sono costanti in `handlers/league_handler.py`. Chi lascia
+  una lega perde i punti accumulati lì dentro: rientrando riparte da zero.
 - **Cloud Run scale-to-zero**: il servizio può andare a zero istanze se inattivo; la prima
   richiesta dopo un periodo di inattività (webhook Telegram o chiamata di Cloud Scheduler) ha
   qualche secondo di latenza in più per il cold start.

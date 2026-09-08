@@ -92,10 +92,31 @@ gcloud run deploy guess-the-player \
 | `ADMIN_TELEGRAM_IDS` | ID Telegram abilitati ai comandi `/admin_*`, separati da virgola |
 | `GENERATION_SECRET` | Segreto condiviso con Cloud Scheduler: autorizza le chiamate a `/internal/daily-job` |
 | `FIREBASE_CREDENTIALS_PATH` | `firebase-key.json`, montato come secret di Secret Manager |
+| `PUBLIC_BASE_URL` | Base pubblica del servizio **senza barra finale**, es. `https://guess-the-player-595902172561.europe-west1.run.app`. Facoltativa: serve alla mini app (`/app`); se manca, il bottone "Apri l'app" non compare |
+| `BOT_USERNAME` | Username del bot **senza @**, es. `guess_the_player_bot`. Facoltativa: serve ai link di condivisione del risultato e agli inviti alle leghe; se manca, quei bottoni non compaiono |
 
-Se cambia l'URL del servizio (es. nuova region o nuovo nome), va aggiornato `WEBHOOK_URL`: il
-bot rifà `set_webhook` automaticamente al riavvio (`bot.py`, funzione `lifespan`), non serve
-nessuna azione manuale su Telegram.
+Se cambia l'URL del servizio (es. nuova region o nuovo nome), vanno aggiornati `WEBHOOK_URL` e
+`PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`bot.py`, funzione
+`lifespan`), non serve nessuna azione manuale su Telegram.
+
+Le variabili si impostano una volta sola sul servizio e **sopravvivono ai deploy**: il workflow
+[`deploy.yml`](../.github/workflows/deploy.yml) non passa `--set-env-vars`, quindi non le
+sovrascrive. Per aggiungerne senza toccare quelle esistenti serve `--update-env-vars`
+(`--set-env-vars` le rimpiazzerebbe tutte):
+
+```bash
+gcloud run services update guess-the-player \
+  --project guess-the-player-from-path-bot \
+  --region europe-west1 \
+  --update-env-vars PUBLIC_BASE_URL=https://guess-the-player-595902172561.europe-west1.run.app,BOT_USERNAME=nome_del_bot
+```
+
+### Mini app: pulsante nel menu del bot
+
+Con `PUBLIC_BASE_URL` impostata, la pagina risponde su `<PUBLIC_BASE_URL>/app`. Per averla anche
+nel pulsante accanto alla graffetta: @BotFather → `/mybots` → il bot → *Bot Settings* → *Menu
+Button* → *Edit menu button URL*, e incollare l'URL con `/app` in fondo. Telegram accetta solo
+HTTPS, che Cloud Run fornisce già.
 
 ## 2. Cloud Scheduler (generazione contenuti)
 

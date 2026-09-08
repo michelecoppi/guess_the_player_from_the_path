@@ -17,6 +17,7 @@ from services.daily_challenge import invalidate as invalidate_daily_cache
 from services.daily_generator import ensure_daily_buffer
 from services.dates import now_italy, shift_iso, to_display, today_iso
 from services.event_generator import maybe_generate_event
+from services.i18n import DEFAULT_LANGUAGE, month_label, t
 
 _bot = None
 
@@ -28,12 +29,6 @@ def get_bot():
     if _bot is None:
         _bot = Bot(BOT_TOKEN)
     return _bot
-
-
-FEEDBACK_LINE = (
-    "\n\nSe hai idee per migliorare il bot o una funzione nuova che vorresti vedere, "
-    "manda un messaggio a @gabbente con la tua proposta!"
-)
 
 
 async def update_daily_challenge():
@@ -60,9 +55,9 @@ async def update_daily_challenge():
     # ancora da giocare.
     finished_event = firebase_service.get_event_trophy_day(yesterday)
 
-    monthly_message = handle_monthly_reset(now)
+    monthly_result = handle_monthly_reset(now)
 
-    messages_sent, errors = await _broadcast(yesterday, yesterday_player, current_event, monthly_message)
+    messages_sent, errors = await _broadcast(yesterday, yesterday_player, current_event, monthly_result)
 
     if finished_event:
         try:
@@ -75,42 +70,41 @@ async def update_daily_challenge():
         f"✅ Daily challenge aggiornata per {to_display(today)}.\n"
         f"Messaggi inviati: {messages_sent} (errori: {errors})."
         + (f"\n🏆 Trofei assegnati per {finished_event.get('name')}." if finished_event else "")
-        + (f"\n📅 {monthly_message.splitlines()[0]}" if monthly_message else "")
+        + (f"\n📅 Risultati stagione mensile {monthly_result['month_name']} {monthly_result['year']}." if monthly_result else "")
     )
 
 
-async def _broadcast(reference_day, yesterday_player, current_event, monthly_message):
+async def _broadcast(reference_day, yesterday_player, current_event, monthly_result):
+    """`monthly_result` (se non None) e' {'month_name', 'year', 'winners'}: il podio viene
+    reso nella lingua di ciascun destinatario, non e' piu' un testo unico precomposto."""
     broadcast_users = firebase_service.get_broadcast_users(reference_day)
-    player_label = yesterday_player or "di ieri"
-
-    event_text = ""
-    if current_event:
-        event_text = (
-            f"\n\n🎊 Inoltre è attivo un evento speciale: {current_event.get('name', 'Evento Sconosciuto')}\n"
-            "🏆 Partecipa usando /events e scala la classifica dell'evento!"
-        )
-    if monthly_message:
-        event_text += f"\n\n{monthly_message}"
 
     sent = 0
     errors = 0
     for user in broadcast_users:
         chat_id = user["chat_id"]
+        lang = user.get("language", DEFAULT_LANGUAGE)
+        player_label = yesterday_player or t(lang, "job.player_fallback")
+
         if user.get("has_guessed_today"):
-            text = (
-                f"🎉 Complimenti per aver indovinato il calciatore {player_label} ieri!\n"
-                "È disponibile una nuova sfida giornaliera!\n"
-                "👉 Usa /show e prova a essere il primo!"
-            )
+            text = t(lang, "job.congrats", player=player_label)
         else:
-            text = (
-                f"⚠️ Non hai indovinato il calciatore {player_label} ieri.\n"
-                "📢 È disponibile una nuova sfida giornaliera!\n"
-                "👉 Usa /show per indovinare il calciatore misterioso!"
-            )
+            text = t(lang, "job.missed", player=player_label)
+
+        if current_event:
+            text += t(lang, "job.event_mention", event_name=current_event.get("name", t(lang, "job.unknown_event")))
+        if monthly_result:
+            month = month_label(lang, monthly_result["month_name"])
+            text += "\n\n" + t(lang, "job.monthly_results_title", month=month, year=monthly_result["year"])
+            for winner in monthly_result["winners"]:
+                text += t(
+                    lang, "job.monthly_winner_line",
+                    position=winner["position"], username=winner["username"], points=winner["monthly_points"],
+                )
+        text += t(lang, "job.feedback_line")
 
         try:
-            await get_bot().send_message(chat_id=chat_id, text=text + event_text + FEEDBACK_LINE)
+            await get_bot().send_message(chat_id=chat_id, text=text)
             sent += 1
             await asyncio.sleep(0.05)
         except Exception as e:
@@ -132,7 +126,11 @@ def handle_monthly_reset(today):
     """Il primo del mese: assegna i trofei mensili e azzera i punti del mese.
 
     La stagione viene creata se manca: prima, senza il documento in `seasons`, il reset
-    saltava in silenzio e i punti mensili non venivano mai azzerati."""
+    saltava in silenzio e i punti mensili non venivano mai azzerati.
+
+    Ritorna None se non c'e' niente da annunciare, altrimenti {'month_name', 'year',
+    'winners'}: la resa testuale (tradotta per destinatario) e' compito di chi chiama,
+    non di questa funzione."""
     if today.day != 1:
         return None
 
@@ -152,11 +150,11 @@ def handle_monthly_reset(today):
         firebase_service.reset_monthly_points()
         return None
 
-    result_message = f"🏆 Risultati della stagione mensile {month_name} {year}:\n\n"
+    winners = []
     for position, user in enumerate(top_users, start=1):
         trophy_code = f"MON_{month_name}_{season['season_number']}_{year}_{position}"
         firebase_service.add_user_trophy(user["telegram_id"], trophy_code)
-        result_message += f"{position}° - {user['username']} ({user['monthly_points']} punti)\n"
+        winners.append({"position": position, "username": user["username"], "monthly_points": user["monthly_points"]})
 
     firebase_service.reset_monthly_points()
-    return result_message
+    return {"month_name": month_name, "year": year, "winners": winners}

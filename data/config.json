@@ -29,5 +29,6 @@
     "minor_leagues": 4.0,
     "extra_countries": 1.0,
     "extra_teams": 0.5
-  }
+  },
+  "game_epoch": "2025-06-08"
 }

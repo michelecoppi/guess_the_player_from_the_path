@@ -22,6 +22,8 @@ def make_update(user_id=42, name="Anna"):
     return SimpleNamespace(
         effective_user=SimpleNamespace(id=user_id, first_name=name),
         message=message,
+        effective_message=message,
+        effective_chat=message.chat,
     ), message
 
 
@@ -73,6 +75,7 @@ def firebase(monkeypatch):
     monkeypatch.setattr(events_handler.firebase_service, "begin_event_attempt", begin_event_attempt)
     monkeypatch.setattr(events_handler.firebase_service, "claim_event_first_correct", claim_event_first_correct)
     monkeypatch.setattr(events_handler.firebase_service, "register_event_correct_guess", register_event_correct_guess)
+    monkeypatch.setattr(events_handler.firebase_service, "get_user_data", lambda uid: None)
     return SimpleNamespace(calls=calls, state=state)
 
 

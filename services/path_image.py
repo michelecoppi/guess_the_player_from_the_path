@@ -1,138 +1,293 @@
+"""Immagini generate a runtime con Pillow: nessuna immagine da ospitare da nessuna parte.
+
+Le card sono disegnate come una **timeline verticale**: una linea collega le tappe, ogni
+tappa ha un nodo del colore del club, e una barra proporzionale agli anni passati li' rende
+leggibile a colpo d'occhio dove il calciatore e' rimasto a lungo. Il testo e' volutamente
+senza emoji: il font che usiamo (vedi services/fonts.py) non ha i glifi emoji e li
+disegnerebbe come quadratini.
+
+Il nome del calciatore non compare mai: e' la risposta.
+"""
+import colorsys
 import hashlib
 import io
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
+
+from services.fonts import get_font
 
 WIDTH = 900
-ROW_HEIGHT = 110
-HEADER_HEIGHT = 130
-PADDING = 30
+ROW_HEIGHT = 104
+ROW_GAP = 14
+HEADER_HEIGHT = 150
+FOOTER_HEIGHT = 58
+PADDING = 34
 
-BG_COLOR = (18, 32, 47)
-HEADER_COLOR = (10, 20, 32)
-ROW_COLORS = [(28, 48, 68), (22, 40, 58)]
-TEXT_COLOR = (235, 240, 245)
+TIMELINE_X = 60
+CARD_X = 104
+CARD_RIGHT = WIDTH - PADDING
+
+BG_TOP = (10, 19, 30)
+BG_BOTTOM = (19, 36, 55)
+HEADER_COLOR = (7, 14, 23)
+CARD_COLOR = (26, 44, 64)
+CARD_EDGE = (39, 62, 86)
+TEXT_COLOR = (236, 242, 248)
+MUTED_COLOR = (142, 162, 182)
 ACCENT_COLOR = (56, 189, 130)
-MUTED_COLOR = (150, 165, 180)
-
-
-def _font(size, bold=False):
-    try:
-        return ImageFont.load_default(size=size)
-    except TypeError:
-        return ImageFont.load_default()
+TRACK_COLOR = (44, 68, 92)
 
 
 def _color_for_team(team_name):
+    """Colore stabile per squadra: la tinta viene dall'hash del nome, saturazione e
+    luminosita' sono fisse. Cosi' i colori sono sempre gli stessi per lo stesso club e non
+    escono mai fango o fluorescenti come con un hash usato direttamente su RGB."""
     digest = hashlib.md5(team_name.encode("utf-8")).hexdigest()
-    r = 90 + int(digest[0:2], 16) % 120
-    g = 90 + int(digest[2:4], 16) % 120
-    b = 90 + int(digest[4:6], 16) % 120
-    return (r, g, b)
+    hue = int(digest[:4], 16) / 65535
+    r, g, b = colorsys.hsv_to_rgb(hue, 0.58, 0.88)
+    return (int(r * 255), int(g * 255), int(b * 255))
 
 
-def render_career_path_image(career, title="Percorso misterioso", subtitle=None):
-    """Genera un'immagine PNG (bytes) che mostra il percorso di squadre/anni SENZA rivelare
-    il nome del calciatore. 'career' e' la lista di tappe come in players.json."""
-    n = len(career)
-    height = HEADER_HEIGHT + n * ROW_HEIGHT + PADDING
+def _vertical_gradient(width, height, top, bottom):
+    column = [
+        tuple(int(top[channel] + (bottom[channel] - top[channel]) * y / max(height - 1, 1)) for channel in range(3))
+        for y in range(height)
+    ]
+    base = Image.new("RGB", (1, height))
+    base.putdata(column)
+    return base.resize((width, height))
 
-    img = Image.new("RGB", (WIDTH, height), BG_COLOR)
+
+def _truncate(draw, text, font, max_width):
+    if draw.textlength(text, font=font) <= max_width:
+        return text
+    ellipsis = "…"
+    while text and draw.textlength(text + ellipsis, font=font) > max_width:
+        text = text[:-1]
+    return text + ellipsis
+
+
+def _initials(name):
+    words = [w for w in name.split() if w]
+    return "".join(w[0].upper() for w in words[:2]) or "?"
+
+
+def _stint_years(stop):
+    start = stop.get("start_year")
+    end = stop.get("end_year")
+    if not isinstance(start, int):
+        return 0
+    if not isinstance(end, int):
+        return 1
+    return max(end - start, 1)
+
+
+def _years_label(stop):
+    """Etichetta degli anni, senza parole: l'immagine e' la stessa per utenti italiani,
+    spagnoli e inglesi, quindi niente "oggi" o "present" dentro il disegno."""
+    start = stop.get("start_year", "?")
+    end = stop.get("end_year")
+    return f"{start} – {end}" if end else f"{start} →"
+
+
+def _draw_header(draw, title, subtitle, badge=None):
+    draw.rectangle([0, 0, WIDTH, HEADER_HEIGHT], fill=HEADER_COLOR)
+    draw.rectangle([0, HEADER_HEIGHT - 3, WIDTH, HEADER_HEIGHT], fill=ACCENT_COLOR)
+
+    title_font = get_font(40, bold=True)
+    draw.text((PADDING, 44), _truncate(draw, title, title_font, WIDTH - 2 * PADDING - 220), font=title_font, fill=TEXT_COLOR)
+    if subtitle:
+        subtitle_font = get_font(23)
+        draw.text((PADDING, 96), _truncate(draw, subtitle, subtitle_font, WIDTH - 2 * PADDING - 220), font=subtitle_font, fill=MUTED_COLOR)
+
+    if badge:
+        badge_font = get_font(22, bold=True)
+        text_width = draw.textlength(badge, font=badge_font)
+        pill_width = text_width + 40
+        x1 = WIDTH - PADDING
+        x0 = x1 - pill_width
+        draw.rounded_rectangle([x0, 42, x1, 86], radius=22, fill=ACCENT_COLOR)
+        draw.text(((x0 + x1) / 2, 64), badge, font=badge_font, fill=(8, 24, 16), anchor="mm")
+
+
+def _draw_footer(draw, y, text):
+    if not text:
+        return
+    draw.text((PADDING, y + 18), text, font=get_font(20), fill=(96, 116, 136))
+
+
+def render_career_path_image(career, title="Percorso misterioso", subtitle=None, badge=None, footer=None):
+    """Immagine PNG (bytes) del percorso di squadre/anni, senza mai rivelare il calciatore.
+    `career` e' la lista di tappe come in players.json."""
+    career = list(career or [])
+    rows = len(career)
+    body_height = rows * ROW_HEIGHT + max(rows - 1, 0) * ROW_GAP
+    height = HEADER_HEIGHT + PADDING + body_height + FOOTER_HEIGHT
+
+    img = _vertical_gradient(WIDTH, height, BG_TOP, BG_BOTTOM)
     draw = ImageDraw.Draw(img)
 
-    draw.rectangle([0, 0, WIDTH, HEADER_HEIGHT], fill=HEADER_COLOR)
-    title_font = _font(38)
-    subtitle_font = _font(22)
-    draw.text((PADDING, 28), title, font=title_font, fill=TEXT_COLOR)
-    if subtitle:
-        draw.text((PADDING, 78), subtitle, font=subtitle_font, fill=MUTED_COLOR)
+    if subtitle is None:
+        subtitle = f"{rows} tappe" if rows != 1 else "1 tappa"
+    _draw_header(draw, title, subtitle, badge)
 
-    team_font = _font(30)
-    meta_font = _font(22)
+    longest = max((_stint_years(stop) for stop in career), default=1)
+    team_font = get_font(30, bold=True)
+    meta_font = get_font(21)
+    years_font = get_font(23, bold=True)
 
-    for i, stop in enumerate(career):
-        y0 = HEADER_HEIGHT + i * ROW_HEIGHT
+    # La linea della timeline va disegnata prima dei nodi, altrimenti li attraversa.
+    centers = [HEADER_HEIGHT + PADDING + i * (ROW_HEIGHT + ROW_GAP) + ROW_HEIGHT / 2 for i in range(rows)]
+    if len(centers) > 1:
+        draw.line([TIMELINE_X, centers[0], TIMELINE_X, centers[-1]], fill=TRACK_COLOR, width=3)
+
+    for index, stop in enumerate(career):
+        y0 = HEADER_HEIGHT + PADDING + index * (ROW_HEIGHT + ROW_GAP)
         y1 = y0 + ROW_HEIGHT
-        draw.rectangle([0, y0, WIDTH, y1], fill=ROW_COLORS[i % 2])
+        center_y = centers[index]
 
-        badge_size = 60
-        badge_x, badge_y = PADDING, y0 + (ROW_HEIGHT - badge_size) // 2
         team_name = stop.get("team", "?")
-        badge_color = _color_for_team(team_name)
-        draw.ellipse(
-            [badge_x, badge_y, badge_x + badge_size, badge_y + badge_size],
-            fill=badge_color,
-        )
-        initials = "".join(w[0].upper() for w in team_name.split()[:2]) or "?"
-        initials_font = _font(24)
+        club_color = _color_for_team(team_name)
+
+        draw.rounded_rectangle([CARD_X, y0, CARD_RIGHT, y1], radius=18, fill=CARD_COLOR, outline=CARD_EDGE)
+        draw.rounded_rectangle([CARD_X, y0, CARD_X + 8, y1], radius=4, fill=club_color)
+
+        badge_size = 58
+        badge_x = CARD_X + 26
+        badge_y = center_y - badge_size / 2
+        draw.ellipse([badge_x, badge_y, badge_x + badge_size, badge_y + badge_size], fill=club_color)
         draw.text(
             (badge_x + badge_size / 2, badge_y + badge_size / 2),
-            initials,
-            font=initials_font,
-            fill=(20, 20, 20),
+            _initials(team_name),
+            font=get_font(24, bold=True),
+            fill=(16, 24, 32),
             anchor="mm",
         )
 
-        text_x = badge_x + badge_size + 24
-        start_year = stop.get("start_year", "?")
-        end_year = stop.get("end_year") or "oggi"
-        years_label = f"{start_year} - {end_year}"
+        years_text = _years_label(stop)
+        years_width = draw.textlength(years_text, font=years_font)
+        draw.text((CARD_RIGHT - 26, center_y - 14), years_text, font=years_font, fill=TEXT_COLOR, anchor="rm")
 
-        draw.text((text_x, y0 + 20), team_name, font=team_font, fill=TEXT_COLOR)
-        league = stop.get("league", "")
-        country = stop.get("country", "")
-        meta_line = f"{years_label}"
-        if league or country:
-            meta_line += f"  ·  {league}{' (' + country + ')' if country else ''}"
-        draw.text((text_x, y0 + 62), meta_line, font=meta_font, fill=MUTED_COLOR)
+        text_x = badge_x + badge_size + 22
+        text_limit = CARD_RIGHT - 26 - years_width - 30 - text_x
 
-        draw.line([0, y1, WIDTH, y1], fill=(0, 0, 0), width=1)
+        draw.text((text_x, y0 + 22), _truncate(draw, team_name, team_font, text_limit), font=team_font, fill=TEXT_COLOR)
 
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-    buffer.name = "path.png"
-    return buffer
+        league = stop.get("league") or ""
+        country = stop.get("country") or ""
+        meta_line = " · ".join(part for part in (league, country) if part)
+        if meta_line:
+            draw.text((text_x, y0 + 60), _truncate(draw, meta_line, meta_font, text_limit), font=meta_font, fill=MUTED_COLOR)
+
+        # Barra proporzionale agli anni della tappa: dice "quanto e' rimasto" senza scrivere
+        # una parola, quindi vale identica in tutte le lingue.
+        bar_y = y1 - 20
+        bar_max = 170
+        bar_x0 = CARD_RIGHT - 26 - bar_max
+        draw.rounded_rectangle([bar_x0, bar_y, CARD_RIGHT - 26, bar_y + 6], radius=3, fill=TRACK_COLOR)
+        filled = max(int(bar_max * _stint_years(stop) / longest), 8)
+        draw.rounded_rectangle([bar_x0, bar_y, bar_x0 + filled, bar_y + 6], radius=3, fill=club_color)
+
+        draw.ellipse([TIMELINE_X - 11, center_y - 11, TIMELINE_X + 11, center_y + 11], fill=club_color)
+        draw.ellipse([TIMELINE_X - 5, center_y - 5, TIMELINE_X + 5, center_y + 5], fill=HEADER_COLOR)
+
+    _draw_footer(draw, HEADER_HEIGHT + PADDING + body_height, footer or "Guess the Player")
+
+    return _to_buffer(img, "path.png")
 
 
 def render_event_banner(name, description="", badge_text="EVENTO"):
-    """Banner generico per un evento tematico quando non e' stata caricata un'immagine
-    dedicata (event_img). Evita che un evento generato automaticamente resti senza foto."""
-    height = 360
-    img = Image.new("RGB", (WIDTH, height), HEADER_COLOR)
+    """Banner di un evento tematico quando non c'e' un'immagine dedicata (`event_img`)."""
+    height = 340
+    img = _vertical_gradient(WIDTH, height, BG_TOP, BG_BOTTOM)
     draw = ImageDraw.Draw(img)
 
-    draw.rectangle([0, 0, WIDTH, 70], fill=ACCENT_COLOR)
-    badge_font = _font(28)
-    draw.text((PADDING, 18), badge_text, font=badge_font, fill=(10, 20, 15))
+    badge_font = get_font(22, bold=True)
+    badge_width = draw.textlength(badge_text, font=badge_font) + 44
+    draw.rounded_rectangle([PADDING, 46, PADDING + badge_width, 92], radius=23, fill=ACCENT_COLOR)
+    draw.text((PADDING + badge_width / 2, 69), badge_text, font=badge_font, fill=(8, 24, 16), anchor="mm")
 
-    name_font = _font(46)
-    desc_font = _font(24)
-    draw.text((PADDING, 130), name, font=name_font, fill=TEXT_COLOR)
+    name_font = get_font(46, bold=True)
+    draw.text((PADDING, 128), _truncate(draw, name, name_font, WIDTH - 2 * PADDING), font=name_font, fill=TEXT_COLOR)
 
     if description:
-        words = description.split()
-        lines, current = [], ""
-        for word in words:
-            trial = f"{current} {word}".strip()
-            if len(trial) > 60:
-                lines.append(current)
-                current = word
-            else:
-                current = trial
-        if current:
-            lines.append(current)
-        for i, line in enumerate(lines[:3]):
-            draw.text((PADDING, 210 + i * 32), line, font=desc_font, fill=MUTED_COLOR)
+        desc_font = get_font(24)
+        for i, line in enumerate(_wrap(draw, description, desc_font, WIDTH - 2 * PADDING)[:3]):
+            draw.text((PADDING, 202 + i * 34), line, font=desc_font, fill=MUTED_COLOR)
 
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-    buffer.name = "event_banner.png"
-    return buffer
+    draw.rectangle([0, height - 6, WIDTH, height], fill=ACCENT_COLOR)
+    return _to_buffer(img, "event_banner.png")
 
 
 def render_transfer_image(stop_from, stop_to, title="Trasferimento misterioso"):
-    """Immagine dedicata all'evento transfer_guess: mostra solo la singola tappa (squadra di
-    arrivo) con anno, per far indovinare il giocatore dal trasferimento."""
-    return render_career_path_image([stop_to], title=title, subtitle="Chi si e' trasferito qui?")
+    """Evento transfer_guess: si mostra solo la squadra di arrivo con l'anno."""
+    return render_career_path_image([stop_to], title=title, subtitle="Chi si è trasferito qui?")
+
+
+def render_palmares_image(title="Palmarès", subtitle=None, trophies=0):
+    """Sfondo della schermata trofei. Prima era un PNG su un hosting esterno: una card
+    generata qui non puo' sparire e resta coerente con il resto della grafica."""
+    height = 300
+    img = _vertical_gradient(WIDTH, height, BG_TOP, BG_BOTTOM)
+    draw = ImageDraw.Draw(img)
+
+    draw.rectangle([0, 0, WIDTH, 6], fill=ACCENT_COLOR)
+
+    title_font = get_font(52, bold=True)
+    draw.text((WIDTH / 2, 118), title, font=title_font, fill=TEXT_COLOR, anchor="mm")
+
+    if subtitle:
+        draw.text((WIDTH / 2, 176), subtitle, font=get_font(24), fill=MUTED_COLOR, anchor="mm")
+
+    # Righino di "medaglie" proporzionale ai trofei, senza usare emoji (il font non le ha).
+    shown = min(trophies, 12)
+    if shown:
+        spacing = 46
+        start_x = WIDTH / 2 - (shown - 1) * spacing / 2
+        for i in range(shown):
+            cx = start_x + i * spacing
+            draw.ellipse([cx - 16, 224, cx + 16, 256], fill=ACCENT_COLOR if i < 3 else TRACK_COLOR)
+
+    return _to_buffer(img, "palmares.png")
+
+
+def render_avatar(name, size=400):
+    """Avatar di riserva per chi non ha foto profilo: iniziali su un cerchio del colore
+    derivato dal nome. Sostituisce l'icona presa da un sito esterno."""
+    img = _vertical_gradient(size, size, BG_TOP, BG_BOTTOM)
+    draw = ImageDraw.Draw(img)
+
+    color = _color_for_team(name or "?")
+    margin = size * 0.14
+    draw.ellipse([margin, margin, size - margin, size - margin], fill=color)
+    draw.text(
+        (size / 2, size / 2),
+        _initials(name or "?"),
+        font=get_font(int(size * 0.34), bold=True),
+        fill=(16, 24, 32),
+        anchor="mm",
+    )
+    return _to_buffer(img, "avatar.png")
+
+
+def _wrap(draw, text, font, max_width):
+    words = text.split()
+    lines, current = [], ""
+    for word in words:
+        trial = f"{current} {word}".strip()
+        if draw.textlength(trial, font=font) > max_width and current:
+            lines.append(current)
+            current = word
+        else:
+            current = trial
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _to_buffer(img, name):
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    buffer.name = name
+    return buffer

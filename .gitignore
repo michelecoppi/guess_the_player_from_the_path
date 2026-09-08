@@ -8,3 +8,9 @@ __pycache__/
 # Batch di calciatori in staging, in attesa di import (scripts/import_players.py):
 # locali per costruzione, non fanno parte del dataset ufficiale finche' non sono importati.
 data/incoming/
+
+# Export JSON di scripts/migrate_firestore.py: dati utente reali, non va committato.
+backup/
+# Report di coverage locale (in CI si rigenera ad ogni run).
+.coverage
+htmlcov/
