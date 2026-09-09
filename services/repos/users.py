@@ -170,6 +170,9 @@ def delete_user_data(user_id):
         doc.reference.update({"solved_by": None, "solved_name": None})
 
     if snapshot.exists:
+        # Private duel documents also contain the participant's name and game history.
+        for duel in fs.db.collection("app_duels").where("members", "array_contains", user_id).stream():
+            duel.reference.delete()
         ref.delete()
         deleted["profile"] = 1
     logging.info(f"[PRIVACY] Dati utente {user_id} cancellati: {deleted}")

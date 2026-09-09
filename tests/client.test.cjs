@@ -1,5 +1,17 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+test("arena translations preserve all keys and interpolation placeholders", () => {
+  const { TEXT } = require("../webapp/arena.js");
+  const keys = Object.keys(TEXT.it).sort();
+  for (const language of ["en", "es"]) {
+    assert.deepEqual(Object.keys(TEXT[language]).sort(), keys);
+    for (const key of keys) {
+      assert.ok(TEXT[language][key].trim());
+      assert.deepEqual((TEXT[language][key].match(/\{\w+\}/g) || []).sort(),
+        (TEXT.it[key].match(/\{\w+\}/g) || []).sort(), `${language}.${key}`);
+    }
+  }
+});
 const { escapeHtml, initials, mergeProfile, squares, histogram,
         cabinetCounts, languageFromCode, weekNumber } = require("../webapp/client.js");
 test("untrusted names are escaped as text", () => {

@@ -41,6 +41,52 @@ pytestmark = pytest.mark.usefixtures("emulator_db")
 GAVE_UP = "gave-up"
 
 
+def test_arena_duplicate_submission_spends_one_attempt(emulator_db, monkeypatch):
+    from services import arena
+
+    firebase_service.user_ref(1).set({"first_name": "Anna", "points_totali": 42})
+    challenge = {"key": "pool:test", "career_path": [], "correct_answers": ["Paolo Maldini"],
+                 "answer": "Paolo Maldini", "difficulty": "easy"}
+    monkeypatch.setattr(arena.practice_content, "pick", lambda **kwargs: challenge)
+    current = arena.training(1, "next")
+    revision = current["session"]["revision"]
+    run_together(lambda _: arena.training(1, "guess", "Lionel Messi", revision), 4)
+    resumed = arena.training(1)
+    assert resumed["session"]["attempts"] == 1
+    assert firebase_service.get_user_data(1)["points_totali"] == 42
+
+
+def test_arena_second_seat_has_only_one_winner(emulator_db, monkeypatch):
+    from services import arena
+
+    for uid in range(1, 6):
+        firebase_service.user_ref(uid).set({"first_name": str(uid)})
+
+    def pick(exclude_keys=()):
+        return {"key": f"pool:{len(exclude_keys)}", "career_path": [],
+                "correct_answers": ["Paolo Maldini"], "answer": "Paolo Maldini", "difficulty": "easy"}
+
+    monkeypatch.setattr(arena.practice_content, "pick", pick)
+    code = arena.duel(1, "Anna", "create")["code"]
+    run_together(lambda n: arena.duel(n + 2, str(n), "join", code), 4)
+    doc = emulator_db.collection(arena.DUELS).document(code).get().to_dict()
+    assert len(doc["members"]) == len(doc["seats"]) == 2
+
+
+def test_app_event_winner_is_recorded_once(emulator_db, monkeypatch):
+    from services import app_events
+
+    day = "2026-09-09"
+    monkeypatch.setattr(app_events, "today_iso", lambda: day)
+    firebase_service.event_ref("test-week").set({"dates": [day], "type": "path", "daily_data": {
+        day: {"points": 2, "correct_answers": ["Paolo Maldini"]}
+    }})
+    run_together(lambda _: app_events.guess(1, "Anna", "test-week", day, "Paolo Maldini", 0), 4)
+    participant = firebase_service.get_event_participant("test-week", 1)
+    assert participant["points"] == 3
+    assert participant["daily_attempts"] == 1
+
+
 def run_together(call, times):
     """`times` chiamate davvero in parallelo, tutte contro lo stesso documento."""
     def guarded(n):

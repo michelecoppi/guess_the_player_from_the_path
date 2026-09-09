@@ -11,6 +11,31 @@ APP_URL = "https://example.com/app"
 
 
 @pytest.mark.parametrize("lang", SUPPORTED_LANGUAGES)
+def test_friend_invite_registers_then_opens_exact_duel(monkeypatch, lang):
+    import config
+
+    monkeypatch.setattr(config, "WEBAPP_URL", APP_URL)
+    registered = []
+
+    def save(uid, name, language):
+        registered.append(uid)
+        return {"language": lang, "created": True}
+
+    monkeypatch.setattr(start_handler, "save_user", save)
+    reply = AsyncMock()
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=42, first_name="A&B", language_code=lang),
+                             effective_chat=SimpleNamespace(type="private"),
+                             effective_message=SimpleNamespace(reply_text=reply))
+    code = "a" * 24
+    asyncio.run(start_handler.start(update, SimpleNamespace(args=["duel_" + code])))
+    assert registered == [42]
+    assert reply.await_count == 1
+    button = reply.call_args.kwargs["reply_markup"].inline_keyboard[0][0]
+    assert button.web_app.url == APP_URL + "?duel=" + code
+    assert button.text == t(lang, "app.duel")
+
+
+@pytest.mark.parametrize("lang", SUPPORTED_LANGUAGES)
 def test_app_is_first_and_chat_actions_remain_available(monkeypatch, lang):
     monkeypatch.setattr(keyboards, "WEBAPP_URL", APP_URL)
     rows = keyboards.menu_keyboard(lang).inline_keyboard

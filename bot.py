@@ -334,6 +334,16 @@ def client_strings(request: Request):
     return _static_response("strings.js", request, "text/javascript")
 
 
+@app.get("/app/arena.js")
+def client_arena(request: Request):
+    return _static_response("arena.js", request, "text/javascript")
+
+
+@app.get("/app/arena.css")
+def client_arena_style(request: Request):
+    return _static_response("arena.css", request, "text/css")
+
+
 def _webapp_user(payload, cost=1):
     """Chi sta chiamando, secondo la **sola** firma di initData.
 
@@ -409,6 +419,39 @@ def webapp_hint(payload: dict = Body(default={})):
     """Un indizio sulla sfida di oggi, allo stesso prezzo che si paga in chat."""
     user_id, user_data = _webapp_user(payload)
     return game.take_hint(user_id, _webapp_language(user_data))
+
+
+@app.post("/app/api/arena")
+def webapp_arena(payload: dict = Body(default={})):
+    from config import BOT_USERNAME
+    from services import app_events, arena
+    user_id, user = _webapp_user(payload, cost=2)
+    lang = _webapp_language(user)
+    mode, action = payload.get("mode"), payload.get("action", "get")
+    try:
+        if mode == "training":
+            return arena.training(user_id, action, payload.get("answer"), payload.get("revision"), lang)
+        if mode == "duel":
+            if action == "create" and (not BOT_USERNAME or not WEBAPP_URL):
+                raise arena.ArenaError("unavailable")
+            code = payload.get("code") or user.get("app_duel")
+            if action == "get" and not code:
+                return {"session": None}
+            result = arena.duel(user_id, user.get("first_name", "?"), action, code,
+                                payload.get("answer"), payload.get("revision"), lang)
+            result["invite_url"] = f"https://t.me/{BOT_USERNAME}?start=duel_{result['code']}" if BOT_USERNAME else None
+            return result
+        if mode == "events":
+            feedback = None
+            if action == "guess":
+                feedback = app_events.guess(user_id, user.get("first_name", "?"), payload.get("code"),
+                                            payload.get("day"), payload.get("answer"), payload.get("revision"))
+            elif action != "get":
+                raise arena.ArenaError("invalid")
+            return {**app_events.list_events(user_id, lang), "feedback": feedback}
+        raise arena.ArenaError("invalid")
+    except arena.ArenaError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
 
 
 @app.post("/app/api/calendar")

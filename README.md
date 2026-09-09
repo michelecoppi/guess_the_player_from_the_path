@@ -16,10 +16,45 @@ e mostra il pulsante per giocare; all'avvio il bot configura inoltre il pulsante
 fisso **Play** di Telegram. Le notifiche giornaliere degli utenti che le hanno
 attivate includono lo stesso accesso diretto. I testi sono disponibili in IT/ES/EN.
 
-Questa prima fase mantiene i comandi e gli inviti alle leghe. Profilo e progressi
-sono condivisi tra chat e mini app; eventi, allenamento e sfide nei gruppi restano
-accessibili dal bot. Senza URL configurato, gli inviti alla mini app non compaiono.
+Il centro **Gioca** della mini app include allenamento, eventi e duelli tra amici,
+con interfaccia responsive e testi IT/ES/EN. Profilo e progressi sono condivisi tra
+chat e mini app; i round nei gruppi restano accessibili dal bot. Senza URL
+configurato, gli inviti alla mini app non compaiono.
 Le modifiche diventano operative al deploy e al successivo avvio del servizio.
+
+### Allenamento, amici ed eventi nella mini app
+
+- **Allenamento:** cinque tentativi, confronto dopo un errore, soluzione a fine
+  partita o su richiesta e pulsante per il prossimo percorso. La sessione della
+  mini app si riprende riaprendo Allenamento, senza cambiare quella aperta in chat.
+  I calciatori vengono dal pool riservato o da giornate passate; non si guadagnano
+  punti, ma gli indovinati contribuiscono ai traguardi di allenamento.
+- **Sfida un amico:** cinque percorsi identici, tre tentativi per percorso e due
+  posti. Vince chi indovina più percorsi; a parità contano meno tentativi (un
+  percorso perso ne conta tre). La partita è asincrona, senza punti nella
+  classifica generale. Il pulsante Aggiorna recupera i progressi dell'avversario;
+  il confronto dei punteggi appare quando entrambi hanno finito. Il centro Gioca
+  riprende l'ultimo duello; un invito permette di riaprire anche quello precedente.
+  Gli inviti durano sette giorni e richiedono `BOT_USERNAME` e `PUBLIC_BASE_URL`.
+  Il link `/start duel_<codice>` registra anche un nuovo utente e gli presenta
+  il pulsante per aprire la partita nella mini app. Nessun messaggio è inviato
+  automaticamente agli amici.
+- **Eventi settimanali:** il centro mostra gli eventi attivi secondo il calendario
+  esistente, con descrizioni tradotte, scadenza, sfida e classifica. Supporta i tipi
+  `path`, `transfer_guess`, `career` e `father_son`; tentativi, punti e bonus sono
+  condivisi con il bot. Non modifica la programmazione degli eventi.
+
+L'endpoint `/app/api/arena` richiede la stessa firma Telegram degli altri endpoint.
+Le mosse di allenamento e duello controllano una revisione in transazione; gli
+eventi verificano giornata e numero di tentativi. Le soluzioni dei duelli si
+mostrano nel riepilogo solo dopo che entrambi hanno finito; gli alias accettati
+non vengono inviati al client. I duelli sono salvati in
+`app_duels`; `/forgetme DELETE` elimina anche i duelli a cui l'utente partecipa.
+La scadenza viene applicata dall'applicazione; per rimuovere automaticamente i
+documenti scaduti si può configurare il TTL Firestore sul campo `expires_at`.
+
+L'anteprima `python scripts/preview_webapp.py` include le nuove modalità con
+partite dimostrative in memoria. Non invia inviti reali né usa Firestore.
 
 Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. In chat
 privata **basta scrivere il nome**: non serve nessun comando (`/guess <nome>` continua a

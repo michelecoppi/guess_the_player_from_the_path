@@ -209,7 +209,9 @@ window.Telegram = { WebApp: {
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/app", response_class=HTMLResponse)
-async def page():
+async def page(lang: str | None = None):
+    if lang in ("it", "en", "es"):
+        STATE["user"]["language"] = lang
     with open(os.path.join(WEBAPP_DIR, "index.html"), encoding="utf-8") as f:
         html = f.read()
     shim = TELEGRAM_SHIM % (USER_ID, _lang())
@@ -238,6 +240,17 @@ async def client_strings():
     """Come sopra per le stringhe nelle tre lingue: senza, `L` resta indefinita e la
     pagina non disegna niente."""
     return _script("strings.js")
+
+
+@app.get("/app/arena.js")
+async def client_arena():
+    return _script("arena.js")
+
+
+@app.get("/app/arena.css")
+async def client_arena_css():
+    with open(os.path.join(WEBAPP_DIR, "arena.css"), encoding="utf-8") as f:
+        return Response(f.read(), media_type="text/css")
 
 
 @app.get("/privacy", response_class=HTMLResponse)
@@ -377,6 +390,10 @@ async def wear(payload: dict = Body(default={})):
 
 def main():
     import uvicorn
+
+    from scripts.preview_arena import install
+
+    install(app, STATE, _lang)
 
     catalogue = len(shop.all_items())
     print(f"Anteprima mini app su http://localhost:{PORT}/app")

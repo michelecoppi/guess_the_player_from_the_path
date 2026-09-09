@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Guess the Player</title>
+<link rel="stylesheet" href="/app/arena.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   /*
@@ -419,6 +420,7 @@
 <div id="root"><p class="error">…</p></div>
 <script src="/app/client.js"></script>
 <script src="/app/strings.js"></script>
+<script src="/app/arena.js"></script>
 <script>
 "use strict";
 
@@ -515,7 +517,10 @@ async function api(path, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(Object.assign({ initData }, body || {})),
   });
-  if (!response.ok) throw Object.assign(new Error("http"), { status: response.status });
+  if (!response.ok) {
+    const problem = await response.json().catch(() => ({}));
+    throw Object.assign(new Error("http"), { status: response.status, detail: problem.detail });
+  }
   return response.json();
 }
 
@@ -632,6 +637,11 @@ function hintBox(hints) {
 // ---------------------------------------------------------------------------
 
 function playTab() {
+  if (PlayerArena.mode) return PlayerArena.view();
+  return PlayerArena.home() + dailyPlayView();
+}
+
+function dailyPlayView() {
   const today = state.profile.today;
   if (!today.available) return `<div class="card center muted">${escapeHtml(L.none)}</div>`;
 
@@ -1241,6 +1251,7 @@ function syncMainButton() {
 }
 
 function wire() {
+  PlayerArena.wire();
   syncMainButton();
   document.querySelectorAll("[data-pin]").forEach(button => button.onclick = () => togglePin(button.dataset.pin));
   const openCabinet = document.getElementById("open-cabinet");
@@ -1657,7 +1668,11 @@ async function start() {
     await loadProfile();
   } catch (e) {
     showMessage(e.status === 404 ? L.notRegistered : L.error);
+    return;
   }
+  const duelCode = new URLSearchParams(window.location.search).get("duel") ||
+    ((tg.initDataUnsafe || {}).start_param || "").replace(/^duel_/, "");
+  if (/^[a-f0-9]{24}$/.test(duelCode)) PlayerArena.open("duel", duelCode);
 }
 
 start();
