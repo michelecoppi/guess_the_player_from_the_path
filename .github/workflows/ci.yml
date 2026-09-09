@@ -59,7 +59,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
 
       - name: Avvia l'emulatore Firestore
         run: |
