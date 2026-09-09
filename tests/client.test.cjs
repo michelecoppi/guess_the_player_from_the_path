@@ -65,3 +65,57 @@ test("showcase week survives a missing or odd identifier", () => {
   assert.equal(weekNumber(""), "");
   assert.equal(weekNumber(undefined), "");
 });
+
+/*
+  Parita' fra le lingue delle stringhe della mini app.
+
+  E' il gemello di tests/test_i18n_keys.py, che fa lo stesso controllo sui messaggi del bot.
+  Serve perche' una chiave che manca in una lingua non rompe niente: l'interfaccia scrive
+  "undefined" al posto della parola e va avanti, quindi il difetto arriva all'utente senza
+  passare da nessun errore.
+*/
+const strings = require("../webapp/strings.js");
+
+function flatten(value, prefix = "") {
+  const keys = [];
+  for (const [key, inner] of Object.entries(value)) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (inner && typeof inner === "object" && !Array.isArray(inner)) keys.push(...flatten(inner, path));
+    else keys.push(path);
+  }
+  return keys.sort();
+}
+
+for (const [name, table] of Object.entries(strings)) {
+  test(`${name}: every language has exactly the same keys`, () => {
+    const reference = flatten(table.it);
+    assert.ok(reference.length > 0, `${name}.it is empty`);
+    for (const lang of ["es", "en"]) {
+      assert.deepStrictEqual(flatten(table[lang]), reference, `${name}.${lang} diverges from ${name}.it`);
+    }
+  });
+
+  test(`${name}: no language is left with an untranslated placeholder`, () => {
+    for (const lang of Object.keys(table)) {
+      for (const [path, text] of Object.entries(table[lang])) {
+        if (typeof text === "string") assert.ok(text.trim().length > 0, `${name}.${lang}.${path} is empty`);
+      }
+    }
+  });
+
+  test(`${name}: the same {placeholders} appear in all three languages`, () => {
+    // Un {n} dimenticato in una traduzione lascia la parentesi graffa a schermo: il testo
+    // arriva all'utente cosi' com'e', senza che niente vada in errore.
+    const placeholders = text => (String(text).match(/\{\w+\}/g) || []).sort().join(",");
+    const walk = (obj, prefix = "") => Object.entries(obj).reduce((acc, [key, value]) => {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (value && typeof value === "object") Object.assign(acc, walk(value, path));
+      else acc[path] = placeholders(value);
+      return acc;
+    }, {});
+    const reference = walk(table.it);
+    for (const lang of ["es", "en"]) {
+      assert.deepStrictEqual(walk(table[lang]), reference, `${name}.${lang} does not use the same placeholders`);
+    }
+  });
+}

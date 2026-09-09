@@ -221,12 +221,23 @@ def _page(name):
         return HTMLResponse(f.read())
 
 
+def _script(name):
+    with open(os.path.join(WEBAPP_DIR, name), encoding="utf-8") as f:
+        return Response(f.read(), media_type="text/javascript")
+
+
 @app.get("/app/client.js")
 async def client_logic():
     """La stessa rotta del server vero (bot.py): senza, la pagina si carica a meta' perche'
     `index.html` cerca qui le funzioni pure che usa gia' nella prima riga di script."""
-    with open(os.path.join(WEBAPP_DIR, "client.js"), encoding="utf-8") as f:
-        return Response(f.read(), media_type="text/javascript")
+    return _script("client.js")
+
+
+@app.get("/app/strings.js")
+async def client_strings():
+    """Come sopra per le stringhe nelle tre lingue: senza, `L` resta indefinita e la
+    pagina non disegna niente."""
+    return _script("strings.js")
 
 
 @app.get("/privacy", response_class=HTMLResponse)

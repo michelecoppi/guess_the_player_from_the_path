@@ -320,6 +320,11 @@ def client_logic(request: Request):
     return _static_response("client.js", request, "text/javascript")
 
 
+@app.get("/app/strings.js")
+def client_strings(request: Request):
+    return _static_response("strings.js", request, "text/javascript")
+
+
 def _webapp_user(payload, cost=1):
     """Chi sta chiamando, secondo la **sola** firma di initData.
 
