@@ -39088,8 +39088,8 @@
           "league": "Championship",
           "start_year": 2002,
           "end_year": 2004,
-          "apps": 12,
-          "goals": 1
+          "apps": 0,
+          "goals": 0
         },
         {
           "team": "Cádiz",
@@ -39097,44 +39097,45 @@
           "league": "Segunda Division",
           "start_year": 2004,
           "end_year": 2006,
-          "apps": 15,
-          "goals": 2
-        },
-        {
-          "team": "Panetolikos",
-          "country": "Grecia",
-          "league": "Super League Greece",
-          "start_year": 2006,
-          "end_year": 2007,
-          "apps": 12,
-          "goals": 3
+          "apps": 0,
+          "goals": 0
         },
         {
           "team": "Plymouth Argyle",
           "country": "Inghilterra",
           "league": "Championship",
-          "start_year": 2007,
+          "start_year": 2006,
           "end_year": 2008,
-          "apps": 4,
-          "goals": 0
+          "apps": 13,
+          "goals": 1
         },
         {
           "team": "Wrexham",
           "country": "Inghilterra",
           "league": "League Two",
-          "start_year": 2008,
-          "end_year": 2008,
-          "apps": 6,
-          "goals": 1
+          "start_year": 2007,
+          "end_year": 2007,
+          "loan": true,
+          "apps": 3,
+          "goals": 0
         },
         {
           "team": "Haka",
           "country": "Finlandia",
           "league": "Veikkausliiga",
-          "start_year": 2009,
+          "start_year": 2008,
+          "end_year": 2009,
+          "apps": 7,
+          "goals": 0
+        },
+        {
+          "team": "Panetolikos",
+          "country": "Grecia",
+          "league": "Super League Greece 2",
+          "start_year": 2010,
           "end_year": 2010,
-          "apps": 25,
-          "goals": 6
+          "apps": 0,
+          "goals": 0
         }
       ],
       "practice_only": true
@@ -41588,7 +41589,7 @@
         {
           "team": "Melbourne Knights",
           "country": "Australia",
-          "league": "National Soccer League",
+          "league": "National Soccer League (Australia)",
           "start_year": 1993,
           "end_year": 1995,
           "apps": 48,
