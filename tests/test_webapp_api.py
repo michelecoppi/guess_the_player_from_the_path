@@ -217,12 +217,6 @@ def test_a_missing_archive_day_gives_nothing(firebase):
     assert webapp_api.build_archive_challenge(42, "2026-09-06") is None
 
 
-def test_the_autocomplete_list_is_sorted_and_without_duplicates():
-    names = webapp_api.player_names()
-    assert names == sorted(set(names))
-    assert "Lionel Messi" in names
-
-
 # ---------------------------------------------------------------------------
 # Il tentativo dalla mini app: stesse regole della chat, stessa card
 # ---------------------------------------------------------------------------

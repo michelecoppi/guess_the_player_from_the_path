@@ -85,7 +85,6 @@ from services.webapp_api import (
     build_profile,
     build_public_profile,
     play,
-    player_names,
 )
 from services.webapp_auth import user_id_from_init_data
 
@@ -284,17 +283,6 @@ async def webapp_public_profile(payload: dict = Body(default={})):
     if result is None:
         raise HTTPException(status_code=404, detail="profilo non disponibile")
     return result
-
-
-@app.post("/app/api/players")
-async def webapp_players(payload: dict = Body(default={})):
-    """I nomi per il completamento automatico del campo di risposta.
-
-    Non regala niente (sono tutte le schede del dataset, anche quelle che come sfida del
-    giorno non escono mai) ma toglie di mezzo il "l'ho scritto giusto?", che era il modo piu'
-    stupido di bruciare un tentativo."""
-    _webapp_user(payload)
-    return {"players": player_names()}
 
 
 @app.post("/app/api/guess")

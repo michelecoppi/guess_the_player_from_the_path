@@ -20,7 +20,7 @@ from services.dates import normalize_day, to_display, today_iso
 from services.difficulty import points_for_difficulty
 from services.hints import MAX_HINTS, build_hints
 from services.i18n import DEFAULT_LANGUAGE, difficulty_label
-from services.player_pool import _load_raw_players, get_player_by_id
+from services.player_pool import get_player_by_id
 from services.share import share_text, share_url
 
 MAX_LEAGUES_SHOWN = 5
@@ -315,20 +315,3 @@ def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols
     )
     result["share"] = {"text": text, "url": share_url(text)}
     return result
-
-
-# ---------------------------------------------------------------------------
-# Nomi per il completamento automatico
-# ---------------------------------------------------------------------------
-
-def player_names():
-    """I nomi del dataset, per il campo con i suggerimenti.
-
-    E' la cosa che nella mini app cambia di piu' la partita: sparisce il "l'ho scritto
-    giusto?" e sparisce il tentativo bruciato su un nome che il bot non conosce.
-
-    Non regala niente: sono **tutte** le schede, comprese quelle riservate all'allenamento e
-    quelle non verificate, quindi sapere che un nome e' nell'elenco non dice che sia la
-    risposta di oggi. Ordinati e senza duplicati per rendere la lista comprimibile e stabile
-    fra una chiamata e l'altra."""
-    return sorted({player["full_name"] for player in _load_raw_players() if player.get("full_name")})

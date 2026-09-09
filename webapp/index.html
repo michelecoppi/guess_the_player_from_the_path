@@ -94,24 +94,13 @@
   /* --- tentativi, come i quadratini della card condivisa --- */
   .squares { font-size: 20px; letter-spacing: 3px; }
 
-  /* --- campo di risposta con i suggerimenti --- */
+  /* --- campo di risposta --- */
   .guess-box { position: relative; }
   .guess-box input {
     width: 100%; padding: 13px 14px; border-radius: 13px;
     border: 1px solid var(--edge); background: var(--bg-secondary); color: var(--text);
     font-size: 16px; /* meno di 16px e iOS zooma da solo sul campo */
   }
-  .suggestions {
-    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 5;
-    background: var(--card); border: 1px solid var(--edge); border-radius: 13px;
-    overflow: hidden; max-height: 220px; overflow-y: auto;
-  }
-  .suggestions button {
-    display: block; width: 100%; text-align: left; background: none; border: 0;
-    padding: 11px 14px; border-bottom: 1px solid var(--edge);
-  }
-  .suggestions button:last-child { border-bottom: 0; }
-
   .btn {
     width: 100%; padding: 13px; border: 0; border-radius: 13px;
     background: var(--accent); color: var(--accent-text); font-size: 15px; font-weight: 700;
@@ -676,7 +665,6 @@ function clientLanguage() {
 const state = {
   tab: "play",
   profile: null,
-  players: null,       // nomi per i suggerimenti, caricati una volta sola
   calendar: null,
   archiveDay: null,    // giornata passata aperta dentro l'archivio
   feedback: null,      // esito dell'ultimo tentativo
@@ -794,7 +782,6 @@ function guessBox(disabled) {
   return `<div class="guess-box">
     <input id="answer" type="text" autocomplete="off" autocorrect="off" autocapitalize="words"
            placeholder="${escapeHtml(L.placeholder)}" ${disabled ? "disabled" : ""}>
-    <div id="suggestions" class="suggestions hidden"></div>
   </div>
   ${tg ? "" : `<button class="btn" id="submit" style="margin-top:10px" ${disabled ? "disabled" : ""}>${escapeHtml(L.guessBtn)}</button>`}`;
 }
@@ -1652,9 +1639,7 @@ function wire() {
 
   const input = document.getElementById("answer");
   if (input) {
-    input.oninput = () => suggest(input.value);
     input.onkeydown = event => { if (event.key === "Enter") submitGuess(); };
-    loadPlayers();
   }
 
   const submit = document.getElementById("submit");
@@ -1704,38 +1689,6 @@ function wire() {
       // invitare qualcuno, e non richiede di copiare un codice a mano.
       if (tg && tg.switchInlineQuery) tg.switchInlineQuery(button.dataset.invite, ["users", "groups"]);
       else toast(button.dataset.invite);
-    };
-  });
-}
-
-// --- suggerimenti sul campo di risposta ------------------------------------
-
-async function loadPlayers() {
-  if (state.players) return;
-  try {
-    const data = await api("/app/api/players");
-    state.players = data.players || [];
-  } catch (e) {
-    state.players = [];   // senza suggerimenti si gioca lo stesso, si scrive a mano
-  }
-}
-
-function suggest(text) {
-  const box = document.getElementById("suggestions");
-  if (!box) return;
-  const query = (text || "").trim().toLowerCase();
-  // Sotto i due caratteri la lista sarebbe mezzo dataset: non aiuta e copre la pagina.
-  if (query.length < 2 || !state.players) { box.classList.add("hidden"); return; }
-
-  const matches = state.players.filter(name => name.toLowerCase().includes(query)).slice(0, 8);
-  if (!matches.length) { box.classList.add("hidden"); return; }
-
-  box.innerHTML = matches.map(name => `<button type="button">${escapeHtml(name)}</button>`).join("");
-  box.classList.remove("hidden");
-  box.querySelectorAll("button").forEach((button, index) => {
-    button.onclick = () => {
-      document.getElementById("answer").value = matches[index];
-      box.classList.add("hidden");
     };
   });
 }
