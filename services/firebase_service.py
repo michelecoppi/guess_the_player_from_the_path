@@ -22,6 +22,7 @@ import copy
 import logging
 import os
 import time
+from threading import Lock
 from typing import Any
 
 import firebase_admin
@@ -78,12 +79,15 @@ class _LazyFirestoreClient:
     (es. nei test) senza dover avere per forza le credenziali configurate."""
 
     _client = None
+    _lock = Lock()
 
     def _ensure(self):
         if _LazyFirestoreClient._client is None:
-            if not firebase_admin._apps:
-                firebase_admin.initialize_app(_credentials())
-            _LazyFirestoreClient._client = firestore.client()
+            with _LazyFirestoreClient._lock:
+                if _LazyFirestoreClient._client is None:
+                    if not firebase_admin._apps:
+                        firebase_admin.initialize_app(_credentials())
+                    _LazyFirestoreClient._client = firestore.client()
         return _LazyFirestoreClient._client
 
     def __getattr__(self, name):

@@ -1844,7 +1844,7 @@ async function submitGuess() {
     // Lo stato del server e' l'unica verita' sui tentativi rimasti: si ricarica invece di
     // contarli qui, altrimenti due schede aperte si raccontano numeri diversi.
     if (state.archiveDay) await openArchiveDay(state.archiveDay.day, { keepFeedback: true });
-    else await loadProfile({ keepFeedback: true });
+    else await loadProfile({ keepFeedback: true, lightweight: result.status === "wrong" });
   } catch (e) {
     toast(L.error);
     if (submit) submit.disabled = false;
@@ -1858,7 +1858,7 @@ async function askHint() {
       haptic("warning");
       // L'indizio non si tiene qui: torna dal profilo dentro `hints.taken`, cosi' c'e'
       // anche riaprendo l'app domani mattina.
-      await loadProfile({ keepFeedback: true });
+      await loadProfile({ keepFeedback: true, lightweight: true });
     } else {
       toast(L.noHints);
     }
@@ -1992,7 +1992,9 @@ async function loadCalendar() {
 async function loadProfile(options) {
   const feedback = state.feedback;
   const hint = state.hint;
-  state.profile = await api("/app/api/me");
+  const lightweight = !!(options && options.lightweight && state.profile);
+  const profile = await api("/app/api/me", lightweight ? { lightweight: true } : undefined);
+  state.profile = lightweight ? Object.assign({}, state.profile, profile) : profile;
   // La lingua e' quella scelta con /language, non quella del client: chi ha impostato lo
   // spagnolo nel bot deve trovarlo anche qui.
   L = T[state.profile.language] || L;

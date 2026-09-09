@@ -8,6 +8,19 @@ da indovinare, con classifiche, statistiche personali, eventi tematici a tempo e
 
 ## Come si gioca
 
+### Transizione alla mini app Telegram
+
+Con `PUBLIC_BASE_URL` configurato, `/start`, `/menu` e `/help` invitano ad aprire
+la mini app nelle chat private. `/app` registra anche chi arriva per la prima volta
+e mostra il pulsante per giocare; all'avvio il bot configura inoltre il pulsante
+fisso **Play** di Telegram. Le notifiche giornaliere degli utenti che le hanno
+attivate includono lo stesso accesso diretto. I testi sono disponibili in IT/ES/EN.
+
+Questa prima fase mantiene i comandi e gli inviti alle leghe. Profilo e progressi
+sono condivisi tra chat e mini app; eventi, allenamento e sfide nei gruppi restano
+accessibili dal bot. Senza URL configurato, gli inviti alla mini app non compaiono.
+Le modifiche diventano operative al deploy e al successivo avvio del servizio.
+
 Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. In chat
 privata **basta scrivere il nome**: non serve nessun comando (`/guess <nome>` continua a
 funzionare). Tre tentativi al giorno, i punti dipendono dalla difficolta', chi indovina per

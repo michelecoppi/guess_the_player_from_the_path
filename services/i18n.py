@@ -104,7 +104,7 @@ TRANSLATIONS = {
         "paysupport.sent": "✅ Richiesta inviata al gestore. Riceverai la risposta in questa chat.",
         "paysupport.error": "❌ L'assistenza acquisti non è disponibile in questo momento. Riprova più tardi.",
 
-        "start.welcome_new": "Benvenuto, {name}! Il tuo account è stato creato. fai /help per vedere la lista dei comandi disponibili.",
+        "start.welcome_new": "Benvenuto, {name}! Il tuo account è pronto: scegli come giocare dal menu qui sotto.",
         "start.welcome_back": "Ciao di nuovo, {name}!",
 
         "help.message": (
@@ -301,7 +301,10 @@ TRANSLATIONS = {
         "menu.notify": "🔔 Notifiche",
         "menu.language": "🌐 Lingua",
         "menu.help": "❓ Aiuto",
-        "menu.app": "📱 Apri l'app",
+        "menu.app": "📱 Gioca nella mini app",
+        "app.intro": "Apri la mini app per giocare la sfida di oggi, usare gli indizi e vedere classifiche e archivio. Ritrovi lo stesso profilo e gli stessi progressi della chat. I comandi restano disponibili.",
+        "app.daily_invite": "La sfida di oggi ti aspetta nella mini app: tocca il pulsante qui sotto per giocare.",
+        "cmd.app": "Apri la mini app e gioca",
         "menu.back": "⬅️ Menu",
 
         # --- descrizioni dei comandi nel menu di Telegram (set_my_commands) ---
@@ -531,7 +534,7 @@ TRANSLATIONS = {
         "paysupport.sent": "✅ Solicitud enviada al responsable. Recibirás la respuesta en este chat.",
         "paysupport.error": "❌ La asistencia de compras no está disponible en este momento. Inténtalo más tarde.",
 
-        "start.welcome_new": "¡Bienvenido, {name}! Tu cuenta ha sido creada. Usa /help para ver la lista de comandos disponibles.",
+        "start.welcome_new": "¡Bienvenido, {name}! Tu cuenta está lista: elige cómo jugar en el menú de abajo.",
         "start.welcome_back": "¡Hola de nuevo, {name}!",
 
         "help.message": (
@@ -726,7 +729,10 @@ TRANSLATIONS = {
         "menu.notify": "🔔 Notificaciones",
         "menu.language": "🌐 Idioma",
         "menu.help": "❓ Ayuda",
-        "menu.app": "📱 Abrir la app",
+        "menu.app": "📱 Jugar en la mini app",
+        "app.intro": "Abre la mini app para jugar el reto de hoy, usar pistas y ver las clasificaciones y el archivo. Encontrarás el mismo perfil y progreso del chat. Los comandos siguen disponibles.",
+        "app.daily_invite": "El reto de hoy te espera en la mini app: toca el botón de abajo para jugar.",
+        "cmd.app": "Abre la mini app y juega",
         "menu.back": "⬅️ Menú",
 
         # --- descripciones de los comandos (set_my_commands) ---
@@ -956,7 +962,7 @@ TRANSLATIONS = {
         "paysupport.sent": "✅ Your request was sent to the operator. You will receive the reply in this chat.",
         "paysupport.error": "❌ Purchase support is unavailable right now. Please try again later.",
 
-        "start.welcome_new": "Welcome, {name}! Your account has been created. Use /help to see the list of available commands.",
+        "start.welcome_new": "Welcome, {name}! Your account is ready: choose how to play from the menu below.",
         "start.welcome_back": "Hi again, {name}!",
 
         "help.message": (
@@ -1151,7 +1157,10 @@ TRANSLATIONS = {
         "menu.notify": "🔔 Notifications",
         "menu.language": "🌐 Language",
         "menu.help": "❓ Help",
-        "menu.app": "📱 Open the app",
+        "menu.app": "📱 Play in the mini app",
+        "app.intro": "Open the mini app to play today’s challenge, use hints and view leaderboards and the archive. Your profile and progress are shared with the chat. Commands remain available.",
+        "app.daily_invite": "Today’s challenge is waiting in the mini app: tap the button below to play.",
+        "cmd.app": "Open the mini app and play",
         "menu.back": "⬅️ Menu",
 
         # --- command descriptions (set_my_commands) ---

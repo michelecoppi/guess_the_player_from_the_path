@@ -33,17 +33,18 @@ PROFILE_SEARCH_SIZE = 10
 MAX_ARCHIVE_ATTEMPTS = 3
 
 
-def build_profile(user_id, day_iso=None, lang=None):
+def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social=True):
     """Tutto quello che serve alla schermata principale, in una risposta sola. None se
     l'utente non esiste ancora (non ha mai fatto /start)."""
-    user = firebase_service.get_user_data(user_id)
+    if user is None:
+        user = firebase_service.get_user_data(user_id)
     if not user:
         return None
 
     day_iso = day_iso or today_iso()
     lang = lang or user.get("language") or DEFAULT_LANGUAGE
 
-    return {
+    profile = {
         "language": lang,
         "user": _user_summary(user),
         # I cosmetici comprati in negozio: colori del tema, cornice, titolo, distintivo.
@@ -57,9 +58,12 @@ def build_profile(user_id, day_iso=None, lang=None):
                      "max": trophies.MAX_PINNED},
         "today": _today_summary(user, day_iso, lang),
         "distribution": _distribution(user),
-        "leaderboard": _leaderboard(user_id),
-        "leagues": _leagues(user, user_id),
     }
+    # Wrong guesses and hints do not change standings; refresh only game state.
+    if include_social:
+        profile["leaderboard"] = _leaderboard(user_id)
+        profile["leagues"] = _leagues(user, user_id)
+    return profile
 
 
 def _user_summary(user):

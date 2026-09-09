@@ -2,10 +2,12 @@ import base64
 import logging
 import os
 from contextlib import asynccontextmanager
+from time import perf_counter
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
-from telegram import LabeledPrice, Update
+from starlette.concurrency import run_in_threadpool
+from telegram import LabeledPrice, MenuButtonWebApp, Update, WebAppInfo
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
@@ -15,7 +17,7 @@ from telegram.ext import (
     filters,
 )
 
-from config import BOT_TOKEN, BOT_USERNAME, GENERATION_SECRET, WEBHOOK_URL
+from config import BOT_TOKEN, BOT_USERNAME, GENERATION_SECRET, WEBAPP_URL, WEBHOOK_URL
 from handlers.admin_handler import (
     admin_block,
     admin_blocked,
@@ -93,6 +95,7 @@ logging.basicConfig(level=logging.INFO)
 
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_handler(CommandHandler("start", start))
+telegram_app.add_handler(CommandHandler("app", start))
 telegram_app.add_handler(CommandHandler("guess", guess))
 telegram_app.add_handler(CommandHandler("events", events))
 telegram_app.add_handler(CommandHandler("show", show))
@@ -177,6 +180,13 @@ async def _register_bot_commands():
         await telegram_app.bot.set_my_commands(bot_commands("en"))
     except Exception as e:
         logging.warning(f"Impossibile impostare il menu comandi: {e}")
+    if WEBAPP_URL:
+        try:
+            await telegram_app.bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(text="Play", web_app=WebAppInfo(url=WEBAPP_URL))
+            )
+        except Exception as e:
+            logging.warning(f"Impossibile impostare il pulsante mini app: {e}")
 
 
 @asynccontextmanager
@@ -191,6 +201,20 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.middleware("http")
+async def measure_webapp_request(request: Request, call_next):
+    if not request.url.path.startswith("/app/api/"):
+        return await call_next(request)
+    started = perf_counter()
+    response = await call_next(request)
+    elapsed_ms = (perf_counter() - started) * 1000
+    response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+    route = request.scope.get("route")
+    logging.info("[WEBAPP] %s status=%s duration_ms=%.1f",
+                 getattr(route, "path", "unknown"), response.status_code, elapsed_ms)
+    return response
 
 @app.get("/")
 async def root():
@@ -226,7 +250,7 @@ def _static(name):
 
 
 @app.get("/app", response_class=HTMLResponse)
-async def webapp_page():
+def webapp_page():
     """La mini app Telegram: una pagina sola."""
     return HTMLResponse(_static("index.html"))
 
@@ -271,14 +295,17 @@ def _webapp_language(user_data):
 
 
 @app.post("/app/api/me")
-async def webapp_me(payload: dict = Body(default={})):
+def webapp_me(payload: dict = Body(default={})):
     """Profilo, sfida di oggi, classifica, leghe e istogramma: una risposta sola."""
     user_id, user_data = _webapp_user(payload)
-    return build_profile(user_id, lang=_webapp_language(user_data))
+    return build_profile(
+        user_id, lang=_webapp_language(user_data), user=user_data,
+        include_social=payload.get("lightweight") is not True,
+    )
 
 
 @app.post("/app/api/profile/public")
-async def webapp_public_profile(payload: dict = Body(default={})):
+def webapp_public_profile(payload: dict = Body(default={})):
     _, viewer = _webapp_user(payload)
     result = build_public_profile(payload.get("profile_id"), lang=_webapp_language(viewer))
     if result is None:
@@ -287,7 +314,7 @@ async def webapp_public_profile(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/profile/search")
-async def webapp_search_profiles(payload: dict = Body(default={})):
+def webapp_search_profiles(payload: dict = Body(default={})):
     """Cerca profili per nome senza esporre il documento utente completo."""
     _webapp_user(payload)
     query = payload.get("query")
@@ -297,7 +324,7 @@ async def webapp_search_profiles(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/guess")
-async def webapp_guess(payload: dict = Body(default={})):
+def webapp_guess(payload: dict = Body(default={})):
     """Un tentativo dalla mini app: la sfida di oggi, o una giornata passata con `day`.
 
     Le regole sono quelle di services/game.py, cioe' **le stesse** che applica la chat: qui
@@ -314,14 +341,14 @@ async def webapp_guess(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/hint")
-async def webapp_hint(payload: dict = Body(default={})):
+def webapp_hint(payload: dict = Body(default={})):
     """Un indizio sulla sfida di oggi, allo stesso prezzo che si paga in chat."""
     user_id, user_data = _webapp_user(payload)
     return game.take_hint(user_id, _webapp_language(user_data))
 
 
 @app.post("/app/api/calendar")
-async def webapp_calendar(payload: dict = Body(default={})):
+def webapp_calendar(payload: dict = Body(default={})):
     """Il calendario delle giornate passate, con com'e' andata a chi guarda."""
     user_id, user_data = _webapp_user(payload)
     lang = _webapp_language(user_data)
@@ -335,7 +362,7 @@ async def webapp_calendar(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/league")
-async def webapp_league(payload: dict = Body(default={})):
+def webapp_league(payload: dict = Body(default={})):
     """Crea una lega, entra o esce. Le regole (limiti, lunghezza del nome, codici) stanno in
     services/leagues.py: le stesse dei comandi /league_*."""
     user_id, user_data = _webapp_user(payload)
@@ -356,7 +383,7 @@ async def webapp_league(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/shop")
-async def webapp_shop(payload: dict = Body(default={})):
+def webapp_shop(payload: dict = Body(default={})):
     """La vetrina: la **stessa** che disegna il comando /shop (services/shop.py)."""
     _, user_data = _webapp_user(payload)
     return shop.catalogue_for(user_data, _webapp_language(user_data))
@@ -369,7 +396,7 @@ async def webapp_shop_buy(payload: dict = Body(default={})):
     La pagina non riceve mai un prezzo da mandare indietro: qui si guarda solo **quale**
     oggetto vuole, e quanto costa lo dice il catalogo. Se il prezzo arrivasse dal client,
     chiunque potrebbe comprare la collezione completa per una Stella."""
-    user_id, user_data = _webapp_user(payload)
+    user_id, user_data = await run_in_threadpool(_webapp_user, payload)
     item_id = payload.get("item")
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
@@ -390,7 +417,7 @@ async def webapp_shop_buy(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/shop/equip")
-async def webapp_shop_equip(payload: dict = Body(default={})):
+def webapp_shop_equip(payload: dict = Body(default={})):
     """Indossa un oggetto gia' posseduto. La regola sta in services/shop.py: qui si passa
     solo l'utente autenticato dalla firma di initData, mai un id arrivato dal client."""
     user_id, user_data = _webapp_user(payload)
@@ -403,7 +430,7 @@ async def webapp_shop_equip(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/shop/look")
-async def webapp_shop_look(payload: dict = Body(default={})):
+def webapp_shop_look(payload: dict = Body(default={})):
     user_id, user_data = _webapp_user(payload)
     action = payload.get("action")
     name = payload.get("name")
@@ -421,7 +448,7 @@ async def webapp_shop_look(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/shop/history")
-async def webapp_shop_history(payload: dict = Body(default={})):
+def webapp_shop_history(payload: dict = Body(default={})):
     user_id, user_data = _webapp_user(payload)
     lang = _webapp_language(user_data)
     rows = []
@@ -434,7 +461,7 @@ async def webapp_shop_history(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/card")
-async def webapp_result_card(payload: dict = Body(default={})):
+def webapp_result_card(payload: dict = Body(default={})):
     """La figurina dell'ultimo risultato, come data URI.
 
     Torna in JSON e non come immagine servita da un URL perche' l'autenticazione della mini
@@ -460,7 +487,7 @@ async def webapp_result_card(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/trophies/pin")
-async def webapp_pin_trophies(payload: dict = Body(default={})):
+def webapp_pin_trophies(payload: dict = Body(default={})):
     """Quali trofei stanno sul profilo. La regola su cosa si puo' appendere sta in
     services/trophies.py: qui arriva una lista di codici dal client, e un codice non e' una
     prova di aver vinto niente."""

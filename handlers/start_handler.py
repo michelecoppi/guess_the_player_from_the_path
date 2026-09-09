@@ -1,7 +1,9 @@
+from html import escape
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from handlers.keyboards import menu_keyboard
+from handlers.keyboards import app_invitation, menu_keyboard
 from handlers.league_handler import DEEP_LINK_PREFIX, league_join
 from services.firebase_service import save_user
 from services.i18n import resolve_language, t
@@ -22,7 +24,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Il menu arriva subito insieme al benvenuto: prima l'unico modo di scoprire i comandi
     # era leggere /help e ricopiarli a mano.
     await update.effective_message.reply_text(
-        t(lang, key, name=user.first_name) + "\n\n" + t(lang, "menu.title"),
+        "\n\n".join(filter(None, [t(lang, key, name=escape(user.first_name)), app_invitation(lang), t(lang, "menu.title")])),
         reply_markup=menu_keyboard(lang),
         parse_mode="HTML",
     )

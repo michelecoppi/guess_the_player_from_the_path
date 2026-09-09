@@ -12,6 +12,7 @@ from datetime import timedelta
 from telegram import Bot
 
 from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
+from handlers.keyboards import app_keyboard
 from services import firebase_service
 from services.daily_challenge import invalidate as invalidate_daily_cache
 from services.daily_generator import ensure_daily_buffer
@@ -117,9 +118,12 @@ async def _broadcast(reference_day, yesterday_player, current_event, monthly_res
                     position=winner["position"], username=winner["username"], points=winner["monthly_points"],
                 )
         text += t(lang, "job.feedback_line")
+        keyboard = app_keyboard(lang)
+        if keyboard:
+            text += "\n\n" + t(lang, "app.daily_invite")
 
         try:
-            await get_bot().send_message(chat_id=chat_id, text=text)
+            await get_bot().send_message(chat_id=chat_id, text=text, **({"reply_markup": keyboard} if keyboard else {}))
             sent += 1
             await asyncio.sleep(0.05)
         except Exception as e:

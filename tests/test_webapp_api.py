@@ -82,6 +82,35 @@ def test_the_profile_carries_the_numbers_shown_by_the_commands(firebase):
     assert profile["user"]["trophies"] == 2
 
 
+def test_profile_reuses_authenticated_user(firebase, monkeypatch):
+    def unexpected_read(*args, **kwargs):
+        pytest.fail("The authenticated user must not be read twice")
+
+    monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", unexpected_read)
+    profile = webapp_api.build_profile(42, day_iso=DAY, user=firebase["user"])
+    assert profile["user"]["points"] == 120
+    assert profile["leaderboard"]
+    assert profile["leagues"]
+
+
+def test_lightweight_profile_skips_social_queries_but_refreshes_game(firebase, monkeypatch):
+    full = webapp_api.build_profile(42, day_iso=DAY)
+
+    def unexpected_read(*args, **kwargs):
+        pytest.fail("Game refresh must not query standings or leagues")
+
+    for name in ("get_top_users", "get_league", "get_league_leaderboard"):
+        monkeypatch.setattr(webapp_api.firebase_service, name, unexpected_read)
+    firebase["user"]["daily_attempts"] = 3
+    fresh = webapp_api.build_profile(42, day_iso=DAY, include_social=False)
+    assert "leaderboard" not in fresh
+    assert "leagues" not in fresh
+    assert fresh["today"]["attempts_left"] == 0
+    assert full["today"]["attempts_left"] == 1
+    assert {**full, **fresh}["leagues"] == full["leagues"]
+    assert "correct_answers" not in json.dumps(fresh)
+
+
 def test_today_is_marked_solved_only_for_the_current_day(firebase):
     solved = webapp_api.build_profile(42, day_iso=DAY)["today"]
     assert solved["solved"] is True

@@ -68,7 +68,19 @@ def legal_buttons(lang):
     ]
 
 
-def menu_keyboard(lang):
+def app_keyboard(lang):
+    if not WEBAPP_URL:
+        return None
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(t(lang, "menu.app"), web_app=WebAppInfo(url=WEBAPP_URL))]
+    ])
+
+
+def app_invitation(lang):
+    return t(lang, "app.intro") if WEBAPP_URL else ""
+
+
+def menu_keyboard(lang, *, include_app=True):
     # La soluzione sta accanto a "Gioca": sono le due facce della stessa sfida, quella di
     # oggi da giocare e quella di ieri da scoprire.
     rows = [
@@ -81,13 +93,15 @@ def menu_keyboard(lang):
     ]
     if legal_buttons(lang):
         rows.append(legal_buttons(lang))
-    if WEBAPP_URL:
-        # La mini app e' un di piu': se non e' configurata il menu resta identico a prima.
-        rows.insert(0, [InlineKeyboardButton(t(lang, "menu.app"), web_app=WebAppInfo(url=WEBAPP_URL))])
+    if WEBAPP_URL and include_app:
+        rows.insert(0, list(app_keyboard(lang).inline_keyboard[0]))
     return InlineKeyboardMarkup(rows)
 
 
 def bot_commands(lang):
-    return [BotCommand(command, t(lang, key)) for command, key in COMMAND_KEYS]
+    keys = list(COMMAND_KEYS)
+    if WEBAPP_URL:
+        keys.insert(1, ("app", "cmd.app"))
+    return [BotCommand(command, t(lang, key)) for command, key in keys]
 
 
