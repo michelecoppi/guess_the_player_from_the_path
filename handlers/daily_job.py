@@ -8,29 +8,18 @@ del giorno dopo risulti sballato.
 import asyncio
 import logging
 
-from telegram import Bot
 from telegram.error import Forbidden, RetryAfter
 
-from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
+from config import ADMIN_TELEGRAM_IDS
 from handlers.keyboards import app_keyboard
 from services import broadcast_store, firebase_service, monthly_closure, task_queue, work_receipts
+from services.alerts import get_bot
 from services.daily_challenge import invalidate as invalidate_daily_cache
 from services.daily_generator import ensure_daily_buffer
 from services.daily_stats import solve_percent
 from services.dates import now_italy, shift_iso, to_display, today_iso
 from services.event_generator import maybe_generate_event
 from services.i18n import DEFAULT_LANGUAGE, content_text, month_label, t
-
-_bot = None
-
-
-def get_bot():
-    """Il client Telegram si crea al primo utilizzo, come il client Firestore: cosi' il
-    modulo si puo' importare (e testare) senza avere BOT_TOKEN configurato."""
-    global _bot
-    if _bot is None:
-        _bot = Bot(BOT_TOKEN)
-    return _bot
 
 
 async def update_daily_challenge():
@@ -130,6 +119,11 @@ async def _broadcast(reference_day, yesterday_player, current_event, monthly_res
             if status != "claimed":
                 if status == "uncertain":
                     logging.error("Notification delivery uncertain: %s", receipt)
+                    await _notify_admins(
+                        f"⚠️ Notifica del {notification_day} interrotta a meta' per l'utente "
+                        f"{user['user_id']}: puo' essere gia' partita, quindi non viene riprovata. "
+                        f"Ricevuta: {receipt}."
+                    )
                 continue
         lang = user.get("language", DEFAULT_LANGUAGE)
         player_label = yesterday_player or t(lang, "job.player_fallback")

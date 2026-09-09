@@ -229,3 +229,43 @@ def test_cloud_task_names_and_duplicate_producer(monkeypatch):
     task = calls[0]["request"]["task"]
     assert "/queues/broadcast/tasks/" in task["name"]
     assert task["http_request"]["headers"]["X-Task-Secret"] == config.TASK_SECRET
+
+
+def test_an_interrupted_update_reaches_an_admin(server, monkeypatch):
+    """La ricevuta `uncertain` e' il solo guasto che nessuno vedrebbe mai.
+
+    La richiesta torna 200, l'utente non riceve niente e non viene sollevata nessuna
+    eccezione: senza questo avviso resterebbe una riga di logging.error dentro Cloud Run,
+    che si va a cercare solo se si sa gia' di doverlo fare."""
+    sent = []
+    monkeypatch.setattr(config, "ADMIN_TELEGRAM_IDS", [7])
+    monkeypatch.setattr(server.alerts, "ADMIN_TELEGRAM_IDS", [7])
+    monkeypatch.setattr(server.alerts, "get_bot",
+                        lambda: SimpleNamespace(send_message=AsyncMock(side_effect=lambda **kw: sent.append(kw))))
+    monkeypatch.setattr(work_receipts, "claim", lambda key, **kw: "uncertain")
+
+    response = request(server, "/internal/telegram-update",
+                       json={"update_id": 55, "message": {"message_id": 1, "date": 0,
+                                                          "chat": {"id": 3, "type": "private"},
+                                                          "from": {"id": 42, "is_bot": False, "first_name": "T"}}},
+                       headers={"X-Task-Secret": server.TASK_SECRET})
+
+    assert response.status_code == 200 and response.json() == {"status": "uncertain"}
+    assert len(sent) == 1 and sent[0]["chat_id"] == 7
+    assert "55" in sent[0]["text"] and "42" in sent[0]["text"]
+
+
+def test_a_normal_update_does_not_wake_an_admin(server, monkeypatch):
+    """Se ogni guasto diventasse un messaggio, il canale degli avvisi smetterebbe di voler
+    dire 'guarda questo'. Qui l'update passa: nessun avviso."""
+    sent = []
+    monkeypatch.setattr(server.alerts, "ADMIN_TELEGRAM_IDS", [7])
+    monkeypatch.setattr(server.alerts, "get_bot",
+                        lambda: SimpleNamespace(send_message=AsyncMock(side_effect=lambda **kw: sent.append(kw))))
+    monkeypatch.setattr(server.telegram_app, "process_update", AsyncMock())
+    monkeypatch.setattr(work_receipts, "claim", lambda key, **kw: "claimed")
+    monkeypatch.setattr(work_receipts, "finish", lambda key: None)
+
+    assert request(server, "/internal/telegram-update", json={"update_id": 56},
+                   headers={"X-Task-Secret": server.TASK_SECRET}).status_code == 200
+    assert sent == []

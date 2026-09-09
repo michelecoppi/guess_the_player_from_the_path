@@ -88,7 +88,16 @@ from handlers.start_handler import start
 from handlers.support_handler import paysupport
 from handlers.top_users_handler import leaderboard_callback, top
 from handlers.training_handler import training, training_callback
-from services import firebase_service, game, monthly_closure, shop, task_queue, trophies, work_receipts
+from services import (
+    alerts,
+    firebase_service,
+    game,
+    monthly_closure,
+    shop,
+    task_queue,
+    trophies,
+    work_receipts,
+)
 from services import leagues as league_rules
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
@@ -583,6 +592,15 @@ async def consume_telegram_update(payload: dict, x_task_secret: str = Header(def
         raise HTTPException(status_code=503, detail="Update in progress")
     if state == "uncertain":
         logging.error("Update %s interrupted: manual reconciliation required", update.update_id)
+        # Nessuno se ne accorgerebbe altrimenti: la richiesta torna 200, l'utente non riceve
+        # niente e non c'e' nessun errore da nessuna parte. E' il solo guasto del bot che
+        # richiede per forza un intervento umano, quindi e' il solo che vale un messaggio.
+        await alerts.notify_admins(
+            f"⚠️ Update {update.update_id} interrotto a meta'"
+            + (f" (utente {user.id})" if user else "")
+            + ". Il tentativo puo' essere gia' stato consumato, quindi non viene riprovato: "
+            "va riconciliato a mano dai log e dallo storico."
+        )
         return {"status": state}
     if state == "claimed":
         async with asyncio.timeout(150):
