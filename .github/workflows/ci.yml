@@ -46,5 +46,37 @@ jobs:
       - name: Controlla integrita e salute del dataset calciatori
         run: python scripts/dataset_report.py --strict
 
+      # Le transazioni (bonus al primo che indovina, consegna di un acquisto in Stelle,
+      # ricevute degli update) non si provano su un finto: un finto fa succedere quello che
+      # gli abbiamo detto di far succedere, quindi non si accorgerebbe di una transazione
+      # scritta male. Qui gira un Firestore vero, che gira sulla JVM.
+      #
+      # setup-gcloud e non la gcloud gia' presente sul runner: quella e' installata da apt e
+      # rifiuta `components install`. Se questo passo fallisce, i test delle transazioni non
+      # si saltano in silenzio - la fixture in tests/conftest.py fallisce quando c'e' CI.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Avvia l'emulatore Firestore
+        run: |
+          gcloud components install cloud-firestore-emulator --quiet
+          nohup gcloud emulators firestore start --host-port=127.0.0.1:8571 > /tmp/firestore.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -s -o /dev/null http://127.0.0.1:8571/; then
+              echo "emulatore pronto"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "l'emulatore non e' partito entro 60 secondi"
+          cat /tmp/firestore.log
+          exit 1
+
       - name: Esegui i test (con coverage)
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8571
         run: pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70
