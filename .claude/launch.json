@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mini app (anteprima cosmetici)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["scripts/preview_webapp.py"],
+      "port": 8888
+    }
+  ]
+}

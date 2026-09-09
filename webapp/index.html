@@ -248,6 +248,171 @@
   @media (max-width: 350px) { .shop-grid { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { .avatar-wrap .ring.spin { animation: none; } .shop-item { transition: none; } }
 
+  /* Shop: compact navigation, collectible covers and scoped theme-aware surfaces. */
+  .shop-shell { max-width:1120px; margin:0 auto; --shop-surface:color-mix(in srgb,var(--card) 70%,var(--bg)); }
+  .shop-shell .shop-hero { border:0; border-radius:0; padding:16px 2px 8px; margin:0 0 12px; background:none; color:var(--text); }
+  .shop-shell .shop-heading { position:relative; z-index:1; max-width:76%; }
+  .shop-shell .shop-kicker { font-size:9px; letter-spacing:.16em; color:var(--muted); font-weight:700; }
+  .shop-shell .shop-kicker span { color:var(--accent); }
+  .shop-shell .shop-hero h1 { font-size:clamp(29px,7vw,46px); font-weight:850; letter-spacing:-.055em; line-height:1.03; margin:16px 0 12px; max-width:380px; }
+  .shop-shell .shop-hero p { font-size:12px; line-height:1.6; color:var(--muted); margin:0; max-width:360px; }
+  .shop-pitch-art { position:absolute; right:-32px; top:22px; width:145px; height:180px; border:1px solid color-mix(in srgb,var(--accent) 35%,transparent); border-radius:14px; transform:rotate(-18deg); background:linear-gradient(150deg,color-mix(in srgb,var(--accent) 9%,transparent),transparent); }
+  .pitch-circle { position:absolute; width:62px; height:62px; border:1px solid color-mix(in srgb,var(--accent) 35%,transparent); border-radius:50%; left:40px; top:59px; }
+  .pitch-line { position:absolute; left:0; right:0; top:89px; border-top:1px solid color-mix(in srgb,var(--accent) 35%,transparent); }
+  .pitch-ball { position:absolute; right:23px; top:16px; color:var(--accent); font-size:54px; line-height:1; }
+  .shop-trust { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0 12px; margin-top:17px; position:relative; z-index:1; }
+  .shop-trust details { font-size:10px; color:var(--muted); max-width:100%; }
+  .shop-trust summary { cursor:pointer; padding:8px 0; list-style:none; }
+  .shop-trust summary span { opacity:.8; }
+  .shop-trust details[open] { flex-basis:100%; }
+  .shop-shell .shop-trust .legal-links { padding:0; gap:12px; justify-content:flex-start; }
+  .shop-shell .shop-trust .legal-links a { color:var(--muted); font-size:10px; min-height:36px; }
+  .shop-shell .shop-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:4px; gap:3px; background:var(--shop-surface); border:1px solid var(--edge); border-radius:15px; margin:0 0 16px; }
+  .shop-shell .shop-tabs button { display:flex; flex-direction:column; gap:3px; align-items:center; justify-content:center; border:0; border-radius:11px; padding:8px 2px; font-size:11px; font-weight:650; color:var(--muted); background:transparent; min-height:58px; }
+  .shop-shell .shop-tabs button[aria-pressed="true"] { color:var(--accent-text); background:var(--accent); box-shadow:0 3px 12px #0002; }
+  .shop-tab-icon { font-size:20px; line-height:1; font-weight:400; }
+  .shop-shell .shop-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; margin:0 0 12px; }
+  .shop-shell .shop-filters select { width:100%; background:var(--card); border-color:var(--edge); font-size:11px; border-radius:9px; padding:8px; }
+  /* La tendina di un <select> la disegna il browser, non noi: con lo sfondo trasparente la
+     apriva bianca e ci scriveva sopra il colore del tema, che sui temi scuri e' bianco.
+     Le voci vogliono i due colori scritti a mano, e devono venire dal tema indossato -
+     cosi' funzionano sia sui temi scuri sia su Ghiaccio e Carta ingiallita. */
+  .shop-controls select option { background-color: var(--card); color: var(--text); }
+  .shop-shell .shop-filters label { grid-column:1 / -1; font-size:11px; min-height:32px; }
+  .shop-shell .shop-filters input[type="checkbox"] { accent-color:var(--accent); }
+  .shop-shell .shop-shortcuts { gap:7px; padding:0 1px 12px; scrollbar-width:none; }
+  .shop-shell .shop-shortcuts::-webkit-scrollbar { display:none; }
+  .shop-shell .shop-shortcuts a { font-size:11px; font-weight:600; background:transparent; padding:10px 14px; border-radius:30px; }
+  .shop-shell .shop-shortcuts a:hover { border-color:var(--accent); }
+  .shop-shell .shop-section { padding:0; margin:16px 0 28px; background:none; border:0; }
+  .shop-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  .shop-shell .shop-section h2 { margin:0; font-size:16px; color:var(--text); text-transform:none; letter-spacing:-.025em; font-weight:750; }
+  .shop-section-heading > span { font-size:11px; color:var(--muted); border:1px solid var(--edge); border-radius:20px; min-width:28px; text-align:center; padding:3px 6px; }
+  .shop-shell .shop-grid { gap:12px; align-items:stretch; }
+  .shop-shell .shop-item { border-radius:18px; padding:0; gap:0; background:var(--shop-surface); border:1px solid var(--edge); overflow:hidden; box-shadow:0 5px 18px #0001; }
+  .shop-shell .shop-item.worn { border-color:var(--accent); }
+  .shop-shell .shop-artwork { position:relative; padding:8px; }
+  .shop-shell .shop-stage { min-height:175px; border-radius:12px; gap:10px; padding:28px 10px 36px; background:radial-gradient(ellipse at 50% 25%,color-mix(in srgb,var(--accent) 10%,var(--bg)),var(--bg)); }
+  .shop-shell .shop-stage .preview-caption { display:none; }
+  .shop-shell .shop-stage .preview-name { font-size:11px; opacity:.85; }
+  .shop-shell .shop-stage .avatar-wrap { transform:scale(1.15); margin:8px 0; }
+  .shop-shell .shop-stage .emoji-preview { font-size:30px; }
+  .shop-shell .shop-stage .title-tag { font-size:11px; }
+  .shop-shell .mini-pitch { width:110px; height:55px; }
+  .shop-shell .mini-pitch::after { top:16px; }
+  .shop-preview-trigger { position:absolute; bottom:16px; right:16px; border:1px solid #ffffff40; background:#101824; color:#f1f5fb; border-radius:30px; min-height:44px; padding:7px 12px; font:inherit; font-size:11px; font-weight:600; cursor:pointer; }
+  .shop-preview-trigger span { margin-left:6px; }
+  .shop-product-head { padding:10px 12px 6px; }
+  .shop-product-kind { display:block; color:var(--muted); font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.13em; margin-bottom:6px; }
+  .shop-shell .shop-item .nm { font-size:14px; line-height:1.3; letter-spacing:-.02em; font-weight:750; }
+  .shop-shell .shop-item .ds { padding:0 12px; font-size:11px; }
+  .shop-product-details summary { cursor:pointer; color:var(--muted); padding:8px 0; min-height:36px; font-size:10px; }
+  .shop-product-details p { margin:4px 0 10px; }
+  .shop-product-details .pack-contents { margin-bottom:8px; }
+  .shop-product-details .pack-contents span { font-size:10px; }
+  .shop-completion { border-left:2px solid var(--accent); padding-left:8px; }
+  .shop-unlocked { color:var(--accent); }
+  .shop-product-actions { padding:10px 12px 12px; display:grid; gap:6px; align-content:end; }
+  .shop-shell .shop-product-actions .btn { margin:0; font-size:12px; border-radius:10px; font-weight:700; min-height:44px; }
+  .shop-shell .shop-product-actions .tag { font-size:11px; padding:2px 0; }
+  .shop-shell .featured .shop-stage { min-height:235px; }
+  .shop-shell .featured .nm { font-size:19px; }
+  .shop-shell .featured .shop-product-head { padding-top:12px; }
+  @media (max-width:899px) {
+    .shop-shell #shelf-collections .shop-grid { display:grid; grid-auto-flow:column; grid-auto-columns:86%; grid-template-columns:none; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; padding:0 2px 10px; }
+    .shop-shell #shelf-collections .shop-grid::-webkit-scrollbar { display:none; }
+    .shop-shell #shelf-collections .shop-item { scroll-snap-align:start; }
+  }
+  @media (min-width:650px) {
+    .shop-shell .shop-heading { max-width:65%; }
+    .shop-shell .shop-pitch-art { right:55px; width:190px; }
+    .shop-shell .shop-tabs button { flex-direction:row; gap:9px; min-height:48px; font-size:13px; }
+    .shop-shell .shop-filters { grid-template-columns:180px 180px 1fr; }
+    .shop-shell .shop-filters label { grid-column:auto; justify-content:flex-end; }
+    .shop-shell .shop-grid:not(.wide) { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  }
+  @media (min-width:900px) { .shop-shell .shop-grid.wide { grid-template-columns:repeat(2,minmax(0,1fr)); } .shop-shell #shelf-collections .shop-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  /* --- trofei appesi al profilo (services/trophies.py) --- */
+  .trophy-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; flex-basis: 100%; }
+  .trophy-tag {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+    border: 1px solid var(--edge); border-left: 3px solid var(--plate, var(--accent));
+    background: var(--bg-secondary); border-radius: 4px; padding: 4px 9px 4px 7px;
+  }
+  .trophy-tag .medal { font-size: 14px; line-height: 1; flex: 0 0 auto; }
+  .trophy-tag .plate-name { font-size: 12px; font-weight: 700; color: var(--plate, var(--text)); overflow-wrap: anywhere; }
+  .trophy-tag .plate-detail { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .trophy-tag.pickable { cursor: pointer; font: inherit; text-align: left; opacity: .5; }
+  .trophy-tag[aria-pressed="true"] { opacity: 1; border-color: var(--plate, var(--accent)); background: var(--track); }
+  .trophy-tag[aria-pressed="true"]::after { content: "\2713"; font-size: 11px; color: var(--plate, var(--accent)); margin-left: 1px; }
+  .trophy-cabinet { display: flex; flex-direction: column; gap: 8px; }
+  .trophy-cabinet .trophy-tags { margin: 0; }
+
+  /* --- la bacheca a schermo intero --- */
+  .cabinet-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .cabinet-medals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .cabinet-medal { background: var(--bg-secondary); border-radius: 12px; padding: 10px 12px; border-left: 3px solid var(--plate); }
+  .cabinet-medal .value { font-size: 24px; font-weight: 700; line-height: 1.1; }
+  .cabinet-medal .label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cabinet-filters { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
+  .cabinet-filters::-webkit-scrollbar { display: none; }
+  .cabinet-filters button {
+    flex: 0 0 auto; border: 1px solid var(--edge); background: var(--card); color: var(--muted);
+    border-radius: 22px; padding: 8px 13px; font: inherit; font-size: 12px; min-height: 40px;
+  }
+  .cabinet-filters button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .cabinet-year { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--muted); margin: 16px 0 8px; }
+  .cabinet-list { display: flex; flex-direction: column; gap: 6px; }
+  .cabinet-row {
+    display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 11px; align-items: center;
+    width: 100%; text-align: left; font: inherit; color: var(--text); min-height: 56px;
+    background: var(--card); border: 1px solid var(--edge); border-left: 3px solid var(--plate);
+    border-radius: 0 12px 12px 0; padding: 9px 11px;
+  }
+  .cabinet-row .medal { font-size: 21px; line-height: 1; text-align: center; }
+  .cabinet-row .nm { display: block; font-size: 14px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+  .cabinet-row .ds { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .cabinet-row .pin { font-size: 11px; color: var(--muted); border: 1px solid var(--edge); border-radius: 20px; padding: 5px 9px; white-space: nowrap; }
+  .cabinet-row[aria-pressed="true"] { background: var(--track); }
+  .cabinet-row[aria-pressed="true"] .pin { color: var(--plate); border-color: var(--plate); }
+  .cabinet-empty { color: var(--muted); font-size: 14px; padding: 24px 0; text-align: center; }
+  .cabinet-pinned { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 0 8px; border-bottom: 1px solid var(--edge); }
+  .cabinet-pinned .cap { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); }
+  @media (min-width: 620px) { .cabinet-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* --- rarita', numero di maglia, festeggiamento --- */
+  .rarity { font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; border: 1px solid var(--rare-edge); color: var(--rare-edge); }
+  .shop-artwork .rarity { position: absolute; top: 16px; left: 16px; z-index: 1; background: #0d1420cc; }
+  .shirt { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--muted); margin-right: 4px; }
+  .theme-shot { width: 100%; max-width: 190px; border-radius: 10px; overflow: hidden; font-size: 9px; line-height: 1.35; text-align: left; border: 1px solid var(--shot-edge); }
+  .theme-shot .bar { display: flex; justify-content: space-between; padding: 6px 8px 4px; font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; }
+  .theme-shot .stop { display: flex; gap: 6px; align-items: center; padding: 3px 8px; }
+  .theme-shot .stop i { width: 4px; height: 4px; border-radius: 50%; display: block; flex: 0 0 4px; }
+  .theme-shot .box { margin: 4px 6px; border-radius: 7px; padding: 4px 0; border: 1px solid var(--shot-edge); }
+  .theme-shot .cta { margin: 5px 6px 7px; border-radius: 6px; padding: 5px; text-align: center; font-weight: 700; font-size: 8.5px; }
+  /* La figurina in miniatura: le stesse tre finiture che disegna services/path_image.py. */
+  .fig-mini { position: relative; width: 104px; aspect-ratio: 4/5; border-radius: 9px; overflow: hidden;
+    background: var(--paper); color: var(--ink); display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 7px; isolation: isolate; }
+  .fig-mini .n { font-size: 10px; opacity: .7; letter-spacing: .05em; }
+  .fig-mini .sq { display: flex; gap: 4px; }
+  .fig-mini .sq i { width: 13px; height: 13px; border-radius: 3px; background: #ffffff40; display: block; }
+  .fig-mini .sq i.on { background: var(--glow); }
+  .fig-mini .sq i.off { background: transparent; box-shadow: inset 0 0 0 1.5px #ffffff55; }
+  .fig-mini .sc { font-size: 17px; font-weight: 800; }
+  .fig-night::after { content: ""; position: absolute; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse 62% 46% at 50% -6%, var(--glow), transparent 72%); opacity: .5; }
+  .fig-foil::after { content: ""; position: absolute; inset: -30%; z-index: -1;
+    background: conic-gradient(#ff9ce3, #9ce3ff, #c3ff9c, #ffe89c, #ffb3d9, #ff9ce3);
+    opacity: .45; mix-blend-mode: color-dodge; filter: blur(7px); }
+  .fig-grain::after { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .5;
+    background-image: repeating-linear-gradient(0deg, #ffffff14 0 1px, transparent 1px 3px); }
+  .result-card { margin-top: 12px; }
+  .result-card img { width: 100%; max-width: 260px; border-radius: 14px; display: block; margin: 0 auto; }
+  .celebration { position: fixed; inset: 0; pointer-events: none; z-index: 40; }
+  @media (prefers-reduced-motion: reduce) { .celebration { display: none; } }
+  .showcase-strip { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .showcase-strip .when { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .toast {
     position: fixed; left: 14px; right: 14px; bottom: calc(84px + env(safe-area-inset-bottom));
     background: var(--card); border: 1px solid var(--edge); border-radius: 13px;
@@ -292,6 +457,19 @@ const T = {
     yourNumbers: "I tuoi numeri", total: "Punti totali", monthly: "Punti del mese",
     streak: "Striscia", best: "Record", guessed: "Indovinati", recovered: "Recuperate",
     trophies: "Trofei", distribution: "In quanti tentativi la prendi", noGames: "Nessuna partita ancora.",
+    cabinet: "La tua bacheca", cabinetHint: "Scegline fino a {n} da tenere sul profilo.",
+    cabinetOpen: "Apri la bacheca", cabinetTitle: "Bacheca", cabinetBack: "Indietro",
+    showCard: "Vedi la figurina", cardHint: "Tieni premuto sull'immagine per salvarla o inoltrarla.",
+    cabinetGold: "Primi posti", cabinetSilver: "Secondi", cabinetBronze: "Terzi",
+    cabinetAll: "Tutti", cabinetEvents: "Eventi", cabinetMonthly: "Mensili",
+    cabinetNone: "Nessun trofeo con questo filtro.",
+    cabinetPin: "Appendi", cabinetPinned: "Sul profilo",
+    showcaseTitle: "Vetrina della settimana", showcaseWeek: "Settimana {n}",
+    rarity: { free: "Compreso", earned: "Guadagnato", common: "Comune", rare: "Raro", collector: "Da collezione" },
+    completeWith: "Si ottiene completando", completeMissing: "Manca ancora",
+    welcomeOnly: "Solo come primo acquisto", podiumOnly: "Si vince sul podio",
+    noTrophies: "Nessun trofeo ancora. Si vincono sul podio di un evento o della classifica del mese.",
+    pinned: "Sul profilo", pinSaved: "Bacheca aggiornata", pinFull: "Puoi tenerne al massimo {n}.",
     leaderboard: "Classifica", myLeagues: "Le tue leghe", noLeagues: "Non fai parte di nessuna lega.",
     createLeague: "Crea una lega", leagueName: "Nome della lega", create: "Crea",
     joinLeague: "Entra con un codice", leagueCode: "Codice", join: "Entra",
@@ -310,7 +488,7 @@ const T = {
     shopCosmetics: "Solo estetica",
     shopPreview: "Anteprima",
     shopBuy: "Acquista",
-    shopCollections: "Tre modi di vivere il calcio",
+    shopCollections: "Modi di vivere il calcio",
     shopCollectionNav: "Collezioni",
     shopSet: "Look coordinato · 5 oggetti",
     privacy: "Privacy",
@@ -318,7 +496,8 @@ const T = {
     shopFair: "Solo roba da guardare: niente punti, niente tentativi in più, niente indizi gratis.",
     shopSections: {
       theme: "Temi", frame: "Cornici", title: "Titoli",
-      badge: "Distintivi", squares: "Quadratini", bundle: "Pacchetti",
+      badge: "Distintivi", squares: "Quadratini", number: "Numeri",
+      celebration: "Festeggiamenti", card: "Figurine", bundle: "Pacchetti",
     },
     shopWear: "Indossa", shopWorn: "👕 Addosso", shopOwned: "✅ Già tuo",
     shopThanks: "Grazie! È tuo.", shopWaiting: "Consegna in corso…",
@@ -351,6 +530,19 @@ const T = {
     yourNumbers: "Tus números", total: "Puntos totales", monthly: "Puntos del mes",
     streak: "Racha", best: "Récord", guessed: "Acertados", recovered: "Recuperados",
     trophies: "Trofeos", distribution: "En cuántos intentos aciertas", noGames: "Todavía sin partidas.",
+    cabinet: "Tu vitrina", cabinetHint: "Elige hasta {n} para llevar en el perfil.",
+    cabinetOpen: "Abrir la vitrina", cabinetTitle: "Vitrina", cabinetBack: "Atrás",
+    showCard: "Ver el cromo", cardHint: "Mantén pulsada la imagen para guardarla o reenviarla.",
+    cabinetGold: "Primeros puestos", cabinetSilver: "Segundos", cabinetBronze: "Terceros",
+    cabinetAll: "Todos", cabinetEvents: "Eventos", cabinetMonthly: "Mensuales",
+    cabinetNone: "Ningún trofeo con este filtro.",
+    cabinetPin: "Colgar", cabinetPinned: "En el perfil",
+    showcaseTitle: "Escaparate de la semana", showcaseWeek: "Semana {n}",
+    rarity: { free: "Incluido", earned: "Ganado", common: "Común", rare: "Raro", collector: "De colección" },
+    completeWith: "Se consigue completando", completeMissing: "Todavía falta",
+    welcomeOnly: "Solo como primera compra", podiumOnly: "Se gana en el podio",
+    noTrophies: "Todavía ningún trofeo. Se ganan en el podio de un evento o de la clasificación del mes.",
+    pinned: "En el perfil", pinSaved: "Vitrina actualizada", pinFull: "Puedes llevar como máximo {n}.",
     leaderboard: "Clasificación", myLeagues: "Tus ligas", noLeagues: "No estás en ninguna liga.",
     createLeague: "Crear una liga", leagueName: "Nombre de la liga", create: "Crear",
     joinLeague: "Entrar con un código", leagueCode: "Código", join: "Entrar",
@@ -369,7 +561,7 @@ const T = {
     shopCosmetics: "Solo estética",
     shopPreview: "Vista previa",
     shopBuy: "Comprar",
-    shopCollections: "Tres formas de vivir el fútbol",
+    shopCollections: "Formas de vivir el fútbol",
     shopCollectionNav: "Colecciones",
     shopSet: "Look a juego · 5 objetos",
     privacy: "Privacidad",
@@ -377,7 +569,8 @@ const T = {
     shopFair: "Solo cosas para mirar: ni puntos, ni intentos de más, ni pistas gratis.",
     shopSections: {
       theme: "Temas", frame: "Marcos", title: "Títulos",
-      badge: "Distintivos", squares: "Cuadrados", bundle: "Packs",
+      badge: "Distintivos", squares: "Cuadrados", number: "Números",
+      celebration: "Celebraciones", card: "Cromos", bundle: "Packs",
     },
     shopWear: "Ponérselo", shopWorn: "👕 Puesto", shopOwned: "✅ Ya es tuyo",
     shopThanks: "¡Gracias! Ya es tuyo.", shopWaiting: "Entregando…",
@@ -410,6 +603,19 @@ const T = {
     yourNumbers: "Your numbers", total: "Total points", monthly: "Points this month",
     streak: "Streak", best: "Best", guessed: "Guessed", recovered: "Recovered",
     trophies: "Trophies", distribution: "How many attempts it takes you", noGames: "No games yet.",
+    cabinet: "Your cabinet", cabinetHint: "Pick up to {n} to keep on your profile.",
+    cabinetOpen: "Open the cabinet", cabinetTitle: "Cabinet", cabinetBack: "Back",
+    showCard: "See the card", cardHint: "Press and hold the image to save or forward it.",
+    cabinetGold: "First places", cabinetSilver: "Seconds", cabinetBronze: "Thirds",
+    cabinetAll: "All", cabinetEvents: "Events", cabinetMonthly: "Monthly",
+    cabinetNone: "No trophy matches this filter.",
+    cabinetPin: "Pin", cabinetPinned: "On the profile",
+    showcaseTitle: "This week's window", showcaseWeek: "Week {n}",
+    rarity: { free: "Included", earned: "Earned", common: "Common", rare: "Rare", collector: "Collector" },
+    completeWith: "Comes from completing", completeMissing: "Still missing",
+    welcomeOnly: "First purchase only", podiumOnly: "Won on the podium",
+    noTrophies: "No trophies yet. They are won on the podium of an event or of the monthly leaderboard.",
+    pinned: "On the profile", pinSaved: "Cabinet updated", pinFull: "You can keep at most {n}.",
     leaderboard: "Leaderboard", myLeagues: "Your leagues", noLeagues: "You're not in any league.",
     createLeague: "Create a league", leagueName: "League name", create: "Create",
     joinLeague: "Join with a code", leagueCode: "Code", join: "Join",
@@ -428,7 +634,7 @@ const T = {
     shopCosmetics: "Cosmetics only",
     shopPreview: "Preview",
     shopBuy: "Buy",
-    shopCollections: "Three ways to live football",
+    shopCollections: "Ways to live football",
     shopCollectionNav: "Collections",
     shopSet: "Matching look · 5 items",
     privacy: "Privacy",
@@ -436,7 +642,8 @@ const T = {
     shopFair: "Things to look at only: no points, no extra attempts, no free hints.",
     shopSections: {
       theme: "Themes", frame: "Frames", title: "Titles",
-      badge: "Badges", squares: "Squares", bundle: "Packs",
+      badge: "Badges", squares: "Squares", number: "Numbers",
+      celebration: "Celebrations", card: "Cards", bundle: "Packs",
     },
     shopWear: "Wear it", shopWorn: "👕 Worn", shopOwned: "✅ Yours",
     shopThanks: "Thank you! It's yours.", shopWaiting: "Delivering…",
@@ -621,7 +828,7 @@ function feedbackBox() {
   if (!f) return "";
   if (f.status === "correct") {
     return `<div class="feedback ok"><b>${escapeHtml(L.correct)}</b> ${f.points_awarded} ${escapeHtml(L.gotPoints)}.
-      ${f.share ? `<button class="btn ghost" style="margin-top:10px" id="share">${escapeHtml(L.share)}</button>` : ""}</div>`;
+      ${f.share ? `<button class="btn ghost" style="margin-top:10px" id="share">${escapeHtml(L.share)}</button>${resultCard()}` : ""}</div>`;
   }
   if (f.status === "wrong") {
     // `answer` c'e' solo per le giornate d'archivio: quella di oggi non si rivela mai,
@@ -633,7 +840,7 @@ function feedbackBox() {
     return `<div class="feedback no">
       <b>${escapeHtml(L.wrong)}</b> ${tail}
       ${comparison(f.comparison)}
-      ${f.share ? `<button class="btn ghost" style="margin-top:10px" id="share">${escapeHtml(L.share)}</button>` : ""}
+      ${f.share ? `<button class="btn ghost" style="margin-top:10px" id="share">${escapeHtml(L.share)}</button>${resultCard()}` : ""}
     </div>`;
   }
   if (f.status === "refused") return `<div class="feedback no">${escapeHtml(L.already)}</div>`;
@@ -735,6 +942,13 @@ const PUBLIC_TEXT = {
   en: {open:"Open profile", title:"Player profile", wearing:"Current look", numbers:"Game statistics", back:"Back to leaderboard", unavailable:"Profile unavailable. It may have been deleted.", retry:"Retry", hint:"Tap a name to see their profile and look.", example:"Result symbols · example"}
 };
 function publicText() { return PUBLIC_TEXT[state.profile.language] || PUBLIC_TEXT.en; }
+// Il numero di maglia sta **prima** del nome e il distintivo dopo: sono due cose diverse -
+// uno e' un'identita' (lo porti addosso), l'altro un ornamento - e messi dalla stessa parte
+// diventerebbero una fila di simboli senza ordine.
+function shirtTag(number) {
+  return number ? `<span class="shirt">${escapeHtml(number)}</span>` : "";
+}
+
 function profileLink(row) {
   const name = (row.badge ? row.badge + " " : "") + row.name;
   return Number.isSafeInteger(row.profile_id) && row.profile_id > 0
@@ -763,7 +977,7 @@ function publicProfileView() {
   // Scope the visitor's theme to this panel; the viewer's equipped look is untouched.
   const vars=Object.entries(THEME_VARS).map(([key,variable]) => `${variable}:${theme[key] || (key === "pattern" ? "none" : "initial")}`).join(";");
   return back + `<section class="public-profile" style="${escapeHtml(vars)}" aria-label="${escapeHtml(text.title)}">
-    <div class="card profile-hero">${avatar(u.name,worn.frame)}<div><div class="preview-caption">${escapeHtml(text.title)}</div><h1 id="public-heading" tabindex="-1">${escapeHtml(u.name)} ${escapeHtml(worn.badge || "")}</h1>${worn.title.label ? `<div class="title-tag" style="color:${escapeHtml(worn.title.color)}">${escapeHtml(worn.title.label)}</div>` : ""}<p>${u.trophies} ${escapeHtml(L.trophies)}</p></div></div>
+    <div class="card profile-hero">${avatar(u.name,worn.frame)}<div><div class="preview-caption">${escapeHtml(text.title)}</div><h1 id="public-heading" tabindex="-1">${shirtTag(worn.number)}${escapeHtml(u.name)} ${escapeHtml(worn.badge || "")}</h1>${worn.title.label ? `<div class="title-tag" style="color:${escapeHtml(worn.title.color)}">${escapeHtml(worn.title.label)}</div>` : ""}<p>${u.trophies} ${escapeHtml(L.trophies)}</p>${trophyTags(p.trophies)}</div></div>
     <div class="card"><h2>${escapeHtml(text.numbers)}</h2><div class="grid">${tile(u.points,L.total)}${tile(u.monthly_points,L.monthly)}${tile(u.players_guessed,L.guessed)}${tile(u.best_streak,L.best)}${tile(u.streak,L.streak)}${tile(u.archive_solved,L.recovered)}</div></div>
     <div class="card"><h2>${escapeHtml(text.wearing)}</h2><div class="pack-contents">${p.wearing.map(item => `<span>${escapeHtml(L.shopSections[item.kind])} · ${escapeHtml(item.name)}</span>`).join("")}</div><p class="shop-note">${escapeHtml(text.example)}</p><div class="emoji-preview">${escapeHtml(worn.squares.wrong + worn.squares.correct + worn.squares.unused)}</div></div>
   </section>`;
@@ -792,13 +1006,14 @@ function statsTab() {
   const title = worn.title || {};
   const badge = worn.badge ? `${worn.badge} ` : "";
 
-  return `<div class="card" style="display:flex;align-items:center;gap:14px">
+  return `<div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       ${avatar(u.name, worn.frame)}
-      <div>
-        <h1 style="font-size:19px">${escapeHtml(badge)}${escapeHtml(u.name)}</h1>
+      <div style="min-width:0;flex:1 1 150px">
+        <h1 style="font-size:19px">${shirtTag(worn.number)}${escapeHtml(u.name)} ${escapeHtml(worn.badge || "")}</h1>
         ${title.label ? `<div class="title-tag" style="color:${escapeHtml(title.color || "var(--accent)")}">${escapeHtml(title.label)}</div>` : ""}
         <div class="muted" style="font-size:13px">${u.points} ${escapeHtml(L.points)} · ${u.trophies} ${escapeHtml(L.trophies)}</div>
       </div>
+      ${trophyTags((state.profile.trophies || {}).pinned)}
     </div>
     <div class="card"><h2>${escapeHtml(L.yourNumbers)}</h2>
       <div class="grid">
@@ -807,8 +1022,126 @@ function statsTab() {
         ${tile(u.players_guessed, L.guessed)}${tile(u.archive_solved, L.recovered)}
       </div>
     </div>
+    <div class="card"><div class="cabinet-head"><h2 style="margin:0">${escapeHtml(L.cabinet)}</h2>
+      <span class="muted" style="font-size:13px">${u.trophies} ${escapeHtml(L.trophies)}</span></div>
+      ${u.trophies ? `<button class="btn ghost" style="margin-top:10px" id="open-cabinet">${escapeHtml(L.cabinetOpen)}</button>`
+        : `<p class="muted" style="margin:8px 0 0">${escapeHtml(L.noTrophies)}</p>`}</div>
     <div class="card"><h2>${escapeHtml(L.distribution)}</h2>${bars}</div>
     ${rows ? `<div class="card"><h2>${escapeHtml(L.leaderboard)}</h2><p class="shop-note">${escapeHtml(publicText().hint)}</p>${rows}</div>` : ""}`;
+}
+
+function trophyTag(tag, options) {
+  const picking = options && options.picking;
+  const tagName = picking ? "button" : "span";
+  const attrs = picking
+    ? ` type="button" class="trophy-tag pickable" data-pin="${escapeHtml(tag.code)}" aria-pressed="${!!options.chosen}"`
+    : ` class="trophy-tag"`;
+  return `<${tagName}${attrs} style="--plate:${escapeHtml(tag.color)}">
+      <span class="medal" aria-hidden="true">${escapeHtml(tag.medal)}</span>
+      <span class="plate-name">${escapeHtml(tag.label)}</span>
+      <span class="plate-detail">${escapeHtml(tag.detail)}</span>
+    </${tagName}>`;
+}
+
+function trophyTags(tags) {
+  if (!tags || !tags.length) return "";
+  return `<div class="trophy-tags">${tags.map(tag => trophyTag(tag)).join("")}</div>`;
+}
+
+// La bacheca. E' una schermata sua e non una card in mezzo alle statistiche: con quattro
+// trofei una fila di targhe funziona, con quaranta diventa un muro in cui il primo posto
+// vinto due anni fa sta in mezzo a dieci terzi posti. Qui il conto sta in alto, i filtri
+// tolgono il grosso, e i trofei sono raggruppati per anno - che e' il modo in cui uno se li
+// ricorda.
+function cabinetData() {
+  return state.profile.trophies || {};
+}
+
+function chosenCodes() {
+  return state.pinning || (cabinetData().pinned || []).map(tag => tag.code);
+}
+
+function cabinetCounts(all) {
+  return [1, 2, 3].map(position => all.filter(tag => tag.position === position).length);
+}
+
+function cabinetView() {
+  const data = cabinetData();
+  const all = data.all || [];
+  const max = data.max || 3;
+  const chosen = chosenCodes();
+  const back = `<button class="btn ghost" id="close-cabinet">← ${escapeHtml(L.cabinetBack)}</button>`;
+  if (!all.length) {
+    return back + `<div class="card"><h2>${escapeHtml(L.cabinetTitle)}</h2><p class="muted" style="margin:0">${escapeHtml(L.noTrophies)}</p></div>`;
+  }
+
+  const counts = cabinetCounts(all);
+  const medals = [["#e8b647", counts[0], L.cabinetGold], ["#c3ccd6", counts[1], L.cabinetSilver],
+                  ["#c98652", counts[2], L.cabinetBronze]];
+  const filters = [["all", L.cabinetAll], ["1", "🥇"], ["2", "🥈"], ["3", "🥉"],
+                   ["event", L.cabinetEvents], ["monthly", L.cabinetMonthly]];
+  const active = state.cabinetFilter || "all";
+  const matches = tag => active === "all" || String(tag.position) === active || tag.kind === active;
+  const shown = all.filter(matches);
+
+  // Raggruppati per anno, dal piu' recente: dentro l'anno resta l'ordine della bacheca, che
+  // mette prima i piazzamenti migliori.
+  const years = [];
+  for (const tag of shown) {
+    const last = years[years.length - 1];
+    if (last && last.year === tag.year) last.items.push(tag);
+    else years.push({year: tag.year, items: [tag]});
+  }
+  years.sort((a, b) => Number(b.year) - Number(a.year));
+
+  const pinned = (data.pinned || []).map(tag => trophyTag(tag)).join("");
+  return back + `<section aria-label="${escapeHtml(L.cabinetTitle)}">
+    <div class="card">
+      <div class="cabinet-head"><h1 style="font-size:23px;margin:0">${escapeHtml(L.cabinetTitle)}</h1>
+        <span class="muted" style="font-size:13px">${all.length} ${escapeHtml(L.trophies)}</span></div>
+      <div class="cabinet-medals">${medals.map(([color, value, label]) => `<div class="cabinet-medal" style="--plate:${color}"><div class="value">${value}</div><div class="label">${escapeHtml(label)}</div></div>`).join("")}</div>
+    </div>
+    ${pinned ? `<div class="card cabinet-pinned"><div class="cap">${escapeHtml(L.cabinetPinned)}</div><div class="trophy-tags">${pinned}</div></div>` : ""}
+    <div class="card">
+      <p class="shop-note" style="margin:0 0 8px">${escapeHtml(L.cabinetHint.replace("{n}", max))}</p>
+      <div class="cabinet-filters">${filters.map(([key, label]) => `<button data-cabinet-filter="${escapeHtml(key)}" aria-pressed="${active === key}">${escapeHtml(label)}</button>`).join("")}</div>
+      ${shown.length ? years.map(group => `<div class="cabinet-year">${escapeHtml(group.year)}</div>
+        <div class="cabinet-list">${group.items.map(tag => cabinetRow(tag, chosen.indexOf(tag.code) >= 0)).join("")}</div>`).join("")
+        : `<p class="cabinet-empty">${escapeHtml(L.cabinetNone)}</p>`}
+    </div>
+  </section>`;
+}
+
+function cabinetRow(tag, chosen) {
+  return `<button type="button" class="cabinet-row" data-pin="${escapeHtml(tag.code)}" aria-pressed="${!!chosen}" style="--plate:${escapeHtml(tag.color)}">
+      <span class="medal" aria-hidden="true">${escapeHtml(tag.medal)}</span>
+      <span><span class="nm">${escapeHtml(tag.label)}</span><span class="ds">${escapeHtml(tag.detail)}</span></span>
+      <span class="pin">${escapeHtml(chosen ? L.cabinetPinned : L.cabinetPin)}</span>
+    </button>`;
+}
+
+async function togglePin(code) {
+  const data = cabinetData();
+  const max = data.max || 3;
+  const chosen = chosenCodes().slice();
+  const at = chosen.indexOf(code);
+  if (at >= 0) chosen.splice(at, 1);
+  else if (chosen.length >= max) { toast(L.pinFull.replace("{n}", max)); return; }
+  else chosen.push(code);
+
+  state.pinning = chosen;
+  render();
+  try {
+    const result = await api("/app/api/trophies/pin", { codes: chosen });
+    if (result.status !== "ok") { state.pinning = null; toast(L.loadError || "…"); render(); return; }
+    state.profile.trophies = Object.assign({}, data, { pinned: result.pinned });
+    state.pinning = null;
+    haptic("success");
+    render();
+  } catch (e) {
+    state.pinning = null;
+    render();
+  }
 }
 
 function avatar(name, frame) {
@@ -866,6 +1199,7 @@ function leaguesTab() {
 */
 const SHOP_I18N = {
   "it": {
+    "details": "Dettagli", "included": "oggetti inclusi",
     "catalog": "Catalogo",
     "wardrobe": "I miei oggetti",
     "history": "Acquisti",
@@ -906,6 +1240,7 @@ const SHOP_I18N = {
     "waiting": "Il pagamento è confermato. La consegna è ancora in corso: aggiorna il negozio tra poco."
   },
   "es": {
+    "details": "Detalles", "included": "objetos incluidos",
     "catalog": "Catálogo",
     "wardrobe": "Mis objetos",
     "history": "Compras",
@@ -946,6 +1281,7 @@ const SHOP_I18N = {
     "waiting": "Pago confirmado. La entrega sigue en curso: actualiza la tienda en un momento."
   },
   "en": {
+    "details": "Details", "included": "items included",
     "catalog": "Catalogue",
     "wardrobe": "My items",
     "history": "Purchases",
@@ -990,21 +1326,20 @@ function shopText() { return SHOP_I18N[(state.profile || {}).language] || SHOP_I
 
 function shopTab() {
   const s = shopText();
+  const shell = content => `<section class="shop-shell">${content}</section>`;
   if (state.shopError) return `<div class="card">${escapeHtml(s.loadError)}<button class="btn" id="shop-retry">${escapeHtml(s.retry)}</button></div>`;
   if (!state.shop) return `<div class="card center muted">${escapeHtml(L.loading)}</div>`;
 
-  const intro = `<div class="card shop-hero">
-      <span class="shop-kicker">${escapeHtml(L.shop)} · Guess the Player</span>
-      <span class="shop-sparkles" aria-hidden="true">✦</span>
+  const intro = `<header class="shop-hero">
+      <div class="shop-heading"><span class="shop-kicker">GUESS THE PLAYER <span>/ ${escapeHtml(L.shop)}</span></span>
       <h1>${escapeHtml(L.shopHeadline)}</h1>
-      <p>${escapeHtml(L.shopSubtitle)}</p>
-      <div class="shop-pills"><span>✦ ${escapeHtml(L.shopCosmetics)}</span><span>⭐ Telegram Stars</span></div>
-      <p>${escapeHtml(L.shopFair)}</p>
-      ${legalLinks()}
-    </div>`;
-  const tabs = `<div class="shop-controls">${["catalog","wardrobe","achievements","history"].map(view => `<button data-shop-view="${view}" aria-pressed="${state.shopView === view}">${escapeHtml(s[view])}</button>`).join("")}</div>`;
-  if (state.shopView === "history") return intro + tabs + purchaseHistory();
-  const filters = `<div class="shop-controls"><select id="shop-kind" aria-label="${escapeHtml(s.all)}"><option value="all">${escapeHtml(s.all)}</option>${Object.entries(L.shopSections).map(([key,label]) => `<option value="${key}" ${state.shopKind === key ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>
+      <p>${escapeHtml(L.shopSubtitle)}</p></div>
+      <div class="shop-pitch-art" aria-hidden="true"><span class="pitch-circle"></span><span class="pitch-line"></span><span class="pitch-ball">✦</span></div>
+      <div class="shop-trust"><details><summary>✦ ${escapeHtml(L.shopCosmetics)} <span>· Telegram Stars</span></summary><p>${escapeHtml(L.shopFair)}</p></details>${legalLinks()}</div>
+    </header>`;
+  const tabs = `<div class="shop-controls shop-tabs">${["catalog","wardrobe","achievements","history"].map(view => `<button data-shop-view="${view}" aria-pressed="${state.shopView === view}"><span class="shop-tab-icon" aria-hidden="true">${({catalog:"◇",wardrobe:"▣",achievements:"✧",history:"≡"})[view]}</span>${escapeHtml(s[view])}</button>`).join("")}</div>`;
+  if (state.shopView === "history") return shell(intro + tabs + purchaseHistory());
+  const filters = `<div class="shop-controls shop-filters"><select id="shop-kind" aria-label="${escapeHtml(s.all)}"><option value="all">${escapeHtml(s.all)}</option>${Object.entries(L.shopSections).map(([key,label]) => `<option value="${key}" ${state.shopKind === key ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>
     <select id="shop-price" aria-label="${escapeHtml(s.anyPrice)}"><option value="all">${escapeHtml(s.anyPrice)}</option>${[15,25,55,75].map(price => `<option value="${price}" ${state.shopPrice === String(price) ? "selected" : ""}>≤ ${price} ⭐</option>`).join("")}</select>
     ${state.shopView === "catalog" ? `<label><input id="shop-hide-owned" type="checkbox" ${state.shopHideOwned ? "checked" : ""}> ${escapeHtml(s.hideOwned)}</label>` : ""}</div>`;
   const matches = item => (state.shopKind === "all" || state.shopKind === item.kind) &&
@@ -1021,8 +1356,22 @@ function shopTab() {
   const shelves = visibleSections.map(section => shopSection(section.kind, section.items)).join("");
   const kinds = (regular.length ? ["bundle"] : []).concat(visibleSections.map(section => section.kind));
   const shortcuts = `<div class="shop-shortcuts">${featured.length ? `<a href="#shelf-collections">${escapeHtml(L.shopCollectionNav)}</a>` : ""}${kinds.map(kind => `<a href="#shelf-${escapeHtml(kind)}">${escapeHtml(L.shopSections[kind])}</a>`).join("")}</div>`;
-  return intro + tabs + (state.shopView === "wardrobe" ? savedLooks() : "") + filters + shortcuts +
-    (collections + packs + shelves || `<p class="card">${escapeHtml(s.empty)}</p>`);
+  const window_ = state.shopView === "catalog" ? weeklyWindow() : "";
+  return shell(intro + tabs + (state.shopView === "wardrobe" ? savedLooks() : "") + window_ + filters + shortcuts +
+    (collections + packs + shelves || `<p class="card">${escapeHtml(s.empty)}</p>`));
+}
+
+// Tre oggetti che cambiano ogni lunedi'. Sono gli stessi per tutti e si ricavano dalla
+// settimana (services/shop.py): non c'e' niente da scrivere e niente da far girare a
+// mezzanotte, quindi non c'e' niente che possa restare indietro.
+function weeklyWindow() {
+  const window_ = (state.shop || {}).showcase;
+  if (!window_ || !window_.items || !window_.items.length) return "";
+  const week = (window_.week || "").split("W")[1] || "";
+  return `<div class="card shop-section" id="shelf-showcase">
+    <div class="showcase-strip"><h2>${escapeHtml(L.showcaseTitle)}</h2><span class="when">${escapeHtml(L.showcaseWeek.replace("{n}", week))}</span></div>
+    <div class="shop-grid">${window_.items.map(item => shopCell(item.kind, item)).join("")}</div>
+  </div>`;
 }
 
 function savedLooks() {
@@ -1051,6 +1400,8 @@ function tryItem(id) {
   const worn = JSON.parse(JSON.stringify(cosmetics()));
   for (const piece of item.kind === "bundle" ? (item.contents || []) : [item]) {
     if (piece.kind === "badge") worn.badge = piece.style.emoji || "";
+    else if (piece.kind === "number") worn.number = piece.style.number || "";
+    else if (piece.kind === "celebration") worn.celebration = piece.style.effect || "";
     else if (piece.kind === "title") worn.title = {color:piece.style.color, label:(piece.style.label_i18n || {})[state.profile.language] || piece.style.label || ""};
     else worn[piece.kind] = piece.style;
   }
@@ -1064,7 +1415,7 @@ function tryItem(id) {
 function previewBar() {
   if (!state.preview) return "";
   const s = shopText(), worn = state.preview;
-  return `<aside class="preview-bar" aria-label="${escapeHtml(s.preview)}"><b>${escapeHtml(s.preview)} · ${escapeHtml(state.previewName)}</b><div class="preview-person">${avatar(state.profile.user.name, worn.frame)}<div>${escapeHtml(state.profile.user.name)} ${escapeHtml(worn.badge || "")}<div class="title-tag" style="color:${escapeHtml((worn.title || {}).color || 'var(--muted)')}">${escapeHtml((worn.title || {}).label || "—")}</div><div>${escapeHtml(SQUARES.wrong + SQUARES.correct + SQUARES.unused)}</div></div></div><p class="shop-note">${escapeHtml(s.previewHint)}</p><button class="btn ghost small" id="stop-preview">${escapeHtml(s.stop)}</button></aside>`;
+  return `<aside class="preview-bar" aria-label="${escapeHtml(s.preview)}"><b>${escapeHtml(s.preview)} · ${escapeHtml(state.previewName)}</b><div class="preview-person">${avatar(state.profile.user.name, worn.frame)}<div>${shirtTag(worn.number)}${escapeHtml(state.profile.user.name)} ${escapeHtml(worn.badge || "")}<div class="title-tag" style="color:${escapeHtml((worn.title || {}).color || 'var(--muted)')}">${escapeHtml((worn.title || {}).label || "—")}</div><div>${escapeHtml(SQUARES.wrong + SQUARES.correct + SQUARES.unused)}</div></div></div><p class="shop-note">${escapeHtml(s.previewHint)}</p><button class="btn ghost small" id="stop-preview">${escapeHtml(s.stop)}</button></aside>`;
 }
 
 function stopPreview() {
@@ -1074,10 +1425,23 @@ function stopPreview() {
 }
 
 function shopSection(kind, items, heading = L.shopSections[kind] || kind, shelf = kind) {
-  return `<div class="card" id="shelf-${escapeHtml(shelf)}">
-    <h2>${escapeHtml(heading)}</h2>
+  return `<div class="card shop-section" id="shelf-${escapeHtml(shelf)}">
+    <div class="shop-section-heading"><h2>${escapeHtml(heading)}</h2><span>${String(items.length).padStart(2,"0")}</span></div>
     <div class="shop-grid${kind === "bundle" ? " wide" : ""}">${items.map(item => shopCell(kind, item)).join("")}</div>
   </div>`;
+}
+
+// Tre fasce e un colore ciascuna. Non e' un dato in piu' da tenere allineato: il server la
+// ricava dal prezzo (services/shop.py), qui si sceglie solo come si vede.
+const RARITY_COLOR = {free: "#8ea2b6", earned: "#38bd82", common: "#8ea2b6",
+                      rare: "#4dc4ff", collector: "#f0c74e"};
+const CELEBRATION_GLYPH = {spotlight: "🔦", confetti: "🎊", dust: "💨", flash: "📷",
+                           paper: "📄", snow: "❄️", mud: "🟫", fireworks: "🎆"};
+
+function rarityTag(item) {
+  const rarity = item.rarity || "common";
+  if (rarity === "free" || rarity === "common") return "";
+  return `<span class="rarity" style="--rare-edge:${escapeHtml(RARITY_COLOR[rarity] || "#8ea2b6")}">${escapeHtml((L.rarity || {})[rarity] || rarity)}</span>`;
 }
 
 function shopPreview(kind, item) {
@@ -1085,9 +1449,12 @@ function shopPreview(kind, item) {
   const name = (state.profile.user || {}).name || "Player";
   const caption = `<div class="preview-caption">${escapeHtml(L.shopPreview)}</div>`;
   if (kind === "theme") {
+    // Un tema si vende mostrando il gioco, non il colore: prima qui c'era un campetto e una
+    // pillola, cioe' una macchia, e una macchia a 25 stelle non la compra nessuno. Questa e'
+    // la schermata vera in miniatura - percorso, tentativi, bottone - con le stesse tappe
+    // per tutti i temi, cosi' l'unica variabile e' il tema.
     return `<div class="shop-stage" style="background-color:${escapeHtml(style.bg)};background-image:${escapeHtml(style.pattern || 'none')};color:${escapeHtml(style.text)}">
-      ${caption}<div class="mini-pitch" aria-hidden="true" style="color:${escapeHtml(style.accent)}"></div>
-      <div style="background:${escapeHtml(style.card)};padding:6px 14px;border-radius:8px;color:${escapeHtml(style.accent)}">● ━ ● ━ ⚽</div>
+      ${caption}${themeShot(style)}
     </div>`;
   }
   if (kind === "frame") {
@@ -1102,6 +1469,21 @@ function shopPreview(kind, item) {
     const label = (style.label_i18n && style.label_i18n[state.profile.language]) || style.label;
     return `<div class="shop-stage"><div class="preview-name">${escapeHtml(name)}</div><div class="title-tag" style="color:${escapeHtml(style.color || "var(--muted)")}">${escapeHtml(label || "—")}</div>${caption}</div>`;
   }
+  if (kind === "number") {
+    return `<div class="shop-stage">${caption}<div class="emoji-preview" style="font-variant-numeric:tabular-nums;font-weight:800">${escapeHtml(style.number || "—")}</div><div class="preview-name"><span class="shirt">${escapeHtml(style.number || "")}</span>${escapeHtml(name)}</div></div>`;
+  }
+  if (kind === "celebration") {
+    return `<div class="shop-stage">${caption}<div class="emoji-preview">${escapeHtml(CELEBRATION_GLYPH[style.effect] || "—")}</div><div class="preview-name">${escapeHtml(item.name)}</div></div>`;
+  }
+  if (kind === "card") {
+    // La figurina si guarda intera: qui e' la stessa cosa che disegna services/path_image.py,
+    // in piccolo e in CSS. Le tre finiture non si possono raccontare a parole.
+    return `<div class="shop-stage" style="padding:14px"><div class="fig-mini fig-${escapeHtml(style.finish || "plain")}" style="--paper:${escapeHtml(style.paper || "#0a131e")};--ink:${escapeHtml(style.ink || "#ecf2f8")};--glow:${escapeHtml(style.glow || "#38bd82")}">
+      <span class="n">#412</span>
+      <span class="sq"><i></i><i class="on"></i><i class="off"></i></span>
+      <span class="sc">2/3</span>
+    </div></div>`;
+  }
   if (kind === "bundle" && item.contents && item.contents.length) {
     const byKind = k => (item.contents.find(piece => piece.kind === k) || {}).style || {};
     const theme = byKind("theme"), title = byKind("title"), squares = byKind("squares");
@@ -1111,9 +1493,25 @@ function shopPreview(kind, item) {
       <div class="preview-name">${escapeHtml(name)} ${escapeHtml(byKind("badge").emoji || "")}</div>
       ${label ? `<div class="title-tag" style="color:${escapeHtml(title.color)}">${escapeHtml(label)}</div>` : ""}
       ${squares.correct ? `<div class="emoji-preview">${escapeHtml(squares.wrong + squares.correct + squares.unused)}</div>` : ""}
-    </div><div class="pack-contents">${item.contents.map(piece => `<span>${escapeHtml(piece.name)}</span>`).join("")}</div>`;
+    </div>`;
   }
   return `<div class="emoji-preview">🎁</div>`;
+}
+
+// La miniatura di una partita, colorata da un tema. Le tappe sono finte ma plausibili:
+// servono a far vedere come si legge un percorso su quel fondo, che e' la cosa che un tema
+// puo' rovinare e che una macchia di colore non mostra.
+const SHOT_STOPS = [["2011", "Santos"], ["2013", "Barcellona"], ["2017", "Paris SG"]];
+
+function themeShot(style) {
+  const edge = style.edge || "var(--edge)";
+  const muted = style.muted || style.text;
+  return `<div class="theme-shot" aria-hidden="true" style="--shot-edge:${escapeHtml(edge)};background:${escapeHtml(style.card || style.bg)}">
+      <div class="bar" style="color:${escapeHtml(muted)}"><span>${escapeHtml(L.todayTitle)}</span><span style="color:${escapeHtml(style.accent)}">2/3</span></div>
+      ${SHOT_STOPS.map(([year, club]) => `<div class="stop"><i style="background:${escapeHtml(style.accent)}"></i><span style="color:${escapeHtml(muted)}">${year}</span><b>${escapeHtml(club)}</b></div>`).join("")}
+      <div class="box" style="color:${escapeHtml(muted)};text-align:center">${escapeHtml(L.placeholder)}</div>
+      <div class="cta" style="background:${escapeHtml(style.accent)};color:${escapeHtml(style.accentText || style.bg)}">${escapeHtml(L.guessBtn)}</div>
+    </div>`;
 }
 
 function shopCell(kind, item) {
@@ -1125,15 +1523,23 @@ function shopCell(kind, item) {
     action = `<button class="btn ghost small" data-equip="${escapeHtml(item.id)}">${escapeHtml(L.shopWear)}</button>`;
   } else if (item.achievement) {
     action = `<div class="shop-note">${escapeHtml(s.earn)} · ${item.progress}/${item.achievement.target}</div><progress max="${item.achievement.target}" value="${item.progress}" aria-label="${escapeHtml(item.name)}"></progress>`;
+  } else if (item.completes && item.completes.length) {
+    const missing = item.completes.filter(piece => !piece.owned);
+    action = `<div class="shop-note">${escapeHtml(L.completeMissing)}: ${missing.length}/${item.completes.length}</div><progress max="${item.completes.length}" value="${item.completes.length - missing.length}" aria-label="${escapeHtml(item.name)}"></progress>`;
+  } else if (item.trophy) {
+    action = `<div class="shop-note">${escapeHtml(L.podiumOnly)}</div>`;
   } else {
     action = `<button class="btn small" data-buy="${escapeHtml(item.id)}" aria-label="${escapeHtml(L.shopBuy + ' ' + item.name + ' · ' + item.price + ' ⭐')}">${escapeHtml(L.shopBuy)} · ${item.price} ⭐</button>`;
   }
-  return `<div class="shop-item${item.equipped ? " worn" : ""}${item.featured ? " featured" : ""}">
-      <div>${item.featured ? `<div class="shop-set-label">${escapeHtml(L.shopSet)}</div>` : ""}${shopPreview(kind, item)}</div>
-      <div class="nm">${escapeHtml(item.name)}</div>
-      <div class="ds">${escapeHtml(item.description)}${item.achievement && item.owned ? `<p>${escapeHtml(s.unlocked)}</p>` : ""}${kind === "bundle" && item.price > 0 && item.price < item.full_price ? `<p><b>${escapeHtml(s.partial)} · ${item.price} ⭐</b><br>${escapeHtml(s.missing)}: ${(item.contents || []).filter(piece => !piece.owned).map(piece => escapeHtml(piece.name)).join(", ")}</p>` : ""}</div>
-      <div>${(kind !== "bundle" || item.equippable) ? `<button class="btn ghost small" data-try="${escapeHtml(item.id)}">${escapeHtml(s.tryOn)}</button>` : ""}${action}</div>
-    </div>`;
+  const partial = kind === "bundle" && item.price > 0 && item.price < item.full_price;
+  const previewButton = (kind !== "bundle" || item.equippable) ? `<button class="shop-preview-trigger" data-try="${escapeHtml(item.id)}" aria-label="${escapeHtml(s.tryOn + ' · ' + item.name)}">${escapeHtml(s.tryOn)} <span aria-hidden="true">↗</span></button>` : "";
+  return `<article class="shop-item${item.equipped ? " worn" : ""}${item.featured ? " featured" : ""}">
+      <div class="shop-artwork">${rarityTag(item)}${shopPreview(kind, item)}${previewButton}</div>
+      <div class="shop-product-head"><span class="shop-product-kind">${escapeHtml(L.shopSections[kind])}${item.featured ? ' / 05' : ''}</span><h3 class="nm">${escapeHtml(item.name)}</h3></div>
+      <div class="ds"><details class="shop-product-details"><summary>${escapeHtml(s.details)}${kind === "bundle" ? ` · ${(item.contents || []).length} ${escapeHtml(s.included)}` : ''}</summary><p>${escapeHtml(item.description)}</p>${kind === "bundle" ? `<div class="pack-contents">${(item.contents || []).map(piece => `<span>${escapeHtml(piece.name)}</span>`).join("")}</div>` : ''}</details>
+      ${item.achievement && item.owned ? `<p class="shop-unlocked">✧ ${escapeHtml(s.unlocked)}</p>` : ""}${partial ? `<p class="shop-completion"><b>${escapeHtml(s.partial)}</b><br>${escapeHtml(s.missing)}: ${(item.contents || []).filter(piece => !piece.owned).map(piece => escapeHtml(piece.name)).join(", ")}</p>` : ""}</div>
+      <div class="shop-product-actions">${action}</div>
+    </article>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1155,7 +1561,7 @@ function legalLinks() {
 
 function render() {
   if (!state.profile) return;
-  const body = state.publicTarget ? publicProfileView() : {
+  const body = state.publicTarget ? publicProfileView() : state.cabinetOpen ? cabinetView() : {
     play: playTab, archive: archiveTab, stats: statsTab, leagues: leaguesTab, shop: shopTab,
   }[state.tab]();
   const nav = TABS.map(tab => `<button data-tab="${tab.id}" aria-selected="${state.tab === tab.id}">
@@ -1189,6 +1595,15 @@ function syncMainButton() {
 
 function wire() {
   syncMainButton();
+  document.querySelectorAll("[data-pin]").forEach(button => button.onclick = () => togglePin(button.dataset.pin));
+  const openCabinet = document.getElementById("open-cabinet");
+  if (openCabinet) openCabinet.onclick = () => { state.cabinetOpen = true; render(); window.scrollTo({top:0,behavior:"instant"}); };
+  const closeCabinet = document.getElementById("close-cabinet");
+  if (closeCabinet) closeCabinet.onclick = () => { state.cabinetOpen = false; render(); };
+  document.querySelectorAll("[data-cabinet-filter]").forEach(button => button.onclick = () => {
+    state.cabinetFilter = button.dataset.cabinetFilter;
+    render();
+  });
   document.querySelectorAll("[data-profile]").forEach(button => button.onclick = () => openPublicProfile(Number(button.dataset.profile)));
   const closeProfile = document.getElementById("close-profile");
   if (closeProfile) closeProfile.onclick = () => { state.publicTarget = null; render(); window.scrollTo(0,state.profileScroll); };
@@ -1248,6 +1663,8 @@ function wire() {
   const hint = document.getElementById("hint");
   if (hint) hint.onclick = askHint;
 
+  const showCard = document.getElementById("show-card");
+  if (showCard) showCard.onclick = loadResultCard;
   const share = document.getElementById("share");
   if (share) share.onclick = () => {
     const url = state.feedback && state.feedback.share && state.feedback.share.url;
@@ -1327,6 +1744,94 @@ function suggest(text) {
 
 let mainButtonWired = false;
 
+// Cosa succede sullo schermo quando la prendi. E' un canvas che vive due secondi e poi si
+// toglie da solo: non c'e' niente da pulire e niente che resti in mezzo ai tocchi, perche'
+// non riceve eventi. Chi ha chiesto meno animazioni non lo vede proprio (regola CSS).
+const CELEBRATIONS = {
+  spotlight: {count: 26, color: () => "#fff6d5", size: [3, 9], fall: -0.4, drift: 0},
+  confetti:  {count: 90, color: i => ["#ff5a5a", "#3ddc84", "#4dc4ff", "#ffd028"][i % 4], size: [4, 10], fall: 2.4, drift: 1.2},
+  dust:      {count: 60, color: () => "#c9bfa4", size: [2, 6], fall: -0.8, drift: 0.6},
+  flash:     {count: 18, color: () => "#ffffff", size: [6, 16], fall: 0, drift: 0},
+  paper:     {count: 70, color: () => "#f3ecd8", size: [5, 13], fall: 2.0, drift: 1.6},
+  snow:      {count: 80, color: () => "#eaf6ff", size: [2, 6], fall: 1.1, drift: 0.8},
+  mud:       {count: 55, color: i => ["#6b5a3a", "#9aa861"][i % 2], size: [3, 9], fall: 2.6, drift: 0.9},
+  fireworks: {count: 70, color: i => ["#f2c74c", "#7fc4ff", "#ff9ce3"][i % 3], size: [3, 8], fall: -1.4, drift: 1.4},
+};
+
+function celebrate(effect) {
+  const spec = CELEBRATIONS[effect];
+  if (!spec || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const canvas = document.createElement("canvas");
+  canvas.className = "celebration";
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+
+  const bits = [];
+  for (let i = 0; i < spec.count; i++) {
+    bits.push({
+      x: Math.random() * canvas.width,
+      y: spec.fall >= 0 ? -Math.random() * canvas.height * 0.6 : canvas.height * (0.4 + Math.random() * 0.7),
+      size: spec.size[0] + Math.random() * (spec.size[1] - spec.size[0]),
+      vx: (Math.random() - 0.5) * spec.drift * 2,
+      vy: spec.fall * (0.6 + Math.random()),
+      color: spec.color(i),
+    });
+  }
+
+  const started = performance.now();
+  const step = now => {
+    const life = (now - started) / 2000;
+    if (life >= 1) { canvas.remove(); return; }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = life < 0.75 ? 1 : (1 - life) * 4;
+    for (const bit of bits) {
+      bit.x += bit.vx;
+      bit.y += bit.vy;
+      ctx.fillStyle = bit.color;
+      ctx.fillRect(bit.x, bit.y, bit.size, bit.size);
+    }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// La figurina si chiede, non arriva da sola. Disegnarla ad ogni risposta giusta vorrebbe
+// dire un PNG per ogni partita di ogni utente per far vedere un cosmetico a chi ce l'ha, e
+// una bolla vuota a chi gioca con le immagini spente.
+function resultCard() {
+  if (state.card) {
+    return `<div class="result-card"><img src="${escapeHtml(state.card)}" alt="${escapeHtml(L.share)}">
+      <p class="shop-note" style="text-align:center;margin-top:8px">${escapeHtml(L.cardHint)}</p></div>`;
+  }
+  return `<button class="btn ghost" style="margin-top:8px" id="show-card"${state.cardLoading ? " disabled" : ""}>${escapeHtml(state.cardLoading ? L.loading : L.showCard)}</button>`;
+}
+
+async function loadResultCard() {
+  const f = state.feedback;
+  if (!f || state.cardLoading) return;
+  state.cardLoading = true;
+  render();
+  try {
+    const body = {
+      attempts: f.attempts_used,
+      max_attempts: f.max_attempts || (state.profile.today || {}).max_attempts,
+      solved: f.status === "correct",
+      hints: f.hints_used || 0,
+      streak: (state.profile.user || {}).streak || 0,
+    };
+    if (state.archiveDay) body.day = state.archiveDay.day;
+    const result = await api("/app/api/card", body);
+    state.card = result.image;
+  } catch (e) {
+    toast(L.error);
+  }
+  state.cardLoading = false;
+  render();
+}
+
 async function submitGuess() {
   const input = document.getElementById("answer");
   const answer = input && input.value.trim();
@@ -1341,8 +1846,10 @@ async function submitGuess() {
     const result = await api("/app/api/guess", body);
 
     state.feedback = result;
+    state.card = null;
     state.hint = null;
     haptic(result.status === "correct" ? "success" : "error");
+    if (result.status === "correct") celebrate((cosmetics() || {}).celebration);
 
     // Lo stato del server e' l'unica verita' sui tentativi rimasti: si ricarica invece di
     // contarli qui, altrimenti due schede aperte si raccontano numeri diversi.

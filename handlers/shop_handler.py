@@ -40,6 +40,9 @@ SECTION_ICONS = {
     "title": "🏷",
     "badge": "🎖",
     "squares": "🟩",
+    "number": "🔢",
+    "celebration": "🎆",
+    "card": "📇",
     "bundle": "🎁",
 }
 

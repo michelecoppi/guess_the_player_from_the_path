@@ -260,12 +260,78 @@ oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
 | Cornici | il cerchio intorno all'avatar | 15 – 25 ⭐ |
 | Titoli | una riga sotto il nome | 15 – 25 ⭐ |
 | Distintivi | accanto al nome, **anche nella classifica in chat** | 10 – 25 ⭐ |
-| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 15 – 20 ⭐ |
+| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 10 – 20 ⭐ |
+| Numeri | il numero di maglia prima del nome, **anche in classifica** | 10 – 15 ⭐ |
+| Festeggiamenti | cosa succede sullo schermo quando indovini | non in vendita |
+| Figurine | la finitura della card del risultato come immagine | 55 – 75 ⭐ |
 | Pacchetti | piu' cose insieme | 30 – 220 ⭐ |
+
+I primi cinque sono i **fondamentali** (`CORE_KINDS`) e una collezione li riempie tutti; i tre
+in fondo sono arrivati dopo e una collezione puo' averli o no. Non e' pigrizia: un numero di
+maglia o un festeggiamento non stanno addosso a ogni mondo, e inventarne uno per ogni set
+vorrebbe dire riempire il catalogo di roba senza intenzione.
+
+**Tre modi di avere una cosa senza comprarla**, e sono diversi apposta:
+
+| | Come si ottiene | Si puo' perdere? |
+|---|---|---|
+| Traguardo (`achievement`) | un contatore che arriva a una soglia | **no**, si scrive e resta |
+| Premio di completamento (`completes`) | possedere tutti i pezzi di una collezione | sì: un rimborso rompe la collezione |
+| Podio (`trophy`) | arrivare fra i primi in un evento o nel mese | no, i trofei non si tolgono |
+
+La differenza fra i primi due non e' un dettaglio. Un traguardo e' **un fatto avvenuto** e
+per questo si scrive sul documento utente; un premio di completamento **e'** la collezione
+completa, quindi se un pezzo torna indietro il premio se ne va con lui — che e' esattamente
+quello che deve succedere. Gli otto festeggiamenti sono tutti premi di completamento: non si
+comprano a nessun prezzo, e sono la ragione per arrivare dall'80% al 100% di una collezione.
+
+**La rarita'** (`rarity_of`) non e' un dato in piu' da tenere allineato: si ricava dal prezzo,
+quindi non puo' mentire. Un oggetto puo' dichiararla quando la fascia del prezzo racconta
+un'altra cosa — una figurina che esiste solo dentro una collezione costa zero da sola, e
+"gratuita" e' il contrario di quello che vuol dire.
+
+**L'oggetto di benvenuto** costa una stella e si compra solo come **primo** acquisto
+(`first_purchase_only`): il salto che conta non e' fra due prezzi, e' fra zero e il primo
+pagamento. Dopo, un oggetto a una stella sarebbe solo un oggetto svenduto.
+
+**La vetrina della settimana** sono tre oggetti di tre tipi diversi che cambiano ogni lunedi'.
+Si ricavano dalla settimana ISO con un hash (`weekly_showcase`): non c'e' niente da scrivere,
+niente da far girare a mezzanotte e quindi niente che possa restare indietro. E' la stessa
+per tutti — una vetrina personalizzata sarebbe solo un altro ordinamento del catalogo, mentre
+il senso e' che due persone nello stesso gruppo vedano la stessa cosa nello stesso momento.
+
+**Le collezioni** (`"featured": true`) sono la forma che funziona meglio: cinque pezzi, uno
+per slot, che raccontano la stessa cosa — *Notti europee*, *Domenica '90*, *Calcio di
+strada*, *Cinegiornale 1966*, *Giorno di mercato*, *Notte di neve*, *Novembre in provincia*,
+*Notte sudamericana*. Si vende un mondo, non un colore, e i pezzi restano comprabili singoli
+per chi ne vuole solo uno. Su ogni collezione girano tre test: che riempia tutti e cinque gli
+slot, che costi meno della somma, e che il testo del tema **si legga** sul suo sfondo (4.5:1,
+`text` e `muted` contro `bg`, `bg2` e `card`) — un tema bello e illeggibile e' un tema rotto.
+
+Sui set ispirati a un club: **niente stemmi, niente nomi, niente accostamenti dichiarati.**
+Si descrivono i colori, non la squadra. La somiglianza la fa chi guarda, e il set resta
+nostro.
 
 Un pacchetto deve dare una ragione per esistere, e le ragioni ammesse sono due: costa meno
 della somma dei pezzi, oppure contiene qualcosa che da solo non si vende (il Pacchetto
 Sostenitore). Anche questo e' un test.
+
+**I traguardi** sono cosmetici a `price: 0` con un blocco `achievement`: non si comprano, si
+raggiungono giocando (il primo distintivo alla prima risposta giusta, l'ultimo a cento
+calciatori). Servono a far vedere che gli slot esistono a chi il negozio non lo ha mai aperto.
+
+Il punto delicato è che un traguardo **si ricava da un contatore**, e finché resta solo un
+calcolo è anche reversibile: basta alzare un obiettivo in `data/shop.json` — una modifica a un
+file di dati, che non passa da una riga di codice — e chi stava sotto la soglia nuova si
+ritrova senza un distintivo che aveva già guadagnato. Per questo si scrivono, una volta sola,
+nella stessa scrittura che muove il contatore che li fa scattare (`register_correct_guess` li
+mette nella transazione che ha già letto il documento, quindi non costano nemmeno una lettura;
+archivio e allenamento passano da `_bump_counters`). `owned_ids` continua comunque a calcolarli:
+è la rete per chi ha preso un traguardo prima che li scrivessimo e non ha ancora rigiocato.
+
+Un obiettivo può appoggiarsi solo a un contatore che una di quelle scritture raccoglie
+(`HARVESTED_FIELDS`): appeso a un campo che nessuno raccoglie resterebbe per sempre un calcolo.
+Anche questo è un test.
 
 **Come funziona un pagamento**, nell'ordine — sta tutto in `handlers/shop_handler.py`:
 
@@ -308,6 +374,65 @@ sezioni, stessa data), non che siano vere: quello resta un lavoro da fare a mano
 accetta, ritira i cosmetici — ma **solo quelli che nessun altro acquisto ancora valido aveva
 gia' dato**: chi aveva comprato il tema Neon da solo e poi il Pacchetto Neon, e si fa
 rimborsare il pacchetto, il tema l'aveva pagato e resta suo.
+
+### La figurina del risultato
+
+La riga di quadratini si incolla; una figurina si guarda. `render_share_card`
+(`services/path_image.py`) disegna il risultato come PNG verticale 860×1075 — il formato che
+Telegram mostra piu' grande in una bolla senza tagliarlo — e la finitura e' un cosmetico
+(`kind: card`): piatta, notturna, olografica, di pellicola.
+
+Nel disegno **non entrano emoji**: il font non ha quei glifi e li stamperebbe come quadratini
+vuoti (`services/fonts.py`). I tentativi sono forme disegnate, ed e' anche il motivo per cui
+la card puo' avere una finitura — un'emoji non si puo' rendere olografica.
+
+Tre cose che non cambiano:
+
+- **la card non dice mai chi era il calciatore.** Stessa regola della riga di testo: la si
+  incolla in un gruppo dove qualcuno non ha ancora giocato. C'e' un test che controlla il
+  contratto della funzione, cioe' che non esista nemmeno un parametro dove un nome possa
+  entrare;
+- **la riga di testo resta.** La figurina si aggiunge, non sostituisce: chi ha le immagini
+  spente continua a vedere il suo risultato, e una riga si incolla dove un'immagine non si
+  puo' mettere;
+- **si chiede, non arriva da sola.** In chat e' un bottone sotto il risultato, nella mini app
+  e' "Vedi la figurina". Mandarla ad ogni risposta giusta vorrebbe dire un PNG per ogni
+  partita di ogni utente, per far vedere un cosmetico a chi ce l'ha.
+
+Le parole (titolo, trofeo appeso, serie, indizi) arrivano gia' tradotte da `services/share.py`:
+il disegno non traduce niente.
+
+### Trofei da appendere al profilo
+
+I trofei si vincono sul podio di un evento o della classifica del mese, e stavano dentro una
+lista dietro un bottone di `/stats`. Ora sono anche **targhe da indossare**: se ne scelgono
+fino a tre (`services/trophies.py`) e vanno sul profilo, accanto al titolo comprato in
+negozio e sul profilo pubblico.
+
+Non passano da `services/shop.py`, pur finendo nello stesso posto. Un cosmetico si compra e
+sta in un catalogo fisso, uguale per tutti; un trofeo si vince, e il suo catalogo e' diverso
+per ogni utente — e' la sua bacheca. Farlo entrare nel negozio avrebbe voluto dire un
+catalogo per utente, cioe' rompere la cosa su cui `get_item` e `owned_ids` sono costruiti.
+Sono due mondi separati che si incontrano solo alla fine, quando la pagina disegna.
+
+La scelta sta in `cosmetics.pinned` e non accanto a `trophies`: `trophies` lo scrive chi
+assegna un podio, `pinned` lo scrive l'utente. Chi non ha mai scelto vede comunque le sue tre
+targhe migliori (posizione prima, anno dopo) — altrimenti la cosa esiste solo per chi la
+scopre. Dal profilo pubblico si vedono **solo** le targhe appese, mai la bacheca intera.
+
+**La bacheca** e' una schermata sua e non una card in mezzo alle statistiche. Con quattro
+trofei una fila di targhe funziona; con quaranta diventa un muro in cui il primo posto vinto
+due anni fa sta in mezzo a dieci terzi posti. Quindi: il conto per medaglia in alto, i filtri
+(posizione, evento o mese) che tolgono il grosso, e i trofei raggruppati **per anno** — che e'
+il modo in cui uno se li ricorda. Da li' si sceglie quali tre appendere.
+
+**Come si legge un codice.** Un trofeo di evento e' `{posizione}_{id del template}_{giorno}`,
+e l'id di un template contiene trattini bassi suoi (`2_un_amore_una_maglia_20260907`): si
+legge la posizione davanti e il giorno in fondo, e in mezzo c'e' l'id qualunque cosa
+contenga. Contare i pezzi — che e' quello che si faceva prima — sbagliava su quasi tutti i
+trofei veri, e `/stats` finiva per stampare il codice grezzo. Il nome leggibile e tradotto
+arriva da `data/event_templates.json`, che e' l'unico posto dove quel nome esiste in tre
+lingue.
 
 ### Mini app Telegram
 
@@ -410,6 +535,7 @@ scripts/migrate_firestore.py -> migrazione una tantum dei dati esistenti al mode
 scripts/backup_firestore.py  -> export JSON del database, sotto-collezioni comprese (usato dal workflow settimanale)
 scripts/backfill_users.py    -> completa i documenti utente a cui mancano i campi aggiunti dopo la loro registrazione
 scripts/cleanup_daily_paths.py -> cancella le sfide oltre l'anno e i documenti pre-migrazione
+scripts/preview_webapp.py    -> la mini app in locale, senza Telegram e senza Firestore (per guardare i cosmetici)
 handlers/daily_job.py        -> job di mezzanotte chiamato da Cloud Scheduler: broadcast, reset, e generazione
 handlers/guess_handler.py    -> tentativi sulla sfida del giorno (comando e messaggio libero)
 handlers/archive_handler.py  -> sfide passate rigiocate senza punti
@@ -523,6 +649,29 @@ correggere qualcosa a mano.
 `/admin_block` scrive su Firestore (`admin_settings/dataset_overrides`), quindi ha effetto
 **subito**, senza redeploy: utile quando un utente segnala una carriera sbagliata. Le sfide
 già presenti nel buffer non cambiano, si controllano con `/admin_next`.
+
+## Anteprima locale della mini app
+
+```bash
+python scripts/preview_webapp.py     # poi http://localhost:8888/app
+```
+
+Serve a **guardare** i cosmetici prima di venderli: un tema, una cornice o una collezione si
+giudicano addosso a una pagina vera, non su un francobollo nella scheda del negozio e ancor
+meno su sei stringhe esadecimali dentro `data/shop.json`.
+
+E' la pagina vera (`webapp/index.html`) servita dalle funzioni vere (`services/webapp_api.py`,
+`services/shop.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
+in memoria. L'utente finto ha gia' **tutto** il catalogo e cinque trofei, cosi' ogni oggetto
+si indossa con un click e ogni traguardo e' sbloccato; il negozio funziona ma "Compra"
+consegna subito, senza fattura, perche' non c'e' niente da pagare.
+
+Non tocca il database, non chiede credenziali e non serve Telegram: il finto `initData` lo
+inietta il server nella pagina servita, quindi `webapp/index.html` resta il file di
+produzione e non una sua variante. Si chiude e non resta niente.
+
+Due comode: `POST /app/api/preview/wear {"bundle": "pacchetto_neve"}` indossa un'intera
+collezione in un colpo, e `POST /app/api/preview/reset` rimette l'utente finto com'era.
 
 ## Dashboard locale (Streamlit)
 
@@ -745,11 +894,13 @@ In breve:
   consegna idempotente (l'update rispedito trova la riga già scritta) e permette di rimborsare,
   perché `refundStarPayment` vuole esattamente quell'id. Cercarlo dentro i documenti utente
   vorrebbe dire scorrerli tutti. È fra le collection del backup (`scripts/backup_firestore.py`).
-- Sul documento utente, `cosmetics` — `owned` (quello che ha comprato) ed `equipped` (quello che
-  ha addosso, uno per slot). Gli oggetti **gratuiti non ci stanno**: sono gratuiti per
-  definizione, e scriverli vorrebbe dire ripassare su ogni utente registrato ogni volta che se
-  ne aggiunge uno. Un oggetto indossato ma non più posseduto (succede dopo un rimborso) torna al
-  valore di partenza invece di far disegnare un tema che non esiste.
+- Sul documento utente, `cosmetics` — `owned` (quello che ha comprato), `earned` (i traguardi
+  che ha raggiunto giocando) ed `equipped` (quello che ha addosso, uno per slot). Gli oggetti
+  **gratuiti non ci stanno**: sono gratuiti per definizione, e scriverli vorrebbe dire ripassare
+  su ogni utente registrato ogni volta che se ne aggiunge uno. I traguardi invece ci stanno, e
+  stanno in un elenco loro: da `owned` si ritira quando si rimborsa un acquisto, e da un
+  traguardo non c'è niente da ritirare. Un oggetto indossato ma non più posseduto (succede dopo
+  un rimborso) torna al valore di partenza invece di far disegnare un tema che non esiste.
 - Sul documento utente: `daily_hints` (indizi chiesti oggi, si azzera da solo come i tentativi),
   `solved_in` (quante volte ha risolto in 1, 2, 3 tentativi: l'istogramma della mini app) e
   `event_key` (la sessione su un evento, come `archive_day` e `training_key`).

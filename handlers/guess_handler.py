@@ -24,12 +24,12 @@ from handlers.group_handler import process_group_answer
 from handlers.hint_handler import hint_keyboard
 from handlers.notify_handler import ENABLE_INLINE, notifications_enabled
 from handlers.training_handler import process_training_answer
-from services import firebase_service, game, shop
+from services import firebase_service, game, shop, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number, get_today_challenge
 from services.guess_feedback import comparison_text
 from services.i18n import resolve_language, t
 from services.matching import looks_like_an_answer
-from services.share import share_text, share_url
+from services.share import card_image, share_text, share_url
 
 
 def _language_for(update: Update, user_data=None):
@@ -199,6 +199,56 @@ def _share_button(lang, attempts_used, streak, solved, hints=0, symbols=None):
     return InlineKeyboardButton(t(lang, "share.button"), url=url)
 
 
+# Il payload del bottone della figurina. Sta tutto qui dentro e non in memoria perche' un
+# bottone di Telegram sopravvive al processo che lo ha creato: un riavvio non deve
+# trasformare "La figurina" in un bottone che non fa niente. Sessantaquattro byte bastano
+# per quattro numeri.
+CARD_PREFIX = "sharecard"
+
+
+def _card_payload(attempts_used, streak, solved, hints):
+    return f"{CARD_PREFIX}:{attempts_used}:{1 if solved else 0}:{hints}:{streak}"
+
+
+def _card_button(lang, attempts_used, streak, solved, hints):
+    return InlineKeyboardButton(
+        t(lang, "share.button_card"),
+        callback_data=_card_payload(attempts_used, streak, solved, hints),
+    )
+
+
+async def share_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manda la figurina del risultato come foto.
+
+    Si spedisce **su richiesta** e non insieme al risultato: una foto ad ogni risposta
+    giusta cambierebbe la partita a tutti per far vedere un cosmetico a pochi, e chi gioca
+    con le immagini spente si ritroverebbe una bolla vuota al posto del suo punteggio.
+
+    La riga di testo non sparisce: resta sul messaggio di prima, e questa foto le sta
+    accanto. Chi vuole condividere inoltra la foto, chi vuole incollare copia la riga."""
+    query = update.callback_query
+    await query.answer()
+    try:
+        _, attempts, solved, hints, streak = query.data.split(":")
+        attempts, hints, streak = int(attempts), int(hints), int(streak)
+        solved = solved == "1"
+    except ValueError:
+        return
+
+    user = update.effective_user
+    user_data = firebase_service.get_user_data(user.id) or {}
+    lang = _language_for(update, user_data)
+    pinned = trophies.showcase(user_data, lang)
+    image = card_image(
+        user_data, lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved,
+        streak=streak, hints=hints,
+        honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
+    )
+    text = share_text(lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved,
+                      streak=streak, hints=hints, symbols=shop.squares_symbols(user_data))
+    await query.message.reply_photo(photo=image, caption=text)
+
+
 def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=None):
     """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta.
 
@@ -206,7 +256,9 @@ def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=N
     meta' di quello che si condivide in un gruppo, ed e' l'unica riga che non puo'
     spoilerare niente."""
     button = _share_button(lang, attempts_used, streak, solved, hints, symbols)
-    return InlineKeyboardMarkup([[button]]) if button else None
+    card = _card_button(lang, attempts_used, streak, solved, hints)
+    rows = [row for row in ([button] if button else [], [card]) if row]
+    return InlineKeyboardMarkup(rows) if rows else None
 
 
 def _attempt_error_message(lang, reason):

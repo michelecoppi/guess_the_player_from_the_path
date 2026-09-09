@@ -1,10 +1,9 @@
-import re
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import ContextTypes
 
+from services import trophies as trophy_tags
 from services.firebase_service import get_user_data
-from services.i18n import month_label, resolve_language, t
+from services.i18n import resolve_language, t
 from services.path_image import render_avatar, render_palmares_image
 
 TROPHIES_PER_PAGE = 5
@@ -88,9 +87,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=No
             parse_mode="Markdown"
         )
 
-def format_event_name(event_name):
-    return re.sub(r'([a-z])([A-Z])', r'\1 \2', event_name)
-
 async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -119,34 +115,18 @@ async def show_trophies_callback(update: Update, context: ContextTypes.DEFAULT_T
     end = start + TROPHIES_PER_PAGE
     displayed = trophies[start:end]
 
+    # Le stesse targhe della mini app (services/trophies.py). Prima la lettura del codice
+    # stava qui e contava i pezzi fra un trattino basso e l'altro: l'id di un evento come
+    # `un_amore_una_maglia` ne porta gia' tre suoi, quindi quasi tutti i trofei veri
+    # cadevano nel ripiego e uscivano come codice grezzo.
     message = t(lang, "stats.trophies_title")
     for trophy in displayed:
-        if trophy.startswith("MON_"):
-            # Trofeo classifica mensile
-            try:
-                _, month, season_num, year, pos = trophy.split("_")
-                medal = {
-                    "1": "🥇",
-                    "2": "🥈",
-                    "3": "🥉"
-                }.get(pos, "🏅")
-                message += t(lang, "stats.trophy_monthly", medal=medal, month=month_label(lang, month), year=year, season_num=season_num, pos=pos)
-            except ValueError:
-                message += f"🏅 {trophy}\n"
+        tag = trophy_tags.parse(trophy, lang)
+        if tag:
+            message += t(lang, "stats.trophy_line", medal=tag["medal"], label=tag["label"],
+                         detail=tag["detail"])
         else:
-            # Trofeo evento settimanale
-            parts = trophy.split("_")
-            if len(parts) == 4:
-                pos, event, week, year = parts
-                medal = {
-                    "1": "🥇",
-                    "2": "🥈",
-                    "3": "🥉"
-                }.get(pos, "🏅")
-                formatted_event = format_event_name(event)
-                message += t(lang, "stats.trophy_event", medal=medal, event=formatted_event, week=week, year=year, pos=pos)
-            else:
-                message += f"🏅 {trophy}\n"
+            message += f"🏅 {trophy}\n"
 
     buttons = []
     if start > 0:

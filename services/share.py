@@ -11,7 +11,9 @@ anche con la inline mode del bot disattivata.
 from urllib.parse import quote
 
 from config import BOT_USERNAME
+from services import shop
 from services.i18n import t
+from services.path_image import render_share_card
 
 CORRECT = "🟩"
 WRONG = "🟥"
@@ -74,6 +76,33 @@ def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0,
     if link:
         lines.append(link)
     return "\n".join(lines)
+
+
+def card_image(user, lang, number, attempts_used, max_attempts, solved=True, streak=0,
+               hints=0, honour=""):
+    """La figurina del risultato: la stessa riga, ma da guardare.
+
+    La riga di testo resta e non se ne va: e' quella che funziona sempre - si incolla ovunque,
+    non pesa niente e si legge anche a immagini spente. La figurina e' in piu', ed e' il posto
+    dove una finitura comprata in negozio si vede davvero.
+
+    Le parole arrivano gia' tradotte da qui: `render_share_card` disegna e basta."""
+    look = shop.appearance(user or {}, lang)
+    meta = []
+    if streak >= 2:
+        meta.append(t(lang, "share.streak", streak=streak))
+    if hints > 0:
+        meta.append(HINT * hints)
+    return render_share_card(
+        number, attempts_used, max_attempts, solved=solved,
+        name=(user or {}).get("first_name", ""),
+        style=look.get("card") or {},
+        title=(look.get("title") or {}).get("label", ""),
+        shirt=look.get("number", ""),
+        honour=honour,
+        meta="   ".join(meta),
+        footer=bot_link().replace("https://", ""),
+    )
 
 
 def share_url(text):

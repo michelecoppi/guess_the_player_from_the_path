@@ -19,7 +19,8 @@ from services import shop
 from services.share import share_text
 
 FREE = {"theme": "notturno", "frame": "cornice_nessuna", "title": "titolo_nessuno",
-        "badge": "distintivo_nessuno", "squares": "quadratini_classici"}
+        "badge": "distintivo_nessuno", "squares": "quadratini_classici",
+        "number": "maglia_nessuna", "celebration": "festa_nessuna", "card": "figurina_classica"}
 
 
 def user_with(*owned, **worn):

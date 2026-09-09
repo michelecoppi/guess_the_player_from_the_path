@@ -11,22 +11,41 @@ def test_public_profile_only_exposes_statistics_and_equipped_cosmetics(monkeypat
         "cosmetics": {"owned": ["neon", "sostenitore_titolo", "fuoco", "ghiaccio"],
                       "equipped": {"theme": "neon", "title": "sostenitore_titolo", "frame": "fuoco"},
                       "looks": [{"name": "PRIVATE_LOOK"}]},
+        "trophies": ["1_giramondo_20260907", "3_PRIVATEEVENT_20251201"],
         "chat_id": "PRIVATE_CHAT", "leagues": ["PRIVATE_LEAGUE"],
         "shop_checkout": {"query_id": "PRIVATE_PAYMENT"},
         "daily_hints": "PRIVATE_HINTS", "daily_attempts": 2,
     }
     monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", lambda uid: data)
     result = webapp_api.build_public_profile(42, "en")
-    assert set(result) == {"user", "cosmetics", "wearing"}
+    assert set(result) == {"user", "cosmetics", "wearing", "trophies"}
     assert result["user"]["name"] == "Anna"
     assert result["cosmetics"]["theme"] == shop.get_item("neon")["style"]
     assert result["cosmetics"]["title"]["label"] == "Supporter"
     assert result["cosmetics"]["frame"]["spin"]
+    # Solo i trofei appesi al profilo: non avendo scelto, il ripiego sono i migliori, uno
+    # per volta fino a tre - non la bacheca intera.
+    assert [one["code"] for one in result["trophies"]] == ["1_giramondo_20260907",
+                                                           "3_PRIVATEEVENT_20251201"]
     encoded = json.dumps(result)
     assert "PRIVATE_" not in encoded
     assert "ghiaccio" not in encoded  # owned, but not worn
     assert "owned" not in encoded and "looks" not in encoded
-    assert len(result["wearing"]) == 5
+    assert len(result["wearing"]) == len(shop.KINDS)
+
+
+def test_public_profile_shows_only_the_trophies_that_were_pinned(monkeypatch):
+    """La bacheca intera e' di chi la possiede. Da fuori si vede quello che ha scelto di
+    appendere, e niente altro."""
+    monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", lambda uid: {
+        "first_name": "Anna",
+        "trophies": ["1_giramondo_20261001", "2_PRIVATETROPHY_20261101", "MON_July_3_2026_1"],
+        "cosmetics": {"owned": [], "equipped": {},
+                      "pinned": ["MON_July_3_2026_1", "1_giramondo_20261001"]},
+    })
+    result = webapp_api.build_public_profile(42, "en")
+    assert [one["code"] for one in result["trophies"]] == ["MON_July_3_2026_1", "1_giramondo_20261001"]
+    assert "PRIVATETROPHY" not in json.dumps(result)
 
 
 @pytest.mark.parametrize("target", [None, True, -1, 0, "42", [], {}, 2**53])

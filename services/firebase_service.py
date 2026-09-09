@@ -136,10 +136,13 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
     "training_solved": 0,
     "event_key": None,
     "leagues": [],
-    # Cosmetici comprati in Stelle e cosa ha addosso adesso. `owned` non elenca gli oggetti
-    # gratuiti: quelli li hanno tutti per definizione (services/shop.py), e scriverli qui
-    # vorrebbe dire ripassare su ogni utente ogni volta che se ne aggiunge uno.
-    "cosmetics": {"owned": [], "equipped": {}},
+    # Cosmetici comprati in Stelle, traguardi guadagnati giocando, trofei appesi al profilo,
+    # e cosa ha addosso adesso.
+    # `owned` non elenca gli oggetti gratuiti: quelli li hanno tutti per definizione
+    # (services/shop.py), e scriverli qui vorrebbe dire ripassare su ogni utente ogni volta
+    # che se ne aggiunge uno. `earned` invece si scrive, ed e' separato da `owned` perche' i
+    # due rispondono a domande diverse: da `owned` si ritira quando si rimborsa un acquisto.
+    "cosmetics": {"owned": [], "earned": [], "pinned": [], "equipped": {}},
 }
 
 
@@ -400,6 +403,62 @@ def take_daily_hint(user_id, day_iso, max_hints, max_attempts):
     return _take(db.transaction())
 
 
+# ---------------------------------------------------------------------------
+# I traguardi del negozio
+#
+# Un traguardo (services/shop.py, gli oggetti con `achievement`) si ricava da un contatore.
+# Finche' resta solo un calcolo e' anche reversibile: basta alzare un obiettivo in
+# data/shop.json, o rinominare un id, e chi stava sotto la soglia nuova si ritrova senza un
+# distintivo che aveva gia' guadagnato - senza aver fatto niente, e senza che nessuno se ne
+# accorga, perche' e' una modifica a un file di dati e non a una riga di codice.
+#
+# Quindi si scrivono. Una volta sola, nel momento in cui il contatore che li fa scattare si
+# muove: e' l'unico istante in cui puo' succedere, e in quell'istante stiamo gia' scrivendo.
+# Vanno in `cosmetics.earned` e non in `cosmetics.owned` perche' i due elenchi rispondono a
+# domande diverse: da `owned` si ritira quando si rimborsa un acquisto (`revoke_purchase`),
+# e da un traguardo non c'e' niente da ritirare.
+# ---------------------------------------------------------------------------
+
+# I contatori su cui un traguardo puo' appoggiarsi: quelli che una delle scritture qui sotto
+# raccoglie. Un obiettivo appeso a un campo che non e' in questa lista non verrebbe mai messo
+# al sicuro, e resterebbe per sempre alla merce' del calcolo. C'e' un test che lo verifica.
+HARVESTED_FIELDS = frozenset({
+    "points_totali", "monthly_points", "players_guessed", "current_streak", "best_streak",
+    "bonus_first_guessed", "archive_solved", "training_solved",
+})
+
+
+def _newly_earned(data, **after):
+    """I traguardi che scattano con questi contatori aggiornati e non sono ancora scritti.
+
+    L'import sta qui dentro e non in cima al modulo perche' services/shop.py importa questo:
+    al momento della chiamata sono caricati tutti e due, all'import no."""
+    from services import shop
+    return shop.newly_earned({**(data or {}), **after})
+
+
+def _bump_counters(user_id, updates, **deltas):
+    """Muove dei contatori e, nella stessa scrittura, mette al sicuro i traguardi che questo
+    fa scattare.
+
+    Non e' una transazione e non serve che lo sia: `Increment` e `ArrayUnion` si applicano
+    sul server e non si perdono se due scritture si accavallano. La lettura serve solo a
+    sapere **quali** traguardi sono scattati; se torna leggermente vecchia il traguardo si
+    scrive alla partita dopo, e nel frattempo `owned_ids` lo calcola comunque.
+
+    Ritorna gli id appena messi al sicuro, cosi' chi chiama puo' dirlo all'utente."""
+    ref = user_ref(user_id)
+    snapshot = ref.get()
+    data = snapshot.to_dict() if snapshot.exists else {}
+    after = {field: int(data.get(field, 0) or 0) + delta for field, delta in deltas.items()}
+    fresh = _newly_earned(data, **after)
+    if fresh:
+        updates = {**updates, "cosmetics.earned": firestore.ArrayUnion(fresh)}
+        logging.info(f"[SHOP] {user_id} ha guadagnato {', '.join(fresh)}")
+    ref.update(updates)
+    return fresh
+
+
 def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True, attempts=None):
     """Registra la risposta giusta e aggiorna la striscia di giorni consecutivi.
 
@@ -441,6 +500,23 @@ def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True, a
             update_data[f"solved_in.{attempts}"] = firestore.Increment(1)
         if monthly:
             update_data["monthly_points"] = firestore.Increment(awarded)
+
+        # I traguardi che questa giocata fa scattare si scrivono qui dentro, insieme ai
+        # contatori che li hanno mossi: sono lo stesso fatto, e separarli lascerebbe una
+        # finestra in cui il contatore e' salito e il distintivo no. La lettura c'e' gia'
+        # (`data`), quindi non costa niente.
+        earned = _newly_earned(
+            data,
+            points_totali=int(data.get("points_totali", 0) or 0) + awarded,
+            monthly_points=int(data.get("monthly_points", 0) or 0) + (awarded if monthly else 0),
+            players_guessed=int(data.get("players_guessed", 0) or 0) + 1,
+            bonus_first_guessed=int(data.get("bonus_first_guessed", 0) or 0) + (1 if bonus > 0 else 0),
+            current_streak=streak,
+            best_streak=best,
+        )
+        if earned:
+            update_data["cosmetics.earned"] = firestore.ArrayUnion(earned)
+            logging.info(f"[SHOP] {user_id} ha guadagnato {', '.join(earned)}")
         transaction.update(ref, update_data)
 
         return {
@@ -448,6 +524,7 @@ def register_correct_guess(user_id, points, bonus, day_iso=None, monthly=True, a
             "streak_bonus": extra,
             "current_streak": streak,
             "best_streak": best,
+            "earned": earned,
         }
 
     return _register(db.transaction())
@@ -715,11 +792,13 @@ def begin_archive_attempt(user_id, day_iso, max_attempts):
 
 def register_archive_solved(user_id, day_iso, attempts):
     """Nessun punto: l'archivio non deve permettere di scalare la classifica rigiocando il
-    passato. Si tiene solo il conto delle sfide recuperate, che finisce in /stats."""
+    passato. Si tiene solo il conto delle sfide recuperate, che finisce in /stats.
+
+    Ritorna i traguardi che questa sfida recuperata ha fatto scattare."""
     archive_ref(user_id, day_iso).set(
         {"day": day_iso, "attempts": attempts, "solved": True}, merge=True
     )
-    user_ref(user_id).update({"archive_solved": firestore.Increment(1)})
+    return _bump_counters(user_id, {"archive_solved": firestore.Increment(1)}, archive_solved=1)
 
 
 def history_ref(user_id, day_iso):
@@ -795,12 +874,14 @@ def register_training_attempt(user_id):
 
 
 def register_training_solved(user_id):
-    """Nessun punto, come l'archivio: si tiene solo il conto, che finisce in /stats."""
-    user_ref(user_id).update({
+    """Nessun punto, come l'archivio: si tiene solo il conto, che finisce in /stats.
+
+    Ritorna i traguardi che questo allenamento ha fatto scattare."""
+    return _bump_counters(user_id, {
         "training_key": None,
         "training_attempts": 0,
         "training_solved": firestore.Increment(1),
-    })
+    }, training_solved=1)
 
 
 def set_event_key(user_id, key):
@@ -1324,6 +1405,16 @@ def deliver_purchase(user_id, charge_id, item_id, granted_ids, stars, day_iso=No
     else:
         logging.warning(f"[SHOP] Pagamento {charge_id} gia' consegnato, ignorato")
     return delivered
+
+
+def pin_trophies(user_id, codes):
+    """Quali trofei stanno sul profilo. La regola su cosa e' appendibile sta in
+    services/trophies.py: qui si scrive e basta, come per i cosmetici.
+
+    Sta dentro `cosmetics` e non accanto a `trophies` perche' e' una scelta di come ci si
+    vede, non un dato sui trofei vinti: `trophies` lo scrive chi assegna un podio, questo lo
+    scrive l'utente."""
+    user_ref(user_id).set({"cosmetics": {"pinned": list(codes)}}, merge=True)
 
 
 def equip_cosmetic(user_id, kind, item_id):

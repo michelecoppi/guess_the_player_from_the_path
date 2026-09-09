@@ -12,7 +12,7 @@ import colorsys
 import hashlib
 import io
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 from services.career_order import order_career
 from services.content_i18n import localize_career
@@ -398,3 +398,166 @@ def _to_buffer(img, name):
     buffer.seek(0)
     buffer.name = name
     return buffer
+
+
+# ---------------------------------------------------------------------------
+# La figurina del risultato
+#
+# E' l'unico cosmetico che vede tutta la chat senza aprire il bot: la riga di quadratini si
+# incolla, ma una figurina si guarda. Il formato e' verticale (4:5) perche' e' quello che
+# Telegram mostra piu' grande in una bolla senza tagliare.
+#
+# I simboli comprati in negozio qui **non** si usano: il font non ha i glifi emoji e li
+# disegnerebbe come quadratini vuoti (vedi services/fonts.py). Al loro posto ci sono forme
+# disegnate, che e' anche il motivo per cui la figurina puo' avere una finitura: un'emoji non
+# si puo' rendere olografica.
+# ---------------------------------------------------------------------------
+
+CARD_WIDTH = 860
+CARD_HEIGHT = 1075
+
+
+def _hex(value, fallback):
+    value = (value or "").lstrip("#")
+    if len(value) != 6:
+        value = fallback.lstrip("#")
+    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _finish_plain(img, paper, glow):
+    return img
+
+
+def _finish_night(img, paper, glow):
+    """Il cono dei riflettori che scende dall'alto.
+
+    Il cono si disegna, si sfoca e poi si spegne verso il basso: senza la sfocatura ha i
+    bordi netti e senza lo spegnimento finisce di colpo a meta' card, e in tutti e due i
+    casi sembra un triangolo appoggiato sopra invece che una luce."""
+    cone = Image.new("L", img.size, 0)
+    draw = ImageDraw.Draw(cone)
+    draw.polygon(
+        [(CARD_WIDTH / 2 - 70, -60), (CARD_WIDTH / 2 + 70, -60),
+         (CARD_WIDTH + 120, CARD_HEIGHT), (-120, CARD_HEIGHT)],
+        fill=90,
+    )
+    cone = cone.filter(ImageFilter.GaussianBlur(46))
+
+    falloff = Image.new("L", (1, CARD_HEIGHT))
+    for y in range(CARD_HEIGHT):
+        falloff.putpixel((0, y), int(max(0.0, 1 - (y / CARD_HEIGHT) ** 0.9) * 255))
+    mask = Image.composite(cone, Image.new("L", img.size, 0), falloff.resize(img.size))
+    return Image.composite(Image.new("RGB", img.size, glow), img, mask)
+
+
+def _finish_foil(img, paper, glow):
+    """L'iride di una figurina rara girata verso la luce.
+
+    Le bande si disegnano nette e poi si sfocano: senza la sfocatura restano righe, e una
+    figurina a righe sembra un palo da barbiere invece che una superficie lucida. La maschera
+    verticale toglie il riflesso da sopra e da sotto, cosi' la luce sembra colpire il centro
+    invece di coprire tutto uniformemente."""
+    bands = Image.new("RGB", img.size, paper)
+    draw = ImageDraw.Draw(bands)
+    palette = [(255, 156, 227), (156, 227, 255), (195, 255, 156), (255, 232, 156), (255, 179, 217)]
+    step = 34
+    for index, x in enumerate(range(-CARD_HEIGHT, CARD_WIDTH + CARD_HEIGHT, step)):
+        draw.polygon([(x, 0), (x + step, 0), (x + step - CARD_HEIGHT, CARD_HEIGHT),
+                      (x - CARD_HEIGHT, CARD_HEIGHT)], fill=palette[index % len(palette)])
+    bands = bands.filter(ImageFilter.GaussianBlur(16))
+
+    sheen = Image.new("L", (1, CARD_HEIGHT))
+    for y in range(CARD_HEIGHT):
+        distance = abs(y - CARD_HEIGHT * 0.42) / (CARD_HEIGHT * 0.58)
+        sheen.putpixel((0, y), int(max(0.0, 1 - distance ** 1.6) * 120))
+    return Image.composite(bands, img, sheen.resize(img.size))
+
+
+def _finish_grain(img, paper, glow):
+    """Grana di pellicola e righe di scansione, senza un colore."""
+    grey = img.convert("L").convert("RGB")
+    noise = Image.effect_noise(img.size, 26).convert("RGB")
+    out = Image.blend(grey, noise, 0.14)
+    draw = ImageDraw.Draw(out)
+    for y in range(0, CARD_HEIGHT, 4):
+        draw.line([(0, y), (CARD_WIDTH, y)], fill=(255, 255, 255), width=1)
+    return Image.blend(grey, out, 0.55)
+
+
+FINISHES = {
+    "plain": _finish_plain,
+    "night": _finish_night,
+    "foil": _finish_foil,
+    "grain": _finish_grain,
+}
+
+
+def render_share_card(number, attempts_used, max_attempts, solved=True, name="", style=None,
+                      title="", shirt="", honour="", meta="", footer="", kicker="GUESS THE PLAYER"):
+    """La card del risultato come immagine.
+
+    Non dice mai chi era il calciatore, esattamente come la riga di testo: la si incolla in
+    un gruppo dove qualcuno non ha ancora giocato.
+
+    `style` e' lo `style` del cosmetico `card` indossato (services/shop.py): tre colori e una
+    finitura. Se manca, si ripiega sui colori del tema di partenza - una figurina mezza
+    disegnata sarebbe peggio di una senza finitura.
+
+    `meta`, `title`, `honour` e `footer` arrivano gia' scritti nella lingua giusta: qui non
+    si traduce niente, si disegna e basta (services/share.py mette insieme le parole)."""
+    style = style or {}
+    paper = _hex(style.get("paper"), "#0a131e")
+    ink = _hex(style.get("ink"), "#ecf2f8")
+    glow = _hex(style.get("glow"), "#38bd82")
+
+    img = Image.new("RGB", (CARD_WIDTH, CARD_HEIGHT), paper)
+    img = FINISHES.get(style.get("finish"), _finish_plain)(img, paper, glow)
+    draw = ImageDraw.Draw(img)
+
+    muted = tuple(round(channel * 0.45 + paper[i] * 0.55) for i, channel in enumerate(ink))
+
+    draw.text((CARD_WIDTH / 2, 92), kicker, font=get_font(23, bold=True), fill=muted, anchor="mm")
+    draw.text((CARD_WIDTH / 2, 152), f"#{number}", font=get_font(64, bold=True), fill=ink, anchor="mm")
+
+    # I tentativi: uno per casella. Piena e accesa quella giusta, piena e spenta quella
+    # sbagliata, vuota quella non usata - le stesse tre cose che dicono i quadratini.
+    size, gap = 96, 20
+    total = max_attempts * size + (max_attempts - 1) * gap
+    left = (CARD_WIDTH - total) / 2
+    top = 300
+    wrong = max(attempts_used - 1 if solved else attempts_used, 0)
+    for index in range(max_attempts):
+        x = left + index * (size + gap)
+        box = [x, top, x + size, top + size]
+        if index < wrong:
+            draw.rounded_rectangle(box, radius=18, fill=muted)
+        elif index == wrong and solved:
+            draw.rounded_rectangle(box, radius=18, fill=glow)
+        else:
+            draw.rounded_rectangle(box, radius=18, outline=muted, width=4)
+
+    score = f"{attempts_used}/{max_attempts}" if solved else f"X/{max_attempts}"
+    draw.text((CARD_WIDTH / 2, 486), score, font=get_font(72, bold=True), fill=ink, anchor="mm")
+
+    if meta:
+        draw.text((CARD_WIDTH / 2, 572), _truncate(draw, meta, get_font(30), 680),
+                  font=get_font(30), fill=muted, anchor="mm")
+
+    # Chi l'ha fatta: nome, numero di maglia, titolo e l'eventuale trofeo appeso. Sono tutte
+    # parole, ed e' voluto - il distintivo e' un'emoji e qui non si puo' disegnare.
+    plate_top = CARD_HEIGHT - 300
+    draw.line([(120, plate_top), (CARD_WIDTH - 120, plate_top)], fill=muted, width=2)
+    label = f"{shirt}  {name}".strip() if shirt else name
+    if label:
+        draw.text((CARD_WIDTH / 2, plate_top + 62), _truncate(draw, label, get_font(46, bold=True), 620),
+                  font=get_font(46, bold=True), fill=ink, anchor="mm")
+    if title:
+        draw.text((CARD_WIDTH / 2, plate_top + 118), _truncate(draw, title, get_font(28), 660),
+                  font=get_font(28), fill=glow, anchor="mm")
+    if honour:
+        draw.text((CARD_WIDTH / 2, plate_top + 166), _truncate(draw, honour, get_font(25), 660),
+                  font=get_font(25), fill=muted, anchor="mm")
+    if footer:
+        draw.text((CARD_WIDTH / 2, CARD_HEIGHT - 56), footer, font=get_font(24), fill=muted, anchor="mm")
+
+    return _to_buffer(img, "risultato.png")

@@ -12,7 +12,7 @@ strumenti di sviluppo puo' leggere quello che gli mandiamo.
 Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.py), mai il
 client: nessuna di queste funzioni riceve un id da fuori.
 """
-from services import firebase_service, game, shop
+from services import firebase_service, game, shop, trophies
 from services.career_order import order_career
 from services.content_i18n import localize_career
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
@@ -49,6 +49,11 @@ def build_profile(user_id, day_iso=None, lang=None):
         # Stanno nel profilo e non dietro la scheda del negozio perche' la pagina si deve
         # disegnare gia' giusta alla prima apertura (services/shop.py, `appearance`).
         "cosmetics": shop.appearance(user, lang),
+        # I trofei vinti, scelti da chi li ha vinti (services/trophies.py). Viaggiano col
+        # profilo e non dietro una scheda loro per la stessa ragione dei cosmetici: la
+        # prima schermata deve gia' essere quella giusta.
+        "trophies": {"pinned": trophies.showcase(user, lang), "all": trophies.cabinet(user, lang),
+                     "max": trophies.MAX_PINNED},
         "today": _today_summary(user, day_iso, lang),
         "distribution": _distribution(user),
         "leaderboard": _leaderboard(user_id),
@@ -81,6 +86,9 @@ def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
     return {
         "user": _user_summary(user),
         "cosmetics": appearance,
+        # Solo quelli appesi: la bacheca intera e' roba di chi la possiede, il profilo
+        # pubblico mostra quello che ha scelto di far vedere.
+        "trophies": trophies.showcase(user, lang),
         "wearing": [{"kind": kind, "name": shop.localize(shop.get_item(item_id), lang)[0]}
                     for kind, item_id in appearance["equipped"].items()],
     }

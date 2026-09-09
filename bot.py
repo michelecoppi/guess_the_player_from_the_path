@@ -1,3 +1,4 @@
+import base64
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -41,7 +42,7 @@ from handlers.group_handler import (
     group_new_round_callback,
     group_standings,
 )
-from handlers.guess_handler import free_text_guess, guess
+from handlers.guess_handler import CARD_PREFIX, free_text_guess, guess, share_card_callback
 from handlers.help_handler import help
 from handlers.hint_handler import hint_callback
 from handlers.keyboards import bot_commands
@@ -72,10 +73,13 @@ from handlers.start_handler import start
 from handlers.support_handler import paysupport
 from handlers.top_users_handler import leaderboard_callback, top
 from handlers.training_handler import training, training_callback
-from services import firebase_service, game, shop
+from services import firebase_service, game, shop, trophies
 from services import leagues as league_rules
+from services.daily_challenge import MAX_ATTEMPTS, challenge_number
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
+from services.share import card_image
 from services.webapp_api import (
+    MAX_ARCHIVE_ATTEMPTS,
     build_archive_challenge,
     build_calendar,
     build_profile,
@@ -150,6 +154,7 @@ telegram_app.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"
 telegram_app.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))
 telegram_app.add_handler(CallbackQueryHandler(handle_event_navigation, pattern="^event_"))
 telegram_app.add_handler(CallbackQueryHandler(shop_callback, pattern="^shop_"))
+telegram_app.add_handler(CallbackQueryHandler(share_card_callback, pattern=f"^{CARD_PREFIX}:"))
 telegram_app.add_handler(CallbackQueryHandler(leaderboard_callback, pattern="show_.*"))
 # Pagamenti in Stelle. La pre-checkout e' l'ultimo momento in cui si puo' rifiutare (Telegram
 # aspetta dieci secondi); il messaggio con `successful_payment` e' la consegna, e non e' un
@@ -427,6 +432,46 @@ async def webapp_shop_history(payload: dict = Body(default={})):
                      "day": purchase.get("day", ""), "stars": purchase.get("stars", 0),
                      "refunded": bool(purchase.get("refunded")), "charge_id": purchase.get("charge_id", "")})
     return {"purchases": rows, "support_url": f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else ""}
+
+
+@app.post("/app/api/card")
+async def webapp_result_card(payload: dict = Body(default={})):
+    """La figurina dell'ultimo risultato, come data URI.
+
+    Torna in JSON e non come immagine servita da un URL perche' l'autenticazione della mini
+    app e' la firma di initData, che viaggia nel corpo di una POST: un `<img src>` verso una
+    GET vorrebbe dire o un endpoint senza firma o un id nell'URL, e nessuna delle due va
+    bene per una card che porta il nome di chi l'ha fatta."""
+    user_id, user_data = _webapp_user(payload)
+    lang = _webapp_language(user_data)
+    day = payload.get("day")
+    attempts = int(payload.get("attempts") or 0)
+    total = int(payload.get("max_attempts") or 0) or MAX_ATTEMPTS
+    if not (1 <= attempts <= total <= MAX_ARCHIVE_ATTEMPTS + MAX_ATTEMPTS):
+        raise HTTPException(status_code=400, detail="tentativi fuori scala")
+    pinned = trophies.showcase(user_data, lang)
+    buffer = card_image(
+        user_data, lang, challenge_number(day), attempts, total,
+        solved=bool(payload.get("solved", True)),
+        streak=int(payload.get("streak") or 0),
+        hints=int(payload.get("hints") or 0),
+        honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
+    )
+    return {"image": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}
+
+
+@app.post("/app/api/trophies/pin")
+async def webapp_pin_trophies(payload: dict = Body(default={})):
+    """Quali trofei stanno sul profilo. La regola su cosa si puo' appendere sta in
+    services/trophies.py: qui arriva una lista di codici dal client, e un codice non e' una
+    prova di aver vinto niente."""
+    user_id, user_data = _webapp_user(payload)
+    status = trophies.pin(user_id, user_data, payload.get("codes"))
+    if status != "ok":
+        return {"status": status}
+    lang = _webapp_language(user_data)
+    fresh = firebase_service.get_user_data(user_id)
+    return {"status": "ok", "pinned": trophies.showcase(fresh, lang)}
 
 
 @app.post("/internal/daily-job")

@@ -22,14 +22,23 @@ import logging
 import os
 
 from config import BOT_TOKEN
-from services import firebase_service
+from services import firebase_service, trophies
+from services.dates import parse_iso, today_iso
 from services.i18n import DEFAULT_LANGUAGE
 
 SHOP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "shop.json")
 
 # I tipi di cosmetico, nell'ordine in cui si mostrano. Uno per "slot": si tiene equipaggiato
 # un oggetto per tipo, e il tipo e' anche quello che dice **dove** si vede.
-KINDS = ("theme", "frame", "title", "badge", "squares")
+#
+# I cinque **fondamentali** ci sono da sempre e una collezione li riempie tutti: sono quelli
+# che disegnano una persona - tema, cornice, titolo, distintivo - e la sua card. I tre in
+# fondo sono arrivati dopo e una collezione puo' averli o no: un numero di maglia o un
+# festeggiamento non stanno addosso a ogni mondo, e inventarne uno per ogni set vorrebbe dire
+# riempire il catalogo di roba senza intenzione.
+CORE_KINDS = ("theme", "frame", "title", "badge", "squares")
+EXTRA_KINDS = ("number", "celebration", "card")
+KINDS = CORE_KINDS + EXTRA_KINDS
 
 # Prefisso del payload dell'invoice. Telegram ce lo restituisce dentro `successful_payment`,
 # ed e' l'unica cosa che lega il pagamento all'oggetto comprato.
@@ -39,6 +48,14 @@ PAYLOAD_PREFIX = "cosmetic"
 # vorrebbe dire un errore nel catalogo, non un oggetto costoso.
 MIN_STARS = 1
 MAX_STARS = 2500
+
+# Le fasce di rarita', dal prezzo in su. Non sono un dato in piu' da tenere allineato a mano:
+# si ricavano dal prezzo, cosi' non possono mentire. Un oggetto puo' comunque dichiarare la
+# sua (`rarity` in data/shop.json) quando la fascia del prezzo non racconta quello che e':
+# una figurina che esiste solo dentro una collezione costa zero da sola, e "gratuita" e'
+# esattamente il contrario di quello che vuol dire.
+RARITY_BANDS = (("common", 15), ("rare", 30), ("collector", MAX_STARS))
+RARITIES = ("free", "earned", "common", "rare", "collector")
 
 _catalogue = None
 
@@ -85,7 +102,26 @@ def is_free(item):
     `locked` distingue il gratuito dal "non in vendita da solo": il titolo Sostenitore
     costa 0 perche' non ha un prezzo suo, ma arriva **solo** dentro il pacchetto. Senza
     questa distinzione lo avrebbero tutti dal primo giorno."""
-    return not item.get("locked") and not item.get("achievement") and int(item.get("price", 0) or 0) <= 0
+    return (not item.get("locked") and not item.get("achievement") and not item.get("completes")
+            and not item.get("trophy") and int(item.get("price", 0) or 0) <= 0)
+
+
+def rarity_of(item):
+    """La fascia di un oggetto: quella dichiarata se c'e', altrimenti quella del prezzo."""
+    declared = (item or {}).get("rarity")
+    if declared in RARITIES:
+        return declared
+    if not item:
+        return "free"
+    if item.get("achievement") or item.get("completes") or item.get("trophy"):
+        return "earned"
+    price = int(item.get("price", 0) or 0)
+    if price <= 0:
+        return "free"
+    for name, ceiling in RARITY_BANDS:
+        if price <= ceiling:
+            return name
+    return "collector"
 
 
 def free_ids():
@@ -108,16 +144,82 @@ def _cosmetics(user):
     return (user or {}).get("cosmetics") or {}
 
 
+def reached_ids(user):
+    """I traguardi che i contatori di questo utente raggiungono **adesso**.
+
+    E' un calcolo, quindi segue i contatori in tutte e due le direzioni: da solo non basta a
+    dire che un traguardo e' di qualcuno, perche' basta alzare un obiettivo in data/shop.json
+    per farlo tornare indietro. Serve a sapere quando scatta, non a possederlo."""
+    return {item["id"] for item in all_items() if item.get("achievement") and
+            int((user or {}).get(item["achievement"]["field"], 0) or 0) >= item["achievement"]["target"]}
+
+
+def earned_ids(user):
+    """I traguardi gia' messi al sicuro sul documento utente.
+
+    Questi non si tolgono piu': un traguardo e' una cosa che e' successa, e un obiettivo
+    ritoccato mesi dopo non puo' far sparire un distintivo che qualcuno aveva addosso."""
+    return {item_id for item_id in (_cosmetics(user).get("earned") or []) if get_item(item_id)}
+
+
+def newly_earned(user):
+    """Cosa c'e' da scrivere adesso: raggiunto ma non ancora al sicuro.
+
+    Lo chiama firebase_service nel punto in cui i contatori si muovono, cioe' l'unico momento
+    in cui un traguardo puo' scattare."""
+    return sorted(reached_ids(user) - earned_ids(user))
+
+
+def podium_ids(user):
+    """Gli oggetti che si sbloccano con un piazzamento sul podio.
+
+    `"trophy": {"position": 3}` vuol dire "sei arrivato almeno terzo, da qualche parte":
+    un primo posto soddisfa anche la richiesta di un terzo, non il contrario. Sono l'unico
+    modo di avere certe cose, e servono a dire che nel negozio non tutto si compra."""
+    won = trophies.positions(user)
+    return {item["id"] for item in all_items() if item.get("trophy")
+            and any(position <= item["trophy"]["position"] for position in won)}
+
+
+def _base_owned(user):
+    owned = set(_cosmetics(user).get("owned") or [])
+    return (free_ids() | reached_ids(user) | earned_ids(user) | podium_ids(user)
+            | {item_id for item_id in owned if get_item(item_id)})
+
+
+def completed_ids(user, owned=None):
+    """I premi di completamento gia' meritati: quelli la cui collezione e' tutta li'.
+
+    Non si scrivono da nessuna parte, a differenza dei traguardi, ed e' voluto: un premio di
+    completamento **e'** la collezione completa, non un fatto avvenuto una volta. Se un
+    rimborso toglie un pezzo la collezione non e' piu' completa, e il premio se ne va con
+    essa - che e' esattamente quello che deve succedere."""
+    owned = _base_owned(user) if owned is None else owned
+    return {item["id"] for item in all_items()
+            if item.get("completes") and all(one in owned for one in item["completes"])}
+
+
+def missing_for(user, item):
+    """Cosa manca per meritarsi un premio di completamento."""
+    owned = _base_owned(user)
+    return [one for one in (item or {}).get("completes") or [] if one not in owned]
+
+
 def owned_ids(user):
-    """Tutto quello che questo utente puo' indossare: il gratuito piu' il comprato.
+    """Tutto quello che questo utente puo' indossare: il gratuito, il guadagnato, il comprato.
 
     I gratuiti non si scrivono sul documento utente: sono gratuiti per definizione, e
     scriverli vorrebbe dire dover ripassare su tutti gli utenti ogni volta che se ne
-    aggiunge uno."""
-    owned = set(_cosmetics(user).get("owned") or [])
-    earned = {item["id"] for item in all_items() if item.get("achievement") and
-              int((user or {}).get(item["achievement"]["field"], 0) or 0) >= item["achievement"]["target"]}
-    return free_ids() | earned | {item_id for item_id in owned if get_item(item_id)}
+    aggiunge uno. I traguardi invece si scrivono, e qui compaiono da due parti: quelli scritti
+    (`earned_ids`) e quelli che i contatori raggiungono in questo momento (`reached_ids`). Il
+    secondo insieme e' la rete per chi ha guadagnato un traguardo prima che li scrivessimo e
+    non ha ancora rigiocato: alla prima partita utile passa nel primo e ci resta.
+
+    I premi di completamento si calcolano **dopo** tutto il resto e non possono premiare a
+    loro volta il possesso di un altro premio: un premio che ne sblocca un altro sarebbe una
+    catena da srotolare, e c'e' un test che lo vieta."""
+    base = _base_owned(user)
+    return base | completed_ids(user, base)
 
 
 def equipped(user):
@@ -200,6 +302,11 @@ def purchase_status(user, item_id):
     price = int(item.get("price", 0) or 0)
     if item.get("locked") or price <= 0:
         return "not_for_sale"
+    # L'oggetto di benvenuto: si compra una volta sola, e solo prima di aver comprato
+    # qualunque altra cosa. Il salto che conta non e' fra due prezzi, e' fra zero e il primo
+    # pagamento; dopo, un oggetto a una stella sarebbe solo un oggetto svenduto.
+    if item.get("first_purchase_only") and _cosmetics(user).get("owned"):
+        return "welcome_only"
     if not (MIN_STARS <= price <= MAX_STARS):
         logging.error(f"[SHOP] Prezzo fuori scala per {item_id}: {price} stelle")
         return "not_for_sale"
@@ -344,6 +451,13 @@ def _card(item, user, lang, worn):
         "free": is_free(item),
         "featured": bool(item.get("featured")),
         "equippable": item.get("kind") in KINDS or can_wear_bundle(item),
+        "rarity": rarity_of(item),
+        # Un premio di completamento: cosa serve e cosa manca ancora, coi nomi gia' tradotti
+        # perche' e' quello che la pagina deve scrivere.
+        "completes": [{"id": one, "name": localize(get_item(one), lang)[0], "owned": one in owned}
+                      for one in item.get("completes") or []],
+        "trophy": item.get("trophy"),
+        "welcome": bool(item.get("first_purchase_only")),
     }
 
 
@@ -361,7 +475,50 @@ def appearance(user, lang=DEFAULT_LANGUAGE):
         "badge": badge_emoji(user),
         "squares": style_of(user, "squares"),
         "title": {"label": title_label(user, lang), "color": style_of(user, "title").get("color") or ""},
+        # Il numero di maglia e' una stringa e non un intero apposta: "01" e "1" sono due
+        # cose diverse addosso a una maglia, e chi disegna non deve fare i conti.
+        "number": style_of(user, "number").get("number") or "",
+        "celebration": style_of(user, "celebration").get("effect") or "",
+        "card": style_of(user, "card"),
     }
+
+
+def showcase_week(day_iso=None):
+    """La settimana ISO di un giorno, come chiave stabile della vetrina."""
+    year, week, _ = parse_iso(day_iso or today_iso()).isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def weekly_showcase(user, lang=DEFAULT_LANGUAGE, day_iso=None, size=3):
+    """I tre oggetti in vetrina questa settimana.
+
+    E' **la stessa per tutti**: una vetrina personalizzata sarebbe solo un altro modo di
+    ordinare il catalogo, mentre il senso di una vetrina e' che due persone nello stesso
+    gruppo vedano la stessa cosa nello stesso momento. Si ricava dalla settimana con un
+    hash, quindi non c'e' niente da scrivere, niente da far girare a mezzanotte e niente che
+    possa restare indietro.
+
+    Gli oggetti gia' posseduti restano dentro, marcati come tali: toglierli farebbe cambiare
+    la vetrina a chi compra, e una vetrina che si accorcia mentre la guardi e' una vetrina
+    rotta."""
+    week = showcase_week(day_iso)
+
+    def shuffled(values, salt=""):
+        return sorted(values, key=lambda one: hashlib.sha256(f"{week}:{salt}:{one}".encode()).hexdigest())
+
+    # Uno per tipo, e i tipi a rotazione: tre quadratini in fila sono un elenco, non una
+    # vetrina. La varieta' e' il motivo per cui questa scelta non e' un semplice `[:3]`.
+    buyable: dict[str, list[str]] = {}
+    for item in all_items():
+        if item.get("kind") in KINDS and purchase_status({}, item["id"]) == "ok":
+            buyable.setdefault(item["kind"], []).append(item["id"])
+    if not buyable:
+        return {"week": week, "items": []}
+
+    worn = equipped(user)
+    picked = [shuffled(buyable[kind], kind)[0] for kind in shuffled(sorted(buyable))[:size]]
+    return {"week": week,
+            "items": [_card(get_item(one), user, lang, worn) for one in picked]}
 
 
 def catalogue_for(user, lang=DEFAULT_LANGUAGE):
@@ -386,6 +543,9 @@ def catalogue_for(user, lang=DEFAULT_LANGUAGE):
     return {
         "sections": sections,
         "bundles": packs,
+        # La vetrina viaggia con la vetrina: e' la stessa risposta, e un giro in piu' solo
+        # per tre oggetti sarebbe un giro in piu' ad ogni apertura del negozio.
+        "showcase": weekly_showcase(user, lang),
         "equipped": worn,
         "owned": sorted(owned_ids(user)),
         "looks": _cosmetics(user).get("looks", []),

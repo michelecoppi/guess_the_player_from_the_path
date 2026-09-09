@@ -3,17 +3,26 @@ import pytest
 
 from services import shop
 
-COLLECTIONS = ["pacchetto_europa", "pacchetto_domenica", "pacchetto_strada"]
+COLLECTIONS = [item["id"] for item in shop.bundles() if item.get("featured")]
 
 
 @pytest.mark.parametrize("bundle_id", COLLECTIONS)
 def test_collection_fills_every_slot_and_costs_less_than_its_pieces(bundle_id):
     bundle = shop.get_item(bundle_id)
     pieces = [shop.get_item(item_id) for item_id in bundle["grants"]]
-    assert sorted(item["kind"] for item in pieces) == sorted(shop.KINDS)
+    kinds = [item["kind"] for item in pieces]
+    # Una collezione riempie tutti gli slot fondamentali e puo' aggiungerne altri (una
+    # figurina esclusiva, per esempio), ma mai due pezzi per lo stesso slot: si indossa un
+    # oggetto per tipo, quindi il secondo non si potrebbe mettere.
+    assert set(shop.CORE_KINDS) <= set(kinds)
+    assert len(kinds) == len(set(kinds))
+    assert set(kinds) <= set(shop.KINDS)
     assert bundle["price"] < sum(item["price"] for item in pieces)
     for item in pieces:
-        assert shop.purchase_status({}, item["id"]) == "ok"
+        # Ogni pezzo si compra anche da solo, tranne gli esclusivi: quelli sono la ragione
+        # per cui il pacchetto esiste (tests/test_shop.py, "cheaper or exclusive").
+        expected = "not_for_sale" if item.get("locked") else "ok"
+        assert shop.purchase_status({}, item["id"]) == expected
         assert set(item["name_i18n"]) == {"es", "en"}
         assert set(item["description_i18n"]) == {"es", "en"}
 
@@ -39,7 +48,10 @@ def luminance(color):
     return sum(c * weight for c, weight in zip(linear, [.2126, .7152, .0722]))
 
 
-@pytest.mark.parametrize("theme_id", ["notti_europee", "domenica_90", "calcio_strada"])
+@pytest.mark.parametrize("theme_id", [shop.get_item(one)["id"]
+                                      for bundle in COLLECTIONS
+                                      for one in shop.get_item(bundle)["grants"]
+                                      if shop.get_item(one)["kind"] == "theme"])
 def test_collection_theme_text_and_buttons_have_readable_contrast(theme_id):
     style = shop.get_item(theme_id)["style"]
     pairs = [(text, surface) for text in ("text", "muted") for surface in ("bg", "bg2", "card")]
