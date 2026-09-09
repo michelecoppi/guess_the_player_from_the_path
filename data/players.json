@@ -782,7 +782,7 @@
         {
           "team": "Emirates Club",
           "country": "Emirati Arabi Uniti",
-          "league": "UAE Division 1",
+          "league": "UAE First Division League",
           "start_year": 2023,
           "end_year": 2024,
           "apps": 20,
@@ -7073,7 +7073,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2022,
           "end_year": 2023,
           "apps": 5,
@@ -9435,7 +9435,7 @@
         {
           "team": "Dynamo Kyiv",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 1993,
           "end_year": 1999,
           "apps": 117,
@@ -9472,7 +9472,7 @@
         {
           "team": "Dynamo Kyiv",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2009,
           "end_year": 2012,
           "apps": 55,
@@ -9687,7 +9687,7 @@
         {
           "team": "Metalurh Donetsk",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2003,
           "end_year": 2005,
           "apps": 33,
@@ -9696,7 +9696,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2005,
           "end_year": 2006,
           "apps": 20,
@@ -9732,7 +9732,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2018,
           "end_year": 2018,
           "apps": 2,
@@ -10557,7 +10557,7 @@
         {
           "team": "Panionios",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2008,
           "end_year": 2010,
           "apps": 21,
@@ -11770,7 +11770,7 @@
         {
           "team": "Universidad de Chile",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 1993,
           "end_year": 1996,
           "apps": 77,
@@ -11816,7 +11816,7 @@
         {
           "team": "Universidad de Chile",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2005,
           "end_year": 2006,
           "loan": true,
@@ -11826,7 +11826,7 @@
         {
           "team": "Universidad de Chile",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2006,
           "end_year": 2008,
           "apps": 44,
@@ -11851,7 +11851,7 @@
         {
           "team": "Cobresal",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 1985,
           "end_year": 1988,
           "apps": 45,
@@ -11860,7 +11860,7 @@
         {
           "team": "Cobreandino",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 1985,
           "end_year": 1986,
           "loan": true,
@@ -11915,7 +11915,7 @@
         {
           "team": "Colo-Colo",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2003,
           "end_year": 2003,
           "apps": 14,
@@ -12198,7 +12198,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2015,
           "end_year": 2017,
           "apps": 28,
@@ -12595,7 +12595,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2015,
           "end_year": 2016,
           "apps": 16,
@@ -13497,7 +13497,7 @@
         {
           "team": "Busan IPark",
           "country": "Corea del Sud",
-          "league": "K League",
+          "league": "K League 1",
           "start_year": 1998,
           "end_year": 2002,
           "apps": 54,
@@ -13552,7 +13552,7 @@
         {
           "team": "Suwon Samsung Bluewings",
           "country": "Corea del Sud",
-          "league": "K League",
+          "league": "K League 1",
           "start_year": 2007,
           "end_year": 2007,
           "apps": 15,
@@ -13561,7 +13561,7 @@
         {
           "team": "Busan IPark",
           "country": "Corea del Sud",
-          "league": "K League",
+          "league": "K League 1",
           "start_year": 2008,
           "end_year": 2008,
           "apps": 19,
@@ -13758,7 +13758,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2010,
           "end_year": 2010,
           "loan": true,
@@ -13939,7 +13939,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2004,
           "end_year": 2007,
           "apps": 70,
@@ -13948,7 +13948,7 @@
         {
           "team": "AEK Atene",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2007,
           "end_year": 2008,
           "apps": 35,
@@ -14100,7 +14100,7 @@
         {
           "team": "Kavala",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2010,
           "end_year": 2010,
           "apps": 0,
@@ -14701,7 +14701,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2001,
           "end_year": 2004,
           "apps": 68,
@@ -16084,7 +16084,7 @@
         {
           "team": "Dnipro",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2011,
           "end_year": 2015,
           "apps": 86,
@@ -18364,7 +18364,7 @@
         {
           "team": "Universidad de Chile",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2002,
           "end_year": 2003,
           "apps": 39,
@@ -18431,7 +18431,7 @@
         {
           "team": "Universidad de Chile",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2007,
           "end_year": 2007,
           "loan": true,
@@ -18542,7 +18542,7 @@
         {
           "team": "Universidad de Chile",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2017,
           "end_year": 2018,
           "apps": 21,
@@ -18551,7 +18551,7 @@
         {
           "team": "Coquimbo Unido",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2019,
           "end_year": 2021,
           "apps": 26,
@@ -18670,7 +18670,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2021,
           "end_year": 2023,
           "apps": 66,
@@ -19570,7 +19570,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2023,
           "end_year": 2024,
           "apps": 15,
@@ -19921,7 +19921,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2012,
           "end_year": 2014,
           "apps": 45,
@@ -20064,7 +20064,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2017,
           "end_year": 2017,
           "loan": true,
@@ -20445,7 +20445,7 @@
         {
           "team": "Kavala",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2009,
           "end_year": 2010,
           "loan": true,
@@ -20592,7 +20592,7 @@
         {
           "team": "Tokushima Vortis",
           "country": "Giappone",
-          "league": "J.League",
+          "league": "J1 League",
           "start_year": 2021,
           "end_year": 2021,
           "apps": 10,
@@ -20610,7 +20610,7 @@
         {
           "team": "Volos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2022,
           "end_year": 2023,
           "apps": 4,
@@ -20689,8 +20689,8 @@
         },
         {
           "team": "Velez Sarsfield",
-          "country": "Spagna",
-          "league": "Primera División",
+          "country": "Argentina",
+          "league": "Liga Profesional",
           "start_year": 2009,
           "end_year": 2011,
           "apps": 72,
@@ -21178,7 +21178,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2022,
           "end_year": 2023,
           "apps": 32,
@@ -21266,7 +21266,7 @@
         {
           "team": "Panionios",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 1993,
           "end_year": 1994,
           "loan": true,
@@ -21330,7 +21330,7 @@
         {
           "team": "JEF United Chiba",
           "country": "Giappone",
-          "league": "J.League",
+          "league": "J1 League",
           "start_year": 2006,
           "end_year": 2006,
           "apps": 25,
@@ -21421,7 +21421,7 @@
         {
           "team": "Emirates Club",
           "country": "Emirati Arabi Uniti",
-          "league": "UAE Division 1",
+          "league": "UAE First Division League",
           "start_year": 2018,
           "end_year": 2019,
           "apps": 19,
@@ -21748,7 +21748,7 @@
         {
           "team": "Al-Wehda",
           "country": "Arabia Saudita",
-          "league": "First Division League",
+          "league": "Saudi First Division League",
           "start_year": 2023,
           "end_year": 2025,
           "apps": 63,
@@ -21990,7 +21990,7 @@
         {
           "team": "Akratitos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2005,
           "end_year": 2006,
           "apps": 10,
@@ -21999,7 +21999,7 @@
         {
           "team": "Kavala",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2006,
           "end_year": 2007
         }
@@ -22312,7 +22312,7 @@
         {
           "team": "Al-Batin",
           "country": "Arabia Saudita",
-          "league": "First Division League",
+          "league": "Saudi First Division League",
           "start_year": 2025,
           "end_year": null,
           "apps": 0,
@@ -22369,7 +22369,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2000,
           "end_year": 2001,
           "loan": true,
@@ -22484,7 +22484,7 @@
         {
           "team": "AEK Atene",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2005,
           "end_year": 2007,
           "apps": 50,
@@ -22548,7 +22548,7 @@
         {
           "team": "AEK Atene",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2013,
           "end_year": 2014,
           "apps": 12,
@@ -23036,7 +23036,7 @@
         {
           "team": "Suwon",
           "country": "Corea del Sud",
-          "league": "K League",
+          "league": "K League 1",
           "start_year": 2016,
           "end_year": 2017,
           "apps": 23,
@@ -23234,7 +23234,7 @@
         {
           "team": "AEK Atene",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2006,
           "end_year": 2006,
           "loan": true,
@@ -23833,7 +23833,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2021,
           "end_year": 2022,
           "loan": true,
@@ -24155,7 +24155,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 1999,
           "end_year": 2005,
           "apps": 129,
@@ -24331,7 +24331,7 @@
         {
           "team": "AEK Atene",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2006,
           "end_year": 2007,
           "apps": 30,
@@ -24725,7 +24725,7 @@
         {
           "team": "Jeonbuk Hyundai Motors",
           "country": "Corea del Sud",
-          "league": "K League",
+          "league": "K League 1",
           "start_year": 2004,
           "end_year": 2004,
           "apps": 11,
@@ -24804,7 +24804,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2014,
           "end_year": 2016,
           "apps": 43,
@@ -25205,7 +25205,7 @@
         {
           "team": "Dnipro",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2013,
           "end_year": 2016,
           "apps": 56,
@@ -25232,7 +25232,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2018,
           "end_year": 2022,
           "apps": 108,
@@ -25367,7 +25367,7 @@
         {
           "team": "Al-Wehda",
           "country": "Arabia Saudita",
-          "league": "First Division League",
+          "league": "Saudi First Division League",
           "start_year": 2025,
           "end_year": 2026,
           "apps": 19,
@@ -25549,7 +25549,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2017,
           "end_year": 2017,
           "loan": true,
@@ -26014,7 +26014,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2016,
           "end_year": 2016,
           "loan": true,
@@ -26082,7 +26082,7 @@
         {
           "team": "Sanfrecce Hiroshima",
           "country": "Giappone",
-          "league": "J.League",
+          "league": "J1 League",
           "start_year": 2024,
           "end_year": 2025,
           "apps": 8,
@@ -26580,7 +26580,7 @@
         {
           "team": "AEK Atene",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 1999,
           "end_year": 1999,
           "loan": true,
@@ -26716,7 +26716,7 @@
         {
           "team": "Akratitos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2001,
           "end_year": 2002,
           "apps": 16
@@ -26724,7 +26724,7 @@
         {
           "team": "Fostiras",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2002,
           "end_year": 2003,
           "apps": 24
@@ -26762,8 +26762,8 @@
       "career": [
         {
           "team": "San Lorenzo",
-          "country": "Spagna",
-          "league": "Primera División",
+          "country": "Argentina",
+          "league": "Liga Profesional",
           "start_year": 2003,
           "end_year": 2006,
           "apps": 72,
@@ -26780,8 +26780,8 @@
         },
         {
           "team": "San Lorenzo",
-          "country": "Spagna",
-          "league": "Primera División",
+          "country": "Argentina",
+          "league": "Liga Profesional",
           "start_year": 2008,
           "end_year": 2009,
           "loan": true,
@@ -26809,8 +26809,8 @@
         },
         {
           "team": "San Lorenzo",
-          "country": "Spagna",
-          "league": "Primera División",
+          "country": "Argentina",
+          "league": "Liga Profesional",
           "start_year": 2014,
           "end_year": 2016,
           "apps": 47,
@@ -27027,7 +27027,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2000,
           "end_year": 2003,
           "apps": 49,
@@ -27054,7 +27054,7 @@
         {
           "team": "Metalurh Donetsk",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2006,
           "end_year": 2006,
           "apps": 0,
@@ -27243,7 +27243,7 @@
         {
           "team": "Dynamo Kyiv",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2007,
           "end_year": 2009,
           "apps": 46,
@@ -27289,7 +27289,7 @@
         {
           "team": "Al-Raed",
           "country": "Arabia Saudita",
-          "league": "Saudi First Division",
+          "league": "Saudi First Division League",
           "start_year": 2016,
           "end_year": 2019,
           "apps": 75,
@@ -27298,7 +27298,7 @@
         {
           "team": "Al-Batin",
           "country": "Arabia Saudita",
-          "league": "First Division League",
+          "league": "Saudi First Division League",
           "start_year": 2019,
           "end_year": 2019,
           "loan": true,
@@ -27397,7 +27397,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2021,
           "end_year": 2022,
           "apps": 32,
@@ -27406,7 +27406,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2022,
           "end_year": 2023,
           "apps": 1,
@@ -27415,7 +27415,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2023,
           "end_year": 2023,
           "loan": true,
@@ -27744,7 +27744,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2001,
           "end_year": 2003,
           "apps": 34,
@@ -27799,7 +27799,7 @@
         {
           "team": "Dnipro",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2011,
           "end_year": 2013,
           "apps": 23,
@@ -28109,7 +28109,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2004,
           "end_year": 2006,
           "apps": 21,
@@ -29663,7 +29663,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2009,
           "end_year": 2013,
           "apps": 116,
@@ -30134,7 +30134,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2011,
           "end_year": 2012,
           "apps": 20,
@@ -30579,7 +30579,7 @@
         {
           "team": "PAOK",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2015,
           "end_year": 2016,
           "apps": 21,
@@ -32361,7 +32361,7 @@
         {
           "team": "Deportivo Pesquero",
           "country": "Perù",
-          "league": "Primera Division Perù",
+          "league": "Primera Division de Peru",
           "start_year": 1996,
           "end_year": 1997,
           "apps": 30,
@@ -32370,7 +32370,7 @@
         {
           "team": "Alianza Lima",
           "country": "Perù",
-          "league": "Primera Division Perù",
+          "league": "Primera Division de Peru",
           "start_year": 1997,
           "end_year": 1999,
           "apps": 51,
@@ -32891,7 +32891,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2022,
           "end_year": 2023,
           "apps": 22,
@@ -35292,7 +35292,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2013,
           "end_year": 2014,
           "apps": 12,
@@ -36732,7 +36732,7 @@
         {
           "team": "PAOK",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2021,
           "end_year": 2022,
           "apps": 12,
@@ -38136,7 +38136,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2016,
           "end_year": 2019,
           "apps": 62,
@@ -39104,7 +39104,7 @@
         {
           "team": "Panetolikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2006,
           "end_year": 2007,
           "apps": 12,
@@ -39527,7 +39527,7 @@
         {
           "team": "Volyn Lutsk",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 1997,
           "end_year": 1998,
           "apps": 40,
@@ -39536,7 +39536,7 @@
         {
           "team": "Shakhtar Donetsk",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 1998,
           "end_year": 2007,
           "apps": 205,
@@ -39744,7 +39744,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2007,
           "end_year": 2008,
           "apps": 24,
@@ -40133,7 +40133,7 @@
         {
           "team": "Shakhtar Donetsk",
           "country": "Ucraina",
-          "league": "Premier League Ucraina",
+          "league": "Ukrainian Premier League",
           "start_year": 2007,
           "end_year": 2008,
           "apps": 20,
@@ -40825,7 +40825,7 @@
         {
           "team": "Larissa",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2011,
           "end_year": 2012,
           "apps": 15,
@@ -41004,7 +41004,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2014,
           "end_year": 2015,
           "loan": true,
@@ -41321,7 +41321,7 @@
         {
           "team": "Skoda Xanthi",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2011,
           "end_year": 2012,
           "apps": 20,
@@ -41820,7 +41820,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2010,
           "end_year": 2012,
           "apps": 45,
@@ -42038,7 +42038,7 @@
         {
           "team": "Vojvodina",
           "country": "Jugoslavia",
-          "league": "Serbian SuperLiga Jugoslavia",
+          "league": "Serbian SuperLiga",
           "start_year": 1988,
           "end_year": 1990,
           "apps": 73,
@@ -43058,7 +43058,7 @@
         {
           "team": "Iraklis",
           "country": "Grecia",
-          "league": "Souper Ligka Ellada",
+          "league": "Super League Greece",
           "start_year": 2004,
           "end_year": 2005,
           "apps": 5,
@@ -43413,7 +43413,7 @@
         {
           "team": "Universidad de Chile",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2005,
           "end_year": 2005,
           "apps": 0,
@@ -44774,7 +44774,7 @@
         {
           "team": "Olympiacos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2007,
           "end_year": 2009,
           "apps": 41,
@@ -44861,7 +44861,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2001,
           "end_year": 2002,
           "apps": 5,
@@ -45044,7 +45044,7 @@
         {
           "team": "AEK Atene",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2010,
           "end_year": 2011,
           "apps": 19,
@@ -46496,7 +46496,7 @@
         {
           "team": "Larissa",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2010,
           "end_year": 2011,
           "apps": 10,
@@ -46505,7 +46505,7 @@
         {
           "team": "Ohrid",
           "country": "Macedonia del Nord",
-          "league": "Vtora liga Macedonia del Nord",
+          "league": "Vtora Makedonska Liga",
           "start_year": 2012,
           "end_year": 2012,
           "apps": 15,
@@ -46646,7 +46646,7 @@
         {
           "team": "Liegi",
           "country": "Belgio",
-          "league": "Pro League",
+          "league": "Belgian Pro League",
           "start_year": 1994,
           "end_year": 1995,
           "apps": 26,
@@ -46664,7 +46664,7 @@
         {
           "team": "Club Bruges",
           "country": "Belgio",
-          "league": "Pro League",
+          "league": "Belgian Pro League",
           "start_year": 1997,
           "end_year": 2000,
           "apps": 72,
@@ -46945,7 +46945,7 @@
         {
           "team": "Fostiras",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2017,
           "end_year": 2018,
           "apps": 2,
@@ -47152,7 +47152,7 @@
         {
           "team": "Liegi",
           "country": "Belgio",
-          "league": "Pro League",
+          "league": "Belgian Pro League",
           "start_year": 1991,
           "end_year": 1994,
           "apps": 75,
@@ -47259,7 +47259,7 @@
         {
           "team": "Liegi",
           "country": "Belgio",
-          "league": "Pro League",
+          "league": "Belgian Pro League",
           "start_year": 1989,
           "end_year": 1993,
           "apps": 79,
@@ -47505,7 +47505,7 @@
         {
           "team": "Club Bruges",
           "country": "Belgio",
-          "league": "Pro League",
+          "league": "Belgian Pro League",
           "start_year": 1990,
           "end_year": 1994,
           "apps": 81,
@@ -47609,7 +47609,7 @@
         {
           "team": "Norimberga",
           "country": "Germania",
-          "league": "2. Fußball-Bundesliga",
+          "league": "2. Bundesliga",
           "start_year": 1995,
           "end_year": 1996,
           "loan": true,
@@ -47861,7 +47861,7 @@
         {
           "team": "Western Sydney Wanderers",
           "country": "Australia",
-          "league": "A-League Men",
+          "league": "A-League",
           "start_year": 2012,
           "end_year": 2014,
           "apps": 47,
@@ -48513,7 +48513,7 @@
         {
           "team": "Minnesota United",
           "country": "USA",
-          "league": "Major League Soccer",
+          "league": "MLS",
           "start_year": 2023,
           "end_year": 2024,
           "apps": 35,
@@ -48556,8 +48556,8 @@
         },
         {
           "team": "San Lorenzo",
-          "country": "Spagna",
-          "league": "La Liga",
+          "country": "Argentina",
+          "league": "Liga Profesional",
           "start_year": 1996,
           "end_year": 1997,
           "apps": 43,
@@ -48594,8 +48594,8 @@
         },
         {
           "team": "San Lorenzo",
-          "country": "Spagna",
-          "league": "La Liga",
+          "country": "Argentina",
+          "league": "Liga Profesional",
           "start_year": 2000,
           "end_year": 2000,
           "loan": true,
@@ -48728,7 +48728,7 @@
         {
           "team": "Aris Salonicco",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2009,
           "end_year": 2010,
           "apps": 8,
@@ -48830,7 +48830,7 @@
         {
           "team": "Puerto Montt",
           "country": "Cile",
-          "league": "Primera B Cile",
+          "league": "Primera B de Chile",
           "start_year": 2017,
           "end_year": 2018,
           "apps": 13,
@@ -48839,7 +48839,7 @@
         {
           "team": "Audax Italiano",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2018,
           "end_year": 2018,
           "apps": 10,
@@ -48848,7 +48848,7 @@
         {
           "team": "Magallanes",
           "country": "Cile",
-          "league": "Primera Division Cile",
+          "league": "Primera Division de Chile",
           "start_year": 2018,
           "end_year": 2019,
           "apps": 9,
@@ -48964,8 +48964,8 @@
         },
         {
           "team": "San Lorenzo",
-          "country": "Spagna",
-          "league": "La Liga",
+          "country": "Argentina",
+          "league": "Liga Profesional",
           "start_year": 2009,
           "end_year": 2010,
           "apps": 32,
@@ -50056,7 +50056,7 @@
         {
           "team": "Portland Timbers",
           "country": "USA",
-          "league": "Major League Soccer",
+          "league": "MLS",
           "start_year": 2013,
           "end_year": 2014,
           "apps": 8,
@@ -50400,7 +50400,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2014,
           "end_year": 2016,
           "apps": 53,
@@ -50481,7 +50481,7 @@
         {
           "team": "Lokomotiv Mosca",
           "country": "Russia",
-          "league": "Prem'er-Liga",
+          "league": "Russian Premier League",
           "start_year": 2012,
           "end_year": 2021,
           "apps": 200,
@@ -50670,7 +50670,7 @@
         {
           "team": "Panionios",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2024,
           "end_year": 2025,
           "apps": 21,
@@ -50679,7 +50679,7 @@
         {
           "team": "Ypsonas",
           "country": "Cipro",
-          "league": "A' Katīgoria",
+          "league": "Cypriot First Division",
           "start_year": 2026,
           "end_year": null,
           "apps": 12,
@@ -51808,7 +51808,7 @@
         {
           "team": "Pohang Steelers",
           "country": "Corea del Sud",
-          "league": "K League",
+          "league": "K League 1",
           "start_year": 2010,
           "end_year": 2010,
           "apps": 16,
@@ -51817,7 +51817,7 @@
         {
           "team": "Ulsan Hyundai",
           "country": "Corea del Sud",
-          "league": "K League",
+          "league": "K League 1",
           "start_year": 2011,
           "end_year": 2011,
           "apps": 29,
@@ -51897,7 +51897,7 @@
         {
           "team": "Chengdu Blades",
           "country": "Australia",
-          "league": "A-League Men",
+          "league": "A-League",
           "start_year": 2009,
           "end_year": 2009,
           "apps": 10,
@@ -52343,7 +52343,7 @@
         {
           "team": "Newcastle United Jets",
           "country": "Australia",
-          "league": "A-League Women",
+          "league": "A-League",
           "start_year": 2010,
           "end_year": 2011,
           "apps": 9,
@@ -52362,7 +52362,7 @@
         {
           "team": "Newcastle United Jets",
           "country": "Australia",
-          "league": "A-League Women",
+          "league": "A-League",
           "start_year": 2011,
           "end_year": 2012,
           "apps": 17,
@@ -52381,7 +52381,7 @@
         {
           "team": "Accrington Stanley",
           "country": "Inghilterra",
-          "league": "League Two Inghilterra",
+          "league": "League Two",
           "start_year": 2012,
           "end_year": 2013,
           "apps": 7,
@@ -52646,7 +52646,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2018,
           "end_year": 2022,
           "apps": 83,
@@ -52683,7 +52683,7 @@
         {
           "team": "Asteras Tripolis",
           "country": "Grecia",
-          "league": "Souper Ligka Ellada",
+          "league": "Super League Greece",
           "start_year": 2024,
           "end_year": null,
           "apps": 30,
@@ -52781,7 +52781,7 @@
         {
           "team": "Tobol",
           "country": "Kazakistan",
-          "league": "Qazaqstan Prem'er Ligasy",
+          "league": "Kazakhstan Premier League",
           "start_year": 2021,
           "end_year": 2022,
           "apps": 31,
@@ -53076,7 +53076,7 @@
         {
           "team": "Panathinaikos",
           "country": "Grecia",
-          "league": "Super League Grecia",
+          "league": "Super League Greece",
           "start_year": 2013,
           "end_year": 2016,
           "apps": 73,
