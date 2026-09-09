@@ -936,7 +936,7 @@
       "nationality": "Olanda",
       "position": "Difensore",
       "birth_year": 1991,
-      "popularity": 4,
+      "popularity": 5,
       "verified": true,
       "career": [
         {
@@ -975,8 +975,7 @@
           "apps": 275,
           "goals": 27
         }
-      ],
-      "practice_only": true
+      ]
     },
     {
       "id": "salah",
@@ -29978,7 +29977,7 @@
       "nationality": "Belgio",
       "position": "Centrocampista",
       "birth_year": 1988,
-      "popularity": 3,
+      "popularity": 4,
       "verified": true,
       "career": [
         {
