@@ -25,6 +25,28 @@ def _load_templates():
     return load_templates()
 
 
+def unclassified_leagues(players, config):
+    """I campionati abbastanza frequenti da meritare una classificazione, che non ce l'hanno.
+
+    `league_tier_weight` (services/difficulty.py) non ha una terza lista: quello che non e'
+    in `top_leagues` ne' in `known_leagues` pesa come sconosciuto. E' il ripiego giusto per
+    la coda lunga - la maggior parte delle leghe del dataset compare una o due volte - ma
+    sopra una certa frequenza smette di essere un ripiego e diventa una decisione presa da
+    nessuno. La soglia sta in `unclassified_league_warning_min` (data/config.json)."""
+    minimum = config.get("unclassified_league_warning_min", 20)
+    classified = set(config.get("top_leagues", [])) | set(config.get("known_leagues", []))
+    counts: dict[str, int] = {}
+    for player in players:
+        for stop in player.get("career", []):
+            league = stop.get("league")
+            if league and league not in classified:
+                counts[league] = counts.get(league, 0) + 1
+    return sorted(
+        ((league, stints) for league, stints in counts.items() if stints >= minimum),
+        key=lambda item: (-item[1], item[0]),
+    )
+
+
 def build_report(exclude_ids=None):
     config = load_config()
     raw_players = _load_raw_players()
@@ -53,9 +75,19 @@ def build_report(exclude_ids=None):
             "ok": template.get("manual_only") or len(candidates) >= duration,
         })
 
-    dataset_problems = validate_dataset(raw_players)
+    dataset_problems = validate_dataset(raw_players, config=config)
+    unclassified = unclassified_leagues(raw_players, config)
 
     warnings = []
+    if unclassified:
+        # Una riga sola: sono nomi, e un avviso per ciascuno renderebbe illeggibile
+        # l'output di /admin_pool proprio quando il dataset cresce.
+        elenco = ", ".join(f"{league} ({stints})" for league, stints in unclassified)
+        warnings.append(
+            f"Campionati non classificati in data/config.json, con il numero di tappe: {elenco}. "
+            f"Valgono come sconosciuti nel calcolo della difficolta': se e' la scelta giusta va "
+            f"bene, ma va scritta in 'known_leagues' invece di essere il ripiego."
+        )
     if len(selectable) <= history_days:
         warnings.append(
             f"Solo {len(selectable)} giocatori selezionabili contro {history_days} giorni di "

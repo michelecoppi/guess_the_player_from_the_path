@@ -60,5 +60,10 @@
     "extra_teams": 0.2
   },
   "practice_past_challenge_ratio": 0.25,
-  "game_epoch": "2025-06-08"
+  "game_epoch": "2025-06-08",
+  "multi_country_clubs": {
+    "Al-Shabab": "due club diversi con lo stesso nome (Riad e Dubai)",
+    "Vojvodina": "stesso club, il paese ha cambiato nome (Jugoslavia -> Serbia)"
+  },
+  "unclassified_league_warning_min": 20
 }
