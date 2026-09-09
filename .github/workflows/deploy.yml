@@ -31,9 +31,16 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy su Cloud Run
+        # --max-instances non e' un dettaglio di costo: il limite di frequenza delle API
+        # della mini app (services/rate_limit.py) e' un token bucket **per processo**,
+        # quindi il budget di un utente si moltiplica per il numero di repliche. Senza un
+        # tetto il limite dice poco, ed e' scritto anche in docs/performance.md.
+        # Dieci istanze sono abbondanti per il carico di questo bot e tengono il budget
+        # massimo di un utente entro un ordine di grandezza noto.
         run: |
           gcloud run deploy guess-the-player \
             --source . \
             --project guess-the-player-from-path-bot \
             --region europe-west1 \
+            --max-instances 10 \
             --quiet

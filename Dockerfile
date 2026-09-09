@@ -14,6 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Il processo non ha niente da scrivere sul filesystem: il dataset si legge, le immagini
+# si generano in memoria e lo stato sta su Firestore. Girare come root non serve a niente,
+# e toglierlo limita cosa puo' fare chi riuscisse a eseguire codice qui dentro.
+RUN useradd --create-home --uid 1001 app && chown -R app:app /app
+USER app
+
 EXPOSE 8000
 
 CMD ["python", "bot.py"]
