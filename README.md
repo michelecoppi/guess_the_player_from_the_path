@@ -186,7 +186,7 @@ esce — lo riconosce in due secondi e si prende pure il bonus del primo. È un 
 alla classifica. Le due sorgenti ammesse lo evitano in due modi diversi:
 
 1. **il pool riservato** — i calciatori con `"practice_only": true` in `data/players.json`
-   (80 sui 323 di oggi, bilanciati fra le quattro fasce di difficoltà) **non escono mai** come
+   (152 sui 608 di oggi, bilanciati fra le quattro fasce di difficoltà) **non escono mai** come
    sfida del giorno né dentro un evento. Allenarsi su di loro non dà nessun vantaggio, per
    costruzione. È materiale disponibile subito e non costa **nessuna lettura**: le schede sono
    nel file, dentro il container. `python scripts/reserve_practice_players.py` è ciò che ha
@@ -743,10 +743,14 @@ decidere quando parte invece di aspettare la rotazione:
 
 ## Ampliare il dataset dei calciatori
 
-Il dataset è pensato per crescere nel tempo: oggi contiene **323 calciatori**, tutti
-verificati. 243 alimentano il gioco vero — 243 giorni di sfide senza mai ripetere nessuno,
-contro i 60 giorni della finestra anti-ripetizione — e 80 sono riservati all'allenamento e ai
+Il dataset è pensato per crescere nel tempo: oggi contiene **608 calciatori**, tutti
+verificati. 456 alimentano il gioco vero — 456 giorni di sfide senza mai ripetere nessuno,
+contro i 60 giorni della finestra anti-ripetizione — e 152 sono riservati all'allenamento e ai
 round di gruppo, dove non possono spoilerare niente.
+
+Questi numeri invecchiano da soli a ogni import, ed è già successo che restassero indietro:
+`python scripts/dataset_report.py` li stampa aggiornati, ed è la fonte da guardare quando
+quelli scritti qui e quelli veri non coincidono.
 
 ### Il flusso di import
 
@@ -1022,7 +1026,41 @@ flusso completo dell'archivio (nessun punto, la giornata di oggi non
 viene toccata, la risposta rivelata solo a tentativi finiti), leghe private (codici, limiti,
 classifica, link d'invito che iscrive da `/start`), firma `initData` della mini app (dato
 manomesso, token sbagliato, dati scaduti) e allineamento delle tre lingue: se una chiave o un
-segnaposto manca in una traduzione, la CI se ne accorge.
+segnaposto manca in una traduzione, la CI se ne accorge — sia per i messaggi del bot
+(`tests/test_i18n_keys.py`) sia per le stringhe della mini app, che stanno in
+`webapp/strings.js` proprio perché `node --test` possa caricarle e confrontarle
+(`tests/client.test.cjs`).
+
+### Le transazioni, su un Firestore vero
+
+Il resto della suite gira su finti in memoria, ed è giusto così: è veloce e non dipende da
+niente. Ma un finto fa succedere quello che gli abbiamo detto di far succedere, quindi non si
+accorgerebbe di una transazione scritta male — non c'è nessuna concorrenza da gestire.
+`tests/test_firestore_transactions.py` gira invece contro l'emulatore, sui tre punti in cui
+una doppia esecuzione **costa qualcosa**: il bonus al primo che indovina (punti dal nulla), la
+consegna di un acquisto in Stelle (due righe nel registro da cui si rimborsa, per una stella
+sola incassata) e la ricevuta di un update (un tentativo consumato due volte).
+
+```bash
+gcloud components install cloud-firestore-emulator     # una volta sola; richiede una JRE
+gcloud emulators firestore start --host-port=127.0.0.1:8571
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8571 pytest -q
+```
+
+Senza `FIRESTORE_EMULATOR_HOST` quei test si saltano, così `pytest -q` resta verde su una
+macchina che l'emulatore non ce l'ha. **In CI invece falliscono**, perché un test che si salta
+da solo per un servizio mancante è comodo in locale ed è un verde bugiardo dove nessuno lo
+guarda.
+
+Una nota che serve a chi li leggerà: sull'emulatore due transazioni che partono nello stesso
+millisecondo sullo stesso documento si annullano a vicenda finché il client rinuncia
+(`Failed to commit transaction in 5 attempts`). Non è contesa da smaltire — alzare il limite a
+50 tentativi non cambia niente, mentre bastano 150 ms di sfasamento perché vada sempre a buon
+fine — ed è l'emulatore che non ha la messa in fila delle transazioni del servizio vero. Non è
+neanche lo scenario di produzione: Telegram rispedisce un update dopo secondi e Cloud Tasks
+riprova dopo un backoff. Per questo i test verificano **l'invariante** (non più di uno vince, e
+il database non contiene mai più di quello che è stato vinto) e non pretendono che i perdenti
+ricevano una risposta pulita.
 
 ## Deploy
 
@@ -1079,9 +1117,16 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
 
 ## Limiti noti / cosa resta da fare
 
-- **Dataset**: 323 calciatori, tutti verificati e selezionabili (323 giorni senza
-  ripetizioni). Il pool va comunque ampliato periodicamente: il segnale è l'avviso di
-  `/admin_pool`, non il calendario.
+- **Dataset**: 608 calciatori, tutti verificati; 456 selezionabili per la sfida del giorno
+  (456 giorni senza ripetizioni) e 152 riservati all'allenamento. Il pool va comunque
+  ampliato periodicamente: il segnale è l'avviso di `/admin_pool`, non il calendario.
+- **Classificazione dei campionati**: `top_leagues` e `known_leagues` (`data/config.json`)
+  si confrontano per stringa esatta, e quello che non è in nessuna delle due pesa come
+  campionato sconosciuto nel calcolo della difficoltà. Per la coda lunga è il ripiego
+  giusto, ma sopra le 20 tappe è una decisione che non ha preso nessuno: `/admin_pool` ora
+  elenca quei campionati (oggi Chinese Super League, J1 League, Qatar Stars League, Serbian
+  SuperLiga, Serie C, Indian Super League, UAE Pro League, Liga I, Cypriot First Division).
+  La soglia è `unclassified_league_warning_min`.
 - **Eventi "coppie padre/figlio"**: restano manuali per scelta, perché non esiste un dataset
   di immagini di coppie. La creazione però non richiede più di scrivere documenti su
   Firestore a mano: si fa da Telegram con `/admin_fs_add` + `/admin_event_create`.
@@ -1114,7 +1159,7 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   **migrazione dei dati esistenti va eseguita a mano** (`scripts/migrate_firestore.py`) e le
   regole/indici vanno deployati. Backup ricorrente e pulizia dello storico invece ci sono
   ora, vedi [Backup e pulizia](#backup-e-pulizia).
-- **Materiale per allenamento e gruppo**: il grosso è il pool riservato (80 calciatori, fissi
+- **Materiale per allenamento e gruppo**: il grosso è il pool riservato (152 calciatori, fissi
   finché non se ne riservano altri); le sfide passate sono la parte che cresce, e oggi ce n'è
   **una sola**. I 111 documenti scritti dalla versione precedente del bot (dal 26/04/25 al
   14/08/25) non erano utilizzabili — hanno le risposte ma non il percorso di carriera, solo un
@@ -1134,12 +1179,19 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   lì non ci sono punti da spendere, e la risposta si rivela comunque a tentativi finiti.
 - **Traduzione dei contenuti**: `services/content_i18n.py` copre paesi e ruoli, cioè quello che
   finisce sotto gli occhi dell'utente. I **nomi dei campionati** restano in lingua originale
-  perché sono nomi propri; il dataset però ne contiene qualcuno italianizzato
-  (`Super League Grecia`, `Premier League Ucraina`, `Primera Division Cile`) e qualche doppione
-  di grafia (`Segunda Division` / `Segunda División`). Non è un problema di lingua ma di
-  coerenza del dataset, e ha un effetto collaterale reale: `top_leagues` e `known_leagues` in
-  `data/config.json` si confrontano per stringa esatta, quindi due grafie dello stesso
-  campionato pesano diversamente nel calcolo della difficoltà.
+  perché sono nomi propri. Il dataset ne conteneva qualcuno italianizzato
+  (`Super League Grecia`, `Premier League Ucraina`, `Primera Division Cile`): sono stati
+  riportati al nome originale, perché l'effetto collaterale era reale — `top_leagues` e
+  `known_leagues` in `data/config.json` si confrontano per stringa esatta, e la Super League
+  greca era scritta in due modi di cui uno solo classificato, quindi un quarto delle tappe
+  greche pesava come campionato sconosciuto. Adesso lo impedisce `validate_dataset()`, che
+  rifiuta sia un nome di campionato che contiene il paese in italiano sia due grafie che si
+  normalizzano allo stesso modo (`Segunda Division` / `Segunda División`).
+- **Coerenza di club e paese**: la stessa `validate_dataset()` rifiuta un club che compare
+  con due paesi diversi — era il caso di San Lorenzo e Vélez Sarsfield, argentini ma marcati
+  `Spagna` in sette tappe, e il paese si vede nel percorso mostrato a chi gioca. I casi
+  legittimi (club omonimi in due paesi, paesi che hanno cambiato nome) si dichiarano in
+  `multi_country_clubs` di `data/config.json`: sono decisioni, non eccezioni silenziose.
 
 ## Licenza e uso
 
