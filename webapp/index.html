@@ -222,8 +222,14 @@
   .shop-controls button, .shop-controls select, .shop-controls input:not([type="checkbox"]) { border:1px solid var(--edge); background:var(--card); color:var(--text); border-radius:10px; padding:10px; min-height:44px; max-width:100%; }
   .shop-controls label { display:flex; align-items:center; gap:8px; min-height:44px; font-size:13px; }
   button.profile-link { background:none; border:0; padding:10px 0; min-height:44px; color:inherit; text-align:left; text-decoration:underline; text-underline-offset:4px; cursor:pointer; }
+  .profile-search { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+  .profile-search input { min-width:0; padding:11px 13px; border-radius:12px; border:1px solid var(--edge); background:var(--bg-secondary); color:var(--text); font-size:16px; }
+  .profile-search .btn { width:auto; padding-inline:18px; }
+  .profile-search-results { margin-top:8px; }
   .public-profile { background-color:var(--bg); background-image:var(--theme-pattern,none); color:var(--text); padding:14px; border-radius:18px; }
   .public-profile .profile-hero { display:flex; gap:16px; align-items:center; padding:24px 16px; }
+  .public-profile .profile-hero > .avatar-wrap { flex:0 0 58px; }
+  .public-profile .profile-hero > div:last-child { min-width:0; flex:1 1 auto; }
   .public-profile h1 { overflow-wrap:anywhere; font-size:24px; }
   .shop-controls button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
   .preview-bar { position:sticky; top:0; z-index:9; background:var(--card); border:2px solid var(--accent); padding:12px; border-radius:14px; margin-bottom:12px; }
@@ -329,8 +335,8 @@
     background: var(--bg-secondary); border-radius: 4px; padding: 4px 9px 4px 7px;
   }
   .trophy-tag .medal { font-size: 14px; line-height: 1; flex: 0 0 auto; }
-  .trophy-tag .plate-name { font-size: 12px; font-weight: 700; color: var(--plate, var(--text)); overflow-wrap: anywhere; }
-  .trophy-tag .plate-detail { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+  .trophy-tag .plate-name { flex:0 0 auto; font-size: 12px; font-weight: 700; color: var(--plate, var(--text)); }
+  .trophy-tag .plate-detail { min-width:0; font-size: 10.5px; color: var(--muted); white-space: normal; }
   .trophy-tag.pickable { cursor: pointer; font: inherit; text-align: left; opacity: .5; }
   .trophy-tag[aria-pressed="true"] { opacity: 1; border-color: var(--plate, var(--accent)); background: var(--track); }
   .trophy-tag[aria-pressed="true"]::after { content: "\2713"; font-size: 11px; color: var(--plate, var(--accent)); margin-left: 1px; }
@@ -672,6 +678,7 @@ const state = {
   shop: null,          // vetrina del negozio, caricata alla prima apertura
   shopView: "catalog", shopKind: "all", shopPrice: "all", shopHideOwned: false,
   publicTarget: null, publicProfile: null, publicError: false, profileScroll: 0,
+  profileQuery: "", profileResults: null, profileSearchLoading: false, profileSearchError: false,
   preview: null, previewName: "", history: null, historyError: false, shopError: false,
   toast: null,
 };
@@ -924,9 +931,9 @@ function archiveDayView(day) {
 }
 
 const PUBLIC_TEXT = {
-  it: {open:"Apri profilo", title:"Profilo giocatore", wearing:"Il look indossato", numbers:"Statistiche di gioco", back:"Torna alla classifica", unavailable:"Profilo non disponibile. Potrebbe essere stato eliminato.", retry:"Riprova", hint:"Tocca un nome per vedere il profilo e il suo look.", example:"Simboli del risultato · esempio"},
-  es: {open:"Abrir perfil", title:"Perfil del jugador", wearing:"Su look actual", numbers:"Estadísticas de juego", back:"Volver a la clasificación", unavailable:"Perfil no disponible. Puede que se haya eliminado.", retry:"Reintentar", hint:"Toca un nombre para ver su perfil y su look.", example:"Símbolos del resultado · ejemplo"},
-  en: {open:"Open profile", title:"Player profile", wearing:"Current look", numbers:"Game statistics", back:"Back to leaderboard", unavailable:"Profile unavailable. It may have been deleted.", retry:"Retry", hint:"Tap a name to see their profile and look.", example:"Result symbols · example"}
+  it: {open:"Apri profilo", title:"Profilo giocatore", wearing:"Il look indossato", numbers:"Statistiche di gioco", back:"Torna alla classifica", unavailable:"Profilo non disponibile. Potrebbe essere stato eliminato.", retry:"Riprova", hint:"Tocca un nome per vedere il profilo e il suo look.", example:"Simboli del risultato · esempio", searchTitle:"Cerca giocatori", searchPlaceholder:"Nome del giocatore", searchButton:"Cerca", searchHint:"Inserisci almeno 2 caratteri.", searchNone:"Nessun giocatore trovato.", searchError:"Ricerca non riuscita. Riprova."},
+  es: {open:"Abrir perfil", title:"Perfil del jugador", wearing:"Su look actual", numbers:"Estadísticas de juego", back:"Volver a la clasificación", unavailable:"Perfil no disponible. Puede que se haya eliminado.", retry:"Reintentar", hint:"Toca un nombre para ver su perfil y su look.", example:"Símbolos del resultado · ejemplo", searchTitle:"Buscar jugadores", searchPlaceholder:"Nombre del jugador", searchButton:"Buscar", searchHint:"Escribe al menos 2 caracteres.", searchNone:"No se encontraron jugadores.", searchError:"No se pudo buscar. Inténtalo de nuevo."},
+  en: {open:"Open profile", title:"Player profile", wearing:"Current look", numbers:"Game statistics", back:"Back to leaderboard", unavailable:"Profile unavailable. It may have been deleted.", retry:"Retry", hint:"Tap a name to see their profile and look.", example:"Result symbols · example", searchTitle:"Find players", searchPlaceholder:"Player name", searchButton:"Search", searchHint:"Enter at least 2 characters.", searchNone:"No players found.", searchError:"Search failed. Try again."}
 };
 function publicText() { return PUBLIC_TEXT[state.profile.language] || PUBLIC_TEXT.en; }
 // Il numero di maglia sta **prima** del nome e il distintivo dopo: sono due cose diverse -
@@ -992,6 +999,13 @@ function statsTab() {
   const worn = cosmetics();
   const title = worn.title || {};
   const badge = worn.badge ? `${worn.badge} ` : "";
+  const searchRows = (state.profileResults || []).map(row => `<div class="row">
+      ${profileLink(row)}
+      <span class="muted" style="font-size:12px">${row.points} ${escapeHtml(L.points)} · ${row.trophies} ${escapeHtml(L.trophies)}</span>
+    </div>`).join("");
+  const searchMessage = state.profileSearchLoading ? L.loading
+    : state.profileSearchError ? publicText().searchError
+    : state.profileResults && !state.profileResults.length ? publicText().searchNone : "";
 
   return `<div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       ${avatar(u.name, worn.frame)}
@@ -1014,6 +1028,13 @@ function statsTab() {
       ${u.trophies ? `<button class="btn ghost" style="margin-top:10px" id="open-cabinet">${escapeHtml(L.cabinetOpen)}</button>`
         : `<p class="muted" style="margin:8px 0 0">${escapeHtml(L.noTrophies)}</p>`}</div>
     <div class="card"><h2>${escapeHtml(L.distribution)}</h2>${bars}</div>
+    <div class="card"><h2>${escapeHtml(publicText().searchTitle)}</h2>
+      <form class="profile-search" id="profile-search">
+        <input id="profile-query" type="search" maxlength="40" autocomplete="off" value="${escapeHtml(state.profileQuery)}" placeholder="${escapeHtml(publicText().searchPlaceholder)}" aria-label="${escapeHtml(publicText().searchPlaceholder)}">
+        <button class="btn" type="submit">${escapeHtml(publicText().searchButton)}</button>
+      </form>
+      <div class="profile-search-results" aria-live="polite">${searchRows || (searchMessage ? `<p class="muted">${escapeHtml(searchMessage)}</p>` : `<p class="shop-note">${escapeHtml(publicText().searchHint)}</p>`)}</div>
+    </div>
     ${rows ? `<div class="card"><h2>${escapeHtml(L.leaderboard)}</h2><p class="shop-note">${escapeHtml(publicText().hint)}</p>${rows}</div>` : ""}`;
 }
 
@@ -1592,6 +1613,8 @@ function wire() {
     render();
   });
   document.querySelectorAll("[data-profile]").forEach(button => button.onclick = () => openPublicProfile(Number(button.dataset.profile)));
+  const profileSearch = document.getElementById("profile-search");
+  if (profileSearch) profileSearch.onsubmit = event => { event.preventDefault(); searchProfiles(); };
   const closeProfile = document.getElementById("close-profile");
   if (closeProfile) closeProfile.onclick = () => { state.publicTarget = null; render(); window.scrollTo(0,state.profileScroll); };
   const retryProfile = document.getElementById("retry-profile");
@@ -1694,6 +1717,20 @@ function wire() {
 }
 
 // --- azioni -----------------------------------------------------------------
+
+async function searchProfiles() {
+  const input = document.getElementById("profile-query");
+  const query = (input ? input.value : state.profileQuery).trim();
+  state.profileQuery = query;
+  state.profileSearchError = false;
+  if (query.length < 2) { state.profileResults = null; render(); return; }
+  state.profileSearchLoading = true; render();
+  try {
+    const result = await api("/app/api/profile/search", {query});
+    state.profileResults = result.profiles || [];
+  } catch (e) { state.profileResults = []; state.profileSearchError = true; }
+  state.profileSearchLoading = false; render();
+}
 
 let mainButtonWired = false;
 

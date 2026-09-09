@@ -75,3 +75,22 @@ def test_leaderboard_links_use_real_user_ids_and_equipped_badges(monkeypatch):
     assert row["profile_id"] == 42
     assert row["badge"] == "🧭"
     assert row["me"]
+
+
+def test_public_profile_search_returns_only_safe_summary_fields(monkeypatch):
+    seen = []
+    monkeypatch.setattr(webapp_api.firebase_service, "find_users_by_first_name", lambda prefix, limit: seen.append((prefix, limit)) or [{
+        "telegram_id": 42, "first_name": "Anna Maria", "points_totali": 12, "players_guessed": 10,
+        "trophies": ["1_event"], "chat_id": "PRIVATE", "leagues": ["PRIVATE"],
+        "cosmetics": {"equipped": {"badge": "traguardo_esploratore"}},
+    }])
+    result = webapp_api.search_public_profiles("  anna   maria ")
+    assert seen == [("Anna Maria", 10)]
+    assert result == [{"profile_id": 42, "name": "Anna Maria", "badge": "🧭", "points": 12, "trophies": 1}]
+    assert "PRIVATE" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("query", [None, "", " ", "a", [], {}])
+def test_public_profile_search_rejects_short_or_invalid_queries(monkeypatch, query):
+    monkeypatch.setattr(webapp_api.firebase_service, "find_users_by_first_name", lambda *args: pytest.fail("Invalid search"))
+    assert webapp_api.search_public_profiles(query) == []

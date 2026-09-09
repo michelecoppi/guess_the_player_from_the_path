@@ -85,6 +85,7 @@ from services.webapp_api import (
     build_profile,
     build_public_profile,
     play,
+    search_public_profiles,
 )
 from services.webapp_auth import user_id_from_init_data
 
@@ -283,6 +284,16 @@ async def webapp_public_profile(payload: dict = Body(default={})):
     if result is None:
         raise HTTPException(status_code=404, detail="profilo non disponibile")
     return result
+
+
+@app.post("/app/api/profile/search")
+async def webapp_search_profiles(payload: dict = Body(default={})):
+    """Cerca profili per nome senza esporre il documento utente completo."""
+    _webapp_user(payload)
+    query = payload.get("query")
+    if not isinstance(query, str) or len(query.strip()) < 2:
+        raise HTTPException(status_code=400, detail="servono almeno due caratteri")
+    return {"profiles": search_public_profiles(query)}
 
 
 @app.post("/app/api/guess")

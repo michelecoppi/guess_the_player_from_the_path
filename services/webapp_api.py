@@ -26,6 +26,7 @@ from services.share import share_text, share_url
 MAX_LEAGUES_SHOWN = 5
 LEADERBOARD_SIZE = 10
 CALENDAR_DAYS = 30
+PROFILE_SEARCH_SIZE = 10
 
 # Tentativi su una sfida d'archivio giocata dalla mini app: gli stessi della chat
 # (handlers/archive_handler.py), perche' e' la stessa partita vista da un'altra finestra.
@@ -92,6 +93,33 @@ def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
         "wearing": [{"kind": kind, "name": shop.localize(shop.get_item(item_id), lang)[0]}
                     for kind, item_id in appearance["equipped"].items()],
     }
+
+
+def search_public_profiles(query, limit=PROFILE_SEARCH_SIZE):
+    """Risultati minimi per trovare un profilo pubblico dal nome.
+
+    Firestore cerca per prefisso e distingue maiuscole e minuscole. I nomi Telegram sono
+    normalmente capitalizzati, quindi normalizziamo ogni parola senza alterare il metodo
+    generico usato dalla dashboard. Non escono mai documento utente, leghe o acquisti.
+    """
+    if not isinstance(query, str):
+        return []
+    prefix = " ".join(query.strip().split())
+    if len(prefix) < 2:
+        return []
+    safe_limit = max(1, min(int(limit or PROFILE_SEARCH_SIZE), PROFILE_SEARCH_SIZE))
+    users = firebase_service.find_users_by_first_name(prefix.title(), limit=safe_limit)
+    return [
+        {
+            "profile_id": user.get("telegram_id"),
+            "name": user.get("first_name", "?"),
+            "badge": shop.badge_emoji(user),
+            "points": user.get("points_totali", 0),
+            "trophies": len(user.get("trophies", [])),
+        }
+        for user in users
+        if type(user.get("telegram_id")) is int and 0 < user["telegram_id"] <= 2**52
+    ]
 
 
 def _distribution(user):

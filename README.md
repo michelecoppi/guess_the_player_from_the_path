@@ -478,6 +478,7 @@ esattamente come prima.
 | Endpoint | Cosa fa |
 |---|---|
 | `POST /app/api/me` | profilo, sfida di oggi, classifica, leghe, istogramma |
+| `POST /app/api/profile/search` | cerca per nome i profili pubblici, con risultati limitati |
 | `POST /app/api/players` | i nomi per il completamento automatico |
 | `POST /app/api/guess` | un tentativo (oggi, o una giornata passata con `day`) |
 | `POST /app/api/hint` | un indizio, allo stesso prezzo della chat |
