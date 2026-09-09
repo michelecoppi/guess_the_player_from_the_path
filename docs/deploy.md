@@ -1,5 +1,9 @@
 # Deploy
 
+**Prerequisito per questa revisione:** configurare i secret del webhook e dei worker
+e le due code Cloud Tasks come descritto in [Webhook, code e retry](runtime-hardening.md).
+`PUBLIC_BASE_URL` è ora obbligatoria per la consegna dei task.
+
 Il bot gira su **Cloud Run** (container, deploy automatico da GitHub Actions dopo i test) e la
 generazione giornaliera dei contenuti è affidata a **Cloud Scheduler**, che chiama un endpoint
 interno del servizio invece di dipendere da un processo sempre acceso o da un cron esterno tipo

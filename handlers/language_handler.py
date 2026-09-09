@@ -1,3 +1,5 @@
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
@@ -18,7 +20,7 @@ def _current_lang(update: Update):
 
 
 async def language(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = _current_lang(update)
+    lang = (await asyncio.to_thread(_current_lang, update))
     await update.effective_message.reply_text(t(lang, "language.prompt"), reply_markup=_keyboard())
 
 
@@ -30,5 +32,5 @@ async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if lang not in SUPPORTED_LANGUAGES:
         return
 
-    set_user_language(query.from_user.id, lang)
+    (await asyncio.to_thread(set_user_language, query.from_user.id, lang))
     await query.edit_message_text(t(lang, "language.confirm"))

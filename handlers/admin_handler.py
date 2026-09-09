@@ -5,6 +5,7 @@ stato del dataset, contenuti gia' generati, statistiche utenti, creazione manual
 eventi che non si possono generare in automatico - passa da qui, riservato agli ID elencati
 in ADMIN_TELEGRAM_IDS.
 """
+import asyncio
 import functools
 import logging
 from datetime import datetime
@@ -111,7 +112,7 @@ async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     now_italy = datetime.now(ITALY_TZ)
-    current_event = get_current_event()
+    current_event = (await asyncio.to_thread(get_current_event))
     event_line = f"🎊 Evento attivo: {current_event.get('name')}" if current_event else "🎊 Nessun evento attivo"
 
     incomplete = get_incomplete_or_unverified_players()
@@ -130,7 +131,7 @@ async def admin_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         warnings_line = ""
 
     try:
-        upcoming = firebase_service.get_upcoming_daily_paths(limit=5)
+        upcoming = (await asyncio.to_thread(firebase_service.get_upcoming_daily_paths, limit=5))
         buffer_line = f"📅 Sfide gia' in buffer su Firestore: {len(upcoming)}"
     except Exception as e:
         logging.exception("Errore nella lettura del buffer sfide")
@@ -151,7 +152,7 @@ async def admin_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        overview = firebase_service.get_admin_overview()
+        overview = (await asyncio.to_thread(firebase_service.get_admin_overview))
     except Exception as e:
         logging.exception("Errore in /admin_stats")
         await update.message.reply_text(f"❌ Errore nella lettura delle statistiche: {e}")
@@ -171,7 +172,7 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_pool(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        blocked = firebase_service.get_blocked_player_ids()
+        blocked = (await asyncio.to_thread(firebase_service.get_blocked_player_ids))
     except Exception:
         logging.exception("Errore nella lettura dei giocatori sospesi")
         blocked = []
@@ -212,8 +213,8 @@ async def admin_pool(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_regen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("⏳ Rigenerazione in corso...")
     try:
-        generated_days = ensure_daily_buffer()
-        event_code = maybe_generate_event()
+        generated_days = (await asyncio.to_thread(ensure_daily_buffer))
+        event_code = (await asyncio.to_thread(maybe_generate_event))
     except Exception as e:
         logging.exception("Errore durante /admin_regen")
         await update.message.reply_text(f"❌ Errore durante la generazione: {e}")
@@ -251,7 +252,7 @@ async def admin_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_next(update: Update, context: ContextTypes.DEFAULT_TYPE):
     limit = _int_arg(context, 0, default=7)
     try:
-        upcoming = firebase_service.get_upcoming_daily_paths(limit=limit)
+        upcoming = (await asyncio.to_thread(firebase_service.get_upcoming_daily_paths, limit=limit))
     except Exception as e:
         logging.exception("Errore in /admin_next")
         await update.message.reply_text(f"❌ Errore nella lettura delle sfide: {e}")
@@ -274,7 +275,7 @@ async def admin_next(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_events(update: Update, context: ContextTypes.DEFAULT_TYPE):
     limit = _int_arg(context, 0, default=5)
     try:
-        events = firebase_service.get_recent_events(limit=limit)
+        events = (await asyncio.to_thread(firebase_service.get_recent_events, limit=limit))
     except Exception as e:
         logging.exception("Errore in /admin_events")
         await update.message.reply_text(f"❌ Errore nella lettura degli eventi: {e}")
@@ -311,7 +312,7 @@ async def admin_block(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        firebase_service.block_player_id(player_id)
+        (await asyncio.to_thread(firebase_service.block_player_id, player_id))
     except Exception as e:
         logging.exception("Errore in /admin_block")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -332,7 +333,7 @@ async def admin_unblock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     player_id = args[0].strip().lower()
     try:
-        firebase_service.unblock_player_id(player_id)
+        (await asyncio.to_thread(firebase_service.unblock_player_id, player_id))
     except Exception as e:
         logging.exception("Errore in /admin_unblock")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -344,7 +345,7 @@ async def admin_unblock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_blocked(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        blocked = firebase_service.get_blocked_player_ids()
+        blocked = (await asyncio.to_thread(firebase_service.get_blocked_player_ids))
     except Exception as e:
         logging.exception("Errore in /admin_blocked")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -396,11 +397,11 @@ async def admin_fs_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        pair_id = firebase_service.add_father_son_pair({
+        pair_id = (await asyncio.to_thread(firebase_service.add_father_son_pair, {
             "file_id": file_id,
             "answers": answers,
             "added_by": update.effective_user.id,
-        })
+        }))
     except Exception as e:
         logging.exception("Errore in /admin_fs_add")
         await update.message.reply_text(f"❌ Errore nel salvataggio: {e}")
@@ -417,7 +418,7 @@ async def admin_fs_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_fs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        pairs = firebase_service.list_father_son_pairs()
+        pairs = (await asyncio.to_thread(firebase_service.list_father_son_pairs))
     except Exception as e:
         logging.exception("Errore in /admin_fs_list")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -443,7 +444,7 @@ async def admin_fs_del(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        deleted = firebase_service.delete_father_son_pair(args[0].strip())
+        deleted = (await asyncio.to_thread(firebase_service.delete_father_son_pair, args[0].strip()))
     except Exception as e:
         logging.exception("Errore in /admin_fs_del")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -473,7 +474,7 @@ async def admin_event_create(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     try:
         start_date = parse_start_date(start_text)
-        summary = create_manual_event(template_id, start_date=start_date, duration_days=duration)
+        summary = (await asyncio.to_thread(create_manual_event, template_id, start_date=start_date, duration_days=duration))
     except ManualEventError as e:
         await update.message.reply_text(f"❗ {e}")
         return

@@ -1,4 +1,5 @@
 """Assistenza sugli acquisti richiesta dalla piattaforma Telegram Stars."""
+import asyncio
 import logging
 
 from telegram import Update
@@ -11,7 +12,7 @@ from services.i18n import resolve_language, t
 
 async def paysupport(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_data = firebase_service.get_user_data(user.id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id))
     lang = (user_data or {}).get("language") or resolve_language(
         getattr(user, "language_code", None)
     )

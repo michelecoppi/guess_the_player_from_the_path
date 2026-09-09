@@ -5,6 +5,8 @@ collection `users` ad ogni /top, cioe' una lettura per utente registrato per mos
 La posizione di chi resta fuori dalla top 10 si ottiene con un conteggio lato server
 (`count()`), non scorrendo la classifica.
 """
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
@@ -65,7 +67,7 @@ def _keyboard(view, lang="it"):
 async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     fallback_lang = resolve_language(getattr(update.effective_user, "language_code", None))
-    message = _leaderboard_for("global", telegram_id, fallback_lang=fallback_lang)
+    message = (await asyncio.to_thread(_leaderboard_for, "global", telegram_id, fallback_lang=fallback_lang))
     await update.effective_message.reply_text(message, parse_mode=ParseMode.HTML, reply_markup=_keyboard("global", fallback_lang))
 
 
@@ -76,6 +78,6 @@ async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
 
     view = "monthly" if query.data == "show_monthly" else "global"
-    message = _leaderboard_for(view, telegram_id, fallback_lang=fallback_lang)
+    message = (await asyncio.to_thread(_leaderboard_for, view, telegram_id, fallback_lang=fallback_lang))
 
     await query.edit_message_text(message, parse_mode=ParseMode.HTML, reply_markup=_keyboard(view, fallback_lang))

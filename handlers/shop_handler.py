@@ -19,6 +19,7 @@ Il punto 3 puo' arrivare **due volte**: se il webhook non risponde in tempo Tele
 rispedisce l'update. La consegna e' idempotente sull'id della transazione
 (`firebase_service.deliver_purchase`), quindi la seconda volta non fa niente.
 """
+import asyncio
 import logging
 
 import httpx
@@ -157,8 +158,8 @@ def _item_view(lang, user, item):
 
 
 async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = language_for(update)
-    _, user = _user(update)
+    lang = (await asyncio.to_thread(language_for, update))
+    _, user = (await asyncio.to_thread(_user, update))
     text, keyboard = _main_view(lang, user)
     await update.effective_message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
 
@@ -168,8 +169,8 @@ async def shop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sono passi dentro una vetrina, non risposte a domande diverse."""
     query = update.callback_query
     action = query.data[len(CALLBACK_PREFIX):]
-    lang = language_for(update)
-    user_id, user = _user(update)
+    lang = (await asyncio.to_thread(language_for, update))
+    user_id, user = (await asyncio.to_thread(_user, update))
 
     if action == "home":
         await query.answer()
@@ -195,13 +196,13 @@ async def shop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if action.startswith("equip_"):
         item_id = action[len("equip_"):]
-        status = shop.equip(user_id, user, item_id)
+        status = (await asyncio.to_thread(shop.equip, user_id, user, item_id))
         if status != "ok":
             await query.answer(t(lang, f"shop.error_{status}"), show_alert=True)
             return
         await query.answer(t(lang, "shop.equipped_ok"))
         # Si rilegge l'utente: il messaggio deve mostrare la maglietta sull'oggetto giusto.
-        _, user = _user(update)
+        _, user = (await asyncio.to_thread(_user, update))
         text, keyboard = _item_view(lang, user, shop.get_item(item_id))
         await query.edit_message_text(text, reply_markup=keyboard, parse_mode="HTML")
         return
@@ -252,14 +253,14 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     rimborso lo dovremmo fare a mano."""
     query = update.pre_checkout_query
     item_id, user_id = shop.parse_payload(query.invoice_payload)
-    lang = language_for(update)
+    lang = (await asyncio.to_thread(language_for, update))
 
     if not item_id or user_id != query.from_user.id:
         logging.warning(f"[SHOP] Pre-checkout con payload inatteso: {query.invoice_payload!r}")
         await query.answer(ok=False, error_message=t(lang, "shop.error_unknown_item"))
         return
 
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
         await query.answer(ok=False, error_message=t(lang, f"shop.error_{status}"))
@@ -273,8 +274,7 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     )):
         await query.answer(ok=False, error_message=t(lang, "shop.error_price_changed"))
         return
-    reservation = firebase_service.reserve_checkout(user_id, query.id,
-        (user_data.get("cosmetics") or {}).get("owned", []))
+    reservation = (await asyncio.to_thread(firebase_service.reserve_checkout, user_id, query.id, (user_data.get("cosmetics") or {}).get("owned", [])))
     if reservation != "ok":
         await query.answer(ok=False, error_message=t(lang, f"shop.error_{reservation}"))
         return
@@ -288,12 +288,12 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
     l'unica cosa peggiore di consegnare qualcosa di inatteso e' non consegnare niente. Un
     payload che non riconosciamo finisce nei log come errore da guardare a mano."""
     payment = update.effective_message.successful_payment
-    lang = language_for(update)
+    lang = (await asyncio.to_thread(language_for, update))
     user_id = update.effective_user.id
 
     # Chi paga puo' non avere mai fatto /start (una fattura si apre anche da un link): senza
     # documento utente non c'e' dove scrivere quello che ha comprato.
-    firebase_service.save_user(user_id, update.effective_user.first_name, lang)
+    (await asyncio.to_thread(firebase_service.save_user, user_id, update.effective_user.first_name, lang))
 
     item_id, _ = shop.parse_payload(payment.invoice_payload)
     item = shop.get_item(item_id)
@@ -306,8 +306,7 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         return
 
     quote = shop.payment_quote(payment.invoice_payload)
-    if not shop.deliver(user_id, item_id, payment.telegram_payment_charge_id, payment.total_amount,
-                        granted=quote["granted"] if quote else None):
+    if not (await asyncio.to_thread(shop.deliver, user_id, item_id, payment.telegram_payment_charge_id, payment.total_amount, granted=quote["granted"] if quote else None)):
         # Update rispedito da Telegram: era gia' consegnato, e un secondo "grazie" farebbe
         # solo pensare a un secondo addebito.
         return
@@ -350,7 +349,7 @@ async def admin_refund(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     charge_id = args[0]
-    purchase = firebase_service.get_purchase(charge_id)
+    purchase = (await asyncio.to_thread(firebase_service.get_purchase, charge_id))
     if not purchase:
         await update.message.reply_text(f"Nessun acquisto con id {charge_id}.")
         return
@@ -363,7 +362,7 @@ async def admin_refund(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Telegram ha rifiutato il rimborso: {error}")
         return
 
-    revoked = firebase_service.revoke_purchase(charge_id)
+    revoked = (await asyncio.to_thread(firebase_service.revoke_purchase, charge_id))
     await update.message.reply_text(
         f"Rimborsate {purchase.get('stars')} ⭐ a {purchase['user_id']}.\n"
         f"Ritirati: {', '.join(revoked) if revoked else 'niente (li aveva anche da altri acquisti)'}"

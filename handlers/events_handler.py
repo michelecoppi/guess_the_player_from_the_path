@@ -10,6 +10,8 @@ imparato.
 La chiave porta con se' anche il **giorno** (`codice:2026-09-08`): a mezzanotte l'immagine
 dell'evento cambia, quindi una sessione di ieri non deve rispondere per la sfida di oggi.
 """
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import ContextTypes
 
@@ -32,9 +34,9 @@ PLAYER_ANSWER_TYPES = ("path", "transfer_guess")
 
 
 async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = _lang_for(update.effective_user)
+    lang = (await asyncio.to_thread(_lang_for, update.effective_user))
 
-    event = firebase_service.get_current_event()
+    event = (await asyncio.to_thread(firebase_service.get_current_event))
     if not event:
         await update.effective_message.reply_text(t(lang, "events.no_active"))
         return
@@ -69,7 +71,7 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
 
-    lang = context.user_data.get('lang') or _lang_for(query.from_user)
+    lang = context.user_data.get('lang') or (await asyncio.to_thread(_lang_for, query.from_user))
 
     event = context.user_data.get('current_event')
     if not event:
@@ -85,16 +87,16 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         image_url = event.get("event_img") or _event_banner(event, lang)
         active = "home"
     elif data == "event_player":
-        message, image_url = get_today_player_message(event, lang)
+        message, image_url = (await asyncio.to_thread(get_today_player_message, event, lang))
         active = "player"
         # Aprire la scheda del giocatore apre la sessione: da qui in poi un messaggio
         # libero e' un tentativo su questo evento, non sulla sfida del giorno.
         if (event.get("daily_data") or {}).get(today_iso()):
-            firebase_service.set_event_key(update.effective_user.id, session_key(event["code"]))
+            (await asyncio.to_thread(firebase_service.set_event_key, update.effective_user.id, session_key(event["code"])))
     elif data == "event_leaderboard":
         # La classifica si legge sempre fresca: e' l'unica parte dell'evento che cambia
         # mentre l'utente naviga.
-        podium = firebase_service.get_event_leaderboard(event["code"], limit=3)
+        podium = (await asyncio.to_thread(firebase_service.get_event_leaderboard, event["code"], limit=3))
         message = get_event_leaderboard_message(podium, lang)
         image_url = event.get("leaderboard_img") or _event_banner(event, lang, "image.badge_leaderboard")
         active = "leaderboard"
@@ -265,15 +267,15 @@ async def process_event_answer(update: Update, context: ContextTypes.DEFAULT_TYP
 
     La chiama il flusso normale delle risposte (handlers/guess_handler.py), come per
     l'archivio e l'allenamento."""
-    lang = user_data.get("language") or _lang_for(update.effective_user)
+    lang = user_data.get("language") or (await asyncio.to_thread(_lang_for, update.effective_user))
     key = user_data.get("event_key") or ""
     event_code, _, day_iso = key.partition(":")
 
-    event = firebase_service.get_current_event()
+    event = (await asyncio.to_thread(firebase_service.get_current_event))
     # La sessione vale per **quella** giornata di **quell'** evento: se l'evento e' finito o
     # se e' passata la mezzanotte, la sfida che l'utente ha davanti non c'e' piu'.
     if not event or event.get("code") != event_code or day_iso != today_iso():
-        firebase_service.clear_event_key(update.effective_user.id)
+        (await asyncio.to_thread(firebase_service.clear_event_key, update.effective_user.id))
         await update.effective_message.reply_text(t(lang, "events.not_open"))
         return
 
@@ -285,7 +287,7 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
     per il testo libero: chi risponde con `/events <nome>` una sessione non l'ha mai
     aperta, e chiuderla sarebbe una scrittura per niente."""
     if lang is None:
-        lang = _lang_for(update.effective_user)
+        lang = (await asyncio.to_thread(_lang_for, update.effective_user))
 
     if update.effective_chat.type != "private":
         await update.effective_message.reply_text(t(lang, "common.private_only"))
@@ -307,9 +309,7 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
         await update.effective_message.reply_text(t(lang, "events.max_answers", max_answers=MAX_CAREER_ANSWERS_PER_ATTEMPT))
         return
 
-    attempt = firebase_service.begin_event_attempt(
-        event_code, user.id, user.first_name, day_iso, MAX_EVENT_ATTEMPTS
-    )
+    attempt = (await asyncio.to_thread(firebase_service.begin_event_attempt, event_code, user.id, user.first_name, day_iso, MAX_EVENT_ATTEMPTS))
     if not attempt["ok"]:
         await update.effective_message.reply_text(_event_attempt_error(lang, attempt["reason"]))
         return
@@ -327,14 +327,14 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
         await update.effective_message.reply_text(feedback)
         return
 
-    bonus = 1 if firebase_service.claim_event_first_correct(event_code, day_iso) else 0
+    bonus = 1 if (await asyncio.to_thread(firebase_service.claim_event_first_correct, event_code, day_iso)) else 0
     earned_points = today_data.get("points", 1) + bonus
-    firebase_service.register_event_correct_guess(event_code, user.id, earned_points, day_iso)
+    (await asyncio.to_thread(firebase_service.register_event_correct_guess, event_code, user.id, earned_points, day_iso))
 
     # Indovinata: la sessione si chiude da sola, cosi' i messaggi successivi tornano a
     # valere per la sfida del giorno senza dover ricordarsi di /today.
     if close_session:
-        firebase_service.clear_event_key(user.id)
+        (await asyncio.to_thread(firebase_service.clear_event_key, user.id))
 
     bonus_tag = t(lang, "events.bonus_tag") if bonus else ""
     await update.effective_message.reply_text(t(lang, "events.correct", points=earned_points, bonus_tag=bonus_tag))

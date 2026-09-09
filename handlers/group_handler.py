@@ -18,6 +18,7 @@ Le altre tre conseguenze della stessa scelta:
   chiedere /start prima di poter giocare toglierebbe alla modalita' l'unica cosa che la
   rende utile, cioe' che chi passa di li' possa rispondere e basta.
 """
+import asyncio
 import html
 import logging
 
@@ -76,24 +77,17 @@ async def group_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     chat_id = message.chat.id
-    previous = firebase_service.get_group_round(chat_id) or {}
-    challenge = practice_content.pick(exclude_keys=previous.get("recent_keys", []))
+    previous = (await asyncio.to_thread(firebase_service.get_group_round, chat_id)) or {}
+    challenge = (await asyncio.to_thread(practice_content.pick, exclude_keys=previous.get("recent_keys", [])))
     if not challenge or not challenge.get("career_path"):
         await message.reply_text(t(lang, "group.empty"))
         return
 
-    round_doc = firebase_service.start_group_round(chat_id, challenge)
+    round_doc = (await asyncio.to_thread(firebase_service.start_group_round, chat_id, challenge))
 
     difficulty = difficulty_label(lang, challenge.get("difficulty"))
     career_path = challenge["career_path"]
-    photo = render_career_path_image(
-        career_path,
-        title=t(lang, "image.path_title"),
-        subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
-        badge=difficulty.upper(),
-        footer=f"{difficulty} ({points_for_difficulty(challenge.get('difficulty'))})",
-        lang=lang,
-    )
+    photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty.upper(), footer=f"{difficulty} ({points_for_difficulty(challenge.get('difficulty'))})", lang=lang))
     await message.reply_photo(
         photo=photo,
         caption=t(
@@ -114,7 +108,7 @@ async def process_group_answer(update: Update, context: ContextTypes.DEFAULT_TYP
     lang = _lang_for(update)
     chat_id = message.chat.id
 
-    round_doc = firebase_service.get_group_round(chat_id)
+    round_doc = (await asyncio.to_thread(firebase_service.get_group_round, chat_id))
     if not round_doc or not round_doc.get("correct_answers"):
         await message.reply_text(t(lang, "group.no_round"))
         return
@@ -134,7 +128,7 @@ async def process_group_answer(update: Update, context: ContextTypes.DEFAULT_TYP
     name = _display_name(user)
     number = round_doc.get("number", 0)
 
-    attempt = firebase_service.begin_group_attempt(chat_id, user.id, number, name, MAX_GROUP_ATTEMPTS)
+    attempt = (await asyncio.to_thread(firebase_service.begin_group_attempt, chat_id, user.id, number, name, MAX_GROUP_ATTEMPTS))
     if not attempt["ok"]:
         await message.reply_text(t(lang, "group.no_attempts", name=_safe(name)), parse_mode="HTML")
         return
@@ -152,12 +146,12 @@ async def process_group_answer(update: Update, context: ContextTypes.DEFAULT_TYP
     # Due risposte giuste nello stesso istante, in un gruppo, sono la norma: il round lo
     # prende chi vince la transazione, esattamente come il bonus del primo sulla sfida di
     # oggi.
-    if not firebase_service.claim_group_round(chat_id, number, user.id, name):
+    if not (await asyncio.to_thread(firebase_service.claim_group_round, chat_id, number, user.id, name)):
         await message.reply_text(t(lang, "group.already_solved", winner="?"), parse_mode="HTML")
         return
 
     points = points_for_difficulty(round_doc.get("difficulty"))
-    firebase_service.add_group_points(chat_id, user.id, name, points)
+    (await asyncio.to_thread(firebase_service.add_group_points, chat_id, user.id, name, points))
     await message.reply_text(
         t(lang, "group.correct", name=_safe(name), points=points, number=number),
         reply_markup=_challenge_keyboard(lang),
@@ -174,7 +168,7 @@ async def group_standings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text(t(lang, "group.private_hint"))
         return
 
-    players = firebase_service.get_group_leaderboard(message.chat.id, limit=STANDINGS_SIZE)
+    players = (await asyncio.to_thread(firebase_service.get_group_leaderboard, message.chat.id, limit=STANDINGS_SIZE))
     if not players:
         await message.reply_text(t(lang, "group.standings_empty"))
         return

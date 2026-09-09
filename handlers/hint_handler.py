@@ -9,6 +9,8 @@ non modificando quello del tentativo. Cosi' resta in chat la traccia di cosa si 
 quando - e soprattutto il messaggio con il confronto sul nome sbagliato non sparisce proprio
 mentre serve.
 """
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
@@ -43,15 +45,15 @@ async def hint_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    lang = language_for(update)
+    lang = (await asyncio.to_thread(language_for, update))
     message = query.message
 
-    challenge = get_today_challenge()
+    challenge = (await asyncio.to_thread(get_today_challenge))
     if not challenge:
         await message.reply_text(t(lang, "common.no_challenge"))
         return
 
-    result = game.take_hint(update.effective_user.id, lang, challenge=challenge)
+    result = (await asyncio.to_thread(game.take_hint, update.effective_user.id, lang, challenge=challenge))
 
     if result["status"] == "unavailable":
         await message.reply_text(t(lang, "hint.unavailable"))

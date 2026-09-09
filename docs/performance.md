@@ -1,5 +1,35 @@
 # Prestazioni della mini app
 
+Gli handler Telegram spostano le operazioni Firestore sincrone e i servizi che le
+incapsulano in `asyncio.to_thread`, inclusa la generazione delle immagini. Il webhook
+autenticato accoda su Cloud Tasks e conferma 200 dopo la scrittura durabile; il worker
+elabora l'update durante una propria richiesta HTTP. Questo funziona anche con CPU
+Cloud Run assegnata solo durante le richieste e istanze che si spengono.
+
+Le ricevute Firestore impediscono il replay di update conclusi e serializzano il lavoro
+per utente tra istanze. Un'interruzione dopo l'inizio può aver già consumato il tentativo:
+alla scadenza del lease viene registrato `uncertain`, senza riesecuzione automatica.
+Questi casi richiedono riconciliazione dai log e dallo storico. Non è una garanzia di
+consegna esattamente una volta: Firestore e Telegram non condividono una transazione.
+
+Il job giornaliero salva il payload prima di accodare il broadcast. Reset mensile e
+broadcast procedono a pagine di 100 documenti: nessuna richiesta invia a tutti gli utenti.
+Il podio mensile viene congelato prima del primo reset; ogni reset utente è transazionale
+e conserva i punti maturati nel nuovo mese. La lettura iniziale del podio scorre ancora
+gli utenti con punti mensili, quindi il costo di preparazione resta O(N).
+
+Le API applicano un token bucket in memoria dopo la firma e prima di Firestore:
+30 token iniziali, ricarica di 1 token ogni 2 secondi; card costa 6, ricerca 2, le altre
+richieste 1. Il rifiuto restituisce 429 e `Retry-After`. Il bucket è protetto da lock e
+mantiene al massimo 10.000 utenti con espulsione LRU. I limiti valgono per processo:
+repliche, riavvii ed espulsioni rinnovano il budget. Per un tetto globale servirebbe
+uno store condiviso; impostare anche un massimo di istanze Cloud Run.
+
+HTML, CSS legale e modulo client hanno ETag SHA-256 e
+`Cache-Control: public, max-age=0, must-revalidate`: l'apertura successiva rivalida e
+riceve 304 senza corpo quando il contenuto è invariato. `webapp/client.js` contiene
+escape HTML, iniziali e merge del profilo, verificati con `node --test` anche in CI.
+
 Gli endpoint che usano Firestore sincrono sono funzioni `def`: FastAPI li esegue
 nel pool di thread, lasciando libero il ciclo asincrono per le altre richieste.
 La creazione della fattura resta asincrona per Telegram, ma sposta la lettura

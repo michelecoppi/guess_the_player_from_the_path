@@ -417,8 +417,14 @@
 </head>
 <body>
 <div id="root"><p class="error">…</p></div>
+<script src="/app/client.js"></script>
 <script>
 "use strict";
+
+// Le funzioni pure stanno in webapp/client.js, caricato qui sopra: sono le uniche che
+// i test possono eseguire senza un browser (tests/client.test.cjs).
+const { escapeHtml, initials, mergeProfile, histogram, cabinetCounts,
+        languageFromCode, weekNumber } = PlayerClient;
 
 /*
   La mini app: quattro schede sopra le stesse regole del bot.
@@ -660,8 +666,7 @@ const T = {
 let L = T[clientLanguage()] || T.en;
 
 function clientLanguage() {
-  const code = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) || "en";
-  return code.split("-")[0];
+  return languageFromCode(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code);
 }
 
 // ---------------------------------------------------------------------------
@@ -715,16 +720,6 @@ function applyCosmetics(worn) {
   };
 }
 
-function escapeHtml(value) {
-  return String(value == null ? "" : value).replace(/[&<>"']/g, c => (
-    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
-  ));
-}
-
-function initials(name) {
-  return (name || "?").split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
-}
-
 function haptic(kind) {
   try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(kind); } catch (e) { /* non essenziale */ }
 }
@@ -752,10 +747,7 @@ function toast(text) {
 // ---------------------------------------------------------------------------
 
 function squares(used, max, solved) {
-  const wrong = solved ? Math.max(used - 1, 0) : used;
-  return SQUARES.wrong.repeat(wrong)
-    + (solved ? SQUARES.correct : "")
-    + SQUARES.unused.repeat(Math.max(max - wrong - (solved ? 1 : 0), 0));
+  return PlayerClient.squares(used, max, solved, SQUARES);
 }
 
 /*
@@ -979,14 +971,12 @@ function publicProfileView() {
 
 function statsTab() {
   const u = state.profile.user;
-  const distribution = state.profile.distribution || [];
-  const max = Math.max(1, ...distribution.map(d => d.count));
-  const played = distribution.reduce((sum, d) => sum + d.count, 0);
+  const chart = histogram(state.profile.distribution);
 
-  const bars = played
-    ? `<div class="bars">${distribution.map(d => `<div class="row" style="border:0;padding:0">
-          <span class="pos">${d.attempts}</span>
-          <span class="fill${d.count === max && d.count > 0 ? " best" : ""}" style="width:${Math.max(8, Math.round(100 * d.count / max))}%">${d.count}</span>
+  const bars = chart.played
+    ? `<div class="bars">${chart.rows.map(row => `<div class="row" style="border:0;padding:0">
+          <span class="pos">${row.attempts}</span>
+          <span class="fill${row.best ? " best" : ""}" style="width:${row.width}%">${row.count}</span>
         </div>`).join("")}</div>`
     : `<p class="muted" style="margin:0">${escapeHtml(L.noGames)}</p>`;
 
@@ -1067,10 +1057,6 @@ function cabinetData() {
 
 function chosenCodes() {
   return state.pinning || (cabinetData().pinned || []).map(tag => tag.code);
-}
-
-function cabinetCounts(all) {
-  return [1, 2, 3].map(position => all.filter(tag => tag.position === position).length);
 }
 
 function cabinetView() {
@@ -1375,7 +1361,7 @@ function shopTab() {
 function weeklyWindow() {
   const window_ = (state.shop || {}).showcase;
   if (!window_ || !window_.items || !window_.items.length) return "";
-  const week = (window_.week || "").split("W")[1] || "";
+  const week = weekNumber(window_.week);
   return `<div class="card shop-section" id="shelf-showcase">
     <div class="showcase-strip"><h2>${escapeHtml(L.showcaseTitle)}</h2><span class="when">${escapeHtml(L.showcaseWeek.replace("{n}", week))}</span></div>
     <div class="shop-grid">${window_.items.map(item => shopCell(item.kind, item)).join("")}</div>
@@ -1994,7 +1980,7 @@ async function loadProfile(options) {
   const hint = state.hint;
   const lightweight = !!(options && options.lightweight && state.profile);
   const profile = await api("/app/api/me", lightweight ? { lightweight: true } : undefined);
-  state.profile = lightweight ? Object.assign({}, state.profile, profile) : profile;
+  state.profile = mergeProfile(state.profile, profile, lightweight);
   // La lingua e' quella scelta con /language, non quella del client: chi ha impostato lo
   // spagnolo nel bot deve trovarlo anche qui.
   L = T[state.profile.language] || L;

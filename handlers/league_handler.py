@@ -14,6 +14,7 @@ Scelte che vale la pena spiegare:
 - l'elenco delle leghe di un utente e' un array sul suo documento (`leagues`), quindi
   aggiornare i punti non richiede nessuna query per sapere dove scriverli.
 """
+import asyncio
 from urllib.parse import quote
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -66,7 +67,7 @@ def format_leaderboard(league, members, lang, viewer_id=None):
 async def leagues(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/lega: le leghe di cui fai parte, con un bottone per ognuna."""
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
 
     if not user_data:
@@ -74,7 +75,7 @@ async def leagues(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     codes = user_data.get("leagues", [])
-    found = [league for league in (firebase_service.get_league(code) for code in codes) if league]
+    found = (await asyncio.to_thread(lambda: [league for league in (firebase_service.get_league(code) for code in codes) if league]))
 
     if not found:
         await update.effective_message.reply_text(t(lang, "league.none"), parse_mode="HTML")
@@ -89,7 +90,7 @@ async def leagues(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    user_data = firebase_service.get_user_data(user.id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id))
     lang = _lang_for(update, user_data)
     message = update.effective_message
 
@@ -98,7 +99,7 @@ async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     name = " ".join(context.args).strip() if context.args else ""
-    status, code = league_rules.create(user.id, user_data, name, user.first_name)
+    status, code = (await asyncio.to_thread(league_rules.create, user.id, user_data, name, user.first_name))
 
     if status == "ok":
         await message.reply_text(
@@ -121,7 +122,7 @@ async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=None):
     user = update.effective_user
-    user_data = firebase_service.get_user_data(user.id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id))
     lang = _lang_for(update, user_data)
     message = update.effective_message
 
@@ -130,7 +131,7 @@ async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=N
         return
 
     code = league_rules.normalize_code(code or (context.args[0] if context.args else ""))
-    status, league = league_rules.join(user.id, user_data, code, user.first_name)
+    status, league = (await asyncio.to_thread(league_rules.join, user.id, user_data, code, user.first_name))
 
     if status == "ok":
         await message.reply_text(t(lang, "league.joined", name=league.get("name", code)), parse_mode="HTML")
@@ -153,12 +154,12 @@ async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=N
 
 async def league_leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
     message = update.effective_message
 
     code = league_rules.normalize_code(context.args[0] if context.args else "")
-    status, league = league_rules.leave(user_id, code)
+    status, league = (await asyncio.to_thread(league_rules.leave, user_id, code))
 
     if status == "ok":
         await message.reply_text(t(lang, "league.left", name=league.get("name", code)), parse_mode="HTML")
@@ -178,15 +179,15 @@ async def league_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     user_id = update.effective_user.id
-    lang = _lang_for(update, firebase_service.get_user_data(user_id))
+    lang = _lang_for(update, (await asyncio.to_thread(firebase_service.get_user_data, user_id)))
     code = query.data[len(CALLBACK_PREFIX):]
 
-    league = firebase_service.get_league(code)
+    league = (await asyncio.to_thread(firebase_service.get_league, code))
     if not league:
         await query.message.reply_text(t(lang, "league.not_found", code=code), parse_mode="HTML")
         return
 
-    members = firebase_service.get_league_leaderboard(code)
+    members = (await asyncio.to_thread(firebase_service.get_league_leaderboard, code))
     keyboard = None
     link = invite_link(code)
     if link:

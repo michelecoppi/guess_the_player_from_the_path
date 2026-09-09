@@ -41,17 +41,18 @@ Gira su ogni push e ogni pull request. Passi, in ordine (si ferma al primo che f
 | Type check | annotazioni coerenti in `services/` (il resto del progetto non è tipizzato) | `mypy services/` |
 | Validazione dataset | i JSON in `data/` sono JSON validi | script inline in `ci.yml` |
 | Salute del dataset | niente id duplicati, alias ambigui, cronologie incoerenti (vedi `scripts/dataset_report.py`) | `python scripts/dataset_report.py --strict` |
-| Test + coverage | l'intera suite pytest, con soglia minima di copertura | `pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=50` |
+| Test client | le funzioni pure della mini app (`webapp/client.js`), senza browser e senza bundler | `node --test tests/client.test.cjs` |
+| Test + coverage | l'intera suite pytest, con soglia minima di copertura | `pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70` |
 
 Configurazione di ruff/mypy in [`pyproject.toml`](../pyproject.toml): niente `__init__.py` nei
 package (`services/`, `handlers/`), quindi mypy ha bisogno di `explicit_package_bases = true` e
 `mypy_path = "."` per non confondere `services.firebase_service` con `firebase_service`.
 
-**Soglia di coverage**: 50%, già ampiamente rispettata (54% al momento della messa in piedi).
-È un guardrail contro regressioni, non un obiettivo — si può alzare gradualmente modificando
-`--cov-fail-under` in `ci.yml` mano a mano che si aggiungono test, specialmente su
-`firebase_service.py` (25% di copertura diretta: la maggior parte è testata indirettamente
-tramite i flussi end-to-end, non da test unitari mirati).
+**Soglia di coverage**: 70%, contro il 74% reale. È un guardrail contro regressioni, non un
+obiettivo: la soglia sta qualche punto sotto il valore corrente perché deve fermare una
+regressione vera, non una riga scoperta in più. Restava a 50% mentre la copertura era già
+salita di venti punti, e in quello spazio ci si poteva cancellare un modulo di test senza che
+la CI dicesse niente. Si alza mano a mano che si aggiungono test, tenendo lo stesso margine.
 
 ## 2. Deploy — [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)
 

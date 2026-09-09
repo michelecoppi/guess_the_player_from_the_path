@@ -91,6 +91,8 @@ def month_label(lang, english_month_name):
 TRANSLATIONS = {
     "it": {
         "common.private_only": "❗ Questo comando può essere usato solo in chat privata.",
+        "common.unexpected_error": ("⚠️ Qualcosa è andato storto. Controlla /show o /stats prima di riprovare: "
+                                    "il tentativo potrebbe essere già registrato. Riferimento: {reference}."),
         "common.no_challenge": "❗ Non c'è ancora una sfida giornaliera disponibile.",
         "forgetme.private_only": "❗ Per sicurezza, usa /forgetme nella chat privata con il bot.",
         "forgetme.not_registered": "Non risulta alcun account da cancellare.",
@@ -521,6 +523,8 @@ TRANSLATIONS = {
     },
     "es": {
         "common.private_only": "❗ Este comando solo se puede usar en un chat privado.",
+        "common.unexpected_error": ("⚠️ Algo ha salido mal. Consulta /show o /stats antes de reintentar: "
+                                    "el intento podría estar ya registrado. Referencia: {reference}."),
         "common.no_challenge": "❗ Todavía no hay un desafío diario disponible.",
         "forgetme.private_only": "❗ Por seguridad, usa /forgetme en el chat privado con el bot.",
         "forgetme.not_registered": "No hay ninguna cuenta registrada que borrar.",
@@ -949,6 +953,8 @@ TRANSLATIONS = {
     },
     "en": {
         "common.private_only": "❗ This command can only be used in a private chat.",
+        "common.unexpected_error": ("⚠️ Something went wrong. Check /show or /stats before trying again: "
+                                    "the attempt may already be recorded. Reference: {reference}."),
         "common.no_challenge": "❗ There's no daily challenge available yet.",
         "forgetme.private_only": "❗ For safety, use /forgetme in your private chat with the bot.",
         "forgetme.not_registered": "There is no registered account to delete.",

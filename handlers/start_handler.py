@@ -1,3 +1,4 @@
+import asyncio
 from html import escape
 
 from telegram import Update
@@ -17,7 +18,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user = update.effective_user
-    result = save_user(user.id, user.first_name, language=detected_lang)
+    result = (await asyncio.to_thread(save_user, user.id, user.first_name, language=detected_lang))
 
     lang = result["language"]
     key = "start.welcome_new" if result["created"] else "start.welcome_back"

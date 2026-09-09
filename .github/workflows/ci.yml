@@ -18,8 +18,15 @@ jobs:
       - name: Installa le dipendenze
         run: pip install -r requirements-dev.txt
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Test client senza bundler
+        run: node --test tests/client.test.cjs
+
       - name: Controllo sintassi
-        run: python -m py_compile bot.py config.py services/*.py handlers/*.py scripts/*.py
+        run: python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py
 
       - name: Lint (ruff)
         run: ruff check .
@@ -40,4 +47,4 @@ jobs:
         run: python scripts/dataset_report.py --strict
 
       - name: Esegui i test (con coverage)
-        run: pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=50
+        run: pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70

@@ -15,6 +15,8 @@ tentativo. Non si dice mai qual era la risposta giusta, nemmeno per suggerire la
 correzione: sarebbe rivelare la soluzione. Chi finisce i tentativi la scopre a mezzanotte,
 o con /solution a giornata chiusa (handlers/solution_handler.py).
 """
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
@@ -83,7 +85,7 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
         return
 
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _language_for(update, user_data)
 
     # Con una partita aperta altrove la risposta vale per quella: e' l'unico modo di
@@ -102,15 +104,12 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
 
     # Le regole (tentativi, punti, indizi, striscia) stanno in services/game.py: le stesse
     # che usa la mini app. Qui resta solo la resa in un messaggio Telegram.
-    challenge = get_today_challenge()
+    challenge = (await asyncio.to_thread(get_today_challenge))
     if not challenge:
         await message.reply_text(t(lang, "common.no_challenge"))
         return
 
-    result = game.play_daily(
-        user_id, user_data, user_answer,
-        first_name=update.effective_user.first_name, challenge=challenge,
-    )
+    result = (await asyncio.to_thread(game.play_daily, user_id, user_data, user_answer, first_name=update.effective_user.first_name, challenge=challenge))
 
     if result["status"] == "no_challenge":
         await message.reply_text(t(lang, "common.no_challenge"))
@@ -236,14 +235,10 @@ async def share_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     user = update.effective_user
-    user_data = firebase_service.get_user_data(user.id) or {}
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id)) or {}
     lang = _language_for(update, user_data)
     pinned = trophies.showcase(user_data, lang)
-    image = card_image(
-        user_data, lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved,
-        streak=streak, hints=hints,
-        honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
-    )
+    image = (await asyncio.to_thread(card_image, user_data, lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints, honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else ""))
     text = share_text(lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved,
                       streak=streak, hints=hints, symbols=shop.squares_symbols(user_data))
     await query.message.reply_photo(photo=image, caption=text)

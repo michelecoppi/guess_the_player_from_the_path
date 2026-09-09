@@ -1,3 +1,5 @@
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import ContextTypes
 
@@ -21,7 +23,7 @@ def _palmares_image(lang, trophies):
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data=None, edit_mode=False):
     user_id = update.effective_user.id
     if user_data is None:
-        user_data = get_user_data(user_id)
+        user_data = (await asyncio.to_thread(get_user_data, user_id))
 
     lang = (user_data or {}).get("language") or resolve_language(getattr(update.effective_user, "language_code", None))
 

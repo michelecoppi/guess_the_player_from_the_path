@@ -17,3 +17,9 @@ _admin_ids_raw = os.getenv("ADMIN_TELEGRAM_IDS", "")
 ADMIN_TELEGRAM_IDS = [int(x) for x in _admin_ids_raw.split(",") if x.strip().isdigit()]
 
 GENERATION_SECRET = os.getenv("GENERATION_SECRET")
+
+# Separate secrets: never generate at startup (replicas must share the same value).
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
+TASK_SECRET = os.getenv("TASK_SECRET", "")
+TASKS_QUEUE = os.getenv("TASKS_QUEUE", "")
+BROADCAST_QUEUE = os.getenv("BROADCAST_QUEUE", "")

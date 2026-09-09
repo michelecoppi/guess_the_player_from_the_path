@@ -5,6 +5,8 @@ corrispondente, cosi' non esistono due versioni della stessa schermata da tenere
 La tastiera vive in handlers/keyboards.py, che non importa nessun handler: serve anche a
 /start e /help, e cosi' non si crea un import circolare.
 """
+import asyncio
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -25,7 +27,7 @@ from services.i18n import t
 
 
 async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = language_for(update)
+    lang = (await asyncio.to_thread(language_for, update))
     private = getattr(getattr(update, "effective_chat", None), "type", None) == "private"
     text = "\n\n".join(filter(None, [t(lang, "menu.title"), app_invitation(lang) if private else ""]))
     await update.effective_message.reply_text(

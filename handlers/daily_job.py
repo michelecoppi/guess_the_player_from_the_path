@@ -7,13 +7,13 @@ del giorno dopo risulti sballato.
 """
 import asyncio
 import logging
-from datetime import timedelta
 
 from telegram import Bot
+from telegram.error import Forbidden, RetryAfter
 
 from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
 from handlers.keyboards import app_keyboard
-from services import firebase_service
+from services import broadcast_store, firebase_service, monthly_closure, task_queue, work_receipts
 from services.daily_challenge import invalidate as invalidate_daily_cache
 from services.daily_generator import ensure_daily_buffer
 from services.daily_stats import solve_percent
@@ -38,62 +38,99 @@ async def update_daily_challenge():
     today = today_iso()
     yesterday = shift_iso(today, -1)
 
-    try:
-        ensure_daily_buffer()
-    except Exception as e:
-        logging.exception(f"Errore nella generazione automatica della sfida giornaliera: {e}")
+    payload = await asyncio.to_thread(broadcast_store.get_job, today)
+    if payload is None:
+        await asyncio.to_thread(ensure_daily_buffer)
+        await asyncio.to_thread(maybe_generate_event, now)
+        invalidate_daily_cache()
+        finished_event = await asyncio.to_thread(firebase_service.get_event_trophy_day, yesterday)
+        if finished_event:
+            await asyncio.to_thread(firebase_service.update_users_trophies, finished_event)
+        monthly_result = await asyncio.to_thread(monthly_closure.prepare, now) if now.day == 1 else None
+        payload = {
+            "reference_day": yesterday,
+            # Il nome dell'evento chiuso viaggia nel payload perche' il riepilogo agli admin
+            # lo scrive l'ultima pagina del broadcast, che gira in un'altra richiesta e non
+            # ha piu' sotto mano quello che e' stato deciso qui.
+            "finished_event_name": (finished_event or {}).get("name", ""),
+            "yesterday_player": await asyncio.to_thread(firebase_service.get_display_name_for_day, yesterday),
+            "stats": list(await asyncio.to_thread(firebase_service.get_daily_stats, yesterday)),
+            "current_event": await asyncio.to_thread(firebase_service.get_current_event, today),
+            "monthly_result": monthly_result,
+        }
+        payload = await asyncio.to_thread(broadcast_store.save_job, today, payload)
+    monthly = payload.get("monthly_result") is not None
+    path = "/internal/monthly-close" if monthly else "/internal/broadcast"
+    key = f"monthly-{today}-start" if monthly else f"broadcast-{today}-start"
+    await asyncio.to_thread(task_queue.enqueue, path, {"day": today}, key, broadcast=True)
+    return {"day": today, "status": "queued"}
 
-    try:
-        maybe_generate_event(now)
-    except Exception as e:
-        logging.exception(f"Errore nella generazione automatica dell'evento: {e}")
 
-    invalidate_daily_cache()
-
-    yesterday_player = firebase_service.get_display_name_for_day(yesterday)
-    # Quanti l'hanno indovinata: si legge una volta sola qui e si passa al broadcast, invece
-    # di rileggerla per ognuno dei destinatari.
-    yesterday_stats = firebase_service.get_daily_stats(yesterday)
-    current_event = firebase_service.get_current_event(today)
-    # I trofei si assegnano quando l'evento e' finito davvero, cioe' il giorno dopo la sua
-    # ultima giornata: assegnarli all'inizio dell'ultimo giorno premierebbe una classifica
-    # ancora da giocare.
-    finished_event = firebase_service.get_event_trophy_day(yesterday)
-
-    monthly_result = handle_monthly_reset(now)
-
-    messages_sent, errors = await _broadcast(
-        yesterday, yesterday_player, current_event, monthly_result, yesterday_stats
+async def broadcast_batch(day, cursor=None):
+    payload = await asyncio.to_thread(broadcast_store.get_job, day)
+    if payload is None:
+        raise ValueError("Daily payload missing")
+    users, next_cursor = await asyncio.to_thread(broadcast_store.page, payload["reference_day"], cursor)
+    # Argomenti espliciti e non `**payload`: sul documento del giorno finiscono anche campi
+    # di servizio (il totale inviato), e passarli tutti farebbe fallire la firma.
+    sent, errors = await _broadcast(
+        payload["reference_day"], payload.get("yesterday_player"), payload.get("current_event"),
+        payload.get("monthly_result"), tuple(payload.get("stats") or (0, 0)),
+        users=users, notification_day=day,
     )
+    # Prima del controllo sugli errori: quello che e' partito e' partito, e al retry le
+    # ricevute saltano questi utenti, quindi il totale non conta due volte nessuno.
+    await asyncio.to_thread(broadcast_store.add_sent, day, sent)
+    if errors:
+        raise RuntimeError("Transient broadcast failure; retry this page")
+    if next_cursor:
+        await asyncio.to_thread(task_queue.enqueue, "/internal/broadcast", {"day": day, "cursor": next_cursor},
+                                f"broadcast-{day}-{next_cursor}", broadcast=True)
+    else:
+        await _report_completion(day, payload)
+    return {"sent": sent, "next_cursor": next_cursor}
 
-    if finished_event:
-        try:
-            assigned = firebase_service.update_users_trophies(finished_event)
-            logging.info(f"Trofei assegnati per l'evento {finished_event.get('code')}: {len(assigned)}")
-        except Exception:
-            logging.exception("Errore nell'assegnazione dei trofei dell'evento")
 
+async def _report_completion(day, payload):
+    """Il riepilogo di fine giornata agli admin, l'unico segnale che il giro e' finito.
+
+    Lo manda l'ultima pagina, non il trigger di mezzanotte: fra i due ci sono N richieste
+    separate, e un "fatto" scritto prima del primo invio non direbbe niente."""
+    total = (await asyncio.to_thread(broadcast_store.get_job, day) or {}).get("sent_total", 0)
+    monthly = payload.get("monthly_result")
     await _notify_admins(
-        f"✅ Daily challenge aggiornata per {to_display(today)}.\n"
-        f"Messaggi inviati: {messages_sent} (errori: {errors})."
-        + (f"\n🏆 Trofei assegnati per {finished_event.get('name')}." if finished_event else "")
-        + (f"\n📅 Risultati stagione mensile {monthly_result['month_name']} {monthly_result['year']}." if monthly_result else "")
+        f"✅ Giornata {to_display(day)} aggiornata. Notifiche inviate: {total}."
+        + (f"\n🏆 Trofei assegnati per {payload['finished_event_name']}." if payload.get("finished_event_name") else "")
+        + (f"\n📅 Risultati stagione {monthly['month_name']} {monthly['year']}." if monthly else "")
     )
 
 
-async def _broadcast(reference_day, yesterday_player, current_event, monthly_result, stats=(0, 0)):
+async def _broadcast(reference_day, yesterday_player, current_event, monthly_result, stats=(0, 0), *, users=None, notification_day=None):
     """`monthly_result` (se non None) e' {'month_name', 'year', 'winners'}: il podio viene
     reso nella lingua di ciascun destinatario, non e' piu' un testo unico precomposto.
 
     `stats` e' (giocatori, risolutori) della giornata appena chiusa: diventa la riga "l'ha
     indovinato il 41%". Qui la giornata e' chiusa e la percentuale e' definitiva, quindi
     dirla non anticipa niente a nessuno."""
-    broadcast_users = firebase_service.get_broadcast_users(reference_day)
+    broadcast_users = users if users is not None else await asyncio.to_thread(firebase_service.get_broadcast_users, reference_day)
 
     sent = 0
     errors = 0
     for user in broadcast_users:
         chat_id = user["chat_id"]
+        receipt = None
+        if notification_day:
+            if (user.get("last_notification_day") or "") >= notification_day:
+                continue
+            receipt = f"notify-{notification_day}-{user['user_id']}"
+            status = await asyncio.to_thread(work_receipts.claim, receipt)
+            if status == "busy":
+                errors += 1
+                continue
+            if status != "claimed":
+                if status == "uncertain":
+                    logging.error("Notification delivery uncertain: %s", receipt)
+                continue
         lang = user.get("language", DEFAULT_LANGUAGE)
         player_label = yesterday_player or t(lang, "job.player_fallback")
 
@@ -124,11 +161,22 @@ async def _broadcast(reference_day, yesterday_player, current_event, monthly_res
 
         try:
             await get_bot().send_message(chat_id=chat_id, text=text, **({"reply_markup": keyboard} if keyboard else {}))
+            if receipt:
+                await asyncio.to_thread(broadcast_store.mark_sent, user["user_id"], notification_day)
+                await asyncio.to_thread(work_receipts.finish, receipt)
             sent += 1
             await asyncio.sleep(0.05)
-        except Exception as e:
+        except Forbidden:
+            if receipt:
+                await asyncio.to_thread(work_receipts.finish, receipt)
+                await asyncio.to_thread(firebase_service.set_user_notifications, user["user_id"], chat_id, False)
+        except RetryAfter:
+            if receipt:
+                await asyncio.to_thread(work_receipts.release, receipt)
             errors += 1
-            logging.info(f"Errore con utente {chat_id}: {e}")
+        except Exception:
+            errors += 1
+            logging.error("Notification failed for user %s; delivery may be uncertain", chat_id)
 
     return sent, errors
 
@@ -142,38 +190,4 @@ async def _notify_admins(text):
 
 
 def handle_monthly_reset(today):
-    """Il primo del mese: assegna i trofei mensili e azzera i punti del mese.
-
-    La stagione viene creata se manca: prima, senza il documento in `seasons`, il reset
-    saltava in silenzio e i punti mensili non venivano mai azzerati.
-
-    Ritorna None se non c'e' niente da annunciare, altrimenti {'month_name', 'year',
-    'winners'}: la resa testuale (tradotta per destinatario) e' compito di chi chiama,
-    non di questa funzione."""
-    if today.day != 1:
-        return None
-
-    last_month = today.replace(day=1) - timedelta(days=1)
-    month_name = last_month.strftime("%B")
-    year = str(last_month.year)
-
-    season, created = firebase_service.get_or_create_season(month_name, year)
-    if created:
-        logging.warning(f"Stagione {month_name} {year} mancante: creata automaticamente")
-
-    top_users = firebase_service.get_top_users(field="monthly_points", limit=3)
-    top_users = [u for u in top_users if u.get("monthly_points", 0) > 0]
-
-    if not top_users:
-        logging.info(f"Nessun utente ha partecipato alla stagione mensile {month_name} {year}.")
-        firebase_service.reset_monthly_points()
-        return None
-
-    winners = []
-    for position, user in enumerate(top_users, start=1):
-        trophy_code = f"MON_{month_name}_{season['season_number']}_{year}_{position}"
-        firebase_service.add_user_trophy(user["telegram_id"], trophy_code)
-        winners.append({"position": position, "username": user["username"], "monthly_points": user["monthly_points"]})
-
-    firebase_service.reset_monthly_points()
-    return {"month_name": month_name, "year": year, "winners": winners}
+    return monthly_closure.close(today)

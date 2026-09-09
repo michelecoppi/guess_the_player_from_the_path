@@ -66,7 +66,12 @@ def _monthly_fakes(monkeypatch, top_users, season_exists=True):
     monkeypatch.setattr(daily_job.firebase_service, "add_user_trophy",
                         lambda tid, code: calls["trophies"].append((tid, code)))
     monkeypatch.setattr(daily_job.firebase_service, "reset_monthly_points",
-                        lambda: calls.__setitem__("reset", calls["reset"] + 1))
+                        lambda **kwargs: calls.__setitem__("reset", calls["reset"] + 1))
+    monkeypatch.setattr(daily_job.monthly_closure, "prepare", lambda now: {
+        "month_name": "August", "year": "2026", "closed_month": "2026-08", "new_month": "2026-09",
+        "winners": [{**user, "position": i, "trophy_code": f"MON_August_4_2026_{i}"}
+                    for i, user in enumerate([u for u in top_users if u["monthly_points"] > 0], 1)],
+    })
     return calls
 
 

@@ -1,3 +1,5 @@
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
@@ -22,7 +24,7 @@ def notifications_enabled(user_data):
 async def notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
-    user_data = get_user_data(user_id)
+    user_data = (await asyncio.to_thread(get_user_data, user_id))
     lang = (user_data or {}).get("language") or resolve_language(getattr(update.effective_user, "language_code", None))
 
     if not user_data:
@@ -47,19 +49,19 @@ async def notify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     chat_id = query.message.chat.id
-    user_data = get_user_data(user_id)
+    user_data = (await asyncio.to_thread(get_user_data, user_id))
     lang = (user_data or {}).get("language") or resolve_language(getattr(query.from_user, "language_code", None))
 
     if query.data == ENABLE_INLINE:
         already_on = notifications_enabled(user_data or {})
         if not already_on:
-            set_user_notifications(user_id, chat_id, True)
+            (await asyncio.to_thread(set_user_notifications, user_id, chat_id, True))
         await query.message.reply_text(
             t(lang, "notify.already_enabled" if already_on else "notify.enabled_inline")
         )
     elif query.data == "enable_notify":
-        set_user_notifications(user_id, chat_id, True)
+        (await asyncio.to_thread(set_user_notifications, user_id, chat_id, True))
         await query.edit_message_text(t(lang, "notify.enabled_confirm"))
     elif query.data == "disable_notify":
-        set_user_notifications(user_id, chat_id, False)
+        (await asyncio.to_thread(set_user_notifications, user_id, chat_id, False))
         await query.edit_message_text(t(lang, "notify.disabled_confirm"))

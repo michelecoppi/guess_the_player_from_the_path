@@ -1,6 +1,10 @@
+import asyncio
 import base64
+import hashlib
+import hmac
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from time import perf_counter
 
@@ -17,7 +21,15 @@ from telegram.ext import (
     filters,
 )
 
-from config import BOT_TOKEN, BOT_USERNAME, GENERATION_SECRET, WEBAPP_URL, WEBHOOK_URL
+from config import (
+    BOT_TOKEN,
+    BOT_USERNAME,
+    GENERATION_SECRET,
+    TASK_SECRET,
+    WEBAPP_URL,
+    WEBHOOK_SECRET,
+    WEBHOOK_URL,
+)
 from handlers.admin_handler import (
     admin_block,
     admin_blocked,
@@ -37,7 +49,8 @@ from handlers.admin_handler import (
     admin_unblock,
 )
 from handlers.archive_handler import archive, archive_callback, back_to_today
-from handlers.daily_job import update_daily_challenge
+from handlers.daily_job import broadcast_batch, update_daily_challenge
+from handlers.error_handler import on_error
 from handlers.events_handler import events, handle_event_navigation
 from handlers.group_handler import (
     group_challenge,
@@ -75,10 +88,11 @@ from handlers.start_handler import start
 from handlers.support_handler import paysupport
 from handlers.top_users_handler import leaderboard_callback, top
 from handlers.training_handler import training, training_callback
-from services import firebase_service, game, shop, trophies
+from services import firebase_service, game, monthly_closure, shop, task_queue, trophies, work_receipts
 from services import leagues as league_rules
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
+from services.rate_limit import TokenBucket
 from services.share import card_image
 from services.webapp_api import (
     MAX_ARCHIVE_ATTEMPTS,
@@ -92,8 +106,15 @@ from services.webapp_api import (
 from services.webapp_auth import user_id_from_init_data
 
 logging.basicConfig(level=logging.INFO)
+# httpx registra a INFO la URL completa di ogni richiesta, e nelle chiamate a Telegram il
+# token del bot **sta dentro la URL**: a INFO finisce in chiaro nei log di Cloud Run, che
+# vede chiunque abbia il ruolo di lettura sui log. Da WARNING in su restano gli errori, che
+# non portano la URL. Non e' un dettaglio di rumore: e' il token che apre il bot.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
+telegram_app.add_error_handler(on_error)
+api_limiter = TokenBucket()
 telegram_app.add_handler(CommandHandler("start", start))
 telegram_app.add_handler(CommandHandler("app", start))
 telegram_app.add_handler(CommandHandler("guess", guess))
@@ -191,13 +212,19 @@ async def _register_bot_commands():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", WEBHOOK_SECRET):
+        raise RuntimeError("WEBHOOK_SECRET must contain 32-256 URL-safe characters")
+    task_queue.validate_configuration()
     await telegram_app.initialize()
     if WEBHOOK_URL:
-        await telegram_app.bot.set_webhook(WEBHOOK_URL)
+        await telegram_app.bot.set_webhook(WEBHOOK_URL, secret_token=WEBHOOK_SECRET)
     else:
         logging.warning("WEBHOOK_URL non configurato: webhook Telegram non registrato all'avvio.")
     await _register_bot_commands()
-    yield
+    try:
+        yield
+    finally:
+        await telegram_app.shutdown()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -226,9 +253,18 @@ async def ping():
 
 @app.post("/webhook")
 async def webhook(req: Request):
-    data = await req.json()
-    update = Update.de_json(data, telegram_app.bot)
-    await telegram_app.process_update(update)
+    supplied = req.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not WEBHOOK_SECRET or not hmac.compare_digest(supplied.encode(), WEBHOOK_SECRET.encode()):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        data = await req.json()
+        if not isinstance(data, dict) or type(data.get("update_id")) is not int:
+            raise ValueError("invalid update_id")
+        Update.de_json(data, telegram_app.bot)
+    except (ValueError, TypeError, KeyError):
+        raise HTTPException(status_code=400, detail="Invalid update") from None
+    await run_in_threadpool(task_queue.enqueue, "/internal/telegram-update", data,
+                            f"telegram-{data['update_id']}")
     return {"status": "ok"}
 
 
@@ -249,31 +285,42 @@ def _static(name):
     return _static_files[name]
 
 
+def _static_response(name, request, media_type="text/html"):
+    content = _static(name)
+    etag = '"' + hashlib.sha256(content.encode()).hexdigest() + '"'
+    headers = {"ETag": etag, "Cache-Control": "public, max-age=0, must-revalidate"}
+    candidates = request.headers.get("if-none-match", "").split(",")
+    if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
+        return Response(status_code=304, headers=headers)
+    return Response(content, media_type=media_type, headers=headers)
+
+
 @app.get("/app", response_class=HTMLResponse)
-def webapp_page():
-    """La mini app Telegram: una pagina sola."""
-    return HTMLResponse(_static("index.html"))
+def webapp_page(request: Request):
+    return _static_response("index.html", request)
 
 
-# I due documenti che Telegram mostra a chi sta per pagare in Stelle: gli URL da mettere in
-# BotFather sono `<PUBLIC_BASE_URL>/terms` e `<PUBLIC_BASE_URL>/privacy`. Si aprono nel
-# browser e non dentro Telegram, quindi hanno un foglio di stile loro.
 @app.get("/terms", response_class=HTMLResponse)
-async def terms_page():
-    return HTMLResponse(_static("terms.html"))
+def terms_page(request: Request):
+    return _static_response("terms.html", request)
 
 
 @app.get("/privacy", response_class=HTMLResponse)
-async def privacy_page():
-    return HTMLResponse(_static("privacy.html"))
+def privacy_page(request: Request):
+    return _static_response("privacy.html", request)
 
 
 @app.get("/legal.css")
-async def legal_css():
-    return Response(_static("legal.css"), media_type="text/css")
+def legal_css(request: Request):
+    return _static_response("legal.css", request, "text/css")
 
 
-def _webapp_user(payload):
+@app.get("/app/client.js")
+def client_logic(request: Request):
+    return _static_response("client.js", request, "text/javascript")
+
+
+def _webapp_user(payload, cost=1):
     """Chi sta chiamando, secondo la **sola** firma di initData.
 
     Il client non manda mai un id: se lo mandasse, chiunque potrebbe chiedere i dati di
@@ -284,6 +331,9 @@ def _webapp_user(payload):
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e)) from None
 
+    wait = api_limiter.retry_after(user_id, cost)
+    if wait:
+        raise HTTPException(status_code=429, detail="Troppe richieste", headers={"Retry-After": str(wait)})
     user_data = firebase_service.get_user_data(user_id)
     if user_data is None:
         raise HTTPException(status_code=404, detail="utente non registrato")
@@ -316,7 +366,7 @@ def webapp_public_profile(payload: dict = Body(default={})):
 @app.post("/app/api/profile/search")
 def webapp_search_profiles(payload: dict = Body(default={})):
     """Cerca profili per nome senza esporre il documento utente completo."""
-    _webapp_user(payload)
+    _webapp_user(payload, cost=2)
     query = payload.get("query")
     if not isinstance(query, str) or len(query.strip()) < 2:
         raise HTTPException(status_code=400, detail="servono almeno due caratteri")
@@ -468,7 +518,7 @@ def webapp_result_card(payload: dict = Body(default={})):
     app e' la firma di initData, che viaggia nel corpo di una POST: un `<img src>` verso una
     GET vorrebbe dire o un endpoint senza firma o un id nell'URL, e nessuna delle due va
     bene per una card che porta il nome di chi l'ha fatta."""
-    user_id, user_data = _webapp_user(payload)
+    user_id, user_data = _webapp_user(payload, cost=6)
     lang = _webapp_language(user_data)
     day = payload.get("day")
     attempts = int(payload.get("attempts") or 0)
@@ -504,10 +554,48 @@ def webapp_pin_trophies(payload: dict = Body(default={})):
 async def trigger_daily_job(x_cron_secret: str = Header(default=None)):
     """Chiamato da Cloud Scheduler a mezzanotte: su Cloud Run non c'e' un processo sempre
     acceso che possa tenere un cron interno, quindi il trigger arriva da fuori via HTTP."""
-    if not GENERATION_SECRET or x_cron_secret != GENERATION_SECRET:
+    if not GENERATION_SECRET or not hmac.compare_digest((x_cron_secret or "").encode(), GENERATION_SECRET.encode()):
         raise HTTPException(status_code=403, detail="Forbidden")
     await update_daily_challenge()
     return {"status": "ok"}
+
+
+def _require_task_secret(supplied):
+    if not TASK_SECRET or not hmac.compare_digest((supplied or "").encode(), TASK_SECRET.encode()):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.post("/internal/telegram-update")
+async def consume_telegram_update(payload: dict, x_task_secret: str = Header(default=None)):
+    _require_task_secret(x_task_secret)
+    if type(payload.get("update_id")) is not int:
+        raise HTTPException(status_code=400, detail="Invalid update")
+    update = Update.de_json(payload, telegram_app.bot)
+    key = f"telegram-{update.update_id}"
+    user = update.effective_user
+    state = await run_in_threadpool(work_receipts.claim, key, serial_key=str(user.id) if user else None)
+    if state == "busy":
+        raise HTTPException(status_code=503, detail="Update in progress")
+    if state == "uncertain":
+        logging.error("Update %s interrupted: manual reconciliation required", update.update_id)
+        return {"status": state}
+    if state == "claimed":
+        async with asyncio.timeout(150):
+            await telegram_app.process_update(update)
+        await run_in_threadpool(work_receipts.finish, key)
+    return {"status": "ok"}
+
+
+@app.post("/internal/broadcast")
+async def consume_broadcast(payload: dict, x_task_secret: str = Header(default=None)):
+    _require_task_secret(x_task_secret)
+    return await broadcast_batch(payload["day"], payload.get("cursor"))
+
+
+@app.post("/internal/monthly-close")
+def consume_monthly_close(payload: dict, x_task_secret: str = Header(default=None)):
+    _require_task_secret(x_task_secret)
+    return monthly_closure.close_batch(payload["day"], payload.get("cursor"))
 
 if __name__ == "__main__":
     import uvicorn

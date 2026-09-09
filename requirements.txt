@@ -5,3 +5,4 @@ fastapi==0.115.12
 uvicorn[standard]==0.30.6
 Pillow==12.3.0
 tzdata==2024.1
+google-cloud-tasks==2.24.0
