@@ -3,6 +3,9 @@
 Bot Telegram che ogni giorno propone il percorso professionale (misterioso) di un calciatore
 da indovinare, con classifiche, statistiche personali, eventi tematici a tempo e trofei.
 
+> **Licenza:** PolyForm Noncommercial 1.0.0 — libero per studio, hobby e uso personale,
+> **vietato qualsiasi uso commerciale**. Vedi [Licenza e uso](#licenza-e-uso).
+
 ## Come si gioca
 
 Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. In chat
@@ -1124,3 +1127,55 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   coerenza del dataset, e ha un effetto collaterale reale: `top_leagues` e `known_leagues` in
   `data/config.json` si confrontano per stringa esatta, quindi due grafie dello stesso
   campionato pesano diversamente nel calcolo della difficoltà.
+
+## Licenza e uso
+
+Il codice di questo repository è distribuito con licenza
+**[PolyForm Noncommercial 1.0.0](LICENSE)**. In sintesi, e senza sostituire il testo della
+licenza, che è l'unico che conta:
+
+**Si può**, gratis e senza chiedere niente a nessuno:
+
+- leggere, clonare, studiare il codice e usarlo come esempio;
+- eseguirlo per conto proprio — su una macchina personale, per prova, per curiosità, per
+  imparare;
+- modificarlo, forkarlo e ridistribuirlo, anche modificato;
+- usarlo a scopo di ricerca, didattica e progetti amatoriali; lo stesso vale per scuole,
+  università, enti di ricerca pubblici e organizzazioni senza scopo di lucro.
+
+**Non si può**, senza un accordo scritto con l'autore:
+
+- usarlo per **qualsiasi scopo commerciale**: pubblicare un bot o una mini app derivata da
+  questo codice con pubblicità, abbonamenti, acquisti in-app, Telegram Stars, sponsorizzazioni
+  o qualunque altra forma di monetizzazione, diretta o indiretta;
+- usarlo all'interno di un'azienda o di un'attività professionale;
+- rivenderlo, concederlo in sublicenza o offrirlo come servizio a pagamento.
+
+Chi ridistribuisce il codice, anche modificato, deve consegnare a chi lo riceve una copia
+della licenza (o il suo URL) e la riga `Required Notice:` che si trova in [LICENSE](LICENSE) e
+in [NOTICE](NOTICE).
+
+**Uso commerciale.** L'autore resta unico titolare del copyright e può concedere condizioni
+diverse: per un impiego commerciale si può chiedere una licenza separata aprendo una issue sul
+repository.
+
+### Cosa la licenza non copre
+
+- **Le regole del gioco e l'idea.** "Indovina il calciatore dal percorso di carriera" è
+  un'idea, e le idee non sono coperte dal diritto d'autore. Questa licenza vale sul codice
+  scritto qui, non impedisce a nessuno di realizzare da zero un gioco che funziona allo stesso
+  modo.
+- **I dati dei calciatori.** Presenze, gol e squadre sono fatti, e i fatti non sono
+  proteggibili. Le carriere in `data/players.json` sono in parte ricavate da **Wikipedia** e
+  restano quindi disponibili con licenza **CC BY-SA 4.0**: chi le riusa deve attribuirle e
+  ridistribuirle alle stesse condizioni. Il dettaglio sta in [NOTICE](NOTICE).
+- **Le dipendenze.** Le librerie in `requirements.txt` hanno ciascuna la propria licenza.
+- **Marchi e contenuti di terzi.** Nomi di squadre, campionati e competizioni citati nel
+  dataset appartengono ai rispettivi titolari e sono usati a scopo puramente descrittivo.
+
+### Note operative
+
+Il repository **non contiene credenziali**: `.env` e `firebase-key.json` sono esclusi da
+`.gitignore` e non sono mai stati committati. Chi clona ottiene il codice, non l'istanza in
+produzione: per farlo girare servono un proprio bot Telegram e un proprio progetto Firebase,
+come descritto in [docs/deploy.md](docs/deploy.md).

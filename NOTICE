@@ -1,0 +1,27 @@
+Required Notice: Copyright 2025-2026 Michele Coppi
+(https://github.com/michelecoppi/guess_the_player_from_the_path)
+
+Guess the Player from the Path
+Distribuito con licenza PolyForm Noncommercial 1.0.0 (vedi LICENSE).
+Chi ridistribuisce il software, con o senza modifiche, deve consegnare
+anche questa nota e il testo della licenza (o il suo URL).
+
+---
+
+Attribuzioni di terze parti
+---------------------------
+
+Dati dei calciatori (data/players.json)
+  Le carriere -- squadre, stagioni, presenze e gol -- sono in parte
+  ricavate da Wikipedia e sono disponibili con licenza
+  Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0),
+  https://creativecommons.org/licenses/by-sa/4.0/
+  I dati puramente fattuali non sono coperti da copyright; la selezione
+  e la riformulazione derivate da Wikipedia restano soggette alla
+  CC BY-SA. Questa attribuzione vale solo per i dati: non estende la
+  CC BY-SA al codice, che resta sotto PolyForm Noncommercial 1.0.0.
+
+Dipendenze software
+  Le librerie di terze parti elencate in requirements.txt e
+  requirements-dev.txt restano soggette alle rispettive licenze
+  originali, che questo file non modifica.
