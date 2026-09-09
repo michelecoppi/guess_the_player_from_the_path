@@ -21102,7 +21102,7 @@
         {
           "team": "Shrewsbury Town",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League Two",
           "start_year": 2009,
           "end_year": 2010,
           "apps": 4,
@@ -21213,7 +21213,7 @@
         {
           "team": "Port Vale",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League One",
           "start_year": 2026,
           "end_year": 2026,
           "apps": 11,
@@ -22164,7 +22164,7 @@
         {
           "team": "Carlisle United",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League One",
           "start_year": 1997,
           "end_year": 1998,
           "apps": 1,
@@ -25612,7 +25612,7 @@
         {
           "team": "Virton",
           "country": "Belgio",
-          "league": "Belgian Division 1",
+          "league": "Challenger Pro League",
           "start_year": 2023,
           "end_year": 2023,
           "apps": 3,
@@ -26425,7 +26425,7 @@
         {
           "team": "Tubize",
           "country": "Belgio",
-          "league": "Belgian National Division 1",
+          "league": "Challenger Pro League",
           "start_year": 2014,
           "end_year": 2014,
           "apps": 14,
@@ -26517,7 +26517,7 @@
         {
           "team": "Tubize",
           "country": "Belgio",
-          "league": "Belgian National Division 1",
+          "league": "Challenger Pro League",
           "start_year": 2015,
           "end_year": 2017,
           "apps": 53,
@@ -30782,7 +30782,7 @@
         {
           "team": "Barnet",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League Two",
           "start_year": 2012,
           "end_year": 2014,
           "apps": 37,
@@ -37691,7 +37691,7 @@
         {
           "team": "Notts County",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League One",
           "start_year": 1999,
           "end_year": 1999,
           "apps": 1,
@@ -37918,7 +37918,7 @@
         {
           "team": "Coventry City",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League One",
           "start_year": 2015,
           "end_year": 2016,
           "apps": 15,
@@ -39121,7 +39121,7 @@
         {
           "team": "Wrexham",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League Two",
           "start_year": 2008,
           "end_year": 2008,
           "apps": 6,
@@ -40833,7 +40833,7 @@
         {
           "team": "Chesterfield",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League Two",
           "start_year": 2012,
           "end_year": 2013,
           "apps": 10,
@@ -41133,7 +41133,7 @@
         {
           "team": "Brentford",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League One",
           "start_year": 1995,
           "end_year": 1998,
           "apps": 60,
@@ -41243,7 +41243,7 @@
         {
           "team": "Stevenage",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League One",
           "start_year": 2012,
           "end_year": 2013,
           "apps": 15,
@@ -46654,7 +46654,7 @@
         {
           "team": "Lommel (1932-2003)",
           "country": "Belgio",
-          "league": "Division 1B",
+          "league": "Belgian Pro League",
           "start_year": 1995,
           "end_year": 1997,
           "apps": 49,
@@ -46736,7 +46736,7 @@
         {
           "team": "Germinal Beerschot",
           "country": "Belgio",
-          "league": "Challenger Pro League",
+          "league": "Belgian Pro League",
           "start_year": 2008,
           "end_year": 2008,
           "apps": 10,
@@ -46745,7 +46745,7 @@
         {
           "team": "KSV Temse",
           "country": "Belgio",
-          "league": "Belgian Division 1",
+          "league": "Belgian National Division 1",
           "start_year": 2011,
           "end_year": 2011,
           "apps": 3,
@@ -49664,7 +49664,7 @@
         {
           "team": "Burton Albion",
           "country": "Inghilterra",
-          "league": "Football League One",
+          "league": "Championship",
           "start_year": 2018,
           "end_year": 2018,
           "loan": true,
@@ -50124,7 +50124,7 @@
         {
           "team": "Notts County",
           "country": "Inghilterra",
-          "league": "English Football League",
+          "league": "League One",
           "start_year": 2014,
           "end_year": 2018,
           "apps": 87,
@@ -52225,7 +52225,7 @@
         {
           "team": "Tubize",
           "country": "Belgio",
-          "league": "Belgian National Division 1",
+          "league": "Challenger Pro League",
           "start_year": 2009,
           "end_year": 2009,
           "apps": 9,
