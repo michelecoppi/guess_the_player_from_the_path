@@ -11,11 +11,18 @@ Convenzioni del modello dati (vedi docs/firebase_review.md per il perche'):
   ordinabili e si possono fare query di intervallo.
 - Quello che deve essere assegnato "una volta sola" (il bonus al primo che indovina) passa
   da una transazione, non da un controllo seguito da una scrittura.
+- Il documento utente ha **tutti** i campi fin dalla creazione, e `/start` completa quelli
+  che mancano a chi si era registrato prima che esistessero (`USER_FIELD_DEFAULTS`): un campo
+  assente non e' equivalente a uno a zero, perche' una query ordinata o di disuguaglianza
+  salta i documenti in cui il campo non c'e'.
 - I partecipanti a un evento sono documenti separati (`events/{code}/participants/{id}`), non
   una mappa dentro l'evento: niente limite di 1 MB e niente contesa in scrittura.
 """
+import copy
 import logging
 import os
+import time
+from typing import Any
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -29,7 +36,7 @@ from services.dates import (
     shift_iso,
     today_iso,
 )
-from services.i18n import DEFAULT_LANGUAGE
+from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 from services.streak import next_streak, streak_bonus
 
 USERS_COLLECTION = "users"
@@ -44,6 +51,10 @@ ARCHIVE_SUBCOLLECTION = "archive"
 HISTORY_SUBCOLLECTION = "history"
 LEAGUES_COLLECTION = "leagues"
 MEMBERS_SUBCOLLECTION = "members"
+# Gli acquisti in Stelle stanno in una collection loro, con l'id della transazione Telegram
+# come id documento: e' l'unico dato che Telegram ci ridara' se un giorno bisogna rimborsare,
+# e cercarlo dentro i documenti utente vorrebbe dire scorrerli tutti.
+PURCHASES_COLLECTION = "purchases"
 GROUP_ROUNDS_COLLECTION = "group_rounds"
 GROUP_PLAYERS_SUBCOLLECTION = "players"
 
@@ -90,41 +101,127 @@ def user_ref(user_id):
     return db.collection(USERS_COLLECTION).document(str(user_id))
 
 
+# Il documento utente "completo", campo per campo, con il valore che vale come "non ha mai
+# fatto niente". E' la sola definizione: la usano sia la creazione (/start di chi arriva
+# adesso) sia il ripristino dei documenti vecchi, cosi' non possono divergere.
+#
+# Perche' serve un ripristino: i campi si sono aggiunti col tempo (la lingua, la striscia,
+# le sessioni di archivio/allenamento/evento) e chi si era registrato prima e' rimasto senza.
+# `save_user` sul documento gia' esistente non scriveva niente, quindi quei campi non
+# comparivano **mai**: /start rispondeva in italiano a un utente inglese (lingua assente ->
+# ripiego sul default) mentre i bottoni del menu uscivano nella lingua del client, e la
+# lingua rilevata non veniva salvata nemmeno allora.
+# L'annotazione serve a mypy: da quando c'e' `cosmetics` i valori non sono piu' tutti
+# dello stesso tipo, e senza tipo esplicito l'inferenza si ferma.
+USER_FIELD_DEFAULTS: dict[str, Any] = {
+    "chat_id": -1,
+    "notifications_enabled": False,
+    "monthly_points": 0,
+    "points_totali": 0,
+    "daily_attempts": 0,
+    "daily_hints": 0,
+    "has_guessed_today": False,
+    "last_played_day": None,
+    "trophies": [],
+    "players_guessed": 0,
+    "bonus_first_guessed": 0,
+    "solved_in": {},
+    "last_correct_day": None,
+    "current_streak": 0,
+    "best_streak": 0,
+    "archive_day": None,
+    "archive_solved": 0,
+    "training_key": None,
+    "training_attempts": 0,
+    "training_solved": 0,
+    "event_key": None,
+    "leagues": [],
+    # Cosmetici comprati in Stelle e cosa ha addosso adesso. `owned` non elenca gli oggetti
+    # gratuiti: quelli li hanno tutti per definizione (services/shop.py), e scriverli qui
+    # vorrebbe dire ripassare su ogni utente ogni volta che se ne aggiunge uno.
+    "cosmetics": {"owned": [], "equipped": {}},
+}
+
+
+def new_user_document(user_id, first_name, language=DEFAULT_LANGUAGE):
+    """Il documento di un utente appena registrato."""
+    document = copy.deepcopy(USER_FIELD_DEFAULTS)
+    document.update({
+        "first_name": first_name,
+        "telegram_id": user_id,
+        "date_created": firestore.SERVER_TIMESTAMP,
+        "language": language,
+    })
+    return document
+
+
+def missing_user_fields(data, user_id=None, first_name=None, language=None):
+    """I campi da aggiungere a un documento utente gia' esistente, e nient'altro.
+
+    Non tocca mai un campo che c'e': punti, trofei e lingua scelta a mano restano quelli.
+    Un campo assente vale come "mai valorizzato", quindi scriverci il default non cambia il
+    comportamento di nessuna funzione - le rende solo tutte interrogabili (un `order_by` su
+    un campo assente salta il documento) e riporta l'utente vecchio allo stesso stato di uno
+    appena registrato.
+
+    `language` si passa solo quando si sa **quale** lingua scrivere, cioe' da /start, che ha
+    sotto mano il client di chi lo sta eseguendo. Senza, il campo resta assente: indovinare
+    una lingua a caso sarebbe peggio del ripiego che c'e' gia' (chi legge una lingua assente
+    usa quella del client Telegram).
+
+    Funzione pura: si prova senza Firestore.
+    """
+    missing = {
+        field: copy.deepcopy(default)
+        for field, default in USER_FIELD_DEFAULTS.items()
+        if field not in data
+    }
+
+    if not data.get("first_name") and first_name:
+        missing["first_name"] = first_name
+    if data.get("telegram_id") is None and user_id is not None:
+        missing["telegram_id"] = user_id
+    # Una lingua fuori da quelle supportate (o vuota) e' come non averla: `t()` ci ripiega
+    # comunque sul default ad ogni messaggio, tanto vale scrivere quella rilevata.
+    if language and data.get("language") not in SUPPORTED_LANGUAGES:
+        missing["language"] = language
+    return missing
+
+
 def save_user(user_id, first_name, language=DEFAULT_LANGUAGE):
-    """Crea l'utente se non esiste. E' una transazione: due /start ravvicinati non possono
-    piu' creare due documenti per la stessa persona.
+    """Crea l'utente se non esiste, e completa il documento se gli mancano dei campi.
+
+    E' una transazione: due /start ravvicinati non possono piu' creare due documenti per la
+    stessa persona, ne' ripristinare gli stessi campi due volte.
 
     Se l'utente esiste gia', la lingua passata viene ignorata: resta quella salvata (es.
-    cambiata a mano con /language), non quella rilevata dal client in quel momento.
-    Ritorna {'created': bool, 'language': lingua effettiva dell'utente}."""
+    cambiata a mano con /language), non quella rilevata dal client in quel momento. Viene
+    usata solo se l'utente una lingua valida non ce l'ha, il che per i documenti vecchi era
+    la norma.
+
+    Ritorna {'created': bool, 'language': lingua effettiva dell'utente, 'repaired': campi
+    aggiunti adesso}."""
     ref = user_ref(user_id)
 
     @firestore.transactional
     def _create(transaction):
         snapshot = ref.get(transaction=transaction)
-        if snapshot.exists:
-            existing = snapshot.to_dict()
-            return {"created": False, "language": existing.get("language", DEFAULT_LANGUAGE)}
-        transaction.set(ref, {
-            "first_name": first_name,
-            "telegram_id": user_id,
-            "date_created": firestore.SERVER_TIMESTAMP,
-            "chat_id": -1,
-            "notifications_enabled": False,
-            "monthly_points": 0,
-            "points_totali": 0,
-            "daily_attempts": 0,
-            "has_guessed_today": False,
-            "last_played_day": None,
-            "trophies": [],
-            "players_guessed": 0,
-            "bonus_first_guessed": 0,
-            "last_correct_day": None,
-            "current_streak": 0,
-            "best_streak": 0,
-            "language": language,
-        })
-        return {"created": True, "language": language}
+        if not snapshot.exists:
+            transaction.set(ref, new_user_document(user_id, first_name, language))
+            return {"created": True, "language": language, "repaired": []}
+
+        existing = snapshot.to_dict() or {}
+        missing = missing_user_fields(
+            existing, user_id=user_id, first_name=first_name, language=language
+        )
+        if missing:
+            transaction.update(ref, missing)
+            logging.info(f"[USERS] {user_id}: campi ripristinati {sorted(missing)}")
+        return {
+            "created": False,
+            "language": missing.get("language") or existing.get("language", DEFAULT_LANGUAGE),
+            "repaired": sorted(missing),
+        }
 
     return _create(db.transaction())
 
@@ -141,6 +238,64 @@ def set_user_language(user_id, language):
 def get_user_data(user_id):
     snapshot = user_ref(user_id).get()
     return snapshot.to_dict() if snapshot.exists else None
+
+
+def delete_user_data(user_id):
+    """Cancella dati personali e di gioco, conservando i registri degli acquisti."""
+    user_id = int(user_id)
+    ref = user_ref(user_id)
+    snapshot = ref.get()
+    user_data = snapshot.to_dict() if snapshot.exists else {}
+    deleted = {"profile": 0, "archive": 0, "history": 0, "leagues": 0,
+               "events": 0, "groups": 0}
+
+    # Firestore non elimina le sotto-collezioni insieme al documento padre.
+    for subcollection, key in (
+        (ARCHIVE_SUBCOLLECTION, "archive"),
+        (HISTORY_SUBCOLLECTION, "history"),
+    ):
+        for doc in ref.collection(subcollection).stream():
+            doc.reference.delete()
+            deleted[key] += 1
+
+    # Uscire tramite la normale operazione mantiene corretto members_count.
+    for code in dict.fromkeys(user_data.get("leagues") or []):
+        league = get_league(code)
+        if leave_league(code, user_id):
+            deleted["leagues"] += 1
+        if league and league.get("owner_id") == user_id:
+            league_ref(code).update({"owner_id": None})
+
+    # Elimina anche copie orfane o create prima dell'elenco users.leagues.
+    for collection_name, key in (
+        (PARTICIPANTS_SUBCOLLECTION, "events"),
+        (GROUP_PLAYERS_SUBCOLLECTION, "groups"),
+    ):
+        query = db.collection_group(collection_name).where("telegram_id", "==", user_id)
+        for doc in query.stream():
+            doc.reference.delete()
+            deleted[key] += 1
+
+    # Per le iscrizioni orfane va corretto anche il contatore della lega.
+    orphan_members = db.collection_group(MEMBERS_SUBCOLLECTION).where(
+        "telegram_id", "==", user_id
+    )
+    for doc in orphan_members.stream():
+        league = doc.reference.parent.parent
+        doc.reference.delete()
+        league.update({"members_count": firestore.Increment(-1)})
+        deleted["leagues"] += 1
+
+    # Il round corrente conserva sul padre nome e id dell'ultimo vincitore.
+    query = db.collection(GROUP_ROUNDS_COLLECTION).where("solved_by", "==", user_id)
+    for doc in query.stream():
+        doc.reference.update({"solved_by": None, "solved_name": None})
+
+    if snapshot.exists:
+        ref.delete()
+        deleted["profile"] = 1
+    logging.info(f"[PRIVACY] Dati utente {user_id} cancellati: {deleted}")
+    return deleted
 
 
 def get_user_daily_status(user_id, day_iso=None):
@@ -350,6 +505,15 @@ def _public_user(data):
         "points": data.get("points_totali", 0),
         "monthly_points": data.get("monthly_points", 0),
         "language": data.get("language", DEFAULT_LANGUAGE),
+        # I cosmetici viaggiano con la classifica perche' e' li' che si vede il distintivo,
+        # e il documento e' gia' stato letto per i punti: non costa una lettura in piu'.
+        # Qui restano gli id grezzi, il simbolo lo ricava chi disegna (services/shop.py):
+        # questo modulo non deve sapere niente del catalogo, o non potrebbe piu' essere
+        # quello che il catalogo chiama per scrivere.
+        "cosmetics": data.get("cosmetics") or {},
+        "players_guessed": data.get("players_guessed", 0),
+        "best_streak": data.get("best_streak", 0),
+        "archive_solved": data.get("archive_solved", 0),
     }
 
 
@@ -1103,6 +1267,142 @@ def add_points_to_leagues(user_id, codes, points, name=None):
         except GoogleAPICallError:
             logging.exception(f"[LEAGUE] Punti non aggiornati per la lega {code}")
     return updated
+
+
+# ---------------------------------------------------------------------------
+# Negozio (acquisti in Stelle di Telegram)
+#
+# Un acquisto lascia due tracce: gli oggetti sul documento utente (e' li' che il gioco li
+# cerca) e una riga in `purchases` con l'id della transazione Telegram come id documento.
+# La riga serve a due cose che il documento utente non sa fare: rimborsare (l'API vuole
+# quell'id) e accorgersi che uno stesso pagamento sta arrivando due volte.
+# ---------------------------------------------------------------------------
+
+def purchase_ref(charge_id):
+    return db.collection(PURCHASES_COLLECTION).document(str(charge_id))
+
+
+def deliver_purchase(user_id, charge_id, item_id, granted_ids, stars, day_iso=None):
+    """Consegna gli oggetti comprati e registra l'acquisto. Una volta sola.
+
+    L'idempotenza non e' un lusso: se il webhook non risponde in tempo Telegram rispedisce
+    l'update, e una consegna doppia lascerebbe due righe nel registro da cui si rimborsa.
+    L'id documento e' `telegram_payment_charge_id`, quindi la seconda consegna trova la riga
+    gia' scritta e non fa niente.
+
+    `set(..., merge=True)` e non `update()`: fonde la mappa `cosmetics` campo per campo, cosi'
+    quello che l'utente ha addosso resta dov'e' e non serve che il campo esista gia'.
+
+    Ritorna True se ha consegnato adesso, False se era gia' stato consegnato."""
+    ref = purchase_ref(charge_id)
+    granted = list(granted_ids)
+
+    @firestore.transactional
+    def _deliver(transaction):
+        if ref.get(transaction=transaction).exists:
+            return False
+        transaction.set(ref, {
+            "charge_id": str(charge_id),
+            "user_id": user_id,
+            "item_id": item_id,
+            "granted": granted,
+            "stars": int(stars),
+            "day": day_iso or today_iso(),
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "refunded": False,
+        })
+        transaction.set(
+            user_ref(user_id),
+            {"cosmetics": {"owned": firestore.ArrayUnion(granted)}, "shop_checkout": None},
+            merge=True,
+        )
+        return True
+
+    delivered = _deliver(db.transaction())
+    if delivered:
+        logging.info(f"[SHOP] {user_id} ha comprato {item_id} per {stars} stelle ({charge_id})")
+    else:
+        logging.warning(f"[SHOP] Pagamento {charge_id} gia' consegnato, ignorato")
+    return delivered
+
+
+def equip_cosmetic(user_id, kind, item_id):
+    """Cambia quello che l'utente ha addosso in uno slot. Non controlla se lo possiede: la
+    regola sta in services/shop.py, qui si scrive e basta."""
+    user_ref(user_id).set({"cosmetics": {"equipped": {kind: item_id}}}, merge=True)
+
+
+def equip_look(user_id, slots):
+    user_ref(user_id).set({"cosmetics": {"equipped": slots}}, merge=True)
+
+
+def save_looks(user_id, looks):
+    user_ref(user_id).set({"cosmetics": {"looks": looks}}, merge=True)
+
+
+def reserve_checkout(user_id, query_id, expected_owned):
+    """Serialize pre-checkouts across tabs/bot replicas. Abandoned checkouts expire."""
+    ref = user_ref(user_id)
+
+    @firestore.transactional
+    def reserve(transaction):
+        snapshot = ref.get(transaction=transaction)
+        data = snapshot.to_dict() or {}
+        if set((data.get("cosmetics") or {}).get("owned", [])) != set(expected_owned):
+            return "price_changed"
+        pending = data.get("shop_checkout") or {}
+        now = time.time()
+        if pending.get("expires", 0) > now:
+            return "ok" if pending.get("query_id") == query_id else "checkout_busy"
+        transaction.set(ref, {"shop_checkout": {"query_id": query_id, "expires": now + 120}}, merge=True)
+        return "ok"
+
+    return reserve(db.transaction())
+
+
+def get_purchase(charge_id):
+    snapshot = purchase_ref(charge_id).get()
+    return snapshot.to_dict() if snapshot.exists else None
+
+
+def get_user_purchases(user_id, limit=None):
+    """Gli acquisti di un utente, dal piu' recente. Il filtro e' su un campo solo e
+    l'ordinamento si fa qui: un `order_by` insieme al `where` vorrebbe un indice composito
+    per una lista che non arriva a dieci righe."""
+    query = db.collection(PURCHASES_COLLECTION).where("user_id", "==", user_id)
+    purchases = [doc.to_dict() for doc in query.stream()]
+    return sorted(purchases, key=lambda p: (p.get("day") or "", str(p.get("created_at") or "")), reverse=True)[:limit]
+
+
+def revoke_purchase(charge_id):
+    """Segna un acquisto come rimborsato e ritira quello che aveva consegnato.
+
+    Ritira **solo** quello che nessun altro acquisto ancora valido gli ha dato: chi ha preso
+    il tema Neon da solo e poi il Pacchetto Neon, e si fa rimborsare il pacchetto, il tema
+    l'aveva gia' pagato e resta suo.
+
+    Ritorna la lista degli id davvero ritirati, o None se l'acquisto non esiste."""
+    purchase = get_purchase(charge_id)
+    if not purchase:
+        return None
+
+    user_id = purchase.get("user_id")
+    granted = set(purchase.get("granted") or [])
+    kept = {
+        item_id
+        for other in get_user_purchases(user_id)
+        if other.get("charge_id") != str(charge_id) and not other.get("refunded")
+        for item_id in (other.get("granted") or [])
+    }
+    revoked = sorted(granted - kept)
+
+    purchase_ref(charge_id).update({"refunded": True, "refunded_at": firestore.SERVER_TIMESTAMP})
+    if revoked:
+        user_ref(user_id).set(
+            {"cosmetics": {"owned": firestore.ArrayRemove(revoked)}}, merge=True
+        )
+    logging.info(f"[SHOP] Rimborso {charge_id} a {user_id}: ritirati {revoked}")
+    return revoked
 
 
 # ---------------------------------------------------------------------------

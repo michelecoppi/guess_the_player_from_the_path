@@ -9,7 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
-from services import firebase_service
+from services import firebase_service, shop
 from services.i18n import resolve_language, t
 
 FIELD_BY_VIEW = {"global": "points_totali", "monthly": "monthly_points"}
@@ -25,7 +25,11 @@ def format_leaderboard(top_users, telegram_id, view, user_position=None, user_sc
     for index, user in enumerate(top_users, start=1):
         medal = "🔟" if index == 10 else MEDALS.get(index, f"{index}️⃣")
         highlight = t(lang, "top.you_tag") if user["telegram_id"] == telegram_id else ""
-        message += f"{medal} {user['username']}{highlight} - {user.get(score_key, 0)} {points_suffix}\n"
+        # Il distintivo comprato in negozio: e' cosmetico, ma e' qui che si vede, perche'
+        # la classifica in chat la legge anche chi la mini app non l'apre mai.
+        badge = shop.badge_emoji(user)
+        name = f"{badge} {user['username']}" if badge else user["username"]
+        message += f"{medal} {name}{highlight} - {user.get(score_key, 0)} {points_suffix}\n"
 
     if user_position and user_position > len(top_users):
         message += t(lang, "top.your_position", position=user_position, score=user_score)

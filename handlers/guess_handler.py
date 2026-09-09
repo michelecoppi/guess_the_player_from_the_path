@@ -24,7 +24,7 @@ from handlers.group_handler import process_group_answer
 from handlers.hint_handler import hint_keyboard
 from handlers.notify_handler import ENABLE_INLINE, notifications_enabled
 from handlers.training_handler import process_training_answer
-from services import firebase_service, game
+from services import firebase_service, game, shop
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number, get_today_challenge
 from services.guess_feedback import comparison_text
 from services.i18n import resolve_language, t
@@ -137,7 +137,8 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
     await message.reply_text(
         text,
         reply_markup=_share_keyboard(
-            lang, result["attempts_used"], streak, hints=result["hints_used"]
+            lang, result["attempts_used"], streak, hints=result["hints_used"],
+            symbols=shop.squares_symbols(user_data),
         ),
     )
 
@@ -176,7 +177,10 @@ def _lost_keyboard(lang, attempts_used, hints_used, user_data):
     Il secondo bottone e' li' perche' il messaggio dice "te lo dico a mezzanotte": a chi le
     notifiche non le ha, quella frase non varrebbe niente."""
     rows = []
-    share = _share_button(lang, attempts_used, streak=0, solved=False, hints=hints_used)
+    share = _share_button(
+        lang, attempts_used, streak=0, solved=False, hints=hints_used,
+        symbols=shop.squares_symbols(user_data),
+    )
     if share:
         rows.append([share])
     if not notifications_enabled(user_data or {}):
@@ -184,9 +188,10 @@ def _lost_keyboard(lang, attempts_used, hints_used, user_data):
     return InlineKeyboardMarkup(rows) if rows else None
 
 
-def _share_button(lang, attempts_used, streak, solved, hints=0):
+def _share_button(lang, attempts_used, streak, solved, hints=0, symbols=None):
     text = share_text(
-        lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints
+        lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=solved, streak=streak,
+        hints=hints, symbols=symbols,
     )
     url = share_url(text)
     if not url:
@@ -194,13 +199,13 @@ def _share_button(lang, attempts_used, streak, solved, hints=0):
     return InlineKeyboardButton(t(lang, "share.button"), url=url)
 
 
-def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0):
+def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=None):
     """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta.
 
     Vale anche per chi non ci e' arrivato (`solved=False`, cioe' "X/3"): la sconfitta e'
     meta' di quello che si condivide in un gruppo, ed e' l'unica riga che non puo'
     spoilerare niente."""
-    button = _share_button(lang, attempts_used, streak, solved, hints)
+    button = _share_button(lang, attempts_used, streak, solved, hints, symbols)
     return InlineKeyboardMarkup([[button]]) if button else None
 
 

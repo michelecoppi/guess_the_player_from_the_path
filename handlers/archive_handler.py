@@ -15,7 +15,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from handlers.legend_handler import legend_keyboard
-from services import firebase_service
+from services import firebase_service, shop
 from services.daily_challenge import challenge_number
 from services.dates import to_display
 from services.difficulty import points_for_difficulty
@@ -177,7 +177,10 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
         firebase_service.set_archive_day(user_id, None)
         await message.reply_text(
             t(lang, "archive.correct", date=to_display(day_iso), attempts=attempt["attempts_used"]),
-            reply_markup=_share_keyboard(lang, day_iso, attempt["attempts_used"], solved=True),
+            reply_markup=_share_keyboard(
+                lang, day_iso, attempt["attempts_used"], solved=True,
+                symbols=shop.squares_symbols(user_data),
+            ),
         )
         return
 
@@ -196,17 +199,20 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
     firebase_service.set_archive_day(user_id, None)
     await message.reply_text(
         t(lang, "archive.wrong_last", answer=answer),
-        reply_markup=_share_keyboard(lang, day_iso, attempt["attempts_used"], solved=False),
+        reply_markup=_share_keyboard(
+            lang, day_iso, attempt["attempts_used"], solved=False,
+            symbols=shop.squares_symbols(user_data),
+        ),
     )
 
 
-def _share_keyboard(lang, day_iso, attempts_used, solved):
+def _share_keyboard(lang, day_iso, attempts_used, solved, symbols=None):
     """Come per la sfida di oggi, ma marcata come recuperata dall'archivio: chi la incolla
     in un gruppo non deve sembrare che abbia risolto quella di oggi. La striscia non
     c'entra (l'archivio non la muove) e non compare."""
     text = share_text(
         lang, challenge_number(day_iso), attempts_used, MAX_ARCHIVE_ATTEMPTS,
-        solved=solved, archive=True,
+        solved=solved, archive=True, symbols=symbols,
     )
     url = share_url(text)
     if not url:

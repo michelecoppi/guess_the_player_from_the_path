@@ -118,6 +118,36 @@ nel pulsante accanto alla graffetta: @BotFather → `/mybots` → il bot → *Bo
 Button* → *Edit menu button URL*, e incollare l'URL con `/app` in fondo. Telegram accetta solo
 HTTPS, che Cloud Run fornisce già.
 
+### Termini e privacy in BotFather
+
+Servono solo se il negozio in Stelle e' attivo, ma se e' attivo Telegram li considera
+obbligatori per la vendita di beni digitali. Le due pagine sono gia' servite dal bot
+(`webapp/terms.html` e `webapp/privacy.html`): bastano gli URL, che dipendono da
+`PUBLIC_BASE_URL`.
+
+@BotFather -> `/mybots` -> il bot -> *Bot Settings*:
+
+| Voce di BotFather | URL da incollare |
+|---|---|
+| *Terms of Service* | `<PUBLIC_BASE_URL>/terms` |
+| *Privacy Policy* | `<PUBLIC_BASE_URL>/privacy` |
+
+Con il servizio attuale:
+
+```
+https://guess-the-player-595902172561.europe-west1.run.app/terms
+https://guess-the-player-595902172561.europe-west1.run.app/privacy
+```
+
+Le pagine si aprono nel browser (non dentro Telegram) e mostrano italiano, spagnolo o inglese
+secondo la lingua del browser; `?lang=it` forza una lingua, ed e' cosi' che le apre il bottone
+dentro `/shop`.
+
+**Vanno riviste quando cambia il trattamento dei dati**: elencano i campi salvati su Firestore,
+la region e la durata dei backup. Se il codice cambia e loro no, descrivono un servizio che non
+esiste - che e' peggio che non avere l'informativa. `tests/test_legal_pages.py` controlla solo
+che le tre lingue restino allineate, non che dicano il vero.
+
 ## 2. Cloud Scheduler (generazione contenuti)
 
 Un job HTTP chiama ogni notte l'endpoint interno con l'header di autorizzazione:

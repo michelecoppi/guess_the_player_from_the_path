@@ -34,6 +34,9 @@ due versioni del punteggio da tenere allineate.
 | `/today` (`/oggi`) | esci dall'archivio, dall'allenamento o da un evento |
 | `/league` (`/lega`) | le tue leghe private |
 | `/league_create <nome>`, `/league_join <codice>`, `/league_leave <codice>` | crea, entra, esci |
+| `/forgetme` | cancella definitivamente account e dati di gioco, con conferma |
+| `/paysupport <messaggio>` | apre una richiesta di assistenza per un acquisto |
+| `/shop` (`/negozio`) | skin, cornici, titoli e distintivi con le Stelle di Telegram |
 | `/legend` (`/legenda`) | come si legge l'immagine del percorso |
 | `/notify`, `/language` | notifiche e lingua |
 
@@ -232,10 +235,85 @@ quando l'utente indovina — la classifica e' quindi una query ordinata invece d
 ogni iscritto — e contano solo **da quando si entra**, cosi' entrare in una lega vecchia non
 condanna a restare ultimi.
 
+### Negozio (Stelle di Telegram)
+
+`/shop` e la quinta scheda della mini app vendono **solo cose da guardare**, pagate in
+[Stelle di Telegram](https://core.telegram.org/bots/payments-stars): temi che ricolorano tutta
+la mini app, cornici per l'avatar, titoli sotto il nome, distintivi accanto al nome in
+classifica e i simboli della card che si incolla nei gruppi.
+
+La regola sta sopra il catalogo e non si negozia: **niente di quello che si compra cambia la
+partita.** Nessun punto, nessun tentativo in piu', nessun indizio scontato. Non e' prudenza: un
+vantaggio comprabile trasformerebbe la classifica nella vetrina di chi ha speso, e il gioco
+smetterebbe di essere lo stesso per chi non spende — che sono quasi tutti. C'e' un test che
+lo verifica sul catalogo (`test_nothing_on_sale_touches_the_game`), perche' e' il tipo di
+regola che si perde per strada un oggetto alla volta.
+
+Il catalogo e' **contenuto**, non codice: sta in `data/shop.json` come i calciatori e gli
+eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Cinque tipi di
+oggetto (uno per "slot": se ne indossa uno per tipo), piu' i pacchetti; ogni tipo ha il suo
+oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
+
+| Tipo | Dove si vede | Prezzi |
+|---|---|---|
+| Temi | colori di tutta la mini app | 15 – 30 ⭐ |
+| Cornici | il cerchio intorno all'avatar | 15 – 25 ⭐ |
+| Titoli | una riga sotto il nome | 15 – 25 ⭐ |
+| Distintivi | accanto al nome, **anche nella classifica in chat** | 10 – 25 ⭐ |
+| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 15 – 20 ⭐ |
+| Pacchetti | piu' cose insieme | 30 – 220 ⭐ |
+
+Un pacchetto deve dare una ragione per esistere, e le ragioni ammesse sono due: costa meno
+della somma dei pezzi, oppure contiene qualcosa che da solo non si vende (il Pacchetto
+Sostenitore). Anche questo e' un test.
+
+**Come funziona un pagamento**, nell'ordine — sta tutto in `handlers/shop_handler.py`:
+
+1. si manda una fattura con `currency="XTR"` e `provider_token=""`: le Stelle non passano da un
+   fornitore di pagamento esterno, quindi il token non c'e' proprio. In chat e' `send_invoice`,
+   nella mini app e' `create_invoice_link` aperto con `openInvoice`;
+2. Telegram chiede il permesso di incassare (`PreCheckoutQuery`) e vuole una risposta **entro
+   dieci secondi**: e' l'ultimo momento in cui si puo' dire di no, ed e' li' che si controlla
+   che l'oggetto esista e che l'utente non ce l'abbia gia' — incassare senza consegnare niente
+   sarebbe una fregatura da rimborsare a mano;
+3. a incasso avvenuto arriva un messaggio con `successful_payment`: qui si consegna e non si
+   rifiuta piu' niente, perche' le Stelle sono gia' state prese.
+
+Il punto 3 puo' arrivare **due volte** (Telegram rispedisce l'update se il webhook non risponde
+in tempo), quindi la consegna e' idempotente sull'id della transazione: l'acquisto si scrive in
+`purchases/{telegram_payment_charge_id}`, e la seconda consegna trova la riga gia' li' e non fa
+niente.
+
+**La pagina non consegna mai niente.** Il client manda solo l'id di quello che vuole comprare —
+mai un prezzo, che lo dice il catalogo — e aspetta che il bot riceva il pagamento da Telegram.
+Se la consegna la scrivesse la mini app, basterebbero gli strumenti di sviluppo per regalarsi
+la collezione completa.
+
+**Termini e privacy**: i due documenti che Telegram mostra a chi sta per pagare sono serviti
+dallo stesso servizio del bot, come la mini app — `webapp/terms.html` e `webapp/privacy.html`
+su `/terms` e `/privacy`, nelle tre lingue con un selettore in pagina (`?lang=it|es|en` apre
+direttamente quella giusta, ed e' cosi' che li apre il bottone dentro `/shop`). Vanno
+**incollati in BotFather** (`/mybots` → Bot Settings): Telegram li considera obbligatori per
+la vendita di beni digitali. Il token del fornitore di pagamento invece no: per le Stelle non
+esiste, si manda vuoto.
+
+L'informativa descrive quello che il codice fa davvero — i campi sono quelli di
+`USER_FIELD_DEFAULTS` e della collection `purchases`, la region e' quella del deploy, i 365
+giorni sono la retention dell'artifact di backup — quindi **se cambia il codice va cambiata
+anche lei**: un'informativa che descrive un trattamento diverso da quello vero e' peggio che
+non averla. `tests/test_legal_pages.py` controlla che le tre lingue restino allineate (stesse
+sezioni, stessa data), non che siano vere: quello resta un lavoro da fare a mano.
+
+**Rimborsi**: `/admin_refund <charge_id>` chiama `refundStarPayment` e, solo se Telegram
+accetta, ritira i cosmetici — ma **solo quelli che nessun altro acquisto ancora valido aveva
+gia' dato**: chi aveva comprato il tema Neon da solo e poi il Pacchetto Neon, e si fa
+rimborsare il pacchetto, il tema l'aveva pagato e resta suo.
+
 ### Mini app Telegram
 
 `webapp/index.html` e' una pagina sola servita dallo stesso servizio FastAPI su `/app`, con
-quattro schede: **Gioca**, **Archivio**, **Statistiche**, **Leghe**. Non e' piu' una vetrina:
+cinque schede: **Gioca**, **Archivio**, **Statistiche**, **Leghe**, **Negozio**. Non e' piu'
+una vetrina:
 ci si gioca davvero, con le stesse regole della chat.
 
 Cosa aggiunge rispetto al bot, e perche':
@@ -253,7 +331,10 @@ Cosa aggiunge rispetto al bot, e perche':
 - **gestione delle leghe**: creare, entrare, uscire, classifica completa e invito con il
   selettore di chat nativo di Telegram;
 - **integrazione con l'app**: tema di Telegram (`--tg-theme-*`), `MainButton` di sistema al posto
-  di un bottone in pagina, e vibrazione su risposta giusta o sbagliata.
+  di un bottone in pagina, e vibrazione su risposta giusta o sbagliata;
+- **[negozio](#negozio-stelle-di-telegram)**: il tema comprato arriva col profilo e non dietro
+  la scheda del negozio, cosi' la prima schermata e' gia' del colore giusto invece di
+  cambiare colore mezzo secondo dopo.
 
 Due vincoli che non si toccano:
 
@@ -277,6 +358,10 @@ esattamente come prima.
 | `POST /app/api/hint` | un indizio, allo stesso prezzo della chat |
 | `POST /app/api/calendar` | il calendario, o una singola giornata da rigiocare |
 | `POST /app/api/league` | crea / entra / esci |
+| `POST /app/api/shop` | la vetrina: la stessa che disegna `/shop` in chat |
+| `POST /app/api/shop/buy` | il link della fattura in Stelle da aprire con `openInvoice` |
+| `POST /app/api/shop/equip` | indossa un oggetto gia' posseduto |
+| `GET /terms`, `GET /privacy` | i due documenti legali (pagine statiche, tre lingue) |
 
 ## Stack
 
@@ -323,6 +408,7 @@ scripts/reserve_practice_players.py -> riserva all'allenamento una fetta del dat
 scripts/dataset_report.py    -> report sullo stato del dataset (usato anche dalla CI)
 scripts/migrate_firestore.py -> migrazione una tantum dei dati esistenti al modello nuovo
 scripts/backup_firestore.py  -> export JSON del database, sotto-collezioni comprese (usato dal workflow settimanale)
+scripts/backfill_users.py    -> completa i documenti utente a cui mancano i campi aggiunti dopo la loro registrazione
 scripts/cleanup_daily_paths.py -> cancella le sfide oltre l'anno e i documenti pre-migrazione
 handlers/daily_job.py        -> job di mezzanotte chiamato da Cloud Scheduler: broadcast, reset, e generazione
 handlers/guess_handler.py    -> tentativi sulla sfida del giorno (comando e messaggio libero)
@@ -432,6 +518,7 @@ correggere qualcosa a mano.
 | `/admin_fs_list` | coppie padre/figlio salvate |
 | `/admin_fs_del <id>` | elimina una coppia padre/figlio |
 | `/admin_event_create <template> [gg/mm/aa] [giorni]` | crea a mano un evento |
+| `/admin_refund <charge_id>` | rimborsa un acquisto in Stelle e ritira i cosmetici consegnati |
 
 `/admin_block` scrive su Firestore (`admin_settings/dataset_overrides`), quindi ha effetto
 **subito**, senza redeploy: utile quando un utente segnala una carriera sbagliata. Le sfide
@@ -653,9 +740,40 @@ In breve:
   e quanti hanno indovinato: sono due `Increment` (nessuna lettura) e restano scritti dove sta
   la sfida, quindi valgono anche a distanza di mesi. Contarli a posteriori interrogando gli
   utenti funzionerebbe **solo per oggi**, che è esattamente il giorno di cui non serve saperlo.
+- `purchases/{telegram_payment_charge_id}` — il registro degli acquisti in Stelle. L'id del
+  documento **è** l'id della transazione Telegram, e questo fa due cose in una: rende la
+  consegna idempotente (l'update rispedito trova la riga già scritta) e permette di rimborsare,
+  perché `refundStarPayment` vuole esattamente quell'id. Cercarlo dentro i documenti utente
+  vorrebbe dire scorrerli tutti. È fra le collection del backup (`scripts/backup_firestore.py`).
+- Sul documento utente, `cosmetics` — `owned` (quello che ha comprato) ed `equipped` (quello che
+  ha addosso, uno per slot). Gli oggetti **gratuiti non ci stanno**: sono gratuiti per
+  definizione, e scriverli vorrebbe dire ripassare su ogni utente registrato ogni volta che se
+  ne aggiunge uno. Un oggetto indossato ma non più posseduto (succede dopo un rimborso) torna al
+  valore di partenza invece di far disegnare un tema che non esiste.
 - Sul documento utente: `daily_hints` (indizi chiesti oggi, si azzera da solo come i tentativi),
   `solved_in` (quante volte ha risolto in 1, 2, 3 tentativi: l'istogramma della mini app) e
   `event_key` (la sessione su un evento, come `archive_day` e `training_key`).
+
+### Utenti registrati prima che un campo esistesse
+
+I campi del documento utente si sono aggiunti col tempo (la lingua, la striscia, i contatori
+di archivio e allenamento). Chi si era registrato prima restava senza, perche' `save_user()`
+sul documento gia' esistente non scriveva niente: `/start` rispondeva nella lingua di
+ripiego mentre i bottoni del menu uscivano in quella del client, e la lingua rilevata non
+veniva salvata nemmeno allora.
+
+Adesso `/start` completa il documento di chi lo esegue (`missing_user_fields()`), aggiungendo
+**solo** i campi assenti: nessun valore gia' scritto viene toccato. Per non aspettare che
+tutti rifacciano /start c'e' lo script, che si puo' lanciare a bot acceso ed e' idempotente:
+
+```bash
+python scripts/backfill_users.py --dry-run   # elenca chi verrebbe completato, campo per campo
+python scripts/backfill_users.py             # scrive
+```
+
+La lingua e' l'unico campo che lo script **non** assegna: quale sia lo sa solo il client
+Telegram, quindi la scrive `/start`. Chi resta senza continua a essere servito nella lingua
+del suo client, come prima.
 
 ### Migrazione dei dati esistenti
 
@@ -812,6 +930,15 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
 - **Leghe private**: la classifica di una lega somma i punti fatti da quando si è entrati, e i
   limiti (50 membri, 5 leghe a testa) sono costanti in `handlers/league_handler.py`. Chi lascia
   una lega perde i punti accumulati lì dentro: rientrando riparte da zero.
+- **Rimborsi delle Stelle**: passano da un comando amministrativo (`/admin_refund`), non da un
+  bottone dell'utente. Chi ha cambiato idea lo scrive in chat e un amministratore esegue il
+  comando: è il compromesso scelto per non costruire un flusso di rimborso automatico prima di
+  sapere se qualcuno lo userà mai. La riga in `purchases` c'è comunque dal primo acquisto,
+  quindi il rimborso è sempre possibile.
+- **Cosmetici nelle leghe**: il distintivo si vede nella classifica generale (in chat e nella
+  mini app) ma non in quella di una lega, perché i punti di una lega stanno sul documento del
+  membro e mostrarlo lì vorrebbe dire denormalizzare il distintivo su ogni iscritto, e
+  riscriverlo a ogni cambio.
 - **Cloud Run scale-to-zero**: il servizio può andare a zero istanze se inattivo; la prima
   richiesta dopo un periodo di inattività (webhook Telegram o chiamata di Cloud Scheduler) ha
   qualche secondo di latenza in più per il cold start.

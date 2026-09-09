@@ -45,6 +45,8 @@ ADMIN_COMMANDS = [
     ("/admin_fs_list", "coppie padre/figlio salvate"),
     ("/admin_fs_del <id>", "elimina una coppia padre/figlio"),
     ("/admin_event_create <template> [gg/mm/aa] [giorni]", "crea a mano un evento"),
+    ("/admin_refund <charge_id>", "rimborsa un acquisto in Stelle e ritira i cosmetici"),
+    ("/admin_support_reply <telegram_id> <messaggio>", "risponde a una richiesta acquisti"),
 ]
 
 
@@ -58,6 +60,26 @@ def admin_only(handler):
             return
         await handler(update, context)
     return wrapper
+
+
+@admin_only
+async def admin_support_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = getattr(context, "args", None) or []
+    if len(args) < 2 or not args[0].isdigit():
+        await update.message.reply_text("Uso: /admin_support_reply <telegram_id> <messaggio>")
+        return
+    user_id = int(args[0])
+    body = " ".join(args[1:]).strip()
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="💳 Risposta dell'assistenza acquisti\n\n" + body,
+        )
+    except Exception as e:
+        logging.exception("Errore in /admin_support_reply")
+        await update.message.reply_text(f"❌ Invio non riuscito: {e}")
+        return
+    await update.message.reply_text(f"✅ Risposta inviata all'utente {user_id}.")
 
 
 async def _reply(update, text, parse_mode=None):

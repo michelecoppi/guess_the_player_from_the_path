@@ -3,11 +3,18 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, MessageHandler, filters
+from fastapi.responses import HTMLResponse, Response
+from telegram import LabeledPrice, Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    CommandHandler,
+    MessageHandler,
+    PreCheckoutQueryHandler,
+    filters,
+)
 
-from config import BOT_TOKEN, GENERATION_SECRET, WEBHOOK_URL
+from config import BOT_TOKEN, BOT_USERNAME, GENERATION_SECRET, WEBHOOK_URL
 from handlers.admin_handler import (
     admin_block,
     admin_blocked,
@@ -23,6 +30,7 @@ from handlers.admin_handler import (
     admin_review,
     admin_stats,
     admin_status,
+    admin_support_reply,
     admin_unblock,
 )
 from handlers.archive_handler import archive, archive_callback, back_to_today
@@ -49,19 +57,29 @@ from handlers.league_handler import (
 from handlers.legend_handler import legend, legend_callback
 from handlers.menu_handler import menu, menu_callback
 from handlers.notify_handler import notify, notify_callback
+from handlers.privacy_handler import forgetme
+from handlers.shop_handler import (
+    admin_refund,
+    precheckout_callback,
+    shop_callback,
+    shop_command,
+    successful_payment_callback,
+)
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import back_to_stats_callback, show_trophies_callback, stats
 from handlers.solution_handler import solution
 from handlers.start_handler import start
+from handlers.support_handler import paysupport
 from handlers.top_users_handler import leaderboard_callback, top
 from handlers.training_handler import training, training_callback
-from services import firebase_service, game
+from services import firebase_service, game, shop
 from services import leagues as league_rules
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 from services.webapp_api import (
     build_archive_challenge,
     build_calendar,
     build_profile,
+    build_public_profile,
     play,
     player_names,
 )
@@ -92,9 +110,12 @@ telegram_app.add_handler(CommandHandler(["league", "lega"], leagues))
 telegram_app.add_handler(CommandHandler(["league_create", "lega_crea"], league_create))
 telegram_app.add_handler(CommandHandler(["league_join", "lega_entra"], league_join))
 telegram_app.add_handler(CommandHandler(["league_leave", "lega_esci"], league_leave))
+telegram_app.add_handler(CommandHandler(["shop", "negozio"], shop_command))
 telegram_app.add_handler(CommandHandler("top", top))
 telegram_app.add_handler(CommandHandler("notify", notify))
 telegram_app.add_handler(CommandHandler("language", language))
+telegram_app.add_handler(CommandHandler("forgetme", forgetme))
+telegram_app.add_handler(CommandHandler("paysupport", paysupport))
 telegram_app.add_handler(CommandHandler(["legend", "legenda"], legend))
 telegram_app.add_handler(CommandHandler("admin_help", admin_help))
 telegram_app.add_handler(CommandHandler("admin_status", admin_status))
@@ -111,6 +132,8 @@ telegram_app.add_handler(CommandHandler("admin_fs_add", admin_fs_add))
 telegram_app.add_handler(CommandHandler("admin_fs_list", admin_fs_list))
 telegram_app.add_handler(CommandHandler("admin_fs_del", admin_fs_del))
 telegram_app.add_handler(CommandHandler("admin_event_create", admin_event_create))
+telegram_app.add_handler(CommandHandler("admin_refund", admin_refund))
+telegram_app.add_handler(CommandHandler("admin_support_reply", admin_support_reply))
 # La foto della coppia padre/figlio arriva con il comando nella didascalia, non nel testo:
 # i CommandHandler non intercettano le didascalie, serve un MessageHandler dedicato.
 telegram_app.add_handler(MessageHandler(filters.PHOTO & filters.CaptionRegex(r"^/admin_fs_add"), admin_fs_add))
@@ -126,7 +149,13 @@ telegram_app.add_handler(CallbackQueryHandler(group_new_round_callback, pattern=
 telegram_app.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"^show_trophies_\d+$"))
 telegram_app.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))
 telegram_app.add_handler(CallbackQueryHandler(handle_event_navigation, pattern="^event_"))
+telegram_app.add_handler(CallbackQueryHandler(shop_callback, pattern="^shop_"))
 telegram_app.add_handler(CallbackQueryHandler(leaderboard_callback, pattern="show_.*"))
+# Pagamenti in Stelle. La pre-checkout e' l'ultimo momento in cui si puo' rifiutare (Telegram
+# aspetta dieci secondi); il messaggio con `successful_payment` e' la consegna, e non e' un
+# messaggio di testo, quindi non passa mai dal gestore dei tentativi qui sotto.
+telegram_app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
+telegram_app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback))
 # Ultimo di proposito: in chat privata un messaggio di testo che non e' un comando vale
 # come tentativo sulla sfida del giorno (non serve piu' scrivere /guess).
 telegram_app.add_handler(
@@ -174,19 +203,45 @@ async def webhook(req: Request):
     return {"status": "ok"}
 
 
-WEBAPP_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webapp", "index.html")
-_webapp_html = None
+WEBAPP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webapp")
+_static_files: dict[str, str] = {}
+
+
+def _static(name):
+    """Un file di `webapp/`, letto una volta sola e poi tenuto in memoria.
+
+    Le pagine servite da qui sono tre - la mini app e i due documenti legali - e stanno tutte
+    sullo stesso servizio del bot: non serve un altro hosting, ne' un dominio in piu'. Sono
+    file che cambiano solo con un deploy, quindi rileggerli ad ogni richiesta sarebbe un
+    accesso al disco per niente."""
+    if name not in _static_files:
+        with open(os.path.join(WEBAPP_DIR, name), encoding="utf-8") as f:
+            _static_files[name] = f.read()
+    return _static_files[name]
 
 
 @app.get("/app", response_class=HTMLResponse)
 async def webapp_page():
-    """La mini app Telegram: una pagina sola, servita dallo stesso servizio del bot (non
-    serve un altro hosting, ne' un dominio in piu')."""
-    global _webapp_html
-    if _webapp_html is None:
-        with open(WEBAPP_PATH, encoding="utf-8") as f:
-            _webapp_html = f.read()
-    return HTMLResponse(_webapp_html)
+    """La mini app Telegram: una pagina sola."""
+    return HTMLResponse(_static("index.html"))
+
+
+# I due documenti che Telegram mostra a chi sta per pagare in Stelle: gli URL da mettere in
+# BotFather sono `<PUBLIC_BASE_URL>/terms` e `<PUBLIC_BASE_URL>/privacy`. Si aprono nel
+# browser e non dentro Telegram, quindi hanno un foglio di stile loro.
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page():
+    return HTMLResponse(_static("terms.html"))
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page():
+    return HTMLResponse(_static("privacy.html"))
+
+
+@app.get("/legal.css")
+async def legal_css():
+    return Response(_static("legal.css"), media_type="text/css")
 
 
 def _webapp_user(payload):
@@ -215,6 +270,15 @@ async def webapp_me(payload: dict = Body(default={})):
     """Profilo, sfida di oggi, classifica, leghe e istogramma: una risposta sola."""
     user_id, user_data = _webapp_user(payload)
     return build_profile(user_id, lang=_webapp_language(user_data))
+
+
+@app.post("/app/api/profile/public")
+async def webapp_public_profile(payload: dict = Body(default={})):
+    _, viewer = _webapp_user(payload)
+    result = build_public_profile(payload.get("profile_id"), lang=_webapp_language(viewer))
+    if result is None:
+        raise HTTPException(status_code=404, detail="profilo non disponibile")
+    return result
 
 
 @app.post("/app/api/players")
@@ -285,6 +349,84 @@ async def webapp_league(payload: dict = Body(default={})):
         return {"status": status, "league": league}
 
     raise HTTPException(status_code=400, detail="azione sconosciuta")
+
+
+@app.post("/app/api/shop")
+async def webapp_shop(payload: dict = Body(default={})):
+    """La vetrina: la **stessa** che disegna il comando /shop (services/shop.py)."""
+    _, user_data = _webapp_user(payload)
+    return shop.catalogue_for(user_data, _webapp_language(user_data))
+
+
+@app.post("/app/api/shop/buy")
+async def webapp_shop_buy(payload: dict = Body(default={})):
+    """Il link della fattura da aprire con `openInvoice` dentro la mini app.
+
+    La pagina non riceve mai un prezzo da mandare indietro: qui si guarda solo **quale**
+    oggetto vuole, e quanto costa lo dice il catalogo. Se il prezzo arrivasse dal client,
+    chiunque potrebbe comprare la collezione completa per una Stella."""
+    user_id, user_data = _webapp_user(payload)
+    item_id = payload.get("item")
+    status = shop.purchase_status(user_data, item_id)
+    if status != "ok":
+        return {"status": status}
+
+    item = shop.get_item(item_id)
+    name, description = shop.localize(item, _webapp_language(user_data))
+    link = await telegram_app.bot.create_invoice_link(
+        title=name,
+        description=description[:255],
+        payload=shop.payment_payload(user_id, user_data, item),
+        # Le Stelle non passano da un fornitore esterno: il token e' vuoto per definizione.
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice(label=name, amount=shop.price_for(user_data, item))],
+    )
+    return {"status": "ok", "link": link}
+
+
+@app.post("/app/api/shop/equip")
+async def webapp_shop_equip(payload: dict = Body(default={})):
+    """Indossa un oggetto gia' posseduto. La regola sta in services/shop.py: qui si passa
+    solo l'utente autenticato dalla firma di initData, mai un id arrivato dal client."""
+    user_id, user_data = _webapp_user(payload)
+    status = shop.equip(user_id, user_data, payload.get("item"))
+    if status != "ok":
+        return {"status": status}
+    return {"status": "ok", "cosmetics": shop.appearance(
+        firebase_service.get_user_data(user_id), _webapp_language(user_data)
+    )}
+
+
+@app.post("/app/api/shop/look")
+async def webapp_shop_look(payload: dict = Body(default={})):
+    user_id, user_data = _webapp_user(payload)
+    action = payload.get("action")
+    name = payload.get("name")
+    if action == "save":
+        status = shop.save_look(user_id, user_data, name)
+    elif action == "wear":
+        status = shop.use_look(user_id, user_data, name)
+    elif action == "delete" and isinstance(name, str):
+        looks = [look for look in (user_data.get("cosmetics") or {}).get("looks", []) if look["name"] != name]
+        firebase_service.save_looks(user_id, looks)
+        status = "ok"
+    else:
+        status = "unknown_item"
+    return {"status": status}
+
+
+@app.post("/app/api/shop/history")
+async def webapp_shop_history(payload: dict = Body(default={})):
+    user_id, user_data = _webapp_user(payload)
+    lang = _webapp_language(user_data)
+    rows = []
+    for purchase in firebase_service.get_user_purchases(user_id):
+        item = shop.get_item(purchase.get("item_id"))
+        rows.append({"name": shop.localize(item, lang)[0] if item else purchase.get("item_id", ""),
+                     "day": purchase.get("day", ""), "stars": purchase.get("stars", 0),
+                     "refunded": bool(purchase.get("refunded")), "charge_id": purchase.get("charge_id", "")})
+    return {"purchases": rows, "support_url": f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else ""}
 
 
 @app.post("/internal/daily-job")

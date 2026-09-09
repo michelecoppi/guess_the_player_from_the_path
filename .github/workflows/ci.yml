@@ -31,7 +31,7 @@ jobs:
         run: |
           python -c "
           import json
-          for f in ['data/players.json', 'data/config.json', 'data/event_templates.json']:
+          for f in ['data/players.json', 'data/config.json', 'data/event_templates.json', 'data/shop.json']:
               json.load(open(f, encoding='utf-8'))
               print(f, 'OK')
           "

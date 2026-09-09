@@ -21,22 +21,28 @@ UNUSED = "⬜"
 HINT = "💡"
 
 
-def result_squares(attempts_used, max_attempts, solved=True):
+def result_squares(attempts_used, max_attempts, solved=True, symbols=None):
     """Un quadratino per tentativo: rossi quelli sbagliati, verde quello giusto, bianchi
-    quelli non usati."""
+    quelli non usati.
+
+    `symbols` e' la terna (giusto, sbagliato, non usato) comprata in negozio: cambia i segni,
+    non cosa vogliono dire. La lunghezza si conta in **caratteri**, non in emoji: un simbolo
+    composto (💚, ❤️) puo' valere piu' di un carattere, quindi le caselle vuote si contano
+    sui tentativi rimasti e non su `len()` della stringa - altrimenti una card con i cuori
+    uscirebbe piu' corta di una con i quadratini."""
+    correct, wrong_symbol, unused = symbols or (CORRECT, WRONG, UNUSED)
     attempts_used = max(0, min(attempts_used, max_attempts))
-    wrong = attempts_used - 1 if solved else attempts_used
-    squares = WRONG * max(wrong, 0)
-    if solved:
-        squares += CORRECT
-    return squares + UNUSED * (max_attempts - len(squares))
+    wrong = max(attempts_used - 1 if solved else attempts_used, 0)
+    filled = wrong + (1 if solved else 0)
+    return wrong_symbol * wrong + (correct if solved else "") + unused * (max_attempts - filled)
 
 
 def bot_link():
     return f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else ""
 
 
-def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0, archive=False, hints=0):
+def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0, archive=False,
+               hints=0, symbols=None):
     """`archive=True` marca il risultato come recuperato dall'archivio: il numero della
     sfida basterebbe a distinguerlo da quella di oggi, ma in un gruppo dove la sfida di
     oggi e' ancora aperta la riga va letta al volo, non confrontata con un calendario.
@@ -48,12 +54,16 @@ def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0,
 
     La percentuale di chi ha indovinato resta fuori di proposito (services/daily_stats.py):
     e' un'informazione sulla difficolta' della sfida, e la card la legge anche chi oggi non
-    ha ancora giocato."""
+    ha ancora giocato.
+
+    `symbols` sono i quadratini comprati in negozio (services/shop.py). Cambiano l'aspetto e
+    basta: il punteggio "2/3" accanto resta, quindi una card con i cuori si confronta con una
+    classica senza doverla decifrare."""
     title_key = "share.archive_title" if archive else "share.title"
     lines = [t(lang, title_key, number=number)]
 
     score = f"{attempts_used}/{max_attempts}" if solved else f"X/{max_attempts}"
-    line = f"{result_squares(attempts_used, max_attempts, solved)} {score}"
+    line = f"{result_squares(attempts_used, max_attempts, solved, symbols)} {score}"
     if hints > 0:
         line += "  " + HINT * hints
     if streak >= 2:

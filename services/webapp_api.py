@@ -12,7 +12,7 @@ strumenti di sviluppo puo' leggere quello che gli mandiamo.
 Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.py), mai il
 client: nessuna di queste funzioni riceve un id da fuori.
 """
-from services import firebase_service, game
+from services import firebase_service, game, shop
 from services.career_order import order_career
 from services.content_i18n import localize_career
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
@@ -45,6 +45,10 @@ def build_profile(user_id, day_iso=None, lang=None):
     return {
         "language": lang,
         "user": _user_summary(user),
+        # I cosmetici comprati in negozio: colori del tema, cornice, titolo, distintivo.
+        # Stanno nel profilo e non dietro la scheda del negozio perche' la pagina si deve
+        # disegnare gia' giusta alla prima apertura (services/shop.py, `appearance`).
+        "cosmetics": shop.appearance(user, lang),
         "today": _today_summary(user, day_iso, lang),
         "distribution": _distribution(user),
         "leaderboard": _leaderboard(user_id),
@@ -63,6 +67,22 @@ def _user_summary(user):
         "best_streak": user.get("best_streak", 0),
         "archive_solved": user.get("archive_solved", 0),
         "trophies": len(user.get("trophies", [])),
+    }
+
+
+def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
+    """An explicit public projection, never the private /me response."""
+    if type(target_id) is not int or target_id <= 0 or target_id > 2**52:
+        return None
+    user = firebase_service.get_user_data(target_id)
+    if not user:
+        return None
+    appearance = shop.appearance(user, lang)
+    return {
+        "user": _user_summary(user),
+        "cosmetics": appearance,
+        "wearing": [{"kind": kind, "name": shop.localize(shop.get_item(item_id), lang)[0]}
+                    for kind, item_id in appearance["equipped"].items()],
     }
 
 
@@ -120,7 +140,9 @@ def _leaderboard(user_id):
     return [
         {
             "position": position,
+            "profile_id": entry.get("telegram_id"),
             "name": entry.get("username", "?"),
+            "badge": shop.badge_emoji(entry) or entry.get("badge", ""),
             "points": entry.get("points", 0),
             "me": entry.get("telegram_id") == user_id,
         }
@@ -152,6 +174,7 @@ def _leagues(user, user_id):
             "standings": [
                 {
                     "position": index,
+                    "profile_id": member.get("telegram_id"),
                     "name": member.get("name", "?"),
                     "points": member.get("points", 0),
                     "me": member.get("telegram_id") == user_id,
@@ -249,15 +272,16 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
     si sceglie solo quale delle due partite si sta giocando e si attacca la card da
     condividere quando la partita si chiude."""
     today = today or today_iso()
+    symbols = shop.squares_symbols(user_data)
     if day and day != today:
         result = game.play_archive(user_id, day, answer, MAX_ARCHIVE_ATTEMPTS)
-        return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True)
+        return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True, symbols=symbols)
 
     result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"))
-    return with_share_card(result, lang, MAX_ATTEMPTS)
+    return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols)
 
 
-def with_share_card(result, lang, max_attempts, day=None, archive=False):
+def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols=None):
     """Aggiunge la card da condividere quando la partita si e' chiusa.
 
     La compone il server e non la pagina: cosi' i quadratini, la lampadina degli indizi e la
@@ -279,6 +303,7 @@ def with_share_card(result, lang, max_attempts, day=None, archive=False):
         streak=result.get("streak", 0),
         archive=archive,
         hints=result.get("hints_used", 0),
+        symbols=symbols,
     )
     result["share"] = {"text": text, "url": share_url(text)}
     return result

@@ -28,6 +28,8 @@ from services import firebase_service  # noqa: E402
 
 # Le collezioni di primo livello del gioco. `admin_settings` c'e' perche' contiene i
 # giocatori sospesi (/admin_block): si perderebbe un dato che non sta in nessun file.
+# `purchases` e' il registro dei pagamenti in Stelle: e' l'unico posto dove sta l'id
+# della transazione Telegram, cioe' l'unica cosa con cui si puo' rimborsare qualcuno.
 COLLECTIONS = (
     "users",
     "daily_path",
@@ -36,6 +38,7 @@ COLLECTIONS = (
     "leagues",
     "father_son_pairs",
     "admin_settings",
+    "purchases",
 )
 
 DEFAULT_OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backup")

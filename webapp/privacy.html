@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informativa privacy · Guess the Player</title>
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+<!--
+  Informativa privacy, nelle tre lingue del bot (vedi terms.html per il perche').
+
+  Ogni riga di questo documento corrisponde a qualcosa che sta nel codice: i campi elencati
+  sono quelli di USER_FIELD_DEFAULTS e della collection `purchases`
+  (services/firebase_service.py), la region e' quella del deploy (.github/workflows/deploy.yml),
+  i 365 giorni sono la retention dell'artifact di backup (.github/workflows/backup.yml).
+  Se cambia il codice va cambiato anche questo: un'informativa che descrive un trattamento
+  diverso da quello vero e' peggio che non averla.
+-->
+<main>
+  <div class="langs">
+    <button data-set="it">Italiano</button>
+    <button data-set="es">Español</button>
+    <button data-set="en">English</button>
+  </div>
+
+  <!-- ------------------------------------------------------------------ IT -->
+  <article data-lang="it">
+    <h1>Informativa privacy</h1>
+    <p class="updated">Guess the Player · ultimo aggiornamento: 9 settembre 2026</p>
+
+    <h2>1. Chi tratta i tuoi dati</h2>
+    <p>Il titolare del trattamento è <b>Michele Coppi</b>, persona fisica che gestisce il bot
+    a titolo personale, non come azienda. Il canale
+    di contatto per qualsiasi richiesta su questi dati è la <b>chat del bot su Telegram</b>:
+    scrivi lì e ti viene risposto da lì.</p>
+
+    <h2>2. Quali dati raccoglie, e perché</h2>
+    <div class="scroll">
+      <table>
+        <tr><th>Dato</th><th>A cosa serve</th></tr>
+        <tr><td>Il tuo id Telegram e il nome (<i>first name</i>)</td><td>riconoscere il tuo account e mostrarti nelle classifiche</td></tr>
+        <tr><td>La lingua scelta o rilevata</td><td>risponderti nella lingua giusta</td></tr>
+        <tr><td>L'id della chat</td><td>mandarti la notifica di mezzanotte, se l'hai attivata</td></tr>
+        <tr><td>Dati di gioco: punti, tentativi, indizi chiesti, striscia, trofei, storico delle giornate</td><td>far funzionare il gioco, le statistiche e le classifiche</td></tr>
+        <tr><td>Le leghe a cui partecipi</td><td>la classifica di quelle leghe</td></tr>
+        <tr><td>Cosmetici posseduti, indossati e sbloccati; nomi e combinazioni dei look salvati</td><td>personalizzare il profilo e ritrovare le tue combinazioni</td></tr>
+        <tr><td>Acquisti: identificativo della transazione Telegram, oggetto comprato, numero di Stelle, data</td><td>consegnare l'acquisto ed essere in grado di rimborsarlo</td></tr>
+      </table>
+    </div>
+
+    <h2>3. Quello che <i>non</i> raccoglie</h2>
+    <div class="box highlight">
+      <p>Nessun indirizzo email, nessun numero di telefono, <b>nessun dato di pagamento</b>
+      (carte, IBAN, intestatari), nessuna posizione, nessuna rubrica, nessun contenuto delle
+      tue altre chat.</p>
+      <p>Le Stelle le gestisce interamente Telegram: il bot riceve solo l'identificativo della
+      transazione e quante Stelle sono state spese.</p>
+      <p>La mini app non ha strumenti di analisi né tracciatori di terze parti. L'unico script
+      esterno che carica è quello ufficiale di Telegram.</p>
+    </div>
+
+    <h2>4. Cosa vedono gli altri giocatori</h2>
+    <p>Gli utenti registrati possono aprire il tuo profilo dalle classifiche. Il profilo mostra nome, statistiche aggregate di gioco, numero di trofei e il look indossato: tema, cornice, titolo, distintivo e simboli del risultato. Non mostra storico acquisti, Stelle spese, look salvati né gli oggetti che possiedi ma non indossi.</p>
+    <p>Il tuo nome Telegram, i tuoi punti e il distintivo che indossi sono <b>visibili agli
+    altri</b> nella classifica generale e nelle leghe a cui partecipi. È il senso di una
+    classifica, ma è giusto saperlo prima: se non vuoi comparire con quel nome puoi cambiare
+    il nome del tuo account Telegram, o smettere di usare il bot.</p>
+
+    <h2>5. Dove stanno i dati</h2>
+    <p>Su Google Cloud Firestore, nella region <b>europe-west1</b> (Belgio, Unione Europea). Il
+    servizio gira su Google Cloud Run nella stessa region. Google agisce come responsabile del
+    trattamento.</p>
+    <p>Una copia di backup del database viene esportata una volta a settimana e conservata per
+    365 giorni negli artifact di GitHub Actions.</p>
+
+    <h2>6. Per quanto tempo</h2>
+    <ul>
+      <li>I dati del tuo account restano finché usi il bot.</li>
+      <li>Le sfide più vecchie di un anno vengono cancellate periodicamente.</li>
+      <li>Puoi cancellare direttamente account e dati di gioco con <b>/forgetme</b>. Le righe
+      degli acquisti restano il tempo necessario a gestire eventuali rimborsi e agli obblighi
+      di legge.</li>
+      <li>I backup già fatti si esauriscono da soli entro 365 giorni.</li>
+    </ul>
+
+    <h2>7. Perché è lecito trattarli</h2>
+    <p>Il trattamento serve a fornirti il servizio che hai chiesto usando il bot (art. 6.1.b
+    GDPR). Per gli acquisti si aggiunge la necessità di poterli documentare e rimborsare
+    (art. 6.1.c).</p>
+
+    <h2>8. I tuoi diritti</h2>
+    <p>Hai diritto di accesso, rettifica, cancellazione, limitazione, portabilità e
+    opposizione. Si esercitano scrivendo al bot: ti viene detto cosa c'è scritto sul tuo
+    account, oppure si cancella.</p>
+    <p>Puoi anche presentare reclamo al <a href="https://www.garanteprivacy.it">Garante per la
+    protezione dei dati personali</a> o all'autorità di controllo del tuo paese.</p>
+
+    <h2>9. Minori</h2>
+    <p>Il bot non è pensato per chi ha meno di 14 anni. Chi è più giovane dovrebbe usarlo solo
+    con il consenso di chi esercita la responsabilità genitoriale.</p>
+
+    <h2>10. Modifiche</h2>
+    <p>Se questa informativa cambia, cambia la data in cima alla pagina. Le modifiche rilevanti
+    vengono annunciate dal bot.</p>
+
+    <footer>Vedi anche i <a href="/terms">termini di servizio</a>.</footer>
+  </article>
+
+  <!-- ------------------------------------------------------------------ ES -->
+  <article data-lang="es">
+    <h1>Política de privacidad</h1>
+    <p class="updated">Guess the Player · última actualización: 9 de septiembre de 2026</p>
+
+    <h2>1. Quién trata tus datos</h2>
+    <p>El responsable del tratamiento es <b>Michele Coppi</b>, persona física que gestiona el
+    bot a título personal, no como empresa. El canal de
+    contacto para cualquier cuestión sobre estos datos es el <b>chat del bot en Telegram</b>:
+    escribe ahí y se te responde desde ahí.</p>
+
+    <h2>2. Qué datos recoge, y para qué</h2>
+    <div class="scroll">
+      <table>
+        <tr><th>Dato</th><th>Para qué sirve</th></tr>
+        <tr><td>Tu id de Telegram y tu nombre (<i>first name</i>)</td><td>reconocer tu cuenta y mostrarte en las clasificaciones</td></tr>
+        <tr><td>El idioma elegido o detectado</td><td>responderte en el idioma correcto</td></tr>
+        <tr><td>El id del chat</td><td>enviarte el aviso de medianoche, si lo has activado</td></tr>
+        <tr><td>Datos de juego: puntos, intentos, pistas pedidas, racha, trofeos, historial de los días</td><td>hacer funcionar el juego, las estadísticas y las clasificaciones</td></tr>
+        <tr><td>Las ligas en las que participas</td><td>la clasificación de esas ligas</td></tr>
+        <tr><td>Cosméticos comprados, puestos y desbloqueados; nombres y combinaciones de los looks guardados</td><td>personalizar el perfil y recuperar tus combinaciones</td></tr>
+        <tr><td>Compras: identificador de la transacción de Telegram, objeto comprado, número de Estrellas, fecha</td><td>entregar la compra y poder reembolsarla</td></tr>
+      </table>
+    </div>
+
+    <h2>3. Lo que <i>no</i> recoge</h2>
+    <div class="box highlight">
+      <p>Ninguna dirección de correo, ningún número de teléfono, <b>ningún dato de pago</b>
+      (tarjetas, IBAN, titulares), ninguna ubicación, ninguna agenda de contactos, ningún
+      contenido de tus otros chats.</p>
+      <p>Las Estrellas las gestiona íntegramente Telegram: el bot solo recibe el identificador
+      de la transacción y cuántas Estrellas se han gastado.</p>
+      <p>La mini app no tiene herramientas de analítica ni rastreadores de terceros. El único
+      script externo que carga es el oficial de Telegram.</p>
+    </div>
+
+    <h2>4. Qué ven los demás jugadores</h2>
+    <p>Los usuarios registrados pueden abrir tu perfil desde las clasificaciones. El perfil muestra el nombre, las estadísticas agregadas de juego, el número de trofeos y el look actual: tema, marco, título, distintivo y símbolos del resultado. No muestra compras, Estrellas gastadas, looks guardados ni objetos que tengas pero no lleves puestos.</p>
+    <p>Tu nombre de Telegram, tus puntos y el distintivo que llevas puesto son <b>visibles para
+    los demás</b> en la clasificación general y en las ligas en las que participas. Es el
+    sentido de una clasificación, pero conviene saberlo antes: si no quieres aparecer con ese
+    nombre puedes cambiar el nombre de tu cuenta de Telegram, o dejar de usar el bot.</p>
+
+    <h2>5. Dónde están los datos</h2>
+    <p>En Google Cloud Firestore, en la región <b>europe-west1</b> (Bélgica, Unión Europea). El
+    servicio se ejecuta en Google Cloud Run en la misma región. Google actúa como encargado del
+    tratamiento.</p>
+    <p>Una copia de seguridad de la base de datos se exporta una vez por semana y se conserva
+    365 días en los artifacts de GitHub Actions.</p>
+
+    <h2>6. Durante cuánto tiempo</h2>
+    <ul>
+      <li>Los datos de tu cuenta se conservan mientras uses el bot.</li>
+      <li>Los desafíos de más de un año se borran periódicamente.</li>
+      <li>Puedes borrar directamente la cuenta y los datos de juego con <b>/forgetme</b>. Los registros de
+      compras se conservan el tiempo necesario para gestionar posibles reembolsos y cumplir
+      obligaciones legales.</li>
+      <li>Las copias de seguridad ya hechas caducan solas en 365 días.</li>
+    </ul>
+
+    <h2>7. Por qué es lícito tratarlos</h2>
+    <p>El tratamiento sirve para prestarte el servicio que has pedido al usar el bot (art. 6.1.b
+    RGPD). En las compras se añade la necesidad de poder documentarlas y reembolsarlas
+    (art. 6.1.c).</p>
+
+    <h2>8. Tus derechos</h2>
+    <p>Tienes derecho de acceso, rectificación, supresión, limitación, portabilidad y oposición.
+    Se ejercen escribiendo al bot: se te dice qué hay guardado sobre tu cuenta, o se borra.</p>
+    <p>También puedes presentar una reclamación ante la autoridad de control de tu país (en
+    España, la <a href="https://www.aepd.es">AEPD</a>).</p>
+
+    <h2>9. Menores</h2>
+    <p>El bot no está pensado para menores de 14 años. Quien sea más joven debería usarlo solo
+    con el consentimiento de quien ejerza la patria potestad.</p>
+
+    <h2>10. Cambios</h2>
+    <p>Si esta política cambia, cambia la fecha de la parte superior. Los cambios relevantes se
+    anuncian desde el bot.</p>
+
+    <footer>Consulta también los <a href="/terms">términos del servicio</a>.</footer>
+  </article>
+
+  <!-- ------------------------------------------------------------------ EN -->
+  <article data-lang="en">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Guess the Player · last updated: 9 September 2026</p>
+
+    <h2>1. Who handles your data</h2>
+    <p>The data controller is <b>Michele Coppi</b>, a private individual who runs the bot in a
+    personal capacity, not as a company. The
+    contact channel for anything about this data is the <b>bot chat on Telegram</b>: write
+    there and you will be answered there.</p>
+
+    <h2>2. What data is collected, and why</h2>
+    <div class="scroll">
+      <table>
+        <tr><th>Data</th><th>What it is for</th></tr>
+        <tr><td>Your Telegram id and first name</td><td>recognising your account and showing you on the leaderboards</td></tr>
+        <tr><td>The language you chose, or the one detected</td><td>replying in the right language</td></tr>
+        <tr><td>The chat id</td><td>sending you the midnight notification, if you turned it on</td></tr>
+        <tr><td>Game data: points, attempts, hints taken, streak, trophies, day-by-day history</td><td>running the game, the stats and the leaderboards</td></tr>
+        <tr><td>The leagues you belong to</td><td>those leagues' standings</td></tr>
+        <tr><td>Owned, worn and earned cosmetics; names and combinations of saved looks</td><td>personalizing your profile and restoring saved combinations</td></tr>
+        <tr><td>Purchases: Telegram transaction id, item bought, number of Stars, date</td><td>delivering the purchase and being able to refund it</td></tr>
+      </table>
+    </div>
+
+    <h2>3. What is <i>not</i> collected</h2>
+    <div class="box highlight">
+      <p>No email address, no phone number, <b>no payment data</b> (cards, IBAN, account
+      holders), no location, no contact list, no content from your other chats.</p>
+      <p>Stars are handled entirely by Telegram: the bot only receives the transaction
+      identifier and how many Stars were spent.</p>
+      <p>The mini app has no analytics and no third-party trackers. The only external script it
+      loads is Telegram's official one.</p>
+    </div>
+
+    <h2>4. What other players can see</h2>
+    <p>Registered users can open your profile from the leaderboards. It shows your name, aggregate game statistics, trophy count and current look: theme, frame, title, badge and result symbols. It does not show purchase history, Stars spent, saved looks or items you own but are not wearing.</p>
+    <p>Your Telegram name, your points and the badge you wear are <b>visible to others</b> on
+    the global leaderboard and in the leagues you join. That is what a leaderboard is for, but
+    it is fair to know beforehand: if you would rather not appear under that name, you can
+    change your Telegram account name, or stop using the bot.</p>
+
+    <h2>5. Where the data lives</h2>
+    <p>On Google Cloud Firestore, in the <b>europe-west1</b> region (Belgium, European Union).
+    The service runs on Google Cloud Run in the same region. Google acts as data processor.</p>
+    <p>A backup copy of the database is exported once a week and kept for 365 days in GitHub
+    Actions artifacts.</p>
+
+    <h2>6. For how long</h2>
+    <ul>
+      <li>Your account data is kept for as long as you use the bot.</li>
+      <li>Challenges older than a year are deleted periodically.</li>
+      <li>You can delete your account and game data directly with <b>/forgetme</b>. Purchase records are
+      kept as long as needed to handle possible refunds and to meet legal obligations.</li>
+      <li>Backups already taken expire on their own within 365 days.</li>
+    </ul>
+
+    <h2>7. Why this is lawful</h2>
+    <p>The processing is needed to provide the service you asked for by using the bot (GDPR
+    art. 6(1)(b)). For purchases, there is also the need to document and refund them
+    (art. 6(1)(c)).</p>
+
+    <h2>8. Your rights</h2>
+    <p>You have the right of access, rectification, erasure, restriction, portability and
+    objection. You exercise them by writing to the bot: you will be told what is stored about
+    your account, or it will be deleted.</p>
+    <p>You may also lodge a complaint with your country's supervisory authority (in Italy, the
+    <a href="https://www.garanteprivacy.it">Garante per la protezione dei dati personali</a>).</p>
+
+    <h2>9. Minors</h2>
+    <p>The bot is not intended for people under 14. Anyone younger should use it only with the
+    consent of a parent or guardian.</p>
+
+    <h2>10. Changes</h2>
+    <p>If this policy changes, the date at the top of the page changes. Significant changes are
+    announced through the bot.</p>
+
+    <footer>See also the <a href="/terms">terms of service</a>.</footer>
+  </article>
+</main>
+
+<script>
+"use strict";
+/* Stessa scelta della lingua di terms.html: `?lang=`, poi l'ultima scelta, poi il browser. */
+(function () {
+  const SUPPORTED = ["it", "es", "en"];
+  const KEY = "gtp-legal-lang";
+
+  function remembered() {
+    try { return localStorage.getItem(KEY); } catch (e) { return null; }
+  }
+
+  function show(lang) {
+    try { localStorage.setItem(KEY, lang); } catch (e) { /* niente memoria: pazienza */ }
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-lang]").forEach(function (block) {
+      block.classList.toggle("on", block.dataset.lang === lang);
+    });
+    document.querySelectorAll("[data-set]").forEach(function (button) {
+      button.setAttribute("aria-pressed", String(button.dataset.set === lang));
+    });
+  }
+
+  const asked = new URLSearchParams(location.search).get("lang")
+    || remembered()
+    || (navigator.language || "en").slice(0, 2);
+  show(SUPPORTED.indexOf(asked) >= 0 ? asked : "en");
+
+  document.querySelectorAll("[data-set]").forEach(function (button) {
+    button.onclick = function () { show(button.dataset.set); };
+  });
+})();
+</script>
+</body>
+</html>

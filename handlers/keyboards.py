@@ -11,7 +11,7 @@ Prima l'unico modo di sapere cosa sapeva fare il bot era leggere il muro di test
 """
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 
-from config import WEBAPP_URL
+from config import PUBLIC_BASE_URL, WEBAPP_URL
 from services.firebase_service import get_user_data
 from services.i18n import resolve_language, t
 
@@ -37,8 +37,11 @@ COMMAND_KEYS = (
     ("archive", "cmd.archive"),
     ("training", "cmd.training"),
     ("league", "cmd.league"),
+    ("shop", "cmd.shop"),
     ("notify", "cmd.notify"),
     ("language", "cmd.language"),
+    ("forgetme", "cmd.forgetme"),
+    ("paysupport", "cmd.paysupport"),
     ("help", "cmd.help"),
 )
 
@@ -55,6 +58,16 @@ def _button(lang, key, action):
     return InlineKeyboardButton(t(lang, key), callback_data=f"{CALLBACK_PREFIX}{action}")
 
 
+def legal_buttons(lang):
+    if not PUBLIC_BASE_URL:
+        return []
+    base = PUBLIC_BASE_URL.rstrip("/")
+    return [
+        InlineKeyboardButton(t(lang, "shop.privacy_button"), url=f"{base}/privacy?lang={lang}"),
+        InlineKeyboardButton(t(lang, "shop.refunds_button"), url=f"{base}/terms?lang={lang}#refunds"),
+    ]
+
+
 def menu_keyboard(lang):
     # La soluzione sta accanto a "Gioca": sono le due facce della stessa sfida, quella di
     # oggi da giocare e quella di ieri da scoprire.
@@ -64,8 +77,10 @@ def menu_keyboard(lang):
         [_button(lang, "menu.archive", "archive"), _button(lang, "menu.leagues", "leagues")],
         [_button(lang, "menu.stats", "stats"), _button(lang, "menu.top", "top")],
         [_button(lang, "menu.notify", "notify"), _button(lang, "menu.language", "language")],
-        [_button(lang, "menu.help", "help")],
+        [_button(lang, "menu.shop", "shop"), _button(lang, "menu.help", "help")],
     ]
+    if legal_buttons(lang):
+        rows.append(legal_buttons(lang))
     if WEBAPP_URL:
         # La mini app e' un di piu': se non e' configurata il menu resta identico a prima.
         rows.insert(0, [InlineKeyboardButton(t(lang, "menu.app"), web_app=WebAppInfo(url=WEBAPP_URL))])

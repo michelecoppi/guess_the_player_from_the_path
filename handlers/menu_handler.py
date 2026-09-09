@@ -15,6 +15,7 @@ from handlers.keyboards import CALLBACK_PREFIX, language_for, menu_keyboard
 from handlers.language_handler import language
 from handlers.league_handler import leagues
 from handlers.notify_handler import notify
+from handlers.shop_handler import shop_command
 from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats
 from handlers.solution_handler import solution
@@ -41,6 +42,7 @@ ACTIONS = {
     "top": top,
     "notify": notify,
     "language": language,
+    "shop": shop_command,
     "help": help,
 }
 

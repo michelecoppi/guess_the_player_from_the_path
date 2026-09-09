@@ -31,6 +31,7 @@
     font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text);
     background: var(--bg);
+    background-image: var(--theme-pattern, none);
     min-height: 100vh;
   }
   h1, h2, h3 { margin: 0; }
@@ -40,13 +41,13 @@
   /* --- schede in fondo, come in un'app --- */
   nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(5, 1fr);
     background: var(--bg-secondary); border-top: 1px solid var(--edge);
     padding-bottom: env(safe-area-inset-bottom);
   }
   nav button {
-    background: none; border: 0; padding: 9px 4px 11px;
-    color: var(--muted); font-size: 11px; display: grid; gap: 2px; justify-items: center;
+    background: none; border: 0; padding: 9px 2px 11px;
+    color: var(--muted); font-size: 10px; display: grid; gap: 2px; justify-items: center;
   }
   nav button .icon { font-size: 19px; line-height: 1; }
   nav button[aria-selected="true"] { color: var(--accent); }
@@ -166,6 +167,87 @@
     padding: 11px 13px; border-radius: 12px; border: 1px solid var(--edge);
     background: var(--bg-secondary); color: var(--text); font-size: 16px;
   }
+  /* --- cosmetici comprati in negozio --- */
+  /*
+    La cornice e' un cerchio **dietro** l'avatar, non un bordo: un bordo che gira si
+    porterebbe dietro anche le iniziali, e quelle devono stare ferme.
+  */
+  .avatar-wrap { position: relative; width: 58px; height: 58px; display: grid; place-items: center; }
+  .avatar-wrap .ring { position: absolute; inset: 0; border-radius: 50%; }
+  .avatar-wrap .ring.spin { animation: ring-spin 4.5s linear infinite; }
+  @keyframes ring-spin { to { transform: rotate(360deg); } }
+  .avatar {
+    position: relative; width: 50px; height: 50px; border-radius: 50%;
+    display: grid; place-items: center; font-weight: 700; font-size: 19px;
+    background: var(--accent); color: var(--accent-text);
+  }
+  .title-tag { font-size: 12.5px; font-weight: 700; margin-top: 1px; padding: 3px 8px; border-radius: 6px; width: fit-content; max-width: 100%; background: #14202d; }
+
+  .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .shop-grid.wide { grid-template-columns: 1fr; }
+  .shop-item {
+    background: var(--bg-secondary); border: 1px solid var(--edge); border-radius: 13px;
+    padding: 10px; display: grid; gap: 6px; align-content: start;
+  }
+  .shop-item.worn { border-color: var(--accent); }
+  .shop-item .nm { font-weight: 700; font-size: 13.5px; }
+  .shop-item .ds { font-size: 11.5px; color: var(--muted); }
+  .shop-item .tag { font-size: 12px; font-weight: 600; color: var(--muted); padding: 4px 0; }
+  .btn.small { padding: 8px; font-size: 13px; border-radius: 10px; }
+  .swatch { height: 32px; border-radius: 9px; border: 1px solid var(--edge); display: flex; overflow: hidden; }
+  .swatch span { flex: 1; }
+  .ring-preview { width: 32px; height: 32px; border-radius: 50%; padding: 4px; background: var(--track); }
+  .ring-preview i { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--bg-secondary); }
+  .emoji-preview { font-size: 22px; line-height: 1.3; letter-spacing: 2px; }
+
+  .shop-hero { position: relative; overflow: hidden; background: radial-gradient(ellipse at top right, #375541, transparent 75%), #142a26; color: #f0fff7; }
+  .shop-hero h1 { font-size: clamp(25px, 6vw, 36px); line-height: 1.1; max-width: 310px; margin: 12px 0; }
+  .shop-hero p { font-size: 13px; max-width: 440px; color: #c5dfd1; }
+  .shop-kicker { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #99e7b7; }
+  .shop-sparkles { position: absolute; right: 18px; top: 12px; font-size: 36px; opacity: .5; pointer-events: none; }
+  .shop-pills, .pack-contents { display: flex; gap: 6px; flex-wrap: wrap; }
+  .shop-pills span, .pack-contents span { border: 1px solid var(--edge); padding: 4px 8px; border-radius: 20px; font-size: 11px; }
+  .shop-pills span { border-color: #466653; color: #d9f4e4; }
+  .legal-links { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 18px; padding: 10px 0; }
+  .legal-links a { color: var(--text); text-underline-offset: 4px; font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }
+  .shop-hero .legal-links a { color: #d9f4e4; }
+  .shop-item { min-width: 0; padding: 12px; gap: 9px; grid-template-rows: auto auto 1fr auto; transition: border-color .2s, transform .2s; }
+  .shop-item .nm, .shop-item .ds { overflow-wrap: anywhere; }
+  .shop-item .ds { line-height: 1.55; }
+  .shop-item .btn { min-height: 44px; }
+  .shop-stage { border-radius: 12px; min-height: 132px; padding: 16px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; overflow: hidden; text-align: center; background: radial-gradient(ellipse at top, var(--track), transparent), var(--bg); }
+  .shop-stage .preview-name { font-size: 12px; font-weight: 700; max-width: 100%; overflow-wrap: anywhere; }
+  .shop-stage .emoji-preview { font-size: 28px; }
+  .shop-stage .avatar-wrap { flex-shrink: 0; }
+  .preview-caption { font-size: 10px; opacity: .75; letter-spacing: .06em; text-transform: uppercase; }
+  .mini-pitch { width: 90px; height: 43px; border: 1px solid currentColor; border-radius: 5px; position: relative; opacity: .55; }
+  .mini-pitch::before { content: ''; position: absolute; left: 50%; top: 0; height: 100%; border-left: 1px solid currentColor; }
+  .mini-pitch::after { content: ''; position: absolute; width: 20px; height: 20px; border: 1px solid currentColor; border-radius: 50%; left: calc(50% - 10px); top: 10px; }
+  .pack-contents { padding: 4px 0; }
+  .shop-shortcuts { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 12px; margin-bottom: 4px; }
+  .shop-shortcuts a { flex-shrink: 0; color: var(--text); background: var(--card); border: 1px solid var(--edge); border-radius: 24px; padding: 11px 15px; font-size: 12px; text-decoration: none; }
+  [id^="shelf-"] { scroll-margin-top: 12px; }
+  .shop-set-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 9px; color: var(--accent); }
+  .shop-item.featured .shop-stage { min-height: 190px; background-size: cover; }
+  .shop-controls { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+  .shop-controls button, .shop-controls select, .shop-controls input:not([type="checkbox"]) { border:1px solid var(--edge); background:var(--card); color:var(--text); border-radius:10px; padding:10px; min-height:44px; max-width:100%; }
+  .shop-controls label { display:flex; align-items:center; gap:8px; min-height:44px; font-size:13px; }
+  button.profile-link { background:none; border:0; padding:10px 0; min-height:44px; color:inherit; text-align:left; text-decoration:underline; text-underline-offset:4px; cursor:pointer; }
+  .public-profile { background-color:var(--bg); background-image:var(--theme-pattern,none); color:var(--text); padding:14px; border-radius:18px; }
+  .public-profile .profile-hero { display:flex; gap:16px; align-items:center; padding:24px 16px; }
+  .public-profile h1 { overflow-wrap:anywhere; font-size:24px; }
+  .shop-controls button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+  .preview-bar { position:sticky; top:0; z-index:9; background:var(--card); border:2px solid var(--accent); padding:12px; border-radius:14px; margin-bottom:12px; }
+  .preview-person { display:flex; gap:12px; align-items:center; margin:8px 0; }
+  .shop-note { font-size:12px; color:var(--muted); }
+  .shop-item progress { width:100%; accent-color:var(--accent); }
+  .history-command { width:100%; min-height:90px; border:1px solid var(--edge); border-radius:8px; padding:10px; background:var(--bg); color:var(--text); overflow-wrap:anywhere; }
+  @media (min-width: 900px) { #shelf-collections .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  @media (hover: hover) { .shop-item:hover { transform: translateY(-2px); border-color: var(--accent); } }
+  @media (max-width: 350px) { .shop-grid { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .avatar-wrap .ring.spin { animation: none; } .shop-item { transition: none; } }
+
   .toast {
     position: fixed; left: 14px; right: 14px; bottom: calc(84px + env(safe-area-inset-bottom));
     background: var(--card); border: 1px solid var(--edge); border-radius: 13px;
@@ -222,6 +304,29 @@ const T = {
     error: "Apri questa pagina dal bot per vedere i tuoi dati.",
     notRegistered: "Fai /start nel bot per iniziare a giocare.",
     loading: "Carico…", already: "Hai già giocato questa giornata.",
+    shop: "Negozio",
+    shopHeadline: "Il tuo gioco. Il tuo stile.",
+    shopSubtitle: "Dai carattere al profilo, colora le tue sfide e fatti riconoscere in classifica.",
+    shopCosmetics: "Solo estetica",
+    shopPreview: "Anteprima",
+    shopBuy: "Acquista",
+    shopCollections: "Tre modi di vivere il calcio",
+    shopCollectionNav: "Collezioni",
+    shopSet: "Look coordinato · 5 oggetti",
+    privacy: "Privacy",
+    refunds: "Termini e rimborsi",
+    shopFair: "Solo roba da guardare: niente punti, niente tentativi in più, niente indizi gratis.",
+    shopSections: {
+      theme: "Temi", frame: "Cornici", title: "Titoli",
+      badge: "Distintivi", squares: "Quadratini", bundle: "Pacchetti",
+    },
+    shopWear: "Indossa", shopWorn: "👕 Addosso", shopOwned: "✅ Già tuo",
+    shopThanks: "Grazie! È tuo.", shopWaiting: "Consegna in corso…",
+    shopErrors: {
+      already_owned: "Ce l'hai già.", not_for_sale: "Non si compra da solo.",
+      unknown_item: "Questo oggetto non esiste più.", not_owned: "Devi prima comprarlo.",
+      not_equippable: "Questa collezione contiene più alternative: scegli i singoli oggetti da indossare.",
+    },
     leagueErrors: {
       limit: "Sei già in 5 leghe.", name_too_long: "Nome troppo lungo (max 30).",
       no_name: "Serve un nome.", no_code: "Serve un codice.",
@@ -258,6 +363,29 @@ const T = {
     error: "Abre esta página desde el bot para ver tus datos.",
     notRegistered: "Envía /start en el bot para empezar a jugar.",
     loading: "Cargando…", already: "Ya has jugado este día.",
+    shop: "Tienda",
+    shopHeadline: "Tu juego. Tu estilo.",
+    shopSubtitle: "Dale personalidad a tu perfil, colorea tus retos y destaca en la clasificación.",
+    shopCosmetics: "Solo estética",
+    shopPreview: "Vista previa",
+    shopBuy: "Comprar",
+    shopCollections: "Tres formas de vivir el fútbol",
+    shopCollectionNav: "Colecciones",
+    shopSet: "Look a juego · 5 objetos",
+    privacy: "Privacidad",
+    refunds: "Términos y reembolsos",
+    shopFair: "Solo cosas para mirar: ni puntos, ni intentos de más, ni pistas gratis.",
+    shopSections: {
+      theme: "Temas", frame: "Marcos", title: "Títulos",
+      badge: "Distintivos", squares: "Cuadrados", bundle: "Packs",
+    },
+    shopWear: "Ponérselo", shopWorn: "👕 Puesto", shopOwned: "✅ Ya es tuyo",
+    shopThanks: "¡Gracias! Ya es tuyo.", shopWaiting: "Entregando…",
+    shopErrors: {
+      already_owned: "Ya lo tienes.", not_for_sale: "No se compra suelto.",
+      unknown_item: "Este objeto ya no existe.", not_owned: "Primero tienes que comprarlo.",
+      not_equippable: "Esta colección contiene varias alternativas: elige los objetos que quieres ponerte.",
+    },
     leagueErrors: {
       limit: "Ya estás en 5 ligas.", name_too_long: "Nombre demasiado largo (máx 30).",
       no_name: "Hace falta un nombre.", no_code: "Hace falta un código.",
@@ -294,6 +422,29 @@ const T = {
     error: "Open this page from the bot to see your data.",
     notRegistered: "Send /start in the bot to start playing.",
     loading: "Loading…", already: "You have already played this day.",
+    shop: "Shop",
+    shopHeadline: "Your game. Your style.",
+    shopSubtitle: "Give your profile personality, add colour to your challenges and stand out on the leaderboard.",
+    shopCosmetics: "Cosmetics only",
+    shopPreview: "Preview",
+    shopBuy: "Buy",
+    shopCollections: "Three ways to live football",
+    shopCollectionNav: "Collections",
+    shopSet: "Matching look · 5 items",
+    privacy: "Privacy",
+    refunds: "Terms and refunds",
+    shopFair: "Things to look at only: no points, no extra attempts, no free hints.",
+    shopSections: {
+      theme: "Themes", frame: "Frames", title: "Titles",
+      badge: "Badges", squares: "Squares", bundle: "Packs",
+    },
+    shopWear: "Wear it", shopWorn: "👕 Worn", shopOwned: "✅ Yours",
+    shopThanks: "Thank you! It's yours.", shopWaiting: "Delivering…",
+    shopErrors: {
+      already_owned: "You already have it.", not_for_sale: "Not sold on its own.",
+      unknown_item: "This item no longer exists.", not_owned: "You have to buy it first.",
+      not_equippable: "This collection contains multiple alternatives: choose the individual items to wear.",
+    },
     leagueErrors: {
       limit: "You are already in 5 leagues.", name_too_long: "Name too long (max 30).",
       no_name: "A name is needed.", no_code: "A code is needed.",
@@ -323,10 +474,44 @@ const state = {
   archiveDay: null,    // giornata passata aperta dentro l'archivio
   feedback: null,      // esito dell'ultimo tentativo
   hint: null,          // ultimo indizio ricevuto
+  shop: null,          // vetrina del negozio, caricata alla prima apertura
+  shopView: "catalog", shopKind: "all", shopPrice: "all", shopHideOwned: false,
+  publicTarget: null, publicProfile: null, publicError: false, profileScroll: 0,
+  preview: null, previewName: "", history: null, historyError: false, shopError: false,
   toast: null,
 };
 
-const SQUARES = { correct: "🟩", wrong: "🟥", unused: "⬜" };
+// I simboli del risultato: quelli classici finche' non se ne compra un altro set
+// (services/shop.py). Non e' una costante proprio per questo.
+let SQUARES = { correct: "🟩", wrong: "🟥", unused: "⬜" };
+
+// Nome della variabile CSS per ogni colore del tema. La pagina nasce con la palette del bot
+// scritta su `:root`; un tema comprato la sovrascrive sull'elemento radice, e toglierla
+// rimette esattamente quella di prima.
+const THEME_VARS = {
+  bg: "--bg", bg2: "--bg-secondary", card: "--card", edge: "--edge", text: "--text",
+  muted: "--muted", accent: "--accent", accentText: "--accent-text", track: "--track",
+  pattern: "--theme-pattern",
+};
+
+function cosmetics() {
+  return state.preview || (state.profile && state.profile.cosmetics) || {};
+}
+
+function applyCosmetics(worn) {
+  const style = document.documentElement.style;
+  const theme = (worn && worn.theme) || {};
+  Object.keys(THEME_VARS).forEach(key => {
+    if (theme[key]) style.setProperty(THEME_VARS[key], theme[key]);
+    else style.removeProperty(THEME_VARS[key]);
+  });
+  const squares = (worn && worn.squares) || {};
+  SQUARES = {
+    correct: squares.correct || "🟩",
+    wrong: squares.wrong || "🟥",
+    unused: squares.unused || "⬜",
+  };
+}
 
 function escapeHtml(value) {
   return String(value == null ? "" : value).replace(/[&<>"']/g, c => (
@@ -544,6 +729,46 @@ function archiveDayView(day) {
     </div>`;
 }
 
+const PUBLIC_TEXT = {
+  it: {open:"Apri profilo", title:"Profilo giocatore", wearing:"Il look indossato", numbers:"Statistiche di gioco", back:"Torna alla classifica", unavailable:"Profilo non disponibile. Potrebbe essere stato eliminato.", retry:"Riprova", hint:"Tocca un nome per vedere il profilo e il suo look.", example:"Simboli del risultato · esempio"},
+  es: {open:"Abrir perfil", title:"Perfil del jugador", wearing:"Su look actual", numbers:"Estadísticas de juego", back:"Volver a la clasificación", unavailable:"Perfil no disponible. Puede que se haya eliminado.", retry:"Reintentar", hint:"Toca un nombre para ver su perfil y su look.", example:"Símbolos del resultado · ejemplo"},
+  en: {open:"Open profile", title:"Player profile", wearing:"Current look", numbers:"Game statistics", back:"Back to leaderboard", unavailable:"Profile unavailable. It may have been deleted.", retry:"Retry", hint:"Tap a name to see their profile and look.", example:"Result symbols · example"}
+};
+function publicText() { return PUBLIC_TEXT[state.profile.language] || PUBLIC_TEXT.en; }
+function profileLink(row) {
+  const name = (row.badge ? row.badge + " " : "") + row.name;
+  return Number.isSafeInteger(row.profile_id) && row.profile_id > 0
+    ? `<button class="name profile-link" data-profile="${row.profile_id}" aria-label="${escapeHtml(publicText().open + ' · ' + row.name)}">${escapeHtml(name)}</button>`
+    : `<span class="name">${escapeHtml(name)}</span>`;
+}
+async function openPublicProfile(id) {
+  if (!state.publicTarget) state.profileScroll = window.scrollY;
+  state.publicTarget = id; state.publicProfile = null; state.publicError = false;
+  render(); window.scrollTo(0,0);
+  try {
+    const profile = await api("/app/api/profile/public", {profile_id:id});
+    if (state.publicTarget !== id) return;
+    state.publicProfile = profile;
+  } catch (e) { if (state.publicTarget !== id) return; state.publicError = true; }
+  render();
+  const heading = document.getElementById("public-heading");
+  if (heading) heading.focus({preventScroll:true});
+}
+function publicProfileView() {
+  const p = state.publicProfile, text = publicText();
+  const back = `<button class="btn ghost" id="close-profile">← ${escapeHtml(text.back)}</button>`;
+  if (state.publicError) return back + `<div class="card"><p>${escapeHtml(text.unavailable)}</p><button class="btn" id="retry-profile">${escapeHtml(text.retry)}</button></div>`;
+  if (!p) return back + `<p class="card" role="status">${escapeHtml(L.loading)}</p>`;
+  const worn=p.cosmetics, u=p.user, theme=worn.theme || {};
+  // Scope the visitor's theme to this panel; the viewer's equipped look is untouched.
+  const vars=Object.entries(THEME_VARS).map(([key,variable]) => `${variable}:${theme[key] || (key === "pattern" ? "none" : "initial")}`).join(";");
+  return back + `<section class="public-profile" style="${escapeHtml(vars)}" aria-label="${escapeHtml(text.title)}">
+    <div class="card profile-hero">${avatar(u.name,worn.frame)}<div><div class="preview-caption">${escapeHtml(text.title)}</div><h1 id="public-heading" tabindex="-1">${escapeHtml(u.name)} ${escapeHtml(worn.badge || "")}</h1>${worn.title.label ? `<div class="title-tag" style="color:${escapeHtml(worn.title.color)}">${escapeHtml(worn.title.label)}</div>` : ""}<p>${u.trophies} ${escapeHtml(L.trophies)}</p></div></div>
+    <div class="card"><h2>${escapeHtml(text.numbers)}</h2><div class="grid">${tile(u.points,L.total)}${tile(u.monthly_points,L.monthly)}${tile(u.players_guessed,L.guessed)}${tile(u.best_streak,L.best)}${tile(u.streak,L.streak)}${tile(u.archive_solved,L.recovered)}</div></div>
+    <div class="card"><h2>${escapeHtml(text.wearing)}</h2><div class="pack-contents">${p.wearing.map(item => `<span>${escapeHtml(L.shopSections[item.kind])} · ${escapeHtml(item.name)}</span>`).join("")}</div><p class="shop-note">${escapeHtml(text.example)}</p><div class="emoji-preview">${escapeHtml(worn.squares.wrong + worn.squares.correct + worn.squares.unused)}</div></div>
+  </section>`;
+}
+
 function statsTab() {
   const u = state.profile.user;
   const distribution = state.profile.distribution || [];
@@ -559,14 +784,19 @@ function statsTab() {
 
   const rows = (state.profile.leaderboard || []).map(row => `<div class="row${row.me ? " me" : ""}">
       <span class="pos">${row.position}</span>
-      <span class="name">${escapeHtml(row.name)}</span>
+      ${profileLink(row)}
       <span class="pts">${row.points}</span>
     </div>`).join("");
 
+  const worn = cosmetics();
+  const title = worn.title || {};
+  const badge = worn.badge ? `${worn.badge} ` : "";
+
   return `<div class="card" style="display:flex;align-items:center;gap:14px">
-      <div style="width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:20px;background:var(--accent);color:var(--accent-text)">${escapeHtml(initials(u.name))}</div>
+      ${avatar(u.name, worn.frame)}
       <div>
-        <h1 style="font-size:19px">${escapeHtml(u.name)}</h1>
+        <h1 style="font-size:19px">${escapeHtml(badge)}${escapeHtml(u.name)}</h1>
+        ${title.label ? `<div class="title-tag" style="color:${escapeHtml(title.color || "var(--accent)")}">${escapeHtml(title.label)}</div>` : ""}
         <div class="muted" style="font-size:13px">${u.points} ${escapeHtml(L.points)} · ${u.trophies} ${escapeHtml(L.trophies)}</div>
       </div>
     </div>
@@ -578,8 +808,17 @@ function statsTab() {
       </div>
     </div>
     <div class="card"><h2>${escapeHtml(L.distribution)}</h2>${bars}</div>
-    ${rows ? `<div class="card"><h2>${escapeHtml(L.leaderboard)}</h2>${rows}</div>` : ""}`;
+    ${rows ? `<div class="card"><h2>${escapeHtml(L.leaderboard)}</h2><p class="shop-note">${escapeHtml(publicText().hint)}</p>${rows}</div>` : ""}`;
 }
+
+function avatar(name, frame) {
+  const ring = (frame && frame.ring) || "";
+  return `<div class="avatar-wrap">
+      ${ring ? `<span class="ring${frame.spin ? " spin" : ""}" style="background:${escapeHtml(ring)}"></span>` : ""}
+      <div class="avatar">${escapeHtml(initials(name))}</div>
+    </div>`;
+}
+
 
 function tile(value, label) {
   return `<div class="tile"><div class="value">${escapeHtml(value)}</div><div class="label">${escapeHtml(label)}</div></div>`;
@@ -590,7 +829,7 @@ function leaguesTab() {
   const cards = leagues.length ? leagues.map(league => {
     const standings = (league.standings || []).map(m => `<div class="row${m.me ? " me" : ""}">
         <span class="pos">${m.position}</span>
-        <span class="name">${escapeHtml(m.name)}</span>
+        ${profileLink(m)}
         <span class="pts">${m.points}</span>
       </div>`).join("");
     return `<div class="card">
@@ -618,6 +857,285 @@ function leaguesTab() {
     </div>`;
 }
 
+/*
+  Il negozio. Ogni riquadro mostra **come si vedra'** l'oggetto - la striscia di colori di un
+  tema, il cerchio di una cornice, i tre simboli di un set di quadratini - perche' un nome
+  come "Terra rossa" da solo non dice niente a chi deve decidere se spenderci sopra.
+
+  Il prezzo lo scrive il server: qui si manda solo l'id di quello che si vuole comprare.
+*/
+const SHOP_I18N = {
+  "it": {
+    "catalog": "Catalogo",
+    "wardrobe": "I miei oggetti",
+    "history": "Acquisti",
+    "achievements": "Traguardi",
+    "all": "Tutte le categorie",
+    "anyPrice": "Qualsiasi prezzo",
+    "hideOwned": "Nascondi già miei",
+    "tryOn": "Prova",
+    "preview": "Stai provando",
+    "stop": "Termina prova",
+    "previewHint": "La prova è temporanea. Non acquista e non salva oggetti.",
+    "wearAll": "Indossa tutto",
+    "save": "Salva look attuale",
+    "name": "Nome del look",
+    "saved": "Look salvato",
+    "remove": "Elimina",
+    "empty": "Nessun oggetto con questi filtri.",
+    "looks": "I tuoi look · massimo 5",
+    "partial": "Prezzo per i soli pezzi mancanti",
+    "missing": "Ti mancano",
+    "owned": "Già tuo",
+    "earn": "Si conquista giocando",
+    "unlocked": "Traguardo sbloccato",
+    "refunded": "Rimborsato",
+    "paid": "Acquisto completato",
+    "noHistory": "Non hai ancora effettuato acquisti.",
+    "support": "Assistenza e rimborso",
+    "supportHint": "Copia il comando e invialo nella chat del bot. Puoi chiedere un rimborso entro 21 giorni dall’acquisto.",
+    "supportRequest": "Richiedo assistenza o rimborso per l’acquisto",
+    "copy": "Copia comando",
+    "copied": "Comando copiato",
+    "openBot": "Apri la chat del bot",
+    "retry": "Riprova",
+    "loadError": "Non riesco a caricare i dati. Riprova.",
+    "invalid_name": "Inserisci un nome da 1 a 30 caratteri.",
+    "look_limit": "Hai già 5 look. Eliminane uno o usa lo stesso nome per sostituirlo.",
+    "price_changed": "Il prezzo è cambiato. Riapri il negozio.",
+    "waiting": "Il pagamento è confermato. La consegna è ancora in corso: aggiorna il negozio tra poco."
+  },
+  "es": {
+    "catalog": "Catálogo",
+    "wardrobe": "Mis objetos",
+    "history": "Compras",
+    "achievements": "Logros",
+    "all": "Todas las categorías",
+    "anyPrice": "Cualquier precio",
+    "hideOwned": "Ocultar los que tengo",
+    "tryOn": "Probar",
+    "preview": "Estás probando",
+    "stop": "Terminar prueba",
+    "previewHint": "La prueba es temporal. No compra ni guarda objetos.",
+    "wearAll": "Ponerse todo",
+    "save": "Guardar look actual",
+    "name": "Nombre del look",
+    "saved": "Look guardado",
+    "remove": "Eliminar",
+    "empty": "No hay objetos con estos filtros.",
+    "looks": "Tus looks · máximo 5",
+    "partial": "Precio por las piezas que faltan",
+    "missing": "Te faltan",
+    "owned": "Ya es tuyo",
+    "earn": "Se consigue jugando",
+    "unlocked": "Logro desbloqueado",
+    "refunded": "Reembolsado",
+    "paid": "Compra completada",
+    "noHistory": "Todavía no has hecho compras.",
+    "support": "Ayuda y reembolso",
+    "supportHint": "Copia el comando y envíalo en el chat del bot. Puedes pedir un reembolso dentro de 21 días de la compra.",
+    "supportRequest": "Solicito ayuda o reembolso para la compra",
+    "copy": "Copiar comando",
+    "copied": "Comando copiado",
+    "openBot": "Abrir chat del bot",
+    "retry": "Reintentar",
+    "loadError": "No se pueden cargar los datos. Inténtalo de nuevo.",
+    "invalid_name": "Escribe un nombre de 1 a 30 caracteres.",
+    "look_limit": "Ya tienes 5 looks. Borra uno o usa el mismo nombre para sustituirlo.",
+    "price_changed": "El precio ha cambiado. Abre la tienda de nuevo.",
+    "waiting": "Pago confirmado. La entrega sigue en curso: actualiza la tienda en un momento."
+  },
+  "en": {
+    "catalog": "Catalogue",
+    "wardrobe": "My items",
+    "history": "Purchases",
+    "achievements": "Milestones",
+    "all": "All categories",
+    "anyPrice": "Any price",
+    "hideOwned": "Hide owned items",
+    "tryOn": "Try on",
+    "preview": "Trying on",
+    "stop": "End preview",
+    "previewHint": "This preview is temporary. It does not buy or save items.",
+    "wearAll": "Wear full set",
+    "save": "Save current look",
+    "name": "Look name",
+    "saved": "Look saved",
+    "remove": "Delete",
+    "empty": "No items match these filters.",
+    "looks": "Your looks · maximum 5",
+    "partial": "Price for the missing pieces only",
+    "missing": "Missing",
+    "owned": "Already yours",
+    "earn": "Earn by playing",
+    "unlocked": "Milestone unlocked",
+    "refunded": "Refunded",
+    "paid": "Purchase completed",
+    "noHistory": "You have not made any purchases yet.",
+    "support": "Support and refunds",
+    "supportHint": "Copy the command and send it in the bot chat. You can request a refund within 21 days of purchase.",
+    "supportRequest": "I request support or a refund for purchase",
+    "copy": "Copy command",
+    "copied": "Command copied",
+    "openBot": "Open bot chat",
+    "retry": "Retry",
+    "loadError": "Could not load the data. Please retry.",
+    "invalid_name": "Enter a name between 1 and 30 characters.",
+    "look_limit": "You already have 5 looks. Delete one or reuse a name to replace it.",
+    "price_changed": "The price changed. Reopen the shop.",
+    "waiting": "Payment confirmed. Delivery is still in progress: refresh the shop shortly."
+  }
+};
+function shopText() { return SHOP_I18N[(state.profile || {}).language] || SHOP_I18N.en; }
+
+function shopTab() {
+  const s = shopText();
+  if (state.shopError) return `<div class="card">${escapeHtml(s.loadError)}<button class="btn" id="shop-retry">${escapeHtml(s.retry)}</button></div>`;
+  if (!state.shop) return `<div class="card center muted">${escapeHtml(L.loading)}</div>`;
+
+  const intro = `<div class="card shop-hero">
+      <span class="shop-kicker">${escapeHtml(L.shop)} · Guess the Player</span>
+      <span class="shop-sparkles" aria-hidden="true">✦</span>
+      <h1>${escapeHtml(L.shopHeadline)}</h1>
+      <p>${escapeHtml(L.shopSubtitle)}</p>
+      <div class="shop-pills"><span>✦ ${escapeHtml(L.shopCosmetics)}</span><span>⭐ Telegram Stars</span></div>
+      <p>${escapeHtml(L.shopFair)}</p>
+      ${legalLinks()}
+    </div>`;
+  const tabs = `<div class="shop-controls">${["catalog","wardrobe","achievements","history"].map(view => `<button data-shop-view="${view}" aria-pressed="${state.shopView === view}">${escapeHtml(s[view])}</button>`).join("")}</div>`;
+  if (state.shopView === "history") return intro + tabs + purchaseHistory();
+  const filters = `<div class="shop-controls"><select id="shop-kind" aria-label="${escapeHtml(s.all)}"><option value="all">${escapeHtml(s.all)}</option>${Object.entries(L.shopSections).map(([key,label]) => `<option value="${key}" ${state.shopKind === key ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>
+    <select id="shop-price" aria-label="${escapeHtml(s.anyPrice)}"><option value="all">${escapeHtml(s.anyPrice)}</option>${[15,25,55,75].map(price => `<option value="${price}" ${state.shopPrice === String(price) ? "selected" : ""}>≤ ${price} ⭐</option>`).join("")}</select>
+    ${state.shopView === "catalog" ? `<label><input id="shop-hide-owned" type="checkbox" ${state.shopHideOwned ? "checked" : ""}> ${escapeHtml(s.hideOwned)}</label>` : ""}</div>`;
+  const matches = item => (state.shopKind === "all" || state.shopKind === item.kind) &&
+    (state.shopPrice === "all" || item.price <= Number(state.shopPrice)) &&
+    (state.shopView !== "wardrobe" || item.owned) &&
+    (state.shopView !== "achievements" || item.achievement) &&
+    (state.shopView !== "catalog" || (!item.achievement && (!state.shopHideOwned || !item.owned)));
+  const visiblePacks = state.shop.bundles.filter(matches);
+  const visibleSections = state.shop.sections.map(section => ({kind:section.kind, items:section.items.filter(matches)})).filter(section => section.items.length);
+  const featured = visiblePacks.filter(item => item.featured);
+  const regular = visiblePacks.filter(item => !item.featured);
+  const collections = featured.length ? shopSection("bundle", featured, L.shopCollections, "collections") : "";
+  const packs = regular.length ? shopSection("bundle", regular) : "";
+  const shelves = visibleSections.map(section => shopSection(section.kind, section.items)).join("");
+  const kinds = (regular.length ? ["bundle"] : []).concat(visibleSections.map(section => section.kind));
+  const shortcuts = `<div class="shop-shortcuts">${featured.length ? `<a href="#shelf-collections">${escapeHtml(L.shopCollectionNav)}</a>` : ""}${kinds.map(kind => `<a href="#shelf-${escapeHtml(kind)}">${escapeHtml(L.shopSections[kind])}</a>`).join("")}</div>`;
+  return intro + tabs + (state.shopView === "wardrobe" ? savedLooks() : "") + filters + shortcuts +
+    (collections + packs + shelves || `<p class="card">${escapeHtml(s.empty)}</p>`);
+}
+
+function savedLooks() {
+  const s = shopText();
+  return `<div class="card"><h2>${escapeHtml(s.looks)}</h2><div class="shop-controls"><input id="look-name" maxlength="30" aria-label="${escapeHtml(s.name)}" placeholder="${escapeHtml(s.name)}"><button id="save-look" ${state.preview ? "disabled" : ""}>${escapeHtml(s.save)}</button></div>
+    ${(state.shop.looks || []).map(look => `<div class="shop-controls"><span>${escapeHtml(look.name)}</span><button data-use-look="${escapeHtml(look.name)}">${escapeHtml(L.shopWear)}</button><button data-delete-look="${escapeHtml(look.name)}">${escapeHtml(s.remove)}</button></div>`).join("")}</div>`;
+}
+
+function purchaseHistory() {
+  const s = shopText();
+  if (state.historyError) return `<div class="card">${escapeHtml(s.loadError)}<button class="btn" id="history-retry">${escapeHtml(s.retry)}</button></div>`;
+  if (!state.history) return `<p class="card">${escapeHtml(L.loading)}</p>`;
+  if (!state.history.purchases.length) return `<p class="card">${escapeHtml(s.noHistory)}</p>`;
+  return state.history.purchases.map((purchase, index) => `<div class="card"><b>${escapeHtml(purchase.name)}</b><p>${escapeHtml(purchase.day)} · ${escapeHtml(purchase.stars)} ⭐ · ${escapeHtml(purchase.refunded ? s.refunded : s.paid)}</p>
+    <details><summary>${escapeHtml(s.support)}</summary><p class="shop-note">${escapeHtml(s.supportHint)}</p><textarea class="history-command" id="support-${index}" readonly aria-label="${escapeHtml(s.support)}">${escapeHtml('/paysupport ' + s.supportRequest + ' ' + purchase.charge_id)}</textarea><button class="btn ghost" data-copy-support="${index}">${escapeHtml(s.copy)}</button>${state.history.support_url ? `<a class="btn ghost" href="${escapeHtml(state.history.support_url)}" target="_blank" rel="noopener">${escapeHtml(s.openBot)}</a>` : ""}</details></div>`).join("");
+}
+
+function allShopItems() {
+  if (!state.shop) return [];
+  return state.shop.bundles.concat(...state.shop.sections.map(section => section.items), ...state.shop.bundles.map(pack => pack.contents || []));
+}
+
+function tryItem(id) {
+  const item = allShopItems().find(one => one.id === id);
+  if (!item) return;
+  const worn = JSON.parse(JSON.stringify(cosmetics()));
+  for (const piece of item.kind === "bundle" ? (item.contents || []) : [item]) {
+    if (piece.kind === "badge") worn.badge = piece.style.emoji || "";
+    else if (piece.kind === "title") worn.title = {color:piece.style.color, label:(piece.style.label_i18n || {})[state.profile.language] || piece.style.label || ""};
+    else worn[piece.kind] = piece.style;
+  }
+  state.preview = worn;
+  state.previewName = item.name;
+  applyCosmetics(worn);
+  render();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+
+function previewBar() {
+  if (!state.preview) return "";
+  const s = shopText(), worn = state.preview;
+  return `<aside class="preview-bar" aria-label="${escapeHtml(s.preview)}"><b>${escapeHtml(s.preview)} · ${escapeHtml(state.previewName)}</b><div class="preview-person">${avatar(state.profile.user.name, worn.frame)}<div>${escapeHtml(state.profile.user.name)} ${escapeHtml(worn.badge || "")}<div class="title-tag" style="color:${escapeHtml((worn.title || {}).color || 'var(--muted)')}">${escapeHtml((worn.title || {}).label || "—")}</div><div>${escapeHtml(SQUARES.wrong + SQUARES.correct + SQUARES.unused)}</div></div></div><p class="shop-note">${escapeHtml(s.previewHint)}</p><button class="btn ghost small" id="stop-preview">${escapeHtml(s.stop)}</button></aside>`;
+}
+
+function stopPreview() {
+  state.preview = null;
+  applyCosmetics(state.profile.cosmetics);
+  render();
+}
+
+function shopSection(kind, items, heading = L.shopSections[kind] || kind, shelf = kind) {
+  return `<div class="card" id="shelf-${escapeHtml(shelf)}">
+    <h2>${escapeHtml(heading)}</h2>
+    <div class="shop-grid${kind === "bundle" ? " wide" : ""}">${items.map(item => shopCell(kind, item)).join("")}</div>
+  </div>`;
+}
+
+function shopPreview(kind, item) {
+  const style = item.style || {};
+  const name = (state.profile.user || {}).name || "Player";
+  const caption = `<div class="preview-caption">${escapeHtml(L.shopPreview)}</div>`;
+  if (kind === "theme") {
+    return `<div class="shop-stage" style="background-color:${escapeHtml(style.bg)};background-image:${escapeHtml(style.pattern || 'none')};color:${escapeHtml(style.text)}">
+      ${caption}<div class="mini-pitch" aria-hidden="true" style="color:${escapeHtml(style.accent)}"></div>
+      <div style="background:${escapeHtml(style.card)};padding:6px 14px;border-radius:8px;color:${escapeHtml(style.accent)}">● ━ ● ━ ⚽</div>
+    </div>`;
+  }
+  if (kind === "frame") {
+    return `<div class="shop-stage">${avatar(name, style)}<div class="preview-name">${escapeHtml(name)}</div>${caption}</div>`;
+  }
+  if (kind === "badge") return `<div class="shop-stage"><div class="emoji-preview">${escapeHtml(style.emoji || "—")}</div><div class="preview-name">${escapeHtml(name)} ${escapeHtml(style.emoji || "")}</div>${caption}</div>`;
+  if (kind === "squares") {
+    return `<div class="shop-stage">${caption}<div class="preview-name">Guess the Player · 2/3</div><div class="emoji-preview">${escapeHtml((style.wrong || "") + (style.correct || "") + (style.unused || ""))}</div></div>`;
+  }
+  if (kind === "title") {
+    // Il titolo arriva col suo `label_i18n`: e' l'unico cosmetico fatto di parole.
+    const label = (style.label_i18n && style.label_i18n[state.profile.language]) || style.label;
+    return `<div class="shop-stage"><div class="preview-name">${escapeHtml(name)}</div><div class="title-tag" style="color:${escapeHtml(style.color || "var(--muted)")}">${escapeHtml(label || "—")}</div>${caption}</div>`;
+  }
+  if (kind === "bundle" && item.contents && item.contents.length) {
+    const byKind = k => (item.contents.find(piece => piece.kind === k) || {}).style || {};
+    const theme = byKind("theme"), title = byKind("title"), squares = byKind("squares");
+    const label = (title.label_i18n || {})[state.profile.language] || title.label || "";
+    return `<div class="shop-stage" style="background-color:${escapeHtml(theme.bg || 'var(--bg)')};background-image:${escapeHtml(theme.pattern || 'none')};color:${escapeHtml(theme.text || 'var(--text)')};--accent:${escapeHtml(theme.accent || 'var(--text)')};--accent-text:${escapeHtml(theme.accentText || 'var(--bg)')}">
+      ${caption}${avatar(name, byKind("frame"))}
+      <div class="preview-name">${escapeHtml(name)} ${escapeHtml(byKind("badge").emoji || "")}</div>
+      ${label ? `<div class="title-tag" style="color:${escapeHtml(title.color)}">${escapeHtml(label)}</div>` : ""}
+      ${squares.correct ? `<div class="emoji-preview">${escapeHtml(squares.wrong + squares.correct + squares.unused)}</div>` : ""}
+    </div><div class="pack-contents">${item.contents.map(piece => `<span>${escapeHtml(piece.name)}</span>`).join("")}</div>`;
+  }
+  return `<div class="emoji-preview">🎁</div>`;
+}
+
+function shopCell(kind, item) {
+  const s = shopText();
+  let action;
+  if (item.equipped) action = `<div class="tag">${escapeHtml(L.shopWorn)}</div>`;
+  else if (item.owned && kind === "bundle") action = `<div class="tag">${escapeHtml(L.shopOwned)}</div>${item.equippable ? `<button class="btn ghost small" data-equip="${escapeHtml(item.id)}">${escapeHtml(s.wearAll)}</button>` : ""}`;
+  else if (item.owned) {
+    action = `<button class="btn ghost small" data-equip="${escapeHtml(item.id)}">${escapeHtml(L.shopWear)}</button>`;
+  } else if (item.achievement) {
+    action = `<div class="shop-note">${escapeHtml(s.earn)} · ${item.progress}/${item.achievement.target}</div><progress max="${item.achievement.target}" value="${item.progress}" aria-label="${escapeHtml(item.name)}"></progress>`;
+  } else {
+    action = `<button class="btn small" data-buy="${escapeHtml(item.id)}" aria-label="${escapeHtml(L.shopBuy + ' ' + item.name + ' · ' + item.price + ' ⭐')}">${escapeHtml(L.shopBuy)} · ${item.price} ⭐</button>`;
+  }
+  return `<div class="shop-item${item.equipped ? " worn" : ""}${item.featured ? " featured" : ""}">
+      <div>${item.featured ? `<div class="shop-set-label">${escapeHtml(L.shopSet)}</div>` : ""}${shopPreview(kind, item)}</div>
+      <div class="nm">${escapeHtml(item.name)}</div>
+      <div class="ds">${escapeHtml(item.description)}${item.achievement && item.owned ? `<p>${escapeHtml(s.unlocked)}</p>` : ""}${kind === "bundle" && item.price > 0 && item.price < item.full_price ? `<p><b>${escapeHtml(s.partial)} · ${item.price} ⭐</b><br>${escapeHtml(s.missing)}: ${(item.contents || []).filter(piece => !piece.owned).map(piece => escapeHtml(piece.name)).join(", ")}</p>` : ""}</div>
+      <div>${(kind !== "bundle" || item.equippable) ? `<button class="btn ghost small" data-try="${escapeHtml(item.id)}">${escapeHtml(s.tryOn)}</button>` : ""}${action}</div>
+    </div>`;
+}
+
 // ---------------------------------------------------------------------------
 // Disegno e interazioni
 // ---------------------------------------------------------------------------
@@ -627,22 +1145,30 @@ const TABS = [
   { id: "archive", icon: "🗂", label: () => L.archive },
   { id: "stats", icon: "📊", label: () => L.stats },
   { id: "leagues", icon: "🏅", label: () => L.leagues },
+  { id: "shop", icon: "🛍", label: () => L.shop },
 ];
+
+function legalLinks() {
+  const lang = encodeURIComponent((state.profile && state.profile.language) || clientLanguage());
+  return `<footer class="legal-links"><a href="/privacy?lang=${lang}" target="_blank" rel="noopener">${escapeHtml(L.privacy)}</a><a href="/terms?lang=${lang}#refunds" target="_blank" rel="noopener">${escapeHtml(L.refunds)}</a></footer>`;
+}
 
 function render() {
   if (!state.profile) return;
-  const body = { play: playTab, archive: archiveTab, stats: statsTab, leagues: leaguesTab }[state.tab]();
+  const body = state.publicTarget ? publicProfileView() : {
+    play: playTab, archive: archiveTab, stats: statsTab, leagues: leaguesTab, shop: shopTab,
+  }[state.tab]();
   const nav = TABS.map(tab => `<button data-tab="${tab.id}" aria-selected="${state.tab === tab.id}">
       <span class="icon">${tab.icon}</span><span>${escapeHtml(tab.label())}</span>
     </button>`).join("");
 
   document.getElementById("root").innerHTML =
-    body + `<nav>${nav}</nav>` + (state.toast ? `<div class="toast">${escapeHtml(state.toast)}</div>` : "");
+    previewBar() + body + legalLinks() + `<nav>${nav}</nav>` + (state.toast ? `<div class="toast">${escapeHtml(state.toast)}</div>` : "");
   wire();
 }
 
 function showMessage(text) {
-  document.getElementById("root").innerHTML = `<p class="error">${escapeHtml(text)}</p>`;
+  document.getElementById("root").innerHTML = `<p class="error">${escapeHtml(text)}</p>` + legalLinks();
 }
 
 function syncMainButton() {
@@ -663,13 +1189,48 @@ function syncMainButton() {
 
 function wire() {
   syncMainButton();
+  document.querySelectorAll("[data-profile]").forEach(button => button.onclick = () => openPublicProfile(Number(button.dataset.profile)));
+  const closeProfile = document.getElementById("close-profile");
+  if (closeProfile) closeProfile.onclick = () => { state.publicTarget = null; render(); window.scrollTo(0,state.profileScroll); };
+  const retryProfile = document.getElementById("retry-profile");
+  if (retryProfile) retryProfile.onclick = () => openPublicProfile(state.publicTarget);
+  document.querySelectorAll("[data-shop-view]").forEach(button => button.onclick = () => {
+    state.shopView = button.dataset.shopView;
+    state.shopKind = "all"; state.shopPrice = "all";
+    if (state.shopView === "history") loadHistory();
+    render();
+  });
+  for (const [id, field] of [["shop-kind","shopKind"],["shop-price","shopPrice"]]) {
+    const input = document.getElementById(id);
+    if (input) input.onchange = () => { state[field] = input.value; render(); };
+  }
+  const hideOwned = document.getElementById("shop-hide-owned");
+  if (hideOwned) hideOwned.onchange = () => { state.shopHideOwned = hideOwned.checked; render(); };
+  document.querySelectorAll("[data-try]").forEach(button => button.onclick = () => tryItem(button.dataset.try));
+  const stop = document.getElementById("stop-preview");
+  if (stop) stop.onclick = stopPreview;
+  const save = document.getElementById("save-look");
+  if (save) save.onclick = () => lookAction("save", document.getElementById("look-name").value);
+  document.querySelectorAll("[data-use-look]").forEach(button => button.onclick = () => lookAction("wear",button.dataset.useLook));
+  document.querySelectorAll("[data-delete-look]").forEach(button => button.onclick = () => lookAction("delete",button.dataset.deleteLook));
+  const retry = document.getElementById("shop-retry");
+  if (retry) retry.onclick = loadShop;
+  const historyRetry = document.getElementById("history-retry");
+  if (historyRetry) historyRetry.onclick = loadHistory;
+  document.querySelectorAll("[data-copy-support]").forEach(button => button.onclick = async () => {
+    const input = document.getElementById(`support-${button.dataset.copySupport}`);
+    try { await navigator.clipboard.writeText(input.value); toast(shopText().copied); }
+    catch (e) { input.focus(); input.select(); }
+  });
 
   document.querySelectorAll("[data-tab]").forEach(button => {
     button.onclick = () => {
       state.tab = button.dataset.tab;
+      state.publicTarget = null;
       state.feedback = null;
       state.hint = null;
       if (state.tab === "archive" && !state.calendar) loadCalendar();
+      if (state.tab === "shop" && !state.shop) loadShop();
       render();
     };
   });
@@ -710,6 +1271,14 @@ function wire() {
     button.onclick = () => {
       if (window.confirm(L.leaveConfirm)) leagueAction("leave", { code: button.dataset.leave });
     };
+  });
+
+  document.querySelectorAll("[data-buy]").forEach(button => {
+    button.onclick = () => buy(button.dataset.buy);
+  });
+
+  document.querySelectorAll("[data-equip]").forEach(button => {
+    button.onclick = () => wear(button.dataset.equip);
   });
 
   document.querySelectorAll("[data-invite]").forEach(button => {
@@ -801,6 +1370,96 @@ async function askHint() {
   }
 }
 
+// --- negozio ----------------------------------------------------------------
+
+async function loadShop() {
+  state.shopError = false;
+  try {
+    state.shop = await api("/app/api/shop");
+  } catch (e) {
+    state.shopError = true;
+  }
+  render();
+}
+
+async function loadHistory() {
+  state.historyError = false;
+  try { state.history = await api("/app/api/shop/history"); }
+  catch (e) { state.historyError = true; }
+  render();
+}
+
+async function lookAction(action, name) {
+  try {
+    const result = await api("/app/api/shop/look", {action, name});
+    if (result.status !== "ok") { toast(shopText()[result.status] || L.shopErrors[result.status] || L.error); return; }
+    if (action === "wear") { state.preview = null; await loadProfile(); }
+    await loadShop();
+    if (action === "save") toast(shopText().saved);
+  } catch (e) { toast(L.error); }
+}
+
+function ownedInShop(itemId) {
+  if (!state.shop) return false;
+  const everything = state.shop.bundles.concat(
+    ...state.shop.sections.map(section => section.items)
+  );
+  const found = everything.find(item => item.id === itemId);
+  return !!(found && found.owned);
+}
+
+async function buy(itemId) {
+  if (state.buying || ownedInShop(itemId)) return;
+  state.buying = true;
+  /*
+    Il pagamento lo apre Telegram (`openInvoice`), la consegna la fa il **bot** quando
+    Telegram gli manda il pagamento sul webhook: questa pagina non scrive niente, altrimenti
+    basterebbero gli strumenti di sviluppo per regalarsi la collezione completa.
+
+    Fra il "pagato" che vede l'utente e la consegna passa il tempo di un giro di webhook,
+    quindi si ricarica la vetrina finche' l'oggetto non compare (o finche' non ci si stanca:
+    ce l'ha comunque, si vede riaprendo).
+  */
+  try {
+    const result = await api("/app/api/shop/buy", { item: itemId });
+    if (result.status !== "ok") { state.buying = false; toast(L.shopErrors[result.status] || L.error); await loadShop(); return; }
+    if (!tg || !tg.openInvoice) { state.buying = false; toast(L.error); return; }
+
+    tg.openInvoice(result.link, async status => {
+      state.buying = false;
+      if (status !== "paid") {
+        if (status === "failed") toast(L.error);
+        return;
+      }
+      haptic("success");
+      toast(L.shopWaiting);
+      for (let attempt = 0; attempt < 5 && !ownedInShop(itemId); attempt++) {
+        await new Promise(done => setTimeout(done, 900));
+        await loadShop();
+      }
+      await loadProfile();
+      toast(ownedInShop(itemId) ? L.shopThanks : shopText().waiting);
+    });
+  } catch (e) {
+    state.buying = false;
+    toast(L.error);
+  }
+}
+
+async function wear(itemId) {
+  try {
+    const result = await api("/app/api/shop/equip", { item: itemId });
+    if (result.status !== "ok") { toast(L.shopErrors[result.status] || L.error); return; }
+    haptic("success");
+    state.preview = null;
+    if (state.profile) state.profile.cosmetics = result.cosmetics;
+    applyCosmetics(result.cosmetics);
+    await loadShop();
+  } catch (e) {
+    toast(L.error);
+  }
+}
+
 async function leagueAction(action, body) {
   try {
     const result = await api("/app/api/league", Object.assign({ action }, body));
@@ -840,6 +1499,9 @@ async function loadProfile(options) {
   // La lingua e' quella scelta con /language, non quella del client: chi ha impostato lo
   // spagnolo nel bot deve trovarlo anche qui.
   L = T[state.profile.language] || L;
+  // Prima del disegno: il tema comprato deve valere gia' per la prima schermata, non
+  // arrivare come un lampo di colore dopo.
+  applyCosmetics(state.preview || state.profile.cosmetics);
   if (options && options.keepFeedback) state.feedback = feedback;
   if (options && options.keepHint) state.hint = hint;
   render();
