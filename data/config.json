@@ -43,7 +43,31 @@
     "HNL",
     "Allsvenskan",
     "Eliteserien",
-    "Superligaen"
+    "Superligaen",
+    "Serie C",
+    "3. Liga",
+    "Championnat National",
+    "Segunda Division B",
+    "League One",
+    "Challenger Pro League",
+    "A-League",
+    "National Soccer League"
+  ],
+  "obscure_leagues": [
+    "Chinese Super League",
+    "J1 League",
+    "Qatar Stars League",
+    "Serbian SuperLiga",
+    "Indian Super League",
+    "UAE Pro League",
+    "Liga I",
+    "Cypriot First Division",
+    "Serie D",
+    "Championnat National 2",
+    "National 3 Group D",
+    "League Two",
+    "Eccellenza",
+    "Belgian National Division 1"
   ],
   "difficulty_thresholds": {
     "easy": 5,

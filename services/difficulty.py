@@ -13,6 +13,12 @@ DEFAULT_POPULARITY = 3
 # pubblico del bot fatica a collocare. I campionati "noti ma non top" (Eredivisie,
 # Primeira Liga, Liga Argentina, Brasileirao, MLS...) stanno in mezzo: Ajax, Porto e Boca
 # non possono pesare come una seconda divisione asiatica.
+#
+# Il peso 1.0 e' insieme una lista (`obscure_leagues` in data/config.json) e il ripiego per
+# tutto cio' che non e' in nessuna lista: la funzione qui sotto non ha bisogno di leggerla,
+# perche' il risultato sarebbe identico. La lista serve a `services/dataset_health.py`, che
+# senza di essa non puo' distinguere un campionato giudicato sconosciuto da uno che nessuno
+# ha ancora guardato - ed e' solo il secondo a meritare un avviso.
 LEAGUE_TIER_TOP = 0.0
 LEAGUE_TIER_KNOWN = 0.5
 LEAGUE_TIER_OBSCURE = 1.0

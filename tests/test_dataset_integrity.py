@@ -1,3 +1,5 @@
+import itertools
+
 from services.dataset_health import build_report, unclassified_leagues
 from services.player_pool import (
     _load_raw_players,
@@ -189,10 +191,37 @@ def test_distinct_leagues_are_not_confused():
 def test_every_configured_league_name_exists_in_the_dataset():
     # Una voce di known_leagues che nessuna tappa usa e' quasi sempre un nome scritto in un
     # modo nel dataset e in un altro in config: la classificazione non si applica a niente.
+    # Vale anche per obscure_leagues, dove un nome sbagliato non cambierebbe nessun punteggio
+    # (1.0 e' gia' il ripiego) ma zittirebbe l'avviso senza che nessuno abbia deciso niente.
     used = {stop.get("league") for player in _load_raw_players() for stop in player.get("career", [])}
     config = load_config()
-    for league in config.get("top_leagues", []) + config.get("known_leagues", []):
+    configured = (
+        config.get("top_leagues", []) + config.get("known_leagues", []) + config.get("obscure_leagues", [])
+    )
+    for league in configured:
         assert league in used, f"'{league}' e' classificato in config.json ma non compare nel dataset"
+
+
+def test_a_league_is_classified_in_one_list_only():
+    # Le tre liste sono i tre pesi: un campionato in due liste e' un peso deciso due volte,
+    # e quale vince dipenderebbe dall'ordine dei controlli in league_tier_weight.
+    config = load_config()
+    lists = ("top_leagues", "known_leagues", "obscure_leagues")
+    for first, second in itertools.combinations(lists, 2):
+        shared = set(config.get(first, [])) & set(config.get(second, []))
+        assert not shared, f"campionati in '{first}' e '{second}' insieme: {sorted(shared)}"
+
+
+def test_leagues_decided_as_obscure_are_not_reported_as_unclassified():
+    # La differenza fra "guardato e giudicato sconosciuto" e "non ancora guardato": il peso
+    # e' lo stesso (1.0), l'avviso no.
+    players = [_player(f"p{n}", ("A", "Cina", "Chinese Super League"), ("B", "Italia", "Serie A"))
+               for n in range(3)]
+    config = {"top_leagues": ["Serie A"], "known_leagues": [], "unclassified_league_warning_min": 3}
+    assert unclassified_leagues(players, config) == [("Chinese Super League", 3)]
+
+    config["obscure_leagues"] = ["Chinese Super League"]
+    assert unclassified_leagues(players, config) == []
 
 
 def test_frequent_unclassified_leagues_are_reported():

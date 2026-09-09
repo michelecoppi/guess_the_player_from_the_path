@@ -124,15 +124,31 @@ pesare come una seconda divisione asiatica. Ogni tappa vale:
 | Peso | Chi | Dove è definito |
 |---|---|---|
 | **0.0** | I top 5 europei: Premier League, La Liga, Serie A, Bundesliga, Ligue 1 | `top_leagues` |
-| **0.5** | Campionati che il pubblico colloca senza sforzo: Eredivisie, Primeira Liga, Liga Profesional, Brasileirão, MLS, Championship, Süper Lig, Serie B, Scottish Premiership, Liga MX... | `known_leagues` |
-| **1.0** | Tutto il resto (J1 League, Chinese Super League, Qatar Stars League, Liga I, Girabola...) | *nessuna lista: è il default* |
+| **0.5** | Campionati che il pubblico colloca senza sforzo: Eredivisie, Primeira Liga, Liga Profesional, Brasileirão, MLS, Championship, Süper Lig, Serie B, Serie C, Scottish Premiership, Liga MX... | `known_leagues` |
+| **1.0** | Campionati giudicati fuori portata: J1 League, Chinese Super League, Qatar Stars League, Serbian SuperLiga, Liga I... | `obscure_leagues` |
+| **1.0** | Tutto il resto: la coda lunga che nessuno ha ancora guardato (Girabola, Erovnuli Liga, Gamma Ethniki...) | *nessuna lista: è il default* |
 
 L'`oscurità_campionati` è la **media** di questi pesi sulle tappe, non la somma: una carriera
 lunga non viene punita solo perché è lunga (a quello pensa già, con molta moderazione, il
 termine sulle squadre).
 
-Aggiungere un campionato a `known_leagues` è una decisione editoriale, non tecnica: chiediti
-se il tifoso di riferimento, letto il nome del campionato, sa in che paese si gioca.
+Le ultime due righe pesano uguale, e non è una svista: `obscure_leagues` non cambia nessun
+punteggio. Serve a separare *"l'ho guardato e per il mio pubblico è fuori portata"* da *"non
+l'ho ancora guardato"*, che è una differenza che il peso da solo non può esprimere. Su questa
+distinzione lavora l'avviso di `scripts/dataset_report.py`: segnala i campionati sopra
+`unclassified_league_warning_min` tappe che non stanno in **nessuna** delle tre liste, cioè le
+decisioni che non ha preso nessuno. Un campionato messo in `obscure_leagues` sparisce
+dall'avviso senza che niente si muova nelle fasce.
+
+Classificare un campionato è una decisione editoriale, non tecnica: chiediti se il tifoso di
+riferimento, letto il nome del campionato, sa in che paese si gioca. I terzi livelli dei top 5
+(Serie C, 3. Liga, Championnat National, Segunda Division B) stanno in `known_leagues` per lo
+stesso motivo per cui ci stanno già i secondi: il nome dice il paese e il livello.
+
+**La regola si ferma al terzo livello.** Dal quarto in giù si finisce in `obscure_leagues`
+anche nei paesi top, perché lì il nome non dice più niente a nessuno: Serie D ed Eccellenza in
+Italia, League Two in Inghilterra, Championnat National 2 e National 3 in Francia. Serie C e
+Serie D a un carattere di distanza e in due liste diverse è una scelta, non una svista.
 
 ---
 

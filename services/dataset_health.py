@@ -28,13 +28,21 @@ def _load_templates():
 def unclassified_leagues(players, config):
     """I campionati abbastanza frequenti da meritare una classificazione, che non ce l'hanno.
 
-    `league_tier_weight` (services/difficulty.py) non ha una terza lista: quello che non e'
-    in `top_leagues` ne' in `known_leagues` pesa come sconosciuto. E' il ripiego giusto per
-    la coda lunga - la maggior parte delle leghe del dataset compare una o due volte - ma
-    sopra una certa frequenza smette di essere un ripiego e diventa una decisione presa da
-    nessuno. La soglia sta in `unclassified_league_warning_min` (data/config.json)."""
+    Le tre liste di data/config.json corrispondono ai tre pesi di `league_tier_weight`
+    (services/difficulty.py): `top_leagues` vale 0, `known_leagues` 0.5, `obscure_leagues` 1.0.
+    L'ultima non cambia nessun punteggio - 1.0 e' gia' il peso di ripiego per tutto cio' che
+    non e' in nessuna lista - e serve solo a distinguere "guardato, pesa come sconosciuto" da
+    "non ancora guardato": solo il secondo caso e' un avviso.
+
+    Il ripiego e' giusto per la coda lunga (la maggior parte delle leghe del dataset compare
+    una o due volte), ma sopra una certa frequenza smette di essere un ripiego e diventa una
+    decisione presa da nessuno. La soglia sta in `unclassified_league_warning_min`."""
     minimum = config.get("unclassified_league_warning_min", 20)
-    classified = set(config.get("top_leagues", [])) | set(config.get("known_leagues", []))
+    classified = (
+        set(config.get("top_leagues", []))
+        | set(config.get("known_leagues", []))
+        | set(config.get("obscure_leagues", []))
+    )
     counts: dict[str, int] = {}
     for player in players:
         for stop in player.get("career", []):
@@ -85,8 +93,9 @@ def build_report(exclude_ids=None):
         elenco = ", ".join(f"{league} ({stints})" for league, stints in unclassified)
         warnings.append(
             f"Campionati non classificati in data/config.json, con il numero di tappe: {elenco}. "
-            f"Valgono come sconosciuti nel calcolo della difficolta': se e' la scelta giusta va "
-            f"bene, ma va scritta in 'known_leagues' invece di essere il ripiego."
+            f"Valgono come sconosciuti nel calcolo della difficolta': se e' la scelta giusta "
+            f"vanno scritti in 'obscure_leagues', altrimenti in 'known_leagues'. In un caso o "
+            f"nell'altro la decisione va registrata invece di restare il ripiego."
         )
     if len(selectable) <= history_days:
         warnings.append(
