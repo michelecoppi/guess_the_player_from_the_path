@@ -59,6 +59,7 @@ def _new_user():
         "points_totali": 812,
         "monthly_points": 96,
         "players_guessed": 154,
+        "referral_qualified": 10,
         "bonus_first_guessed": 12,
         "current_streak": 9,
         "best_streak": 31,
@@ -209,9 +210,11 @@ window.Telegram = { WebApp: {
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/app", response_class=HTMLResponse)
-async def page(lang: str | None = None):
+async def page(lang: str | None = None, referrals: int | None = None):
     if lang in ("it", "en", "es"):
         STATE["user"]["language"] = lang
+    if referrals is not None:
+        STATE["user"]["referral_qualified"] = max(0, min(referrals, 10))
     with open(os.path.join(WEBAPP_DIR, "index.html"), encoding="utf-8") as f:
         html = f.read()
     shim = TELEGRAM_SHIM % (USER_ID, _lang())
@@ -272,6 +275,29 @@ async def legal_css():
 @app.post("/app/api/me")
 async def me(payload: dict = Body(default={})):
     return build_profile(USER_ID, lang=_lang())
+
+
+@app.get("/app/referrals.js")
+def referrals_script():
+    return _script("referrals.js")
+
+
+@app.get("/app/referrals.css")
+def referrals_style():
+    return Response(open(os.path.join(WEBAPP_DIR, "referrals.css"), encoding="utf-8").read(), media_type="text/css")
+
+
+@app.post("/app/api/referrals")
+def referrals_preview():
+    from services.referrals import REWARDS
+    user = firebase_service.get_user_data(USER_ID)
+    names = ["Giulia", "Sara", "Dario", "Elisa", "Paolo", "Davide", "Sofia", "Matteo", "Chiara", "Nico"]
+    return {"qualified": user.get("referral_qualified", 0), "required_days": 5,
+            "link": "https://t.me/preview_bot?start=ref_demo", "next_cursor": None,
+            "friends": [{"name": name, "days": days, "status": "qualified" if days == 5 else "pending"}
+                        for name, days in [("Luca", 3), ("Andrea", 1)] + [(name, 5) for name in names[:user.get("referral_qualified", 0)]]],
+            "rewards": [{"target": n, "items": [shop._card(shop.get_item(i), user, _lang(), shop.equipped(user)) for i in ids]}
+                        for n, ids in REWARDS.items()]}
 
 
 @app.post("/app/api/profile/public")

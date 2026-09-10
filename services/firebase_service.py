@@ -116,6 +116,7 @@ db = _LazyFirestoreClient()
 # L'annotazione serve a mypy: da quando c'e' `cosmetics` i valori non sono piu' tutti
 # dello stesso tipo, e senza tipo esplicito l'inferenza si ferma.
 USER_FIELD_DEFAULTS: dict[str, Any] = {
+    "referral_qualified": 0,
     "chat_id": -1,
     "notifications_enabled": False,
     "monthly_points": 0,
@@ -168,6 +169,7 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
 # raccoglie. Un obiettivo appeso a un campo che non e' in questa lista non verrebbe mai messo
 # al sicuro, e resterebbe per sempre alla merce' del calcolo. C'e' un test che lo verifica.
 HARVESTED_FIELDS = frozenset({
+    "referral_qualified",
     "points_totali", "monthly_points", "players_guessed", "current_streak", "best_streak",
     "bonus_first_guessed", "archive_solved", "training_solved",
 })

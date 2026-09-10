@@ -61,7 +61,7 @@ def missing_user_fields(data, user_id=None, first_name=None, language=None):
     return missing
 
 
-def save_user(user_id, first_name, language=DEFAULT_LANGUAGE):
+def save_user(user_id, first_name, language=DEFAULT_LANGUAGE, referral_code=None):
     """Crea l'utente se non esiste, e completa il documento se gli mancano dei campi.
 
     E' una transazione: due /start ravvicinati non possono piu' creare due documenti per la
@@ -81,8 +81,17 @@ def save_user(user_id, first_name, language=DEFAULT_LANGUAGE):
     def _create(transaction):
         snapshot = ref.get(transaction=transaction)
         if not snapshot.exists:
+            attribution = None
+            if referral_code:
+                from services import referrals
+                attribution = referrals.prepare_attribution(transaction, user_id, first_name, referral_code)
+                if attribution:
+                    transaction.set(referrals.ref(user_id), attribution)
             transaction.set(ref, fs.new_user_document(user_id, first_name, language))
-            return {"created": True, "language": language, "repaired": []}
+            result = {"created": True, "language": language, "repaired": []}
+            if attribution:
+                result["referral_attached"] = True
+            return result
 
         existing = snapshot.to_dict() or {}
         missing = fs.missing_user_fields(
@@ -170,6 +179,8 @@ def delete_user_data(user_id):
         doc.reference.update({"solved_by": None, "solved_name": None})
 
     if snapshot.exists:
+        from services import referrals
+        referrals.erase_user(user_id)
         # Private duel documents also contain the participant's name and game history.
         for duel in fs.db.collection("app_duels").where("members", "array_contains", user_id).stream():
             duel.reference.delete()

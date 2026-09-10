@@ -108,6 +108,7 @@ TRANSLATIONS = {
 
         "start.welcome_new": "Benvenuto, {name}! Il tuo account è pronto: scegli come giocare dal menu qui sotto.",
         "start.welcome_back": "Ciao di nuovo, {name}!",
+        "start.referral_attached": "Invito collegato! Completa 5 sfide daily in giorni diversi, vincendo o esaurendo i tentativi. Chi ti ha invitato vedrà il tuo nome e il progresso fino a 5/5 e potrà sbloccare premi esclusivi.",
 
         "help.message": (
             "🛠️ Come si gioca:\n\n"
@@ -546,6 +547,7 @@ TRANSLATIONS = {
 
         "start.welcome_new": "¡Bienvenido, {name}! Tu cuenta está lista: elige cómo jugar en el menú de abajo.",
         "start.welcome_back": "¡Hola de nuevo, {name}!",
+        "start.referral_attached": "¡Invitación vinculada! Completa 5 retos diarios en días distintos, ganando o agotando los intentos. Quien te invitó verá tu nombre y el progreso hasta 5/5 y podrá desbloquear recompensas exclusivas.",
 
         "help.message": (
             "🛠️ Cómo se juega:\n\n"
@@ -982,6 +984,7 @@ TRANSLATIONS = {
 
         "start.welcome_new": "Welcome, {name}! Your account is ready: choose how to play from the menu below.",
         "start.welcome_back": "Hi again, {name}!",
+        "start.referral_attached": "Invite linked! Complete 5 daily challenges on different days, by winning or using all attempts. Your inviter will see your name and progress up to 5/5 and can unlock exclusive rewards.",
 
         "help.message": (
             "🛠️ How to play:\n\n"

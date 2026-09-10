@@ -18,11 +18,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user = update.effective_user
-    result = (await asyncio.to_thread(save_user, user.id, user.first_name, language=detected_lang))
+    argument = context.args[0] if getattr(context, "args", None) else ""
+    referral = {"referral_code": argument} if argument.startswith("ref_") else {}
+    result = (await asyncio.to_thread(save_user, user.id, user.first_name, language=detected_lang, **referral))
 
     lang = result["language"]
     key = "start.welcome_new" if result["created"] else "start.welcome_back"
-    argument = context.args[0] if getattr(context, "args", None) else ""
     if argument.startswith("duel_"):
         from config import WEBAPP_URL
         from services.arena import CODE
@@ -39,7 +40,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Il menu arriva subito insieme al benvenuto: prima l'unico modo di scoprire i comandi
     # era leggere /help e ricopiarli a mano.
     await update.effective_message.reply_text(
-        "\n\n".join(filter(None, [t(lang, key, name=escape(user.first_name)), app_invitation(lang), t(lang, "menu.title")])),
+        "\n\n".join(filter(None, [t(lang, key, name=escape(user.first_name)),
+                                  t(lang, "start.referral_attached") if result.get("referral_attached") else "",
+                                  app_invitation(lang), t(lang, "menu.title")])),
         reply_markup=menu_keyboard(lang),
         parse_mode="HTML",
     )

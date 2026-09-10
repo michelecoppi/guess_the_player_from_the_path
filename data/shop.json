@@ -2557,6 +2557,139 @@
         "distintivo_tromba",
         "quadratini_fuochi"
       ]
+    },
+    {
+      "id": "referral_intesa",
+      "kind": "frame",
+      "price": 0,
+      "rarity": "earned",
+      "name": "L’intesa",
+      "name_i18n": {
+        "en": "The connection",
+        "es": "La conexión"
+      },
+      "description": "Tre amici, cinque daily ciascuno. Tre nodi si passano il pallone intorno al tuo avatar. Solo con gli inviti.",
+      "description_i18n": {
+        "en": "Three friends, five daily finishes each. Three nodes pass a ball around your avatar. Referral exclusive.",
+        "es": "Tres amigos, cinco retos diarios completados cada uno. Tres nodos se pasan el balón alrededor de tu avatar. Exclusivo de invitaciones."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 3
+      },
+      "style": {
+        "ring": "linear-gradient(135deg,#9fffd0,#42cbb8)",
+        "tactics": 3
+      }
+    },
+    {
+      "id": "referral_lavagna",
+      "kind": "card",
+      "price": 0,
+      "rarity": "earned",
+      "name": "La lavagna del mister",
+      "name_i18n": {
+        "en": "The tactics board",
+        "es": "La pizarra del míster"
+      },
+      "description": "Cinque amici qualificati. Una card personale con campo tattico e passaggi animati nel profilo; finitura dedicata nei risultati condivisi.",
+      "description_i18n": {
+        "en": "Five qualified friends. A personal tactics card with animated passes on your profile and a matching shared-result finish.",
+        "es": "Cinco amigos clasificados. Una tarjeta táctica personal con pases animados en el perfil y acabado para resultados compartidos."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 5
+      },
+      "style": {
+        "finish": "tactics",
+        "paper": "#102925",
+        "ink": "#edfff6",
+        "glow": "#9fffd0"
+      }
+    },
+    {
+      "id": "referral_undici",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Il tuo undici",
+      "name_i18n": {
+        "en": "Your starting eleven",
+        "es": "Tu once inicial"
+      },
+      "description": "Dieci amici qualificati: tu e la tua formazione. Tema esclusivo con campo e undici giocatori che prendono posizione nel profilo.",
+      "description_i18n": {
+        "en": "Ten qualified friends: you and your team. An exclusive theme with eleven players taking their positions on your profile.",
+        "es": "Diez amigos clasificados: tú y tu equipo. Tema exclusivo con once jugadores tomando posición en tu perfil."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 10
+      },
+      "style": {
+        "bg": "#0a1a18",
+        "bg2": "#102925",
+        "card": "#16332e",
+        "edge": "#35584f",
+        "text": "#edfff6",
+        "muted": "#b1ccc2",
+        "accent": "#c8f48b",
+        "accentText": "#142214",
+        "track": "#294b42",
+        "pattern": "linear-gradient(90deg,rgba(159,255,208,.025) 1px,transparent 1px),linear-gradient(rgba(159,255,208,.025) 1px,transparent 1px)",
+        "formation": true
+      }
+    },
+    {
+      "id": "referral_undici_frame",
+      "kind": "frame",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Intesa perfetta",
+      "name_i18n": {
+        "en": "Perfect connection",
+        "es": "Conexión perfecta"
+      },
+      "description": "La cornice della formazione completa. Solo con dieci amici qualificati.",
+      "description_i18n": {
+        "en": "The full-team frame. Exclusive to ten qualified referrals.",
+        "es": "El marco del equipo completo. Exclusivo de diez amigos clasificados."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 10
+      },
+      "style": {
+        "ring": "linear-gradient(135deg,#c8f48b,#9fffd0)",
+        "tactics": 11
+      }
+    },
+    {
+      "id": "referral_undici_card",
+      "kind": "card",
+      "price": 0,
+      "rarity": "earned",
+      "name": "La formazione completa",
+      "name_i18n": {
+        "en": "The full team",
+        "es": "El equipo completo"
+      },
+      "description": "La tua card con la formazione al completo, nel profilo e sui risultati condivisi.",
+      "description_i18n": {
+        "en": "Your full-team card, on your profile and shared results.",
+        "es": "Tu tarjeta con el equipo completo, en el perfil y en resultados compartidos."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 10
+      },
+      "style": {
+        "finish": "eleven",
+        "paper": "#102925",
+        "ink": "#f2ffe4",
+        "glow": "#c8f48b"
+      }
     }
   ]
 }

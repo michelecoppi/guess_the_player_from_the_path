@@ -371,6 +371,38 @@ Sostenitore). Anche questo e' un test.
 raggiungono giocando (il primo distintivo alla prima risposta giusta, l'ultimo a cento
 calciatori). Servono a far vedere che gli slot esistono a chi il negozio non lo ha mai aperto.
 
+**La tua formazione** è la sezione inviti, accessibile da Statistiche. Il link personale
+`/start ref_<id>_<firma>` viene firmato dal server e associato solo durante la prima
+registrazione: un solo invitante, nessun auto-invito o cambio successivo. Dopo **5 daily
+concluse in giorni distinti**, anche non consecutivi, l'amico è qualificato. Contano le
+vittorie e le sconfitte a tentativi esauriti; non contano aperture, partite abbandonate,
+archivio, allenamento, duelli o eventi. Bot e mini app passano dallo stesso storico daily.
+
+I premi permanenti sono la cornice L'intesa (3 amici), la card Lavagna del mister (5),
+tema Il tuo undici con cornice e card coordinate (10). Hanno il contatore
+`referral_qualified` e non sono acquistabili. La card tattica compare nel profilo e ha
+una finitura dedicata sulle immagini dei risultati condivisi; le animazioni rispettano
+la preferenza di movimento ridotto, si fermano quando il campo esce dallo schermo e nelle
+miniature dei premi non partono affatto.
+
+`services/referrals.py` conserva un documento per invitato nella collezione `referrals`,
+con invitante, invitato, nome, timestamp di associazione, giornate conteggiate e timestamp
+di qualificazione. La chiave è un hash stabile dell'id dell'invitato. La transazione
+legge lo storico come prova e salva insieme qualificazione, contatore dell'invitante e
+cosmetici guadagnati: tentativi ripetuti o simultanei non duplicano il premio. Lo storico
+è salvato prima dell'accredito; in caso di errore la sezione inviti riconcilia gli amici
+della pagina con le ultime cinque daily concluse. La lista privata usa pagine da 20 e
+il pulsante per aggiornare, senza interrogazioni continue. Non espone id degli amici.
+`/forgetme` rimuove i dati personali anche dal registro degli inviti, mantenendo solo la
+chiave pseudonima con stato `deleted` contro il riutilizzo dello stesso account.
+
+Non serve migrare i vecchi account: il contatore mancante vale zero. Servono le normali
+configurazioni `BOT_TOKEN` e `BOT_USERNAME`; il link usa il bot per registrare l'invito
+prima di aprire la mini app. Una rotazione del token invalida i vecchi link, senza
+modificare associazioni già registrate. Per provare i premi in locale:
+`python scripts/preview_webapp.py`, poi `/app?referrals=2` o `/app?referrals=10`.
+I dati dell'anteprima sono esclusivamente in memoria.
+
 Il punto delicato è che un traguardo **si ricava da un contatore**, e finché resta solo un
 calcolo è anche reversibile: basta alzare un obiettivo in `data/shop.json` — una modifica a un
 file di dati, che non passa da una riga di codice — e chi stava sotto la soglia nuova si

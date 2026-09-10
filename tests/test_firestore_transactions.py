@@ -46,6 +46,67 @@ pytestmark = pytest.mark.usefixtures("emulator_db")
 GAVE_UP = "gave-up"
 
 
+def test_referral_fifth_finish_and_reward_are_atomic_under_retries(emulator_db, monkeypatch):
+    from services import referrals
+
+    monkeypatch.setattr(referrals, "BOT_TOKEN", "test-secret")
+    monkeypatch.setattr(referrals, "today_iso", lambda: "2026-09-01")
+    firebase_service.save_user(1, "Owner")
+    firebase_service.user_ref(1).update({"referral_qualified": 2})
+    firebase_service.save_user(2, "Friend", referral_code=referrals.code_for(1))
+    for n in range(1, 5):
+        firebase_service.record_daily_history(2, f"2026-09-{n:02}", True, 1)
+    # Durable completion already exists when concurrent credit/recovery calls arrive.
+    firebase_service.history_ref(2, "2026-09-05").set({"day": "2026-09-05", "solved": False, "attempts": 3})
+    run_together(lambda _: referrals.credit_day(2, "2026-09-05"), 4)
+    referrals.credit_day(2, "2026-09-05")  # Retry a possible emulator lock timeout.
+    user = firebase_service.get_user_data(1)
+    assert user["referral_qualified"] == 3
+    assert user["cosmetics"]["earned"].count("referral_intesa") == 1
+    assert len(referrals.ref(2).get().to_dict()["days"]) == 5
+
+
+def test_referral_registration_only_one_inviter_wins(emulator_db, monkeypatch):
+    from services import referrals
+
+    monkeypatch.setattr(referrals, "BOT_TOKEN", "test-secret")
+    for uid in (1, 2):
+        firebase_service.save_user(uid, str(uid))
+    run_together(lambda n: firebase_service.save_user(3, "Friend", referral_code=referrals.code_for(n % 2 + 1)), 4)
+    firebase_service.save_user(3, "Friend", referral_code=referrals.code_for(1))
+    entry = referrals.ref(3).get().to_dict()
+    assert entry["inviter_id"] in (1, 2)
+    original = entry["inviter_id"]
+    firebase_service.save_user(3, "Friend", referral_code=referrals.code_for(3 - original))
+    assert referrals.ref(3).get().to_dict()["inviter_id"] == original
+
+
+def test_referral_dashboard_pagination_recovery_and_erasure(emulator_db, monkeypatch):
+    from services import referrals
+
+    monkeypatch.setattr(referrals, "BOT_TOKEN", "test-secret")
+    monkeypatch.setattr(referrals, "today_iso", lambda: "2026-09-01")
+    firebase_service.save_user(1, "Owner")
+    for uid in range(2, 24):
+        firebase_service.save_user(uid, f"Friend {uid}", referral_code=referrals.code_for(1))
+    for n in range(1, 6):
+        firebase_service.history_ref(2, f"2026-09-{n:02}").set({"day": f"2026-09-{n:02}", "solved": True, "attempts": 1})
+    first = referrals.dashboard(1)
+    second = referrals.dashboard(1, cursor=first["next_cursor"])
+    assert len(first["friends"]) == 20 and len(second["friends"]) == 2
+    assert second["next_cursor"] is None
+    assert len({row["name"] for row in first["friends"] + second["friends"]}) == 22
+    assert firebase_service.get_user_data(1)["referral_qualified"] == 1
+    assert all(set(row) == {"name", "days", "status", "joined_day"} for row in first["friends"])
+    referrals.erase_user(2)
+    assert referrals.ref(2).get().to_dict() == {"status": "deleted"}
+    firebase_service.user_ref(2).delete()
+    firebase_service.save_user(2, "Recreated", referral_code=referrals.code_for(1))
+    assert referrals.ref(2).get().to_dict() == {"status": "deleted"}
+    referrals.erase_user(1)
+    assert not list(emulator_db.collection(referrals.COLLECTION).where("inviter_id", "==", 1).stream())
+
+
 def test_arena_duplicate_submission_spends_one_attempt(emulator_db, monkeypatch):
     from services import arena
 
@@ -57,6 +118,12 @@ def test_arena_duplicate_submission_spends_one_attempt(emulator_db, monkeypatch)
     revision = current["session"]["revision"]
     run_together(lambda _: arena.training(1, "guess", "Lionel Messi", revision), 4)
     resumed = arena.training(1)
+    assert resumed["session"]["attempts"] <= 1
+    if resumed["session"]["attempts"] == 0:
+        # The emulator may abort every contender (see GAVE_UP). Retry the same
+        # revision after contention, as a client would after a temporary failure.
+        arena.training(1, "guess", "Lionel Messi", revision)
+        resumed = arena.training(1)
     assert resumed["session"]["attempts"] == 1
     assert firebase_service.get_user_data(1)["points_totali"] == 42
 
@@ -88,6 +155,11 @@ def test_app_event_winner_is_recorded_once(emulator_db, monkeypatch):
     }})
     run_together(lambda _: app_events.guess(1, "Anna", "test-week", day, "Paolo Maldini", 0), 4)
     participant = firebase_service.get_event_participant("test-week", 1)
+    if participant is None:
+        # All emulator contenders can time out before committing. The same request
+        # must still succeed on retry; a committed result is never replayed here.
+        app_events.guess(1, "Anna", "test-week", day, "Paolo Maldini", 0)
+        participant = firebase_service.get_event_participant("test-week", 1)
     assert participant["points"] == 3
     assert participant["daily_attempts"] == 1
 

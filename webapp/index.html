@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Guess the Player</title>
 <link rel="stylesheet" href="/app/arena.css">
+<link rel="stylesheet" href="/app/referrals.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   /*
@@ -421,6 +422,7 @@
 <script src="/app/client.js"></script>
 <script src="/app/strings.js"></script>
 <script src="/app/arena.js"></script>
+<script src="/app/referrals.js"></script>
 <script>
 "use strict";
 
@@ -752,6 +754,7 @@ function publicProfileView() {
   const vars=Object.entries(THEME_VARS).map(([key,variable]) => `${variable}:${theme[key] || (key === "pattern" ? "none" : "initial")}`).join(";");
   return back + `<section class="public-profile" style="${escapeHtml(vars)}" aria-label="${escapeHtml(text.title)}">
     <div class="card profile-hero">${avatar(u.name,worn.frame)}<div><div class="preview-caption">${escapeHtml(text.title)}</div><h1 id="public-heading" tabindex="-1">${shirtTag(worn.number)}${escapeHtml(u.name)} ${escapeHtml(worn.badge || "")}</h1>${worn.title.label ? `<div class="title-tag" style="color:${escapeHtml(worn.title.color)}">${escapeHtml(worn.title.label)}</div>` : ""}<p>${u.trophies} ${escapeHtml(L.trophies)}</p>${trophyTags(p.trophies)}</div></div>
+    ${PlayerReferrals.identity(u,worn)}
     <div class="card"><h2>${escapeHtml(text.numbers)}</h2><div class="grid">${tile(u.points,L.total)}${tile(u.monthly_points,L.monthly)}${tile(u.players_guessed,L.guessed)}${tile(u.best_streak,L.best)}${tile(u.streak,L.streak)}${tile(u.archive_solved,L.recovered)}</div></div>
     <div class="card"><h2>${escapeHtml(text.wearing)}</h2><div class="pack-contents">${p.wearing.map(item => `<span>${escapeHtml(L.shopSections[item.kind])} · ${escapeHtml(item.name)}</span>`).join("")}</div><p class="shop-note">${escapeHtml(text.example)}</p><div class="emoji-preview">${escapeHtml(worn.squares.wrong + worn.squares.correct + worn.squares.unused)}</div></div>
   </section>`;
@@ -794,6 +797,8 @@ function statsTab() {
       </div>
       ${trophyTags((state.profile.trophies || {}).pinned)}
     </div>
+    ${PlayerReferrals.identity(u,worn)}
+    ${PlayerReferrals.entry()}
     <div class="card"><h2>${escapeHtml(L.yourNumbers)}</h2>
       <div class="grid">
         ${tile(u.points, L.total)}${tile(u.monthly_points, L.monthly)}
@@ -929,7 +934,7 @@ async function togglePin(code) {
 function avatar(name, frame) {
   const ring = (frame && frame.ring) || "";
   return `<div class="avatar-wrap">
-      ${ring ? `<span class="ring${frame.spin ? " spin" : ""}" style="background:${escapeHtml(ring)}"></span>` : ""}
+      ${frame?.tactics ? PlayerReferrals.frame(frame) : ring ? `<span class="ring${frame.spin ? " spin" : ""}" style="background:${escapeHtml(ring)}"></span>` : ""}
       <div class="avatar">${escapeHtml(initials(name))}</div>
     </div>`;
 }
@@ -1133,6 +1138,7 @@ function shopPreview(kind, item) {
     return `<div class="shop-stage">${caption}<div class="emoji-preview">${escapeHtml(CELEBRATION_GLYPH[style.effect] || "—")}</div><div class="preview-name">${escapeHtml(item.name)}</div></div>`;
   }
   if (kind === "card") {
+    if (["tactics","eleven"].includes(style.finish)) return `<div class="shop-stage"><div class="rf-card-mini">${PlayerReferrals.pitch(style.finish === "eleven" ? 11 : 5)}</div>${caption}</div>`;
     // La figurina si guarda intera: qui e' la stessa cosa che disegna services/path_image.py,
     // in piccolo e in CSS. Le tre finiture non si possono raccontare a parole.
     return `<div class="shop-stage" style="padding:14px"><div class="fig-mini fig-${escapeHtml(style.finish || "plain")}" style="--paper:${escapeHtml(style.paper || "#0a131e")};--ink:${escapeHtml(style.ink || "#ecf2f8")};--glow:${escapeHtml(style.glow || "#38bd82")}">
@@ -1218,7 +1224,7 @@ function legalLinks() {
 
 function render() {
   if (!state.profile) return;
-  const body = state.publicTarget ? publicProfileView() : state.cabinetOpen ? cabinetView() : {
+  const body = state.publicTarget ? publicProfileView() : state.referralsOpen ? PlayerReferrals.view() : state.cabinetOpen ? cabinetView() : {
     play: playTab, archive: archiveTab, stats: statsTab, leagues: leaguesTab, shop: shopTab,
   }[state.tab]();
   const nav = TABS.map(tab => `<button data-tab="${tab.id}" aria-selected="${state.tab === tab.id}">
@@ -1251,6 +1257,7 @@ function syncMainButton() {
 }
 
 function wire() {
+  PlayerReferrals.wire();
   PlayerArena.wire();
   syncMainButton();
   document.querySelectorAll("[data-pin]").forEach(button => button.onclick = () => togglePin(button.dataset.pin));
@@ -1301,6 +1308,7 @@ function wire() {
   document.querySelectorAll("[data-tab]").forEach(button => {
     button.onclick = () => {
       state.tab = button.dataset.tab;
+      state.referralsOpen = false;
       state.publicTarget = null;
       state.feedback = null;
       state.hint = null;

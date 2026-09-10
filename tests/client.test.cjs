@@ -1,5 +1,50 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+
+function referralClient(response) {
+  const vm = require("node:vm"), fs = require("node:fs");
+  const client = require("../webapp/client.js");
+  const controls = {"open-referrals": {}};
+  const context = vm.createContext({
+    escapeHtml: client.escapeHtml, initials: client.initials,
+    state: {profile: {language: "it", user: {name: "Marco", points: 10, best_streak: 2}}},
+    L: {loading: "Caricamento"}, render() {}, window: {scrollTo() {}},
+    api: async () => response, avatar: () => "<span>Avatar</span>",
+    document: {getElementById: id => controls[id], querySelectorAll: () => []},
+  });
+  vm.runInContext(fs.readFileSync(require.resolve("../webapp/referrals.js"), "utf8") + ";this.referrals=PlayerReferrals", context);
+  return {client: context.referrals, controls};
+}
+
+test("referral copy has complete Italian, Spanish and English translations", () => {
+  const {client} = referralClient();
+  for (const lang of ["en", "es"]) {
+    assert.deepEqual(Object.keys(client.COPY[lang]).sort(), Object.keys(client.COPY.it).sort());
+    assert.equal(client.COPY[lang].names.length, 3);
+    assert.equal(client.COPY[lang].descs.length, 3);
+  }
+});
+
+test("referral view uses server qualification, not a friend's partial progress", async () => {
+  const {client, controls} = referralClient({qualified: 2, friends: [{name:'<img src=x onerror=alert(1)>',days:4,status:'pending'}],rewards:[],next_cursor:null,link:null});
+  client.wire(); controls["open-referrals"].onclick();
+  await new Promise(resolve => setImmediate(resolve));
+  const html=client.view();
+  assert.ok(html.includes('4/5'));
+  assert.ok(html.includes('2<span>/10'));
+  assert.ok(!html.includes('Invito completato'));
+  assert.ok(!html.includes('<img'));
+  assert.ok(!html.includes('data-rf-equip'));
+});
+
+test("exclusive profile cards escape names and do not appear for ordinary cosmetics", () => {
+  const {client} = referralClient();
+  const user={name:'<script>alert(1)</script>',points:20,best_streak:4};
+  assert.equal(client.identity(user,{card:{finish:'foil'}}),'');
+  const html=client.identity(user,{card:{finish:'eleven'}});
+  assert.ok(html.includes('&lt;script&gt;'));
+  assert.ok(!html.includes('<script>'));
+});
 test("arena translations preserve all keys and interpolation placeholders", () => {
   const { TEXT } = require("../webapp/arena.js");
   const keys = Object.keys(TEXT.it).sort();

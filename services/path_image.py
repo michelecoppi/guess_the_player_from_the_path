@@ -11,6 +11,7 @@ Il nome del calciatore non compare mai: e' la risposta.
 import colorsys
 import hashlib
 import io
+from collections.abc import Callable
 
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -484,11 +485,36 @@ def _finish_grain(img, paper, glow):
     return Image.blend(grey, out, 0.55)
 
 
-FINISHES = {
+def _finish_tactics(img, paper, glow, eleven=False):
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    line = tuple(round(paper[i] * .72 + glow[i] * .28) for i in range(3))
+    draw.rounded_rectangle((25, 25, w - 25, h - 25), radius=16, outline=line, width=2)
+    draw.line((25, h / 2, w - 25, h / 2), fill=line, width=2)
+    draw.ellipse((w / 2 - 65, h / 2 - 65, w / 2 + 65, h / 2 + 65), outline=line, width=2)
+    points = [(0.12, .2), (.88, .27), (.12, .5), (.88, .67), (.12, .82)]
+    if eleven:
+        points += [(.88, .13), (.12, .35), (.88, .43), (.12, .66), (.88, .82), (.5, .94)]
+    for i, (x, y) in enumerate(points):
+        x, y = round(w * x), round(h * y)
+        draw.ellipse((x - 11, y - 11, x + 11, y + 11), outline=glow, width=2)
+        if i:
+            px, py = points[i - 1]
+            # Pass marks stay in the background behind the result typography.
+            for t in range(0, 100, 5):
+                a, b = t / 100, min(t + 2, 100) / 100
+                draw.line((w * px + (x - w * px) * a, h * py + (y - h * py) * a,
+                           w * px + (x - w * px) * b, h * py + (y - h * py) * b), fill=line, width=1)
+    return img
+
+
+FINISHES: dict[str, Callable[..., Image.Image]] = {
     "plain": _finish_plain,
     "night": _finish_night,
     "foil": _finish_foil,
     "grain": _finish_grain,
+    "tactics": _finish_tactics,
+    "eleven": lambda img, paper, glow: _finish_tactics(img, paper, glow, eleven=True),
 }
 
 

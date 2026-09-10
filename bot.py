@@ -344,6 +344,16 @@ def client_arena_style(request: Request):
     return _static_response("arena.css", request, "text/css")
 
 
+@app.get("/app/referrals.js")
+def client_referrals(request: Request):
+    return _static_response("referrals.js", request, "text/javascript")
+
+
+@app.get("/app/referrals.css")
+def client_referrals_style(request: Request):
+    return _static_response("referrals.css", request, "text/css")
+
+
 def _webapp_user(payload, cost=1):
     """Chi sta chiamando, secondo la **sola** firma di initData.
 
@@ -385,6 +395,18 @@ def webapp_public_profile(payload: dict = Body(default={})):
     if result is None:
         raise HTTPException(status_code=404, detail="profilo non disponibile")
     return result
+
+
+@app.post("/app/api/referrals")
+def webapp_referrals(payload: dict = Body(default={})):
+    from services import referrals
+    # Costa piu' di ogni altra chiamata: una pagina puo' riconciliare venti amici, e ognuno
+    # e' una query sullo storico. La sezione ha un pulsante "Aggiorna", non un polling.
+    user_id, user = _webapp_user(payload, cost=10)
+    cursor = payload.get("cursor")
+    if cursor is not None and (not isinstance(cursor, str) or len(cursor) > 64):
+        raise HTTPException(status_code=400, detail="invalid cursor")
+    return referrals.dashboard(user_id, _webapp_language(user), cursor, user)
 
 
 @app.post("/app/api/profile/search")
