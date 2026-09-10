@@ -376,6 +376,45 @@ LEAGUE_BY_COUNTRY = {
     ("Armenia", "arajin xowmb"): "Armenian Premier League",
     ("Cina", "league two"): "China League Two",
     ("Cina", "league one"): "China League One",
+
+    # Nomi che le pagine dei club scrivono nella lingua del posto (o nella traslitterazione
+    # di Wikipedia) e che il dataset ha gia' sotto un altro nome. Senza queste righe la
+    # stessa competizione entra due volte con due grafie, e la seconda - non essendo in
+    # top_leagues ne' known_leagues - pesa come campionato sconosciuto.
+    ("Bulgaria", "parva liga"): "Bulgarian First League",
+    ("Bulgaria", "a pfg"): "Bulgarian First League",
+    ("Grecia", "souper ligka ellada"): "Super League Greece",
+    ("Russia", "prem er liga"): "Russian Premier League",
+    ("Russia", "pervaja liga"): "Pervaja Liga",
+    ("Ucraina", "prem jer liha"): "Ukrainian Premier League",
+    ("Repubblica Ceca", "1 liga"): "Czech First League",
+    ("Slovacchia", "superliga"): "Slovak First League",
+    ("Slovenia", "1 snl"): "PrvaLiga",
+    ("Croazia", "2 nl"): "Croatian Second League",
+    ("Portogallo", "segunda liga"): "Liga Portugal 2",
+    ("Uruguay", "primera division uruguaya"): "Uruguayan Primera Division",
+    ("Azerbaigian", "premyer liqas"): "Azerbaijan Premier League",
+    ("Brasile", "campionato paulista serie d"): "Campeonato Paulista Serie D",
+    ("Iran", "lega azadegan"): "Azadegan League",
+    ("Lussemburgo", "division nationale"): "Luxembourg National Division",
+    ("Svizzera", "challenge league"): "Swiss Challenge League",
+    ("Svizzera", "promotion league"): "Swiss Promotion League",
+    ("Inghilterra", "efl championship"): "Championship",
+    ("Inghilterra", "northern premier league division one west"): "Northern Premier League",
+    ("Canada", "major league soccer"): "MLS",
+    ("USA", "major league soccer"): "MLS",
+    ("Colombia", "categoria primera b"): "Categoria Primera B",
+    ("Brasile", "serie c brasile"): "Campeonato Brasileiro Serie C",
+    ("Spagna", "segunda federacion"): "Segunda Federacion",
+    # I campionati italiani regionali: il dataset li tiene senza la regione, altrimenti
+    # avrebbe venti nomi per lo stesso livello.
+    ("Italia", "eccellenza lazio"): "Eccellenza",
+    ("Italia", "eccellenza veneto"): "Eccellenza",
+    ("Italia", "promozione toscana"): "Promozione",
+    # Il campionato serbo sotto il nome vecchio del paese: e' lo stesso, non va disambiguato
+    # col paese (il dataset ha gia' tre tappe "Serbian SuperLiga" in Jugoslavia).
+    ("Jugoslavia", "serbian superliga"): "Serbian SuperLiga",
+    ("Jugoslavia", "serbian superliga jugoslavia"): "Serbian SuperLiga",
 }
 
 # Il paese a cui il dataset associa ciascun campionato: serve a capire quando un nome e'

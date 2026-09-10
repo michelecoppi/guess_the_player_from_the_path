@@ -191,11 +191,20 @@ def parse_career(wt):
     if not body:
         return []
 
+    # Le note e i commenti vanno via PRIMA di dividere: una cella statistica con dentro
+    # un <ref name=... >{{cita web|url=...}}</ref> contiene degli '=', quindi il filtro
+    # qui sotto la scambierebbe per un parametro con nome e la butterebbe. Il
+    # raggruppamento a tre perde l'allineamento e la carriera si ferma li': e' il motivo
+    # per cui Hamsik si fermava allo Slovan Bratislava e Robinho al Santos.
+    body = re.sub(r"<ref[^>]*/>", "", body)
+    body = re.sub(r"<ref[^>]*>.*?</ref>", "", body, flags=re.S)
+    body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+
     # Il primo pezzo e' il nome del template, poi ci sono i parametri con nome
     # (sport=, pos=, aggiornato=...): vanno tolti entrambi, altrimenti il
     # raggruppamento a tre (anni, squadra, statistiche) perde l'allineamento.
     args = _split_template_args(body)[1:]
-    positional = [a for a in args if "=" not in a]
+    positional = [a for a in args if not re.match(r"\s*[A-Za-z][\w -]*=", a)]
     stops = []
     for i in range(0, len(positional) - 2, 3):
         years = _parse_years(positional[i])
