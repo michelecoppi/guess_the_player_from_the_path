@@ -20,6 +20,7 @@ in CI c'e' sempre, in locale si saltano se l'emulatore non e' acceso.
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
+from google.api_core.exceptions import Aborted
 
 from services import firebase_service, work_receipts
 
@@ -28,11 +29,15 @@ pytestmark = pytest.mark.usefixtures("emulator_db")
 # Quello che torna una chiamata che non e' nemmeno riuscita a decidere.
 #
 # Sull'emulatore due transazioni che partono nello stesso millisecondo sullo stesso documento
-# si annullano a vicenda finche' il client rinuncia (`ValueError: Failed to commit
-# transaction in 5 attempts`, con `Aborted` sotto). Non e' contesa da smaltire: alzare il
-# limite a 50 tentativi non cambia niente, mentre bastano 150 ms di sfasamento perche' vada
-# sempre a buon fine. E' l'emulatore che non ha la messa in fila delle transazioni del
-# servizio vero, e non e' nemmeno lo scenario di produzione: Telegram rispedisce un update
+# si annullano a vicenda finche' si rinuncia. La rinuncia arriva in due forme, a seconda di
+# chi molla per primo: il client dopo i suoi tentativi (`ValueError: Failed to commit
+# transaction in 5 attempts`) oppure l'emulatore stesso (`Aborted: 409 Transaction lock
+# timeout`). Vanno trattate uguale: sono la stessa cosa vista da due punti diversi.
+#
+# Non e' contesa da smaltire: alzare il limite a 50 tentativi non cambia niente, mentre
+# bastano 150 ms di sfasamento perche' vada sempre a buon fine. E' l'emulatore che non ha
+# la messa in fila delle transazioni del servizio vero, e non e' nemmeno lo scenario di
+# produzione: Telegram rispedisce un update
 # dopo secondi, Cloud Tasks riprova dopo un backoff.
 #
 # Quindi qui non si pretende che i perdenti ricevano una risposta pulita. Si pretende
@@ -92,7 +97,7 @@ def run_together(call, times):
     def guarded(n):
         try:
             return call(n)
-        except ValueError:
+        except (ValueError, Aborted):
             return GAVE_UP
 
     with ThreadPoolExecutor(max_workers=times) as pool:
