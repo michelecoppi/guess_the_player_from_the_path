@@ -54,8 +54,12 @@ def dataset(monkeypatch):
     return players
 
 
+def clues_of(guess, target):
+    return {clue["key"]: clue["args"] for clue in compare_players(guess, target)}
+
+
 def test_the_comparison_covers_nationality_position_and_age():
-    clues = dict(compare_players(DEL_PIERO, RONALDO))
+    clues = clues_of(DEL_PIERO, RONALDO)
 
     assert "feedback.nationality_diff" in clues
     assert "feedback.position_same" in clues
@@ -64,7 +68,7 @@ def test_the_comparison_covers_nationality_position_and_age():
 
 
 def test_two_players_of_the_same_country_and_role():
-    clues = dict(compare_players(BUFFON, BUFFON))
+    clues = clues_of(BUFFON, BUFFON)
 
     assert "feedback.nationality_same" in clues
     assert "feedback.position_same" in clues
@@ -74,7 +78,7 @@ def test_two_players_of_the_same_country_and_role():
 def test_the_comparison_never_mentions_teams():
     """Le squadre sono gia' tutte nell'immagine: ripeterle non sarebbe un indizio, e
     rischierebbe di dire quante tappe ha la soluzione."""
-    keys = [key for key, _ in compare_players(DEL_PIERO, RONALDO)]
+    keys = list(clues_of(DEL_PIERO, RONALDO))
 
     assert not any("team" in key or "club" in key for key in keys)
 
@@ -106,6 +110,17 @@ def test_the_rendered_block_names_the_player_the_bot_understood(dataset):
 
     assert "Alessandro Del Piero" in text
     assert "Ronaldo" not in text  # mai la soluzione
+
+
+def test_the_clues_are_maps_because_firestore_refuses_an_array_inside_an_array(dataset):
+    """La forma non e' un dettaglio di gusto: allenamento e duelli salvano il confronto
+    dentro la sessione, e una lista di coppie e' un array dentro un array. Firestore lo
+    rifiuta a transazione aperta, quindi il tentativo non veniva scalato - ma solo quando
+    il nome scritto esisteva nel dataset, cioe' l'unico caso con un confronto da salvare."""
+    comparison = build_comparison("Del Piero", "ronaldo")
+
+    assert all(isinstance(clue, dict) and set(clue) == {"key", "args"} for clue in comparison["clues"])
+    assert all(isinstance(clue["args"], dict) for clue in comparison["clues"])
 
 
 def test_no_comparison_renders_as_nothing_at_all():

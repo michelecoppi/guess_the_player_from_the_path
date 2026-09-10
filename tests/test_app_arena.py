@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from services import app_events, arena
+from services import firebase_service as fs
 
 
 class MemoryRef:
@@ -123,17 +124,79 @@ def test_duel_two_seats_identical_paths_private_until_both_finish(store):
         own = arena.duel(1, "Anna", "guess", code, "Paolo Maldini", own["session"]["revision"])
         assert "Paolo Maldini" not in json.dumps(own)
     assert own["session"]["finished"] and not own["complete"]
-    assert "recap" not in own
+    # I percorsi chiusi si vedono subito, i nomi no: e' l'avversario che non ha finito.
+    assert [row["n"] for row in own["rounds"]] == [1, 2, 3, 4, 5]
+    assert all(row["solved"] and "answer" not in row and "opponent" not in row for row in own["rounds"])
     waiting = arena.duel(2, "Bea", "get", code)
     assert "solved" not in waiting["opponent"]
     assert "history" not in waiting["opponent"]
     for _ in range(15):
         other = arena.duel(2, "Bea", "guess", code, "Lionel Messi", other["session"]["revision"])
     assert other["outcome"] == "loss" and other["complete"]
-    assert len(other["recap"]) == 5 and other["recap"][0]["answer"] == "Paolo Maldini"
+    assert len(other["rounds"]) == 5 and other["rounds"][0]["answer"] == "Paolo Maldini"
+    assert other["rounds"][0]["opponent"] == {"solved": True, "attempts": 1}
     assert other["session"]["spent"] == 15
     assert arena.duel(1, "Anna", "get", code)["outcome"] == "win"
     assert store["users/1"]["points_totali"] == 42
+
+
+def test_duel_skip_burns_the_path_without_showing_the_name(store):
+    own = arena.duel(1, "Anna", "create")
+    code = own["code"]
+    arena.duel(2, "Bea", "join", code)
+    own = arena.duel(1, "Anna", "reveal", code, revision=own["session"]["revision"])
+    assert own["session"]["round"] == 1 and own["session"]["spent"] == 3 and own["session"]["solved"] == 0
+    assert own["session"]["attempts"] == 0
+    assert own["feedback"] == {"status": "wrong", "done": True}
+    assert "Paolo Maldini" not in json.dumps(own)
+    assert own["rounds"] == [{"n": 1, "solved": False, "attempts": 3}]
+
+
+def test_duel_opponent_paths_show_up_only_once_they_are_done(store):
+    own = arena.duel(1, "Anna", "create")
+    code = own["code"]
+    other = arena.duel(2, "Bea", "join", code)
+    for _ in range(3):
+        other = arena.duel(2, "Bea", "guess", code, "Lionel Messi", other["session"]["revision"])
+    assert "opponent" not in arena.duel(2, "Bea", "get", code)["rounds"][0]
+    for _ in range(5):
+        own = arena.duel(1, "Anna", "guess", code, "Paolo Maldini", own["session"]["revision"])
+    waiting = arena.duel(2, "Bea", "get", code)
+    assert not waiting["complete"] and "answer" not in waiting["rounds"][0]
+    assert waiting["rounds"][0]["opponent"] == {"solved": True, "attempts": 1}
+
+
+def test_duel_ledger_keeps_the_score_against_the_same_opponent(store):
+    def play(winner_answer):
+        code = arena.duel(1, "Anna", "create")["code"]
+        arena.duel(2, "Bea", "join", code)
+        for uid, name, answer in ((1, "Anna", "Paolo Maldini"), (2, "Bea", winner_answer)):
+            current = arena.duel(uid, name, "get", code)
+            for _ in range(15):
+                if current["session"]["finished"]:
+                    break
+                current = arena.duel(uid, name, "guess", code, answer, current["session"]["revision"])
+        return code
+
+    first = play("Lionel Messi")
+    # Chi chiude per secondo registra subito; l'altro alla prima riapertura della partita.
+    assert store["users/2"]["app_duel_record"] == {"1": {"won": 0, "lost": 1, "drawn": 0, "name": "Anna"}}
+    anna = arena.duel(1, "Anna", "get", first)
+    assert anna["ledger"]["record"] == {"name": "Bea", "won": 1, "lost": 0, "drawn": 0}
+    assert [match["code"] for match in anna["ledger"]["matches"]] == [first]
+    assert anna["ledger"]["matches"][0]["name"] == "Bea"
+    assert anna["ledger"]["matches"][0]["rounds"][0]["answer"] == "Paolo Maldini"
+    assert "opponent_id" not in anna["ledger"]["matches"][0]
+
+    # Riaprire la stessa partita conclusa non la conta due volte.
+    arena.duel(1, "Anna", "get", first)
+    assert store["users/1"]["app_duel_record"]["2"]["won"] == 1
+
+    second = play("Paolo Maldini")
+    anna = arena.duel(1, "Anna", "get", second)
+    assert anna["ledger"]["record"] == {"name": "Bea", "won": 1, "lost": 0, "drawn": 1}
+    assert [match["code"] for match in anna["ledger"]["matches"]] == [second, first]
+    assert arena.duel(1, "Anna", "create")["ledger"]["record"] is None
 
 
 def test_duel_draw_expiry_and_revision_guard(store):
@@ -200,3 +263,48 @@ def test_career_events_cap_guesses_without_spending_attempt(store, event):
     assert "events/week/1" not in store
     assert app_events.guess(1, "Anna", "week", event, "Milan, Milan", 0)["status"] == "wrong"
     assert app_events.guess(1, "Anna", "week", event, "Milan, Roma", 1)["status"] == "correct"
+
+
+# ---------------------------------------------------------------------------
+# Su Firestore vero (l'emulatore), perche' un finto in memoria accetta qualunque cosa
+# ---------------------------------------------------------------------------
+
+
+def test_a_wrong_guess_on_a_name_in_the_dataset_is_actually_written(emulator_db):
+    """Il confronto dopo un errore viene **salvato** dentro la sessione, e Firestore non
+    accetta un array dentro un array.
+
+    Con gli indizi come coppie (chiave, argomenti) la scrittura moriva a transazione
+    aperta: il tentativo non veniva scalato, la mini app riceveva un 500 e chi giocava
+    vedeva il contatore fermo. Capitava solo scrivendo un nome **presente nel dataset**,
+    cioe' l'unico caso in cui un confronto c'e' - e i finti del resto di questo file non lo
+    vedevano perche' sostituiscono `build_comparison`. Qui e' quello vero, su un database
+    che rifiuta per davvero.
+    """
+    from services import practice_content
+    from services.player_pool import get_practice_players
+
+    # Sei schede vere: cinque fanno il duello, la sesta e' il nome da scrivere - dentro il
+    # dataset (quindi con un confronto) ma diverso da ogni soluzione in gioco.
+    puzzles = [practice_content.from_player(p) for p in get_practice_players()[:6]]
+    other = puzzles[-1]
+    fs.save_user(1, "Anna")
+    fs.save_user(2, "Bea")
+
+    def pick(exclude_keys=()):
+        return copy.deepcopy(puzzles[len(exclude_keys)])
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(arena.practice_content, "pick", pick)
+        session = arena.training(1, "next")
+        wrong = arena.training(1, "guess", other["answer"], session["session"]["revision"])
+        assert wrong["feedback"]["comparison"]["clues"], "senza confronto la prova non prova niente"
+        assert wrong["session"]["attempts"] == 1
+        assert fs.get_user_data(1)["app_training"]["seat"]["attempts"] == 1
+
+        duel = arena.duel(1, "Anna", "create")
+        arena.duel(2, "Bea", "join", duel["code"])
+        moved = arena.duel(1, "Anna", "guess", duel["code"], other["answer"],
+                           duel["session"]["revision"])
+        assert moved["feedback"]["comparison"]["clues"]
+        assert moved["session"]["attempts"] == 1

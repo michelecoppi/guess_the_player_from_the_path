@@ -3,6 +3,7 @@ import copy
 import logging
 
 from firebase_admin import firestore
+from google.cloud.firestore_v1.field_path import FieldPath
 
 from services.dates import normalize_day, shift_iso, today_iso
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
@@ -205,9 +206,24 @@ def delete_user_data(user_id):
                lambda writer, doc: writer.update(doc.reference,
                                                  {"solved_by": None, "solved_name": None}))
 
-    # Anche i duelli privati contengono il nome del partecipante e le sue partite.
+    # Anche i duelli privati contengono il nome del partecipante e le sue partite. Il
+    # testa a testa vive invece sul profilo dell'avversario, e li' il nome va cancellato a
+    # mano: si arriva agli avversari passando dai duelli, che sono la sola traccia di chi
+    # ha giocato con chi. Le partite piu' vecchie di sette giorni non hanno piu' il loro
+    # duello, quindi conservano il nome: sono irraggiungibili senza un indice per coppia.
+    # `FieldPath` e non la stringa col punto: un id Telegram inizia con una cifra, e un
+    # segmento che inizia con una cifra in un percorso di campo va fra apici inversi.
+    name_of_the_erased = FieldPath("app_duel_record", str(user_id), "name").to_api_repr()
+
+    def drop_duel(writer, doc):
+        duel = doc.to_dict() or {}
+        for member in dict.fromkeys(duel.get("members") or []):
+            if member != user_id:
+                writer.update(fs.user_ref(member), {name_of_the_erased: firestore.DELETE_FIELD})
+        writer.delete(doc.reference)
+
     deleted["duels"] = bulk.sweep(
-        fs.db.collection("app_duels").where("members", "array_contains", user_id), drop)
+        fs.db.collection("app_duels").where("members", "array_contains", user_id), drop_duel)
 
     logging.info(f"[PRIVACY] Dati utente {user_id} cancellati: {deleted}")
     return deleted

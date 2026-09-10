@@ -2,6 +2,10 @@
 
 Practice sessions live on the user; duels store two seats and five immutable puzzles.
 Every move is transactional and revision checked, so retries cannot spend two attempts.
+
+A finished duel also leaves a trace on both profiles: the running head to head score
+against that opponent and the last matches, so "who won more" survives the seven days
+of the duel document.
 """
 import copy
 import re
@@ -20,6 +24,9 @@ from services.matching import find_match, looks_like_an_answer
 
 DUELS = "app_duels"
 CODE = re.compile(r"^[a-f0-9]{24}$")
+# How many finished duels the profile keeps in full (paths and answers included).
+MATCHES = 10
+OUTCOMES = {"win": "won", "loss": "lost", "draw": "drawn"}
 
 
 class ArenaError(ValueError):
@@ -122,6 +129,30 @@ def training(user_id, action="get", answer=None, revision=None, lang="it"):
     return _run(fs.user_ref(user_id), change)
 
 
+def _outcome(seat, opponent):
+    own = (seat["solved"], -seat["spent"])
+    other = (opponent["solved"], -opponent["spent"])
+    return "draw" if own == other else "win" if own > other else "loss"
+
+
+def _rounds(doc, seat, opponent, complete):
+    """The paths already closed, as `seat` is allowed to see them.
+
+    Answers stay hidden until both players are done: the name of a path the opponent has
+    not played yet would be worth telling them. Their own result on each path shows up as
+    soon as their five paths are over, which reveals nothing but tells you how you stand.
+    """
+    rows = []
+    for index, own in enumerate(seat["history"]):
+        row = {"n": index + 1, "solved": own["solved"], "attempts": own["attempts"]}
+        if complete:
+            row["answer"] = doc["challenges"][index].get("answer", "")
+        if opponent and opponent["finished"] and index < len(opponent["history"]):
+            row["opponent"] = {k: opponent["history"][index][k] for k in ("solved", "attempts")}
+        rows.append(row)
+    return rows
+
+
 def _duel_view(doc, uid, lang):
     seat = doc["seats"][uid]
     finished = len(doc["seats"]) == 2 and all(s["finished"] for s in doc["seats"].values())
@@ -129,19 +160,74 @@ def _duel_view(doc, uid, lang):
     result = {"code": doc["code"], "expires_at": doc["expires_at"].isoformat(),
               "session": _view(doc["challenges"], seat, lang, 3),
               "opponent": ({k: opponent[k] for k in ("name", "round", "finished")} if opponent else None),
-              "complete": finished, "feedback": seat.get("feedback")}
+              "complete": finished, "feedback": seat.get("feedback"),
+              "rounds": _rounds(doc, seat, opponent, finished)}
     if finished:
         assert opponent is not None
-        own_score = (seat["solved"], -seat["spent"])
-        other_score = (opponent["solved"], -opponent["spent"])
-        result["outcome"] = "draw" if own_score == other_score else "win" if own_score > other_score else "loss"
+        result["outcome"] = _outcome(seat, opponent)
         result["opponent"].update(solved=opponent["solved"], spent=opponent["spent"])
-        result["recap"] = [{"answer": challenge.get("answer", ""), "you": own, "opponent": other}
-                           for challenge, own, other in zip(doc["challenges"], seat["history"], opponent["history"])]
     return result
 
 
-def duel(user_id, name, action="get", code=None, answer=None, revision=None, lang="it"):
+def _match(doc, uid):
+    """The finished duel as it goes into a profile: scores, outcome and the five answers.
+
+    It is a copy on purpose. The duel document lives seven days and then goes away, while
+    this is what the player will still be able to read months later.
+    """
+    seat = doc["seats"][uid]
+    key, opponent = next((key, other) for key, other in doc["seats"].items() if key != uid)
+    return {"code": doc["code"], "opponent_id": int(key), "name": opponent["name"],
+            "outcome": _outcome(seat, opponent), "ended_at": datetime.now(timezone.utc).isoformat(),
+            "you": {"solved": seat["solved"], "spent": seat["spent"]},
+            "them": {"solved": opponent["solved"], "spent": opponent["spent"]},
+            "rounds": [{"answer": challenge.get("answer", ""),
+                        "you": {k: own[k] for k in ("solved", "attempts")},
+                        "them": {k: other[k] for k in ("solved", "attempts")}}
+                       for challenge, own, other in
+                       zip(doc["challenges"], seat["history"], opponent["history"])]}
+
+
+def _remember(user_id, match):
+    """File a finished duel on the profile and return the profile as it now stands.
+
+    Each player files their own copy, once: the duel document carries the receipt
+    (`recorded`), so a refresh cannot count the same match twice.
+    """
+    def change(user):
+        if not user:
+            return {}
+        record = user.setdefault("app_duel_record", {})
+        entry = record.setdefault(str(match["opponent_id"]), {"won": 0, "lost": 0, "drawn": 0})
+        # The name lives here and nowhere else, so `/forgetme` of the other person can take
+        # it away with a single field delete (services/repos/users.erase_user).
+        entry["name"] = match["name"]
+        entry[OUTCOMES[match["outcome"]]] = int(entry.get(OUTCOMES[match["outcome"]], 0)) + 1
+        kept = [old for old in user.get("app_duel_matches") or [] if old.get("code") != match["code"]]
+        user["app_duel_matches"] = [{k: v for k, v in match.items() if k != "name"}] + kept[:MATCHES - 1]
+        return user
+    return _run(fs.user_ref(user_id), change)
+
+
+def ledger(profile, opponent_id=None):
+    """The head to head panel: the running score against this opponent and the last
+    matches. A projection of the profile; ids of other people stay on the server."""
+    profile = profile or {}
+    record = profile.get("app_duel_record") or {}
+    entry = record.get(str(opponent_id)) if opponent_id is not None else None
+    matches = []
+    for match in (profile.get("app_duel_matches") or [])[:MATCHES]:
+        row = {key: match.get(key) for key in ("code", "outcome", "ended_at", "you", "them", "rounds")}
+        row["name"] = (record.get(str(match.get("opponent_id"))) or {}).get("name", "")
+        matches.append(row)
+    head_to_head = None
+    if entry:
+        head_to_head = {"name": entry.get("name", "")}
+        head_to_head.update({key: int(entry.get(key, 0)) for key in ("won", "lost", "drawn")})
+    return {"record": head_to_head, "matches": matches}
+
+
+def duel(user_id, name, action="get", code=None, answer=None, revision=None, lang="it", profile=None):
     uid = str(user_id)
     if action == "create":
         challenges = []
@@ -157,8 +243,10 @@ def duel(user_id, name, action="get", code=None, answer=None, revision=None, lan
                "seats": {uid: _seat(name)}, "expires_at": datetime.now(timezone.utc) + timedelta(days=7)}
         fs.db.collection(DUELS).document(code).create(doc)
         fs.user_ref(user_id).update({"app_duel": code})
-        return _duel_view(doc, uid, lang)
-    if action not in ("get", "join", "guess") or not isinstance(code, str) or not CODE.fullmatch(code):
+        result = _duel_view(doc, uid, lang)
+        result["ledger"] = ledger(profile if profile is not None else fs.get_user_data(user_id))
+        return result
+    if action not in ("get", "join", "guess", "reveal") or not isinstance(code, str) or not CODE.fullmatch(code):
         raise ArenaError("invalid")
 
     def change(doc):
@@ -171,12 +259,24 @@ def duel(user_id, name, action="get", code=None, answer=None, revision=None, lan
                 raise ArenaError("full")
             doc["seats"][uid] = _seat(name)
             doc["members"].append(user_id)
-        if action == "guess":
+        if action in ("guess", "reveal"):
             feedback = _move(doc["challenges"], doc["seats"][uid], action, answer, revision, 3)
             feedback.pop("answer", None)
             doc["seats"][uid]["feedback"] = feedback
-        return _duel_view(doc, uid, lang)
-    result = _run(fs.db.collection(DUELS).document(code), change)
+        view = _duel_view(doc, uid, lang)
+        opponent = next((key for key in doc["seats"] if key != uid), None)
+        match = None
+        if view["complete"] and uid not in (doc.get("recorded") or []):
+            doc.setdefault("recorded", []).append(uid)
+            match = _match(doc, uid)
+        return {"view": view, "match": match, "opponent": opponent}
+    outcome = _run(fs.db.collection(DUELS).document(code), change)
     if action == "join":
         fs.user_ref(user_id).update({"app_duel": code})
+    if outcome["match"]:
+        profile = _remember(user_id, outcome["match"])
+    elif profile is None:
+        profile = fs.get_user_data(user_id)
+    result = outcome["view"]
+    result["ledger"] = ledger(profile, outcome["opponent"])
     return result

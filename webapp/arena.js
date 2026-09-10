@@ -24,7 +24,10 @@ const TEXT = {
     empty: "Non ci sono ancora abbastanza percorsi disponibili.", invalid_answer: "Inserisci una risposta valida prima di continuare.", max_answers: "Puoi indicare al massimo cinque squadre.",
     finished: "Hai già concluso questa partita. Aggiorna per vedere il risultato.", unavailable: "Gli inviti non sono ancora disponibili.", invalid: "Questa richiesta non è valida.",
     copy: "Copia link", copied: "Link copiato", copyError: "Copia il link dal campo qui sotto.", join_required: "Apri l’invito e accetta per partecipare.",
-    matched: "Squadre corrette: {n}", nextRound: "Avanti: un nuovo percorso ti aspetta.", resume: "Riprendi l’ultimo duello", progress: "{n}/{total} percorsi completati", newDuel: "Crea un altro duello", codeLabel: "Link di invito", eventEnd: "Ultima giornata: {date}", recap: "I cinque percorsi: risultati e soluzioni"
+    skip: "Salta il percorso", skipSure: "Confermi? Vale 3 tentativi", paths: "I percorsi di questa partita", hidden: "Nome nascosto fino alla fine",
+    used: "{n} tentativi", used1: "{n} tentativo", h2h: "TESTA A TESTA", h2hLine: "vittorie–sconfitte con {name} · pareggi: {n}", pastTitle: "Duelli conclusi", someone: "Un avversario",
+    winShort: "Vinto", lossShort: "Perso", drawShort: "Pari", synced: "Partita aggiornata dal server: controlla i tentativi rimasti.",
+    matched: "Squadre corrette: {n}", nextRound: "Avanti: un nuovo percorso ti aspetta.", resume: "Riprendi l’ultimo duello", progress: "{n}/{total} percorsi completati", newDuel: "Crea un altro duello", codeLabel: "Link di invito", eventEnd: "Ultima giornata: {date}"
   },
   en: {
     headline: "Your next kick-off.", intro: "One daily challenge. A whole pitch to explore.",
@@ -48,7 +51,10 @@ const TEXT = {
     empty: "There aren’t enough paths available yet.", invalid_answer: "Enter a valid answer to continue.", max_answers: "You can enter at most five clubs.",
     finished: "You’ve already finished this game. Refresh to see the result.", unavailable: "Invitations are not available yet.", invalid: "This request is not valid.",
     copy: "Copy link", copied: "Link copied", copyError: "Copy the link from the field below.", join_required: "Open the invitation and accept to join.",
-    matched: "Correct clubs: {n}", nextRound: "Next up: a new path is waiting.", resume: "Resume your last duel", progress: "{n}/{total} paths completed", newDuel: "Create another duel", codeLabel: "Invitation link", eventEnd: "Final day: {date}", recap: "The five paths: results and answers"
+    skip: "Skip this path", skipSure: "Sure? It costs 3 guesses", paths: "The paths of this match", hidden: "Name hidden until the end",
+    used: "{n} guesses", used1: "{n} guess", h2h: "HEAD TO HEAD", h2hLine: "wins–losses with {name} · draws: {n}", pastTitle: "Finished duels", someone: "An opponent",
+    winShort: "Won", lossShort: "Lost", drawShort: "Draw", synced: "Game refreshed from the server: check your remaining guesses.",
+    matched: "Correct clubs: {n}", nextRound: "Next up: a new path is waiting.", resume: "Resume your last duel", progress: "{n}/{total} paths completed", newDuel: "Create another duel", codeLabel: "Invitation link", eventEnd: "Final day: {date}"
   },
   es: {
     headline: "Tu próximo saque inicial.", intro: "Un reto diario. Todo un campo por explorar.",
@@ -72,16 +78,27 @@ const TEXT = {
     empty: "Aún no hay suficientes trayectorias disponibles.", invalid_answer: "Introduce una respuesta válida para continuar.", max_answers: "Puedes indicar como máximo cinco equipos.",
     finished: "Ya has terminado esta partida. Actualiza para ver el resultado.", unavailable: "Las invitaciones aún no están disponibles.", invalid: "Esta solicitud no es válida.",
     copy: "Copiar enlace", copied: "Enlace copiado", copyError: "Copia el enlace del campo de abajo.", join_required: "Abre la invitación y acepta para participar.",
-    matched: "Equipos correctos: {n}", nextRound: "Siguiente: te espera otra trayectoria.", resume: "Retomar el último duelo", progress: "{n}/{total} trayectorias completadas", newDuel: "Crear otro duelo", codeLabel: "Enlace de invitación", eventEnd: "Última jornada: {date}", recap: "Las cinco trayectorias: resultados y respuestas"
+    skip: "Saltar la trayectoria", skipSure: "¿Seguro? Cuesta 3 intentos", paths: "Las trayectorias de esta partida", hidden: "Nombre oculto hasta el final",
+    used: "{n} intentos", used1: "{n} intento", h2h: "CARA A CARA", h2hLine: "victorias–derrotas con {name} · empates: {n}", pastTitle: "Duelos terminados", someone: "Un rival",
+    winShort: "Ganado", lossShort: "Perdido", drawShort: "Empate", synced: "Partida actualizada desde el servidor: revisa los intentos restantes.",
+    matched: "Equipos correctos: {n}", nextRound: "Siguiente: te espera otra trayectoria.", resume: "Retomar el último duelo", progress: "{n}/{total} trayectorias completadas", newDuel: "Crear otro duelo", codeLabel: "Enlace de invitación", eventEnd: "Última jornada: {date}"
   }
 };
-let mode = null, data = null, busy = false, error = null, invitation = null, eventCode = null, draft = "", notice = "";
+let mode = null, data = null, busy = false, error = null, invitation = null, eventCode = null, draft = "", notice = "", confirming = null;
+/* Errori che dicono "il server sa qualcosa che tu non sai": mostrare il messaggio e
+   lasciare in pagina i contatori vecchi e' il modo migliore per far credere a chi gioca
+   che un tentativo non gli e' stato scalato. Si ricarica la partita e si vede la verita'. */
+const RESYNC = ["stale", "finished"];
+// Errori di quello che si e' scritto: si riprova cambiando la risposta, non ricaricando.
+const TYPED = ["invalid_answer", "max_answers"];
 const tr = (key, args = {}) => {
   let value = (TEXT[(state.profile || {}).language] || TEXT.en)[key] || TEXT.en.loadError;
   for (const [k, v] of Object.entries(args)) value = value.replaceAll(`{${k}}`, String(v));
   return value;
 };
 const esc = value => PlayerClient.escapeHtml(value);
+// "1 tentativo" e "3 tentativi": il singolare cambia in tutte e tre le lingue.
+const uses = n => tr(n === 1 ? "used1" : "used", {n});
 const button = (action, label, ghost = false) => `<button class="btn${ghost ? " ghost" : ""}" data-arena-action="${action}" ${busy ? "disabled" : ""}>${esc(tr(label))}</button>`;
 const icon = kind => `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${{
   training: '<circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="5"/><path d="M16 1v7m0 16v7M1 16h7m16 0h7"/>',
@@ -100,6 +117,11 @@ function date(value) {
 function form(hint = "") {
   return `<form id="arena-form" class="arena-form"><label for="arena-answer">${esc(tr("answerLabel"))}</label>${hint ? `<p id="arena-answer-help" class="muted">${esc(hint)}</p>` : ""}<input id="arena-answer" ${hint ? 'aria-describedby="arena-answer-help"' : ""} maxlength="220" autocomplete="off" autocorrect="off" value="${esc(draft)}" placeholder="${esc(hint ? tr("answerLabel") : L.placeholder)}" ${busy ? "disabled" : ""}><button class="btn" type="submit" ${busy ? "disabled" : ""}>${esc(tr(busy ? "loading" : "send"))}</button></form>`;
 }
+/* Errore e conferma stanno **dove si e' premuto**: prima erano in cima alla schermata,
+   fuori dallo schermo di chi aveva davanti il percorso e il campo di risposta. */
+function alerts() {
+  return `${error ? `<div class="arena-error" role="alert"><p>${esc(tr(error))}</p>${TYPED.indexOf(error) === -1 ? button("get", "refresh", true) : ""}</div>` : ""}${notice ? `<p class="arena-notice" role="status">${esc(notice)}</p>` : ""}`;
+}
 function feedback(f) {
   if (!f || !f.status) return "";
   return `<div class="arena-feedback ${f.status === "correct" ? "ok" : ""}" role="status"><strong>${esc(tr(f.status === "correct" ? "correct" : f.done ? "ended" : "wrong"))}</strong>
@@ -108,9 +130,38 @@ function feedback(f) {
     ${f.matched != null ? `<p>${esc(tr("matched", {n:f.matched}))}</p>` : ""}
     ${f.comparison ? comparison(f.comparison) : ""}</div>`;
 }
+/* I percorsi già chiusi: quali hai preso, quanti tentativi ti sono costati e, appena
+   l'avversario finisce, come è andata a lui. I nomi arrivano dal server solo a partita
+   conclusa, quindi qui non c'è niente da nascondere. */
+function paths(d) {
+  const rows = d.rounds || [];
+  if (!rows.length) return "";
+  const name = d.opponent ? d.opponent.name : "";
+  return `<section class="arena-paths"><h3>${esc(tr("paths"))}</h3>${rows.map(row => `<div class="arena-path">
+      <span class="arena-path-mark ${row.solved ? "ok" : "no"}" aria-hidden="true">${row.solved ? "✓" : "×"}</span>
+      <div><strong>${esc(row.answer || tr("hidden"))}</strong><p>${esc(tr("you"))} · ${esc(uses(row.attempts))}${row.opponent ? ` · ${esc(name)} ${row.opponent.solved ? "✓" : "×"} · ${esc(uses(row.opponent.attempts))}` : ""}</p></div>
+    </div>`).join("")}</section>`;
+}
+/* Il testa a testa con questo avversario e le ultime partite chiuse. Vivono sul profilo:
+   il documento del duello dura sette giorni, il conto di chi ha vinto più volte no. */
+function past(d) {
+  const ledger = d.ledger || {}, matches = ledger.matches || [], record = ledger.record;
+  if (!record && !matches.length) return "";
+  return `<section class="arena-history">
+    ${record ? `<div class="arena-h2h"><span class="arena-eyebrow">${esc(tr("h2h"))}</span><strong>${record.won}–${record.lost}</strong><span>${esc(tr("h2hLine", {name: record.name, n: record.drawn}))}</span></div>` : ""}
+    ${matches.length ? `<h3>${esc(tr("pastTitle"))}</h3>${matches.map(match => `<details class="arena-past"><summary>
+        <span class="arena-badge ${match.outcome === "win" ? "ok" : match.outcome === "loss" ? "no" : ""}">${esc(tr(match.outcome + "Short"))}</span>
+        <span class="arena-past-name">${esc(match.name || tr("someone"))}</span>
+        <span class="arena-past-score">${match.you.solved}–${match.them.solved}</span>
+        <small>${esc(date(match.ended_at))}</small></summary>
+      ${(match.rounds || []).map((row, i) => `<div class="arena-past-row"><strong>${i + 1}. ${esc(row.answer)}</strong>
+        <p>${row.you.solved ? "✓" : "×"} ${esc(tr("you"))} · ${esc(uses(row.you.attempts))} — ${row.them.solved ? "✓" : "×"} ${esc(match.name || tr("someone"))} · ${esc(uses(row.them.attempts))}</p></div>`).join("")}
+      </details>`).join("")}` : ""}
+  </section>`;
+}
 function sessionView(d) {
   const s = d.session;
-  if (!s) return `<div class="arena-empty">${icon(mode)}<p>${esc(tr(mode === "training" ? "trainRules" : "rules"))}</p>${button(mode === "training" ? "next" : "create", mode === "training" ? "start" : "create")}</div>`;
+  if (!s) return `<div class="arena-empty">${icon(mode)}<p>${esc(tr(mode === "training" ? "trainRules" : "rules"))}</p>${alerts()}${button(mode === "training" ? "next" : "create", mode === "training" ? "start" : "create")}</div>${past(d)}`;
   let html = "";
   if (mode === "duel") {
     html += `<div class="arena-versus"><div><span>${esc(tr("you"))}</span><strong>${esc(tr("progress", {n:s.round,total:s.total}))}</strong></div><span class="arena-vs" aria-hidden="true">VS</span><div><span>${esc(d.opponent ? d.opponent.name : tr("waiting"))}</span><strong>${d.opponent ? esc(tr("progress",{n:d.opponent.round,total:s.total})) : "—"}</strong></div></div>
@@ -118,21 +169,19 @@ function sessionView(d) {
       ${d.invite_url && !d.opponent ? `<label class="arena-link-label" for="arena-link">${esc(tr("codeLabel"))}</label><div class="arena-link"><input id="arena-link" readonly value="${esc(d.invite_url)}">${button("copy", "copy",true)}</div>` : ""}
       <p class="muted arena-small">${esc(tr("expires",{date:date(d.expires_at)}))}</p>`;
   }
-  html += feedback(d.feedback);
   if (s.finished) {
     const title = mode === "training" ? "complete" : d.complete ? d.outcome : "waitingEnd";
-    html += `<div class="arena-result"><span class="arena-result-mark" aria-hidden="true">${d.outcome === "win" || mode === "training" && s.solved ? "✦" : "✓"}</span><h2>${esc(tr(title))}</h2><div class="arena-score"><div><strong>${s.solved}/${s.total}</strong><span>${esc(tr("solved"))}</span></div><div><strong>${s.spent}</strong><span>${esc(tr("spent"))}</span></div></div>
+    html += alerts() + feedback(d.feedback) + `<div class="arena-result"><span class="arena-result-mark" aria-hidden="true">${d.outcome === "win" || mode === "training" && s.solved ? "✦" : "✓"}</span><h2>${esc(tr(title))}</h2><div class="arena-score"><div><strong>${s.solved}/${s.total}</strong><span>${esc(tr("solved"))}</span></div><div><strong>${s.spent}</strong><span>${esc(tr("spent"))}</span></div></div>
       ${d.complete ? `<p>${esc(d.opponent.name)} · ${d.opponent.solved}/${s.total} · ${d.opponent.spent} ${esc(tr("spent"))}</p>` : ""}
-      ${d.recap && d.recap.length ? `<details class="arena-recap"><summary>${esc(tr("recap"))}</summary>${d.recap.map((row,i)=>`<div><strong>${i+1}. ${esc(row.answer)}</strong><p>${esc(tr("you"))}: ${row.you.solved ? "✓" : "×"} ${row.you.attempts} · ${esc(d.opponent.name)}: ${row.opponent.solved ? "✓" : "×"} ${row.opponent.attempts}</p></div>`).join("")}</details>` : ""}
       ${mode === "training" ? button("next", "next") : d.complete ? button("create", "newDuel") : ""}</div>`;
   } else {
-    if (d.feedback && d.feedback.done) html += `<p role="status" class="arena-small">${esc(tr("nextRound"))}</p>`;
     html += `<div class="arena-round"><span class="arena-eyebrow">${esc(tr("round",{n:s.round+1,total:s.total}))}</span><span class="pill">${esc(s.difficulty_label)}</span></div>
       ${mode === "duel" ? `<div class="arena-rounds" aria-label="${esc(tr("progress",{n:s.round,total:s.total}))}">${Array.from({length:s.total},(_,i)=>`<span class="${i<s.round ? "done" : i===s.round ? "current" : ""}">${i<s.round ? s.history[i].solved ? "✓" : "×" : i+1}</span>`).join("")}</div>` : ""}
       <div class="arena-career">${careerPath(s.career_path)}</div><p class="arena-attempts">${esc(tr("attempts",{n:s.max_attempts-s.attempts}))}</p>${form()}
-      ${mode === "training" ? `<div class="arena-actions">${button("reveal","reveal",true)}</div>` : ""}`;
+      ${alerts()}${feedback(d.feedback)}${d.feedback && d.feedback.done ? `<p role="status" class="arena-small">${esc(tr("nextRound"))}</p>` : ""}
+      <div class="arena-actions">${mode === "training" ? button("reveal","reveal",true) : button("skip", confirming === "skip" ? "skipSure" : "skip", true)}</div>`;
   }
-  return html;
+  return html + paths(d) + past(d);
 }
 function eventView() {
   const events = data.events || [];
@@ -144,19 +193,19 @@ function eventView() {
   const image = typeof active.image_url === "string" && /^https:\/\//i.test(active.image_url) ? `<img class="arena-event-image" src="${esc(active.image_url)}" alt="${esc(active.name)}" referrerpolicy="no-referrer">` : "";
   return `<article><span class="arena-eyebrow">${esc(tr("eventsTag"))}</span><h2 class="arena-event-title">${esc(active.name)}</h2><p class="muted">${esc(active.description)}</p><p>${esc(active.rules)}</p>
     <div class="arena-round"><span class="pill">${esc(tr("eventPoints",{n:active.points}))}</span>${active.bonus_available ? `<span class="arena-small">${esc(tr("bonus"))}</span>` : ""}</div>
-    ${feedback(data.feedback)}${active.player_name ? `<h3>${esc(active.player_name)}</h3>` : ""}${careerPath(active.career_path)}${image}
+    ${active.player_name ? `<h3>${esc(active.player_name)}</h3>` : ""}${careerPath(active.career_path)}${image}
     ${!active.available ? `<p>${esc(tr("eventEmpty"))}</p>` : p.finished ? `<div class="arena-result"><h3>${esc(tr(p.solved ? "correct" : "ended"))}</h3><p>${esc(tr("eventWait"))}</p></div>` : `<p class="arena-attempts">${esc(tr("attempts",{n:3-p.attempts}))}</p>${form(hint)}`}
+    ${alerts()}${feedback(data.feedback)}
     <div class="arena-leaderboard"><h3>${esc(tr("table"))}</h3><p class="arena-small">${esc(tr("eventScore",{n:p.points}))}</p>${active.leaderboard.length ? active.leaderboard.map((row,i)=>`<div class="row"><span class="pos">${i+1}</span><span class="name">${esc(row.name)}</span><span class="pts">${row.points}</span></div>`).join("") : `<p class="muted">${esc(tr("emptyTable"))}</p>`}</div>${button("get","refresh",true)}</article>`;
 }
 function view() {
   return `<section class="arena-shell" aria-busy="${busy}"><button class="arena-back" data-arena-back>← ${esc(tr("back"))}</button><header class="arena-page-head"><span class="arena-icon">${icon(mode)}</span><div><span class="arena-eyebrow">${esc(tr(mode+"Tag"))}</span><h1>${esc(tr(mode))}</h1></div></header>
-    ${error ? `<div class="arena-error" role="alert"><p>${esc(tr(error))}</p>${button("get","refresh",true)}</div>` : ""}${notice ? `<p role="status">${esc(notice)}</p>` : ""}
-    ${invitation ? `<div class="arena-empty"><p>${esc(tr("joinIntro"))}</p><p class="muted">${esc(tr("rules"))}</p>${button("join","join")}</div>` : !data ? error ? mode === "duel" ? button("create","create") : mode === "training" ? button("next","start") : "" : `<div class="arena-empty" role="status">${esc(tr("loading"))}</div>` : mode === "events" ? eventView() : sessionView(data)}
+    ${invitation ? `<div class="arena-empty"><p>${esc(tr("joinIntro"))}</p><p class="muted">${esc(tr("rules"))}</p>${alerts()}${button("join","join")}</div>` : !data ? error ? `<div class="arena-empty">${alerts()}${mode === "duel" ? button("create","create") : mode === "training" ? button("next","start") : ""}</div>` : `<div class="arena-empty" role="status">${esc(tr("loading"))}</div>` : mode === "events" ? eventView() : sessionView(data)}
     </section>`;
 }
 async function request(action, answer) {
   if (busy) return;
-  busy = true; error = null; notice = "";
+  busy = true; error = null; notice = ""; confirming = null;
   const requestedMode = mode;
   const e = mode === "events" && data && (data.events || []).find(e=>e.code===eventCode);
   const body = {mode, action, answer, code: invitation || (e ? e.code : data && data.code), day:e && e.day,
@@ -170,16 +219,26 @@ async function request(action, answer) {
   } catch (err) {
     if (mode === requestedMode) error = err.detail || "loadError";
   } finally {
-    busy = false; render();
-    if (action === "guess" && mode === requestedMode && state.tab === "play") {
-      if (data && data.feedback && data.feedback.done) window.scrollTo(0,0);
+    busy = false;
+    const resync = mode === requestedMode && action !== "get" && RESYNC.indexOf(error) !== -1;
+    render();
+    if (resync) {
+      await request("get");
+      if (!error) { notice = tr("synced"); render(); }
+      return;
+    }
+    if ((action === "guess" || action === "reveal") && mode === requestedMode && state.tab === "play") {
+      const box = document.querySelector(".arena-feedback");
+      // Il campo di risposta resta dove sta: quello che cambia sotto il bottone e' il
+      // motivo per cui si e' premuto, e va portato sotto gli occhi.
+      if (data && data.feedback && data.feedback.done && box) box.scrollIntoView({block:"center", behavior:"smooth"});
       else { const input=document.getElementById("arena-answer"); if(input) input.focus({preventScroll:true}); }
     }
   }
 }
 function open(kind, code) {
   if (busy) return;
-  mode = kind; data = null; error = null; draft = ""; notice = ""; eventCode = null; invitation = code || null;
+  mode = kind; data = null; error = null; draft = ""; notice = ""; confirming = null; eventCode = null; invitation = code || null;
   state.tab = "play"; state.publicTarget = null; state.cabinetOpen = false;
   render(); window.scrollTo(0,0);
   if (!invitation) request("get");
@@ -193,6 +252,11 @@ function wire() {
     if (action === "invite") {
       const url=`https://t.me/share/url?url=${encodeURIComponent(data.invite_url)}&text=${encodeURIComponent(tr("inviteText"))}`;
       if (tg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url,"_blank","noopener");
+    } else if (action === "skip") {
+      // Un percorso saltato e' un percorso perso: si chiede conferma sul bottone stesso,
+      // che nella webview di Telegram e' l'unica finestra di dialogo che si vede sempre.
+      if (confirming !== "skip") { confirming = "skip"; render(); return; }
+      confirming = null; await request("reveal");
     } else if (action === "copy") {
       try {await navigator.clipboard.writeText(data.invite_url); notice=tr("copied");}
       catch (_) {notice=tr("copyError");} render();

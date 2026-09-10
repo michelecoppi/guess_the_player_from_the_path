@@ -16,6 +16,16 @@ def install(app, state, lang):
         return
     sessions = {}
     event_progress = {"attempts": 0, "finished": False, "solved": False, "points": 0}
+    # Un profilo finto con un duello gia' chiuso, cosi' l'anteprima mostra anche il testa a
+    # testa e lo storico senza dover giocare due partite intere.
+    profile = {"app_duel_record": {"2": {"name": "Giulia", "won": 1, "lost": 2, "drawn": 1}},
+               "app_duel_matches": [{"code": "b" * 24, "opponent_id": 2, "outcome": "loss",
+                                     "ended_at": datetime.now(timezone.utc).isoformat(),
+                                     "you": {"solved": 2, "spent": 11}, "them": {"solved": 3, "spent": 11},
+                                     "rounds": [{"answer": puzzle.get("answer", ""),
+                                                 "you": {"solved": i < 2, "attempts": [1, 2, 3, 3, 2][i]},
+                                                 "them": {"solved": i < 3, "attempts": [2, 1, 2, 3, 3][i]}}
+                                                for i, puzzle in enumerate(puzzles)]}]}
 
     @app.post("/app/api/arena")
     def preview(payload: dict = Body(default={})):
@@ -27,7 +37,7 @@ def install(app, state, lang):
                                       "seat": arena._seat("Marco"), "feedback": None}
                 session = sessions.get(mode)
                 if not session:
-                    return {"session": None}
+                    return {"session": None, "ledger": arena.ledger(profile) if mode == "duel" else None}
                 if action in ("guess", "reveal"):
                     session["feedback"] = arena._move(session["challenges"], session["seat"], action,
                                                        payload.get("answer"), payload.get("revision"), 5 if mode == "training" else 3)
@@ -45,6 +55,7 @@ def install(app, state, lang):
                     doc["seats"]["2"] = opponent
                 result = arena._duel_view(doc, "1", lang())
                 result["invite_url"] = "https://t.me/preview_bot?start=duel_" + "a" * 24
+                result["ledger"] = arena.ledger(profile, "2")
                 return result
             if mode == "events":
                 feedback = None

@@ -31,10 +31,16 @@ Le modifiche diventano operative al deploy e al successivo avvio del servizio.
   punti, ma gli indovinati contribuiscono ai traguardi di allenamento.
 - **Sfida un amico:** cinque percorsi identici, tre tentativi per percorso e due
   posti. Vince chi indovina più percorsi; a parità contano meno tentativi (un
-  percorso perso ne conta tre). La partita è asincrona, senza punti nella
-  classifica generale. Il pulsante Aggiorna recupera i progressi dell'avversario;
-  il confronto dei punteggi appare quando entrambi hanno finito. Il centro Gioca
-  riprende l'ultimo duello; un invito permette di riaprire anche quello precedente.
+  percorso perso ne conta tre). Chi non vuole insistere può **saltare il percorso**
+  con una conferma sul pulsante: vale come un percorso perso, cioè tre tentativi.
+  La partita è asincrona, senza punti nella classifica generale. Il pulsante
+  Aggiorna recupera i progressi dell'avversario; il confronto dei punteggi appare
+  quando entrambi hanno finito. Sotto il campo di risposta restano l'elenco dei
+  percorsi già chiusi - quali hai preso e quanti tentativi ti sono costati, con i
+  risultati dell'avversario appena finisce anche lui - il testa a testa con quella
+  persona e le ultime dieci partite concluse, percorsi e soluzioni compresi. Il
+  centro Gioca riprende l'ultimo duello; un invito permette di riaprire anche
+  quello precedente.
   Gli inviti durano sette giorni e richiedono `BOT_USERNAME` e `PUBLIC_BASE_URL`.
   Il link `/start duel_<codice>` registra anche un nuovo utente e gli presenta
   il pulsante per aprire la partita nella mini app. Nessun messaggio è inviato
@@ -46,10 +52,15 @@ Le modifiche diventano operative al deploy e al successivo avvio del servizio.
 
 L'endpoint `/app/api/arena` richiede la stessa firma Telegram degli altri endpoint.
 Le mosse di allenamento e duello controllano una revisione in transazione; gli
-eventi verificano giornata e numero di tentativi. Le soluzioni dei duelli si
-mostrano nel riepilogo solo dopo che entrambi hanno finito; gli alias accettati
-non vengono inviati al client. I duelli sono salvati in
-`app_duels`; `/forgetme DELETE` elimina anche i duelli a cui l'utente partecipa.
+eventi verificano giornata e numero di tentativi. Quando il server risponde che la
+partita è cambiata, la mini app la ricarica da sola invece di lasciare in pagina
+contatori vecchi. Le soluzioni dei duelli si mostrano nel riepilogo solo dopo che
+entrambi hanno finito; gli alias accettati non vengono inviati al client. I duelli
+sono salvati in `app_duels`; il testa a testa e le partite concluse stanno sul
+documento utente (`app_duel_record`, `app_duel_matches`) e ogni giocatore registra
+la propria copia una volta sola. `/forgetme DELETE` elimina anche i duelli a cui
+l'utente partecipa e, passando da quelli, cancella il suo nome dal testa a testa
+degli avversari raggiungibili.
 La scadenza viene applicata dall'applicazione; per rimuovere automaticamente i
 documenti scaduti si può configurare il TTL Firestore sul campo `expires_at`.
 
@@ -136,7 +147,9 @@ seconda: le squadre **non** si confrontano mai. Sono gia' tutte nell'immagine �
 sarebbe ripetere quello che si vede — e le informazioni che l'immagine non da' sono
 esattamente nazionalita', ruolo ed eta'.
 
-Il nome tentato viene risolto sul dataset con la stessa tolleranza ai refusi delle risposte,
+Gli indizi viaggiano come chiavi di traduzione (`{"key": ..., "args": ...}`, mappe e non
+coppie: allenamento e duelli salvano il confronto nella sessione, e Firestore rifiuta un
+array dentro un array). Il nome tentato viene risolto sul dataset con la stessa tolleranza ai refusi delle risposte,
 e il blocco riporta in testa la scheda che il bot ha capito: e' l'unico modo che ha l'utente
 di accorgersi che "Ronaldo" e' stato inteso come un altro Ronaldo. Se il nome non e' nel
 dataset — o se la sfida e' cosi' vecchia da non avere `player_id` — il confronto non c'e' e
@@ -538,8 +551,11 @@ Cosa aggiunge rispetto al bot, e perche':
   `solved_in` sul documento utente, scritti quando si indovina, quindi non costa nessuna lettura;
 - **gestione delle leghe**: creare, entrare, uscire, classifica completa e invito con il
   selettore di chat nativo di Telegram;
-- **integrazione con l'app**: tema di Telegram (`--tg-theme-*`), `MainButton` di sistema al posto
-  di un bottone in pagina, e vibrazione su risposta giusta o sbagliata;
+- **integrazione con l'app**: tema di Telegram (`--tg-theme-*`) e vibrazione su risposta
+  giusta o sbagliata. Il bottone per rispondere e' in pagina, sotto il campo, e non il
+  `MainButton` di sistema: quello sta sopra la tastiera ma a tastiera chiusa finisce sotto
+  la barra delle schede, dove nessuno lo cerca, ed era l'unico posto dell'app in cui il
+  bottone non stava dove si era appena scritto;
 - **[negozio](#negozio-stelle-di-telegram)**: il tema comprato arriva col profilo e non dietro
   la scheda del negozio, cosi' la prima schermata e' gia' del colore giusto invece di
   cambiare colore mezzo secondo dopo.

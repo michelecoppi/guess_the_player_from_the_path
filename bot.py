@@ -458,9 +458,10 @@ def webapp_arena(payload: dict = Body(default={})):
                 raise arena.ArenaError("unavailable")
             code = payload.get("code") or user.get("app_duel")
             if action == "get" and not code:
-                return {"session": None}
+                # Nessuna partita aperta: resta lo storico, che e' gia' nel documento utente.
+                return {"session": None, "ledger": arena.ledger(user)}
             result = arena.duel(user_id, user.get("first_name", "?"), action, code,
-                                payload.get("answer"), payload.get("revision"), lang)
+                                payload.get("answer"), payload.get("revision"), lang, profile=user)
             result["invite_url"] = f"https://t.me/{BOT_USERNAME}?start=duel_{result['code']}" if BOT_USERNAME else None
             return result
         if mode == "events":

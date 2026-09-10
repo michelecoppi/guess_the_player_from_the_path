@@ -39,6 +39,11 @@ def populate(user_id, chat_id=-100, league="LEG", event="EV1"):
     fs.group_player_ref(chat_id, user_id).set({"telegram_id": user_id, "points": 3})
     fs.db.collection("app_duels").document(f"duel-{user_id}").set(
         {"members": [user_id, 999], "names": {str(user_id): "Da cancellare"}})
+    # L'avversario di quel duello: si porta dietro il nome nel suo testa a testa. Il 999
+    # non ha un documento utente, e va bene: la scrittura di sgombero non lo pretende.
+    fs.save_user(998, "Avversario")
+    fs.user_ref(998).update({"app_duel_record": {str(user_id): {"name": "Da cancellare", "won": 1, "lost": 2, "drawn": 0}}})
+    fs.db.collection("app_duels").document(f"duel-{user_id}-bis").set({"members": [user_id, 998]})
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +94,7 @@ def test_deletion_leaves_nothing_that_names_the_person(emulator_db, small_pages,
     deleted = fs.delete_user_data(42)
 
     assert deleted == {"profile": 1, "archive": 7, "history": 7, "leagues": 1,
-                       "events": 1, "groups": 1, "duels": 1}
+                       "events": 1, "groups": 1, "duels": 2}
     assert not fs.user_ref(42).get().exists
     for subcollection in (fs.ARCHIVE_SUBCOLLECTION, fs.HISTORY_SUBCOLLECTION):
         assert not list(fs.user_ref(42).collection(subcollection).stream())
@@ -97,6 +102,9 @@ def test_deletion_leaves_nothing_that_names_the_person(emulator_db, small_pages,
     assert not fs.participant_ref("EV1", 42).get().exists
     assert not fs.group_player_ref(-100, 42).get().exists
     assert not fs.db.collection("app_duels").document("duel-42").get().exists
+    assert referrals.ref(42).get().to_dict() == {"status": "deleted"}
+    # All'avversario resta il conto delle partite, senza piu' il nome di chi non c'e' piu'.
+    assert fs.get_user_data(998)["app_duel_record"]["42"] == {"won": 1, "lost": 2, "drawn": 0}
     assert referrals.ref(42).get().to_dict() == {"status": "deleted"}
     # Chi resta nella lega non deve accorgersi di niente, a parte il posto libero.
     league = fs.get_league("LEG")
@@ -118,7 +126,7 @@ def test_deletion_resumes_on_what_a_broken_run_left_behind(emulator_db, small_pa
     deleted = fs.delete_user_data(43)
 
     assert deleted["profile"] == 0
-    assert (deleted["archive"], deleted["history"], deleted["duels"]) == (7, 7, 1)
+    assert (deleted["archive"], deleted["history"], deleted["duels"]) == (7, 7, 2)
     assert deleted["leagues"] == 1 and deleted["events"] == 1 and deleted["groups"] == 1
     assert not list(fs.user_ref(43).collection(fs.HISTORY_SUBCOLLECTION).stream())
     assert not fs.member_ref("LEG2", 43).get().exists

@@ -567,12 +567,19 @@ function careerPath(stops) {
   return `<div class="path">${rows}</div>`;
 }
 
+/*
+  Il bottone sta **in pagina**, sotto il campo, e non e' il bottone di sistema di Telegram.
+  Prima era quello: sta sopra la tastiera, ma a tastiera chiusa finisce sotto la barra delle
+  schede, cioe' l'ultima riga dello schermo, sotto a "Gioca / Archivio / Statistiche". Chi
+  gioca cerca il bottone dove ha appena scritto, e in tutte le altre modalita' (allenamento,
+  duelli, eventi) e' li' che sta.
+*/
 function guessBox(disabled) {
   return `<div class="guess-box">
     <input id="answer" type="text" autocomplete="off" autocorrect="off" autocapitalize="words"
            placeholder="${escapeHtml(L.placeholder)}" ${disabled ? "disabled" : ""}>
   </div>
-  ${tg ? "" : `<button class="btn" id="submit" style="margin-top:10px" ${disabled ? "disabled" : ""}>${escapeHtml(L.guessBtn)}</button>`}`;
+  <button class="btn" id="submit" style="margin-top:10px" ${disabled ? "disabled" : ""}>${escapeHtml(L.guessBtn)}</button>`;
 }
 
 /*
@@ -592,9 +599,9 @@ const CLUES = {
 
 function comparison(data) {
   if (!data) return "";
-  const items = (data.clues || []).map(([key, args]) => {
-    const render = CLUES[key];
-    return render ? `<li>${escapeHtml(render(args || {}))}</li>` : "";
+  const items = (data.clues || []).map(clue => {
+    const render = CLUES[clue && clue.key];
+    return render ? `<li>${escapeHtml(render(clue.args || {}))}</li>` : "";
   }).join("");
   return `<div>${escapeHtml(L.compared)} <b>${escapeHtml(data.name)}</b>:<ul>${items}</ul></div>`;
 }
@@ -1240,26 +1247,9 @@ function showMessage(text) {
   document.getElementById("root").innerHTML = `<p class="error">${escapeHtml(text)}</p>` + legalLinks();
 }
 
-function syncMainButton() {
-  /*
-    Il bottone di sistema di Telegram: sta sopra la tastiera, e' quello che l'utente si
-    aspetta di premere, e lascia alla pagina tutto lo spazio per il percorso. In pagina resta
-    un bottone normale solo quando la pagina e' aperta fuori da Telegram.
-  */
-  if (!tg || !tg.MainButton) return;
-  const canGuess = !!document.getElementById("answer");
-  if (canGuess) {
-    tg.MainButton.setText(L.guessBtn);
-    tg.MainButton.show();
-  } else {
-    tg.MainButton.hide();
-  }
-}
-
 function wire() {
   PlayerReferrals.wire();
   PlayerArena.wire();
-  syncMainButton();
   document.querySelectorAll("[data-pin]").forEach(button => button.onclick = () => togglePin(button.dataset.pin));
   const openCabinet = document.getElementById("open-cabinet");
   if (openCabinet) openCabinet.onclick = () => { state.cabinetOpen = true; render(); window.scrollTo({top:0,behavior:"instant"}); };
@@ -1389,8 +1379,6 @@ async function searchProfiles() {
   } catch (e) { state.profileResults = []; state.profileSearchError = true; }
   state.profileSearchLoading = false; render();
 }
-
-let mainButtonWired = false;
 
 // Cosa succede sullo schermo quando la prendi. E' un canvas che vive due secondi e poi si
 // toglie da solo: non c'e' niente da pulire e niente che resti in mezzo ai tocchi, perche'
@@ -1666,12 +1654,9 @@ async function loadProfile(options) {
 
 async function start() {
   if (!(tg && tg.initData)) { showMessage((T[clientLanguage()] || T.en).error); return; }
-  if (tg.MainButton && !mainButtonWired) {
-    // Si registra una volta sola: `onEvent` accumula i gestori, e due chiamate vorrebbero
-    // dire due tentativi consumati per una pressione.
-    tg.MainButton.onClick(submitGuess);
-    mainButtonWired = true;
-  }
+  // Il bottone di sistema non lo usiamo (vedi guessBox): se un'apertura precedente
+  // l'aveva mostrato, va via.
+  if (tg.MainButton) tg.MainButton.hide();
   try {
     await loadProfile();
   } catch (e) {
