@@ -456,13 +456,18 @@ def webapp_arena(payload: dict = Body(default={})):
         if mode == "duel":
             if action == "create" and (not BOT_USERNAME or not WEBAPP_URL):
                 raise arena.ArenaError("unavailable")
+            if action == "list":
+                # Tutti i duelli ancora aperti: in attesa di un avversario, in corso o
+                # conclusi ma non ancora archiviati sul profilo di chi li guarda.
+                return arena.list_duels(user_id, profile=user)
             code = payload.get("code") or user.get("app_duel")
             if action == "get" and not code:
                 # Nessuna partita aperta: resta lo storico, che e' gia' nel documento utente.
                 return {"session": None, "ledger": arena.ledger(user)}
             result = arena.duel(user_id, user.get("first_name", "?"), action, code,
                                 payload.get("answer"), payload.get("revision"), lang, profile=user)
-            result["invite_url"] = f"https://t.me/{BOT_USERNAME}?start=duel_{result['code']}" if BOT_USERNAME else None
+            if action != "delete":
+                result["invite_url"] = f"https://t.me/{BOT_USERNAME}?start=duel_{result['code']}" if BOT_USERNAME else None
             return result
         if mode == "events":
             feedback = None

@@ -28,7 +28,11 @@ const TEXT = {
     used: "{n} tentativi", used1: "{n} tentativo", h2h: "TESTA A TESTA", h2hLine: "vittorie–sconfitte con {name} · pareggi: {n}", pastTitle: "Duelli conclusi", someone: "Un avversario",
     winShort: "Vinto", lossShort: "Perso", drawShort: "Pari", synced: "Partita aggiornata dal server: controlla i tentativi rimasti.",
     matched: "Squadre corrette: {n}", nextRound: "Avanti: un nuovo percorso ti aspetta.", resume: "Riprendi l’ultimo duello", progress: "{n}/{total} percorsi completati", newDuel: "Crea un altro duello", codeLabel: "Link di invito", eventEnd: "Ultima giornata: {date}",
-    duelChoiceBody: "Hai già una sfida in corso con {name}.", duelChoiceResume: "Riprendi con {name}"
+    duelListTitle: "Le tue sfide aperte", duelListEmpty: "Nessuna sfida aperta al momento. Creane una per iniziare.",
+    duelRowPending: "In attesa di un amico", duelRowWaiting: "Condividi il link per iniziare", duelRowDone: "Pronta: guarda il risultato",
+    delete: "Elimina", deleteSure: "Confermi?", duelDeleted: "Sfida eliminata", backToList: "‹ Le tue sfide",
+    waitingOpponentBody: "In attesa che il tuo avversario accetti l’invito. I percorsi si sbloccano appena entra.",
+    waiting_opponent: "Aspetta che il tuo avversario accetti l’invito prima di giocare."
   },
   en: {
     headline: "Your next kick-off.", intro: "One daily challenge. A whole pitch to explore.",
@@ -56,7 +60,11 @@ const TEXT = {
     used: "{n} guesses", used1: "{n} guess", h2h: "HEAD TO HEAD", h2hLine: "wins–losses with {name} · draws: {n}", pastTitle: "Finished duels", someone: "An opponent",
     winShort: "Won", lossShort: "Lost", drawShort: "Draw", synced: "Game refreshed from the server: check your remaining guesses.",
     matched: "Correct clubs: {n}", nextRound: "Next up: a new path is waiting.", resume: "Resume your last duel", progress: "{n}/{total} paths completed", newDuel: "Create another duel", codeLabel: "Invitation link", eventEnd: "Final day: {date}",
-    duelChoiceBody: "You already have a duel in progress with {name}.", duelChoiceResume: "Resume with {name}"
+    duelListTitle: "Your open duels", duelListEmpty: "No open duels right now. Create one to get started.",
+    duelRowPending: "Waiting for a friend", duelRowWaiting: "Share the link to get started", duelRowDone: "Ready: see the result",
+    delete: "Delete", deleteSure: "Sure?", duelDeleted: "Duel deleted", backToList: "‹ Your duels",
+    waitingOpponentBody: "Waiting for your opponent to accept the invitation. The paths unlock as soon as they join.",
+    waiting_opponent: "Wait for your opponent to accept the invitation before you play."
   },
   es: {
     headline: "Tu próximo saque inicial.", intro: "Un reto diario. Todo un campo por explorar.",
@@ -84,10 +92,14 @@ const TEXT = {
     used: "{n} intentos", used1: "{n} intento", h2h: "CARA A CARA", h2hLine: "victorias–derrotas con {name} · empates: {n}", pastTitle: "Duelos terminados", someone: "Un rival",
     winShort: "Ganado", lossShort: "Perdido", drawShort: "Empate", synced: "Partida actualizada desde el servidor: revisa los intentos restantes.",
     matched: "Equipos correctos: {n}", nextRound: "Siguiente: te espera otra trayectoria.", resume: "Retomar el último duelo", progress: "{n}/{total} trayectorias completadas", newDuel: "Crear otro duelo", codeLabel: "Enlace de invitación", eventEnd: "Última jornada: {date}",
-    duelChoiceBody: "Ya tienes un duelo en curso con {name}.", duelChoiceResume: "Retomar con {name}"
+    duelListTitle: "Tus duelos abiertos", duelListEmpty: "No hay duelos abiertos ahora mismo. Crea uno para empezar.",
+    duelRowPending: "Esperando a un amigo", duelRowWaiting: "Comparte el enlace para empezar", duelRowDone: "Listo: mira el resultado",
+    delete: "Eliminar", deleteSure: "¿Seguro?", duelDeleted: "Duelo eliminado", backToList: "‹ Tus duelos",
+    waitingOpponentBody: "Esperando a que tu rival acepte la invitación. Las trayectorias se desbloquean en cuanto entre.",
+    waiting_opponent: "Espera a que tu rival acepte la invitación antes de jugar."
   }
 };
-let mode = null, data = null, busy = false, error = null, invitation = null, eventCode = null, draft = "", notice = "", confirming = null, choosingDuel = false;
+let mode = null, data = null, busy = false, error = null, invitation = null, eventCode = null, draft = "", notice = "", confirming = null, openCode = null;
 /* Errori che dicono "il server sa qualcosa che tu non sai": mostrare il messaggio e
    lasciare in pagina i contatori vecchi e' il modo migliore per far credere a chi gioca
    che un tentativo non gli e' stato scalato. Si ricarica la partita e si vede la verita'. */
@@ -162,26 +174,38 @@ function past(d) {
       </details>`).join("")}` : ""}
   </section>`;
 }
-/* Un duello aperto e non finito, raggiunto dal menu (non da un link di invito): meglio
-   chiedere piuttosto che riagganciarlo di forza, cosi' chi vuole sfidare un secondo
-   amico non resta bloccato sul primo duello ancora in corso. */
-function duelChoice(d) {
-  const name = d.opponent ? d.opponent.name : tr("someone");
-  return `<div class="arena-empty"><p>${esc(tr("duelChoiceBody", {name}))}</p>
-    <div class="arena-actions">
-      <button class="btn" data-arena-choice="resume" ${busy ? "disabled" : ""}>${esc(tr("duelChoiceResume", {name}))}</button>
-      <button class="btn ghost" data-arena-choice="new" ${busy ? "disabled" : ""}>${esc(tr("newDuel"))}</button>
-    </div></div>`;
+/* La lista dei tuoi duelli: quelli in attesa di un avversario (cancellabili finche' non
+   entra nessuno), quelli in corso e quelli conclusi ma non ancora archiviati sul profilo.
+   Sostituisce l'apertura diretta dell'ultimo duello: creare una nuova sfida non deve far
+   sparire quella con un altro amico ancora in corso. */
+function duelList(d) {
+  const rows = d.open || [];
+  const status = o => o.complete ? tr("duelRowDone") : o.opponent ? tr("progress", {n: o.round, total: o.total}) : tr("duelRowWaiting");
+  const list = rows.length ? `<section class="arena-open-list"><h3>${esc(tr("duelListTitle"))}</h3>${rows.map(o => `
+      <div class="arena-open-row">
+        <button class="arena-open-open" data-arena-duel="${esc(o.code)}" ${busy ? "disabled" : ""}>
+          <span class="arena-path-mark ${o.complete ? "ok" : ""}" aria-hidden="true">${o.complete ? "✓" : o.opponent ? "…" : "★"}</span>
+          <span><strong>${esc(o.opponent || tr("duelRowPending"))}</strong><small>${esc(status(o))}</small></span>
+        </button>
+        ${!o.opponent ? `<button class="btn ghost" data-arena-delete="${esc(o.code)}" ${busy ? "disabled" : ""}>${esc(tr(confirming === "delete:" + o.code ? "deleteSure" : "delete"))}</button>` : ""}
+      </div>`).join("")}</section>` : `<div class="arena-empty"><p>${esc(tr("duelListEmpty"))}</p></div>`;
+  return `<div class="arena-actions">${button("create", "create")}</div>${alerts()}${list}${past(d)}`;
 }
 function sessionView(d) {
   const s = d.session;
   if (!s) return `<div class="arena-empty">${icon(mode)}<p>${esc(tr(mode === "training" ? "trainRules" : "rules"))}</p>${alerts()}${button(mode === "training" ? "next" : "create", mode === "training" ? "start" : "create")}</div>${past(d)}`;
   let html = "";
   if (mode === "duel") {
-    html += `<div class="arena-versus"><div><span>${esc(tr("you"))}</span><strong>${esc(tr("progress", {n:s.round,total:s.total}))}</strong></div><span class="arena-vs" aria-hidden="true">VS</span><div><span>${esc(d.opponent ? d.opponent.name : tr("waiting"))}</span><strong>${d.opponent ? esc(tr("progress",{n:d.opponent.round,total:s.total})) : "—"}</strong></div></div>
+    html += `<div class="arena-actions">${button("list", "backToList", true)}</div>
+      <div class="arena-versus"><div><span>${esc(tr("you"))}</span><strong>${esc(tr("progress", {n:s.round,total:s.total}))}</strong></div><span class="arena-vs" aria-hidden="true">VS</span><div><span>${esc(d.opponent ? d.opponent.name : tr("waiting"))}</span><strong>${d.opponent ? esc(tr("progress",{n:d.opponent.round,total:s.total})) : "—"}</strong></div></div>
       <div class="arena-actions">${d.invite_url && !d.opponent ? button("invite", "invite") : ""}${button("get", "refresh", true)}</div>
       ${d.invite_url && !d.opponent ? `<label class="arena-link-label" for="arena-link">${esc(tr("codeLabel"))}</label><div class="arena-link"><input id="arena-link" readonly value="${esc(d.invite_url)}">${button("copy", "copy",true)}</div>` : ""}
       <p class="muted arena-small">${esc(tr("expires",{date:date(d.expires_at)}))}</p>`;
+  }
+  if (mode === "duel" && !d.opponent && !s.finished) {
+    // Nessuno e' ancora entrato: niente percorso da vedere finche' non arriva un avversario
+    // a occupare il secondo posto (il server rifiuta comunque ogni tentativo, vedi arena.py).
+    return html + alerts() + `<div class="arena-empty"><p>${esc(tr("waitingOpponentBody"))}</p></div>` + past(d);
   }
   if (s.finished) {
     const title = mode === "training" ? "complete" : d.complete ? d.outcome : "waitingEnd";
@@ -214,7 +238,7 @@ function eventView() {
 }
 function view() {
   return `<section class="arena-shell" aria-busy="${busy}"><button class="arena-back" data-arena-back>← ${esc(tr("back"))}</button><header class="arena-page-head"><span class="arena-icon">${icon(mode)}</span><div><span class="arena-eyebrow">${esc(tr(mode+"Tag"))}</span><h1>${esc(tr(mode))}</h1></div></header>
-    ${invitation ? `<div class="arena-empty"><p>${esc(tr("joinIntro"))}</p><p class="muted">${esc(tr("rules"))}</p>${alerts()}${button("join","join")}</div>` : !data ? error ? `<div class="arena-empty">${alerts()}${mode === "duel" ? button("create","create") : mode === "training" ? button("next","start") : ""}</div>` : `<div class="arena-empty" role="status">${esc(tr("loading"))}</div>` : mode === "duel" && choosingDuel ? duelChoice(data) : mode === "events" ? eventView() : sessionView(data)}
+    ${invitation ? `<div class="arena-empty"><p>${esc(tr("joinIntro"))}</p><p class="muted">${esc(tr("rules"))}</p>${alerts()}${button("join","join")}</div>` : !data ? error ? `<div class="arena-empty">${alerts()}${mode === "duel" ? button("create","create") : mode === "training" ? button("next","start") : ""}</div>` : `<div class="arena-empty" role="status">${esc(tr("loading"))}</div>` : mode === "duel" && Array.isArray(data.open) ? duelList(data) : mode === "events" ? eventView() : sessionView(data)}
     </section>`;
 }
 async function request(action, answer) {
@@ -222,16 +246,15 @@ async function request(action, answer) {
   busy = true; error = null; notice = ""; confirming = null;
   const requestedMode = mode;
   const e = mode === "events" && data && (data.events || []).find(e=>e.code===eventCode);
-  const body = {mode, action, answer, code: invitation || (e ? e.code : data && data.code), day:e && e.day,
+  // openCode e' il duello scelto dalla lista, usato solo finche' `data` non ne tiene gia'
+  // uno proprio: altrimenti una richiesta successiva su un duello diverso lo riprenderebbe.
+  const body = {mode, action, answer, code: invitation || (e ? e.code : (data && data.code) || openCode), day:e && e.day,
     revision: e ? e.progress.attempts : data && data.session && data.session.revision};
   render();
   try {
     const result = await api("/app/api/arena", body);
     if (mode !== requestedMode) return;
-    data = result; invitation = null; draft = "";
-    // Un duello gia' aperto e non finito, arrivato da un "get" senza codice esplicito
-    // (il menu, non un link di invito): resta da chiedere, non da riprendere di forza.
-    if (mode === "duel" && action === "get" && choosingDuel && !(result.session && !result.complete)) choosingDuel = false;
+    data = result; invitation = null; draft = ""; openCode = null;
     if (action === "guess") haptic(result.feedback && result.feedback.status === "correct" ? "success" : "error");
   } catch (err) {
     if (mode === requestedMode) error = err.detail || "loadError";
@@ -253,24 +276,37 @@ async function request(action, answer) {
     }
   }
 }
+async function removeDuel(code) {
+  openCode = code;
+  await request("delete");
+  openCode = null;
+  if (!error) { await request("list"); notice = tr("duelDeleted"); render(); }
+}
 function open(kind, code) {
   if (busy) return;
-  mode = kind; data = null; error = null; draft = ""; notice = ""; confirming = null; eventCode = null; invitation = code || null;
-  // Aperto dal menu, senza un link di invito: se c'e' gia' un duello aperto, lo si chiede
-  // prima di riagganciarlo (vedi il controllo su choosingDuel dentro request()).
-  choosingDuel = kind === "duel" && !invitation;
+  mode = kind; data = null; error = null; draft = ""; notice = ""; confirming = null; eventCode = null; openCode = null; invitation = code || null;
   state.tab = "play"; state.publicTarget = null; state.cabinetOpen = false;
   render(); window.scrollTo(0,0);
-  if (!invitation) request("get");
+  // Aperto dal menu, senza un link di invito: la lista mostra tutte le sfide aperte invece
+  // di riagganciare a forza l'ultima, cosi' crearne una non fa sparire le altre.
+  if (!invitation) request(kind === "duel" ? "list" : "get");
 }
 function wire() {
   document.querySelectorAll("[data-arena-open]").forEach(b=>b.onclick=()=>open(b.dataset.arenaOpen));
   document.querySelectorAll("[data-arena-back]").forEach(b=>b.onclick=()=>{if(busy)return; mode=null; data=null; invitation=null; render();});
   document.querySelectorAll("[data-arena-event]").forEach(b=>b.onclick=()=>{eventCode=b.dataset.arenaEvent; draft=""; data.feedback=null; render();});
-  document.querySelectorAll("[data-arena-choice]").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("[data-arena-duel]").forEach(b=>b.onclick=()=>{
     if (busy) return;
-    choosingDuel = false;
-    if (b.dataset.arenaChoice === "new") request("create"); else render();
+    openCode = b.dataset.arenaDuel;
+    request("get");
+  });
+  document.querySelectorAll("[data-arena-delete]").forEach(b=>b.onclick=async()=>{
+    if (busy) return;
+    const code = b.dataset.arenaDelete;
+    // Stessa conferma sul bottone del "salta percorso": una cancellazione non si annulla.
+    if (confirming !== "delete:" + code) { confirming = "delete:" + code; render(); return; }
+    confirming = null;
+    await removeDuel(code);
   });
   document.querySelectorAll("[data-arena-action]").forEach(b=>b.onclick=async()=>{
     const action=b.dataset.arenaAction;

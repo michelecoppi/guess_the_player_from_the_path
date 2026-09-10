@@ -308,3 +308,59 @@ def test_a_wrong_guess_on_a_name_in_the_dataset_is_actually_written(emulator_db)
                            duel["session"]["revision"])
         assert moved["feedback"]["comparison"]["clues"]
         assert moved["session"]["attempts"] == 1
+
+
+def test_duel_creator_cannot_play_alone_and_can_withdraw_before_anyone_joins(emulator_db):
+    fs.save_user(1, "Anna")
+    fs.save_user(2, "Bea")
+    own = arena.duel(1, "Anna", "create")
+    code = own["code"]
+    with pytest.raises(arena.ArenaError, match="waiting_opponent"):
+        arena.duel(1, "Anna", "guess", code, "Paolo Maldini", own["session"]["revision"])
+
+    # Chi non e' seduto al tavolo non puo' ritirare l'invito di un altro.
+    with pytest.raises(arena.ArenaError, match="invalid"):
+        arena.duel(2, "Bea", "delete", code)
+    assert arena.duel(1, "Anna", "delete", code) == {"deleted": code}
+    with pytest.raises(arena.ArenaError, match="expired"):
+        arena.duel(1, "Anna", "get", code)
+
+    # Una volta che qualcuno e' entrato, la partita non e' piu' solo sua da cancellare.
+    joined = arena.duel(1, "Anna", "create")["code"]
+    arena.duel(2, "Bea", "join", joined)
+    with pytest.raises(arena.ArenaError, match="full"):
+        arena.duel(1, "Anna", "delete", joined)
+
+
+def test_list_duels_shows_pending_and_active_and_drops_recorded_matches(emulator_db):
+    fs.save_user(1, "Anna")
+    fs.save_user(2, "Bea")
+    fs.save_user(3, "Carlo")
+
+    pending = arena.duel(1, "Anna", "create")["code"]
+    active = arena.duel(1, "Anna", "create")["code"]
+    arena.duel(2, "Bea", "join", active)
+    finished = arena.duel(1, "Anna", "create")["code"]
+    arena.duel(3, "Carlo", "join", finished)
+    for uid, name in ((1, "Anna"), (3, "Carlo")):
+        current = arena.duel(uid, name, "get", finished)
+        for _ in range(15):
+            if current["session"]["finished"]:
+                break
+            current = arena.duel(uid, name, "guess", finished, "Paolo Maldini",
+                                 current["session"]["revision"])
+
+    listing = arena.list_duels(1)
+    rows = {row["code"]: row for row in listing["open"]}
+    assert set(rows) == {pending, active, finished}
+    assert rows[pending]["opponent"] is None and not rows[pending]["complete"]
+    assert rows[active]["opponent"] == "Bea" and not rows[active]["complete"]
+    assert rows[finished]["complete"]
+    assert listing["ledger"]["matches"] == []
+
+    # Riaprire quella conclusa la archivia sul profilo: da quel momento sta nello storico,
+    # non piu' fra quelle aperte, altrimenti comparirebbe due volte.
+    arena.duel(1, "Anna", "get", finished)
+    listing = arena.list_duels(1)
+    assert {row["code"] for row in listing["open"]} == {pending, active}
+    assert listing["ledger"]["matches"][0]["code"] == finished

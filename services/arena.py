@@ -227,8 +227,60 @@ def ledger(profile, opponent_id=None):
     return {"record": head_to_head, "matches": matches}
 
 
+def _open_summary(doc, uid):
+    """The little a duel list needs to show one row: who it's against (if anyone has
+    joined), whether it still needs someone, and how far this player has gotten."""
+    seat = doc["seats"][uid]
+    opponent = next((s for key, s in doc["seats"].items() if key != uid), None)
+    finished = len(doc["seats"]) == 2 and all(s["finished"] for s in doc["seats"].values())
+    return {"code": doc["code"], "opponent": opponent["name"] if opponent else None,
+            "complete": finished, "round": seat["round"], "total": len(doc["challenges"]),
+            "expires_at": doc["expires_at"].isoformat()}
+
+
+def list_duels(user_id, profile=None):
+    """Every duel this player is still part of: waiting for an opponent, in progress, or
+    finished but not yet filed on the profile (`_remember`). A filed duel already lives on
+    as a match in the ledger, so it drops out here - otherwise it would show up twice."""
+    uid = str(user_id)
+    now = datetime.now(timezone.utc)
+    open_duels = []
+    query = fs.db.collection(DUELS).where("members", "array_contains", user_id)
+    for snapshot in query.stream():
+        doc = snapshot.to_dict()
+        if not doc or doc["expires_at"] <= now or uid in (doc.get("recorded") or []):
+            continue
+        open_duels.append(_open_summary(doc, uid))
+    open_duels.sort(key=lambda d: d["expires_at"], reverse=True)
+    return {"open": open_duels,
+            "ledger": ledger(profile if profile is not None else fs.get_user_data(user_id))}
+
+
+def _delete_if_alone(user_id, code):
+    """Withdraw an invitation nobody has taken yet. Once a second seat exists the duel
+    belongs to both players, and only expiry or finishing it closes it."""
+    uid = str(user_id)
+    ref = fs.db.collection(DUELS).document(code)
+
+    @firestore.transactional
+    def commit(transaction):
+        snapshot = ref.get(transaction=transaction)
+        doc = snapshot.to_dict() if snapshot.exists else None
+        if not doc or uid not in doc["seats"]:
+            raise ArenaError("invalid")
+        if len(doc["seats"]) > 1:
+            raise ArenaError("full")
+        transaction.delete(ref)
+    commit(fs.db.transaction())
+
+
 def duel(user_id, name, action="get", code=None, answer=None, revision=None, lang="it", profile=None):
     uid = str(user_id)
+    if action == "delete":
+        if not isinstance(code, str) or not CODE.fullmatch(code):
+            raise ArenaError("invalid")
+        _delete_if_alone(user_id, code)
+        return {"deleted": code}
     if action == "create":
         challenges = []
         keys: list[str] = []
@@ -260,6 +312,10 @@ def duel(user_id, name, action="get", code=None, answer=None, revision=None, lan
             doc["seats"][uid] = _seat(name)
             doc["members"].append(user_id)
         if action in ("guess", "reveal"):
+            # Chi crea non gioca da solo in vantaggio: i percorsi restano chiusi finche'
+            # non arriva un avversario a occupare il secondo posto.
+            if len(doc["seats"]) < 2:
+                raise ArenaError("waiting_opponent")
             feedback = _move(doc["challenges"], doc["seats"][uid], action, answer, revision, 3)
             feedback.pop("answer", None)
             doc["seats"][uid]["feedback"] = feedback
