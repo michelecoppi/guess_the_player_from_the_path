@@ -34802,7 +34802,7 @@
         "jose antonio reyes"
       ],
       "nationality": "Spagna",
-      "position": "Attaccante",
+      "position": "Centrocampista",
       "birth_year": 1983,
       "popularity": 3,
       "verified": true,
@@ -35562,7 +35562,7 @@
         "simao sabrosa"
       ],
       "nationality": "Portogallo",
-      "position": "Attaccante",
+      "position": "Centrocampista",
       "birth_year": 1979,
       "popularity": 3,
       "verified": true,
@@ -36013,7 +36013,7 @@
         "el burrito"
       ],
       "nationality": "Argentina",
-      "position": "Attaccante",
+      "position": "Centrocampista",
       "birth_year": 1974,
       "popularity": 3,
       "verified": true,
@@ -37519,7 +37519,7 @@
         "harry kewell"
       ],
       "nationality": "Australia",
-      "position": "Attaccante",
+      "position": "Centrocampista",
       "birth_year": 1978,
       "popularity": 3,
       "verified": true,
@@ -39146,7 +39146,7 @@
         "il foquinha"
       ],
       "nationality": "Brasile",
-      "position": "Attaccante",
+      "position": "Centrocampista",
       "birth_year": 1988,
       "popularity": 1,
       "verified": true,
@@ -40062,6 +40062,15 @@
           "league": "Championship",
           "start_year": 2001,
           "end_year": 2004,
+          "apps": 0,
+          "goals": 0
+        },
+        {
+          "team": "Cádiz",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2004,
+          "end_year": 2005,
           "apps": 0,
           "goals": 0
         },
@@ -42129,7 +42138,7 @@
         "shaun wright-phillips"
       ],
       "nationality": "Inghilterra",
-      "position": "Attaccante",
+      "position": "Centrocampista",
       "birth_year": 1981,
       "popularity": 2,
       "verified": true,

@@ -31,6 +31,8 @@ def norm(text):
 # normalizzazione non basta (esonimi, sigle, omonimie).
 ALIASES = {
     "psv": "PSV Eindhoven",
+    # Wikipedia in italiano italianizza qualche nome di citta': il dataset no.
+    "cadice": "Cádiz",
     "barcellona": "Barcelona",
     "psg": "Paris Saint-Germain",
     "manchester utd": "Manchester United",
