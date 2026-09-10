@@ -347,6 +347,13 @@ MANUAL_CLUBS = {
     "montevarchi": ("Italia", "Serie C"),
     "rondinella": ("Italia", "Serie D"),
     "montemurlo": ("Italia", "Serie D"),
+    "zagorje": ("Slovenia", "2. SNL"),
+    "domzale": ("Slovenia", "PrvaLiga"),
+    "fortaleza": ("Brasile", "Brasileirao"),
+    "vion zlate moravce": ("Slovacchia", "Slovak First League"),
+    "valur": ("Islanda", "Úrvalsdeild"),
+    "shijiazhuang ever bright": ("Cina", "Chinese Super League"),
+    "eskisehirspor": ("Turchia", "Super Lig"),
 }
 
 

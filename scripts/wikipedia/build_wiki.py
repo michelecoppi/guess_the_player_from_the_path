@@ -16,52 +16,9 @@ import wiki
 # (titolo su Wikipedia, popularity). La popularity segue la scala di docs/difficolta.md:
 # 5 = leggenda universale, 4 = campione, 3 = titolare solido, 2 = comprimario, 1 = aneddoto.
 ROSTER = [
-    # --- campioni che mancavano (4) ---
-    ("Zvonimir Boban", 4), ("Dejan Savićević", 4), ("Predrag Mijatović", 4),
-    ("Siniša Mihajlović", 4), ("Brian Laudrup", 4), ("Michael Laudrup", 4),
-    ("Peter Schmeichel", 4), ("Henrik Larsson", 4), ("Ole Gunnar Solskjær", 4),
-    ("Jari Litmanen", 4), ("Fernando Redondo", 4), ("Diego Simeone", 4),
-    ("Roberto Ayala", 4), ("Gianluca Vialli", 4), ("Roberto Mancini", 4),
-    ("Giuseppe Signori", 4), ("Fabrizio Ravanelli", 4), ("Filippo Inzaghi", 4),
-    # --- titolari solidi (3) ---
-    ("Sami Hyypiä", 3), ("Matías Almeyda", 3), ("Abel Balbo", 3),
-    ("Marco Simone", 3), ("Enrico Chiesa", 3), ("Dino Baggio", 3),
-    ("Angelo Di Livio", 3), ("Attilio Lombardo", 3), ("Marco Delvecchio", 3),
-    ("Jon Dahl Tomasson", 3), ("Tore André Flo", 3), ("John Carew", 3),
-    ("John Arne Riise", 3), ("Ivica Olić", 3), ("Darko Kovačević", 3),
-    ("Robert Jarni", 3), ("Krasimir Balakov", 3), ("Marc-Vivien Foé", 3),
-    ("Papa Bouba Diop", 3), ("Diego Godín", 3), ("Jermain Defoe", 3),
-    ("Joe Cole", 3), ("Michael Carrick", 3), ("Marco Di Vaio", 3),
-    ("Sebastian Giovinco", 3), ("Giampaolo Pazzini", 3), ("Graziano Pellè", 3),
-    ("Alberto Aquilani", 3), ("Riccardo Montolivo", 3),
-    # --- comprimari (2) ---
-    ("Slaven Bilić", 2), ("Florin Răducioiu", 2), ("Ilie Dumitrescu", 2),
-    ("Emil Kostadinov", 2), ("Geremi Njitap", 2), ("Alexandre Song", 2),
-    ("Khalilou Fadiga", 2), ("Henri Camara", 2), ("Aliou Cissé", 2),
-    ("Finidi George", 2), ("Sunday Oliseh", 2), ("Victor Ikpeba", 2),
-    ("Tijani Babangida", 2), ("Emmanuel Amunike", 2), ("Daniel Amokachi", 2),
-    ("Celestine Babayaro", 2), ("Samuel Kuffour", 2), ("Junichi Inamoto", 2),
-    ("Shinji Ono", 2), ("Naohiro Takahara", 2), ("Tomas Brolin", 2),
-    ("Kennet Andersson", 2), ("Martin Dahlin", 2), ("Ebbe Sand", 2),
-    ("Thomas Helveg", 2), ("Teemu Pukki", 2), ("Sebastián Abreu", 2),
-    ("Kily González", 2), ("Néstor Sensini", 2),
-    ("José Chamot", 2), ("Cristian Rodríguez", 2), ("Álvaro Pereira", 2),
-    ("Martín Cáceres", 2), ("Darren Bent", 2), ("Owen Hargreaves", 2),
-    ("Kieron Dyer", 2), ("Scott Parker", 2), ("Louis Saha", 2),
-    ("Mikaël Silvestre", 2), ("Alan Smith (calciatore 1980)", 2),
-    ("Jonathan Woodgate", 2), ("Nikola Žigić", 2), ("Mladen Petrić", 2),
-    ("Vedran Ćorluka", 2), ("Sergio Canales", 2), ("Denis Čeryšev", 2),
-    ("Bernardo Corradi", 2), ("Cristiano Doni", 2), ("Igor Protti", 2),
-    ("Nicola Amoruso", 2), ("Alessandro Matri", 2), ("Simone Zaza", 2),
-    ("Stefano Fiore", 2), ("Damiano Tommasi", 2),
-    # --- da aneddoto (1) ---
-    ("Salif Diao", 1), ("Lee Young-pyo", 1), ("Seol Ki-hyeon", 1),
-    ("Sun Jihai", 1), ("Dong Fangzhuo", 1), ("Jan Åge Fjørtoft", 1),
-    ("Quinton Fortune", 1), ("Francis Jeffers", 1), ("Jay Bothroyd", 1),
-    ("Federico Macheda", 1), ("Zoran Tošić", 1), ("Gabriel Obertan", 1),
-    ("Andy van der Meyde", 1), ("Milan Jovanović", 1),
-    ("Danijel Pranjić", 1), ("Vincent Janssen", 1), ("Christian Riganò", 1),
-    ("Marco Marchionni", 1),
+    # --- ripescati con i club aggiunti a MANUAL_CLUBS (percorsi che erano bucati) ---
+    ("Samir Handanović", 3), ("David Luiz", 3), ("Milan Škriniar", 3),
+    ("Gylfi Sigurðsson", 3), ("Eiður Guðjohnsen", 3), ("Burak Yılmaz", 2),
 ]
 
 MIN_APPS = 0
