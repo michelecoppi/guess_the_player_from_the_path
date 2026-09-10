@@ -127,25 +127,38 @@ def get_user_data(user_id):
 
 
 def delete_user_data(user_id):
-    """Cancella dati personali e di gioco, conservando i registri degli acquisti."""
+    """Cancella dati personali e di gioco, conservando i registri degli acquisti.
+
+    L'ordine e' la parte che conta, e conta solo quando qualcosa si rompe a meta'. Prima le
+    lapidi referral, l'uscita dalle leghe e il documento utente: sono le scritture che
+    rendono il conto inutilizzabile e i dati non piu' riconducibili a una persona. Solo
+    dopo lo sgombero del resto, che da quel punto in poi sono righe orfane di un utente che
+    non c'e' piu'. Prima si faceva al contrario, con la delete del profilo per ultima: un
+    guasto a meta' lasciava un account **vivo** con meta' della sua storia gia' cancellata,
+    e l'utente si sentiva rispondere che la cancellazione non era riuscita.
+
+    Ogni passo e' ripetibile e nessuno pretende che il documento utente esista ancora:
+    rilanciarla dopo un guasto riprende da dov'era.
+
+    Lo sgombero passa da `bulk.sweep` e non da un ciclo sullo stream della query: il perche'
+    sta li'. Le sotto-collezioni di chi gioca da un anno sono centinaia di documenti.
+    """
     from services import firebase_service as fs
+    from services import referrals
+    from services.repos import bulk
     user_id = int(user_id)
     ref = fs.user_ref(user_id)
     snapshot = ref.get()
     user_data = snapshot.to_dict() if snapshot.exists else {}
     deleted = {"profile": 0, "archive": 0, "history": 0, "leagues": 0,
-               "events": 0, "groups": 0}
+               "events": 0, "groups": 0, "duels": 0}
 
-    # Firestore non elimina le sotto-collezioni insieme al documento padre.
-    for subcollection, key in (
-        (fs.ARCHIVE_SUBCOLLECTION, "archive"),
-        (fs.HISTORY_SUBCOLLECTION, "history"),
-    ):
-        for doc in ref.collection(subcollection).stream():
-            doc.reference.delete()
-            deleted[key] += 1
+    # Le righe referral portano il nome di chi e' stato invitato: restano le sole lapidi.
+    referrals.erase_user(user_id)
 
-    # Uscire tramite la normale operazione mantiene corretto members_count.
+    # Uscire tramite la normale operazione mantiene corretto members_count, ed e' una
+    # transazione: va fatto finche' il documento utente c'e', perche' leave_league gli
+    # toglie il codice dall'elenco. Le leghe di un utente sono poche e si contano.
     for code in dict.fromkeys(user_data.get("leagues") or []):
         league = fs.get_league(code)
         if fs.leave_league(code, user_id):
@@ -153,39 +166,49 @@ def delete_user_data(user_id):
         if league and league.get("owner_id") == user_id:
             fs.league_ref(code).update({"owner_id": None})
 
+    if snapshot.exists:
+        ref.delete()
+        deleted["profile"] = 1
+
+    def drop(writer, doc):
+        writer.delete(doc.reference)
+
+    # Firestore non elimina le sotto-collezioni insieme al documento padre: restano al loro
+    # posto anche dopo la delete qui sopra, ed e' per questo che si possono sgomberare dopo.
+    for subcollection, key in (
+        (fs.ARCHIVE_SUBCOLLECTION, "archive"),
+        (fs.HISTORY_SUBCOLLECTION, "history"),
+    ):
+        deleted[key] = bulk.sweep(ref.collection(subcollection), drop)
+
     # Elimina anche copie orfane o create prima dell'elenco users.leagues.
     for collection_name, key in (
         (fs.PARTICIPANTS_SUBCOLLECTION, "events"),
         (fs.GROUP_PLAYERS_SUBCOLLECTION, "groups"),
     ):
-        query = fs.db.collection_group(collection_name).where("telegram_id", "==", user_id)
-        for doc in query.stream():
-            doc.reference.delete()
-            deleted[key] += 1
+        deleted[key] = bulk.sweep(
+            fs.db.collection_group(collection_name).where("telegram_id", "==", user_id), drop)
 
-    # Per le iscrizioni orfane va corretto anche il contatore della lega.
-    orphan_members = fs.db.collection_group(fs.MEMBERS_SUBCOLLECTION).where(
-        "telegram_id", "==", user_id
-    )
-    for doc in orphan_members.stream():
-        league = doc.reference.parent.parent
-        doc.reference.delete()
-        league.update({"members_count": firestore.Increment(-1)})
-        deleted["leagues"] += 1
+    # Per le iscrizioni orfane va corretto anche il contatore della lega. Due iscrizioni
+    # nella stessa lega sono due Increment sullo stesso documento, e il BulkWriter le puo'
+    # mandare in parallelo: e' commutativo, il totale torna comunque.
+    def leave(writer, doc):
+        writer.delete(doc.reference)
+        writer.update(doc.reference.parent.parent, {"members_count": firestore.Increment(-1)})
+
+    deleted["leagues"] += bulk.sweep(
+        fs.db.collection_group(fs.MEMBERS_SUBCOLLECTION).where("telegram_id", "==", user_id),
+        leave)
 
     # Il round corrente conserva sul padre nome e id dell'ultimo vincitore.
-    query = fs.db.collection(fs.GROUP_ROUNDS_COLLECTION).where("solved_by", "==", user_id)
-    for doc in query.stream():
-        doc.reference.update({"solved_by": None, "solved_name": None})
+    bulk.sweep(fs.db.collection(fs.GROUP_ROUNDS_COLLECTION).where("solved_by", "==", user_id),
+               lambda writer, doc: writer.update(doc.reference,
+                                                 {"solved_by": None, "solved_name": None}))
 
-    if snapshot.exists:
-        from services import referrals
-        referrals.erase_user(user_id)
-        # Private duel documents also contain the participant's name and game history.
-        for duel in fs.db.collection("app_duels").where("members", "array_contains", user_id).stream():
-            duel.reference.delete()
-        ref.delete()
-        deleted["profile"] = 1
+    # Anche i duelli privati contengono il nome del partecipante e le sue partite.
+    deleted["duels"] = bulk.sweep(
+        fs.db.collection("app_duels").where("members", "array_contains", user_id), drop)
+
     logging.info(f"[PRIVACY] Dati utente {user_id} cancellati: {deleted}")
     return deleted
 

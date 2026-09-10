@@ -9,6 +9,7 @@ from firebase_admin import firestore
 from config import BOT_TOKEN, BOT_USERNAME
 from services import firebase_service as fs
 from services.dates import today_iso
+from services.repos import bulk
 
 COLLECTION = "referrals"
 REQUIRED_DAYS = 5
@@ -149,9 +150,17 @@ def dashboard(user_id, lang="it", cursor=None, user=None):
 
 
 def erase_user(user_id):
-    """Remove referral personal data, retaining only a pseudonymous no-reuse marker."""
+    """Remove referral personal data, retaining only a pseudonymous no-reuse marker.
+
+    A `set` and not an `update`: the marker is what the whole document must be reduced to.
+    Dropping `inviter_id` is also what unlinks the row from the erased inviter, so a row
+    already swept stops matching the query - but the sweep advances by cursor and does not
+    rely on that.
+
+    Rows can be many: an inviter who shared the link widely has one per friend.
+    """
     own = ref(user_id)
     if own.get().exists:
         own.set({"status": "deleted"})
-    for snapshot in fs.db.collection(COLLECTION).where("inviter_id", "==", user_id).stream():
-        snapshot.reference.set({"status": "deleted"})
+    return bulk.sweep(fs.db.collection(COLLECTION).where("inviter_id", "==", user_id),
+                      lambda writer, snapshot: writer.set(snapshot.reference, {"status": "deleted"}))
