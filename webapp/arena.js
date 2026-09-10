@@ -27,7 +27,8 @@ const TEXT = {
     skip: "Salta il percorso", skipSure: "Confermi? Vale 3 tentativi", paths: "I percorsi di questa partita", hidden: "Nome nascosto fino alla fine",
     used: "{n} tentativi", used1: "{n} tentativo", h2h: "TESTA A TESTA", h2hLine: "vittorie–sconfitte con {name} · pareggi: {n}", pastTitle: "Duelli conclusi", someone: "Un avversario",
     winShort: "Vinto", lossShort: "Perso", drawShort: "Pari", synced: "Partita aggiornata dal server: controlla i tentativi rimasti.",
-    matched: "Squadre corrette: {n}", nextRound: "Avanti: un nuovo percorso ti aspetta.", resume: "Riprendi l’ultimo duello", progress: "{n}/{total} percorsi completati", newDuel: "Crea un altro duello", codeLabel: "Link di invito", eventEnd: "Ultima giornata: {date}"
+    matched: "Squadre corrette: {n}", nextRound: "Avanti: un nuovo percorso ti aspetta.", resume: "Riprendi l’ultimo duello", progress: "{n}/{total} percorsi completati", newDuel: "Crea un altro duello", codeLabel: "Link di invito", eventEnd: "Ultima giornata: {date}",
+    duelChoiceBody: "Hai già una sfida in corso con {name}.", duelChoiceResume: "Riprendi con {name}"
   },
   en: {
     headline: "Your next kick-off.", intro: "One daily challenge. A whole pitch to explore.",
@@ -54,7 +55,8 @@ const TEXT = {
     skip: "Skip this path", skipSure: "Sure? It costs 3 guesses", paths: "The paths of this match", hidden: "Name hidden until the end",
     used: "{n} guesses", used1: "{n} guess", h2h: "HEAD TO HEAD", h2hLine: "wins–losses with {name} · draws: {n}", pastTitle: "Finished duels", someone: "An opponent",
     winShort: "Won", lossShort: "Lost", drawShort: "Draw", synced: "Game refreshed from the server: check your remaining guesses.",
-    matched: "Correct clubs: {n}", nextRound: "Next up: a new path is waiting.", resume: "Resume your last duel", progress: "{n}/{total} paths completed", newDuel: "Create another duel", codeLabel: "Invitation link", eventEnd: "Final day: {date}"
+    matched: "Correct clubs: {n}", nextRound: "Next up: a new path is waiting.", resume: "Resume your last duel", progress: "{n}/{total} paths completed", newDuel: "Create another duel", codeLabel: "Invitation link", eventEnd: "Final day: {date}",
+    duelChoiceBody: "You already have a duel in progress with {name}.", duelChoiceResume: "Resume with {name}"
   },
   es: {
     headline: "Tu próximo saque inicial.", intro: "Un reto diario. Todo un campo por explorar.",
@@ -81,10 +83,11 @@ const TEXT = {
     skip: "Saltar la trayectoria", skipSure: "¿Seguro? Cuesta 3 intentos", paths: "Las trayectorias de esta partida", hidden: "Nombre oculto hasta el final",
     used: "{n} intentos", used1: "{n} intento", h2h: "CARA A CARA", h2hLine: "victorias–derrotas con {name} · empates: {n}", pastTitle: "Duelos terminados", someone: "Un rival",
     winShort: "Ganado", lossShort: "Perdido", drawShort: "Empate", synced: "Partida actualizada desde el servidor: revisa los intentos restantes.",
-    matched: "Equipos correctos: {n}", nextRound: "Siguiente: te espera otra trayectoria.", resume: "Retomar el último duelo", progress: "{n}/{total} trayectorias completadas", newDuel: "Crear otro duelo", codeLabel: "Enlace de invitación", eventEnd: "Última jornada: {date}"
+    matched: "Equipos correctos: {n}", nextRound: "Siguiente: te espera otra trayectoria.", resume: "Retomar el último duelo", progress: "{n}/{total} trayectorias completadas", newDuel: "Crear otro duelo", codeLabel: "Enlace de invitación", eventEnd: "Última jornada: {date}",
+    duelChoiceBody: "Ya tienes un duelo en curso con {name}.", duelChoiceResume: "Retomar con {name}"
   }
 };
-let mode = null, data = null, busy = false, error = null, invitation = null, eventCode = null, draft = "", notice = "", confirming = null;
+let mode = null, data = null, busy = false, error = null, invitation = null, eventCode = null, draft = "", notice = "", confirming = null, choosingDuel = false;
 /* Errori che dicono "il server sa qualcosa che tu non sai": mostrare il messaggio e
    lasciare in pagina i contatori vecchi e' il modo migliore per far credere a chi gioca
    che un tentativo non gli e' stato scalato. Si ricarica la partita e si vede la verita'. */
@@ -159,6 +162,17 @@ function past(d) {
       </details>`).join("")}` : ""}
   </section>`;
 }
+/* Un duello aperto e non finito, raggiunto dal menu (non da un link di invito): meglio
+   chiedere piuttosto che riagganciarlo di forza, cosi' chi vuole sfidare un secondo
+   amico non resta bloccato sul primo duello ancora in corso. */
+function duelChoice(d) {
+  const name = d.opponent ? d.opponent.name : tr("someone");
+  return `<div class="arena-empty"><p>${esc(tr("duelChoiceBody", {name}))}</p>
+    <div class="arena-actions">
+      <button class="btn" data-arena-choice="resume" ${busy ? "disabled" : ""}>${esc(tr("duelChoiceResume", {name}))}</button>
+      <button class="btn ghost" data-arena-choice="new" ${busy ? "disabled" : ""}>${esc(tr("newDuel"))}</button>
+    </div></div>`;
+}
 function sessionView(d) {
   const s = d.session;
   if (!s) return `<div class="arena-empty">${icon(mode)}<p>${esc(tr(mode === "training" ? "trainRules" : "rules"))}</p>${alerts()}${button(mode === "training" ? "next" : "create", mode === "training" ? "start" : "create")}</div>${past(d)}`;
@@ -200,7 +214,7 @@ function eventView() {
 }
 function view() {
   return `<section class="arena-shell" aria-busy="${busy}"><button class="arena-back" data-arena-back>← ${esc(tr("back"))}</button><header class="arena-page-head"><span class="arena-icon">${icon(mode)}</span><div><span class="arena-eyebrow">${esc(tr(mode+"Tag"))}</span><h1>${esc(tr(mode))}</h1></div></header>
-    ${invitation ? `<div class="arena-empty"><p>${esc(tr("joinIntro"))}</p><p class="muted">${esc(tr("rules"))}</p>${alerts()}${button("join","join")}</div>` : !data ? error ? `<div class="arena-empty">${alerts()}${mode === "duel" ? button("create","create") : mode === "training" ? button("next","start") : ""}</div>` : `<div class="arena-empty" role="status">${esc(tr("loading"))}</div>` : mode === "events" ? eventView() : sessionView(data)}
+    ${invitation ? `<div class="arena-empty"><p>${esc(tr("joinIntro"))}</p><p class="muted">${esc(tr("rules"))}</p>${alerts()}${button("join","join")}</div>` : !data ? error ? `<div class="arena-empty">${alerts()}${mode === "duel" ? button("create","create") : mode === "training" ? button("next","start") : ""}</div>` : `<div class="arena-empty" role="status">${esc(tr("loading"))}</div>` : mode === "duel" && choosingDuel ? duelChoice(data) : mode === "events" ? eventView() : sessionView(data)}
     </section>`;
 }
 async function request(action, answer) {
@@ -215,6 +229,9 @@ async function request(action, answer) {
     const result = await api("/app/api/arena", body);
     if (mode !== requestedMode) return;
     data = result; invitation = null; draft = "";
+    // Un duello gia' aperto e non finito, arrivato da un "get" senza codice esplicito
+    // (il menu, non un link di invito): resta da chiedere, non da riprendere di forza.
+    if (mode === "duel" && action === "get" && choosingDuel && !(result.session && !result.complete)) choosingDuel = false;
     if (action === "guess") haptic(result.feedback && result.feedback.status === "correct" ? "success" : "error");
   } catch (err) {
     if (mode === requestedMode) error = err.detail || "loadError";
@@ -239,6 +256,9 @@ async function request(action, answer) {
 function open(kind, code) {
   if (busy) return;
   mode = kind; data = null; error = null; draft = ""; notice = ""; confirming = null; eventCode = null; invitation = code || null;
+  // Aperto dal menu, senza un link di invito: se c'e' gia' un duello aperto, lo si chiede
+  // prima di riagganciarlo (vedi il controllo su choosingDuel dentro request()).
+  choosingDuel = kind === "duel" && !invitation;
   state.tab = "play"; state.publicTarget = null; state.cabinetOpen = false;
   render(); window.scrollTo(0,0);
   if (!invitation) request("get");
@@ -247,6 +267,11 @@ function wire() {
   document.querySelectorAll("[data-arena-open]").forEach(b=>b.onclick=()=>open(b.dataset.arenaOpen));
   document.querySelectorAll("[data-arena-back]").forEach(b=>b.onclick=()=>{if(busy)return; mode=null; data=null; invitation=null; render();});
   document.querySelectorAll("[data-arena-event]").forEach(b=>b.onclick=()=>{eventCode=b.dataset.arenaEvent; draft=""; data.feedback=null; render();});
+  document.querySelectorAll("[data-arena-choice]").forEach(b=>b.onclick=()=>{
+    if (busy) return;
+    choosingDuel = false;
+    if (b.dataset.arenaChoice === "new") request("create"); else render();
+  });
   document.querySelectorAll("[data-arena-action]").forEach(b=>b.onclick=async()=>{
     const action=b.dataset.arenaAction;
     if (action === "invite") {
