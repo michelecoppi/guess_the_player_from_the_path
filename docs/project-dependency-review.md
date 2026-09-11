@@ -89,6 +89,57 @@ work that can start independently:
 ## New issues created by this review
 
 #33–#52 (20 issues), all skeleton-sized (title + short scope), sub-issues of
-#12, #17, #20 or #22 as mapped above. They still need Project fields (Area,
-Priority, Horizon, Size, Risk) assigned on the board before they're ready to
-pick up.
+#12, #17, #20 or #22 as mapped above.
+
+## Project field classification for #33–#52
+
+Classified on 2026-09-11, consistent with the parent's own values but
+differentiated per sub-issue where the split itself justifies a different
+call — most notably #51 vs #52 (see below).
+
+| Issue | Area | Work Type | Priority | Horizon | Size | Risk |
+| --- | --- | --- | --- | --- | --- | --- |
+| #33 Admin dashboard overview | Admin | Feature | P1 | Next | 3 | Low |
+| #34 Admin Daily Challenge mgmt | Admin | Feature | P1 | Next | 3 | Medium |
+| #35 Admin Review Queue integration | Admin | Feature | P1 | Next | 2 | Low |
+| #36 Admin users/groups/leagues | Admin | Feature | P2 | Later | 3 | Medium |
+| #37 Admin shop/referral | Admin | Feature | P2 | Later | 3 | Medium |
+| #38 Admin system health/log/backup | Admin | Feature | P1 | Next | 2 | Low |
+| #39 Admin analytics view | Admin | Feature | P2 | Later | 2 | Low |
+| #40 Mini App: Daily | Mini App | Refactor | P1 | Next | 3 | Medium |
+| #41 Mini App: Arena | Mini App | Refactor | P1 | Next | 3 | Medium |
+| #42 Mini App: Profilo | Mini App | Refactor | P2 | Next | 2 | Low |
+| #43 Mini App: Leaderboard | Mini App | Refactor | P2 | Next | 2 | Low |
+| #44 Mini App: Archivio | Mini App | Refactor | P2 | Later | 2 | Low |
+| #45 Mini App: Shop | Mini App | Refactor | P2 | Later | 3 | Medium |
+| #46 Mini App: Referral | Mini App | Refactor | P2 | Later | 2 | Low |
+| #47 Mini App: Eventi | Mini App | Refactor | P2 | Later | 3 | Medium |
+| #48 Mini App: shared components/test infra | Mini App | Refactor | P1 | Next | 3 | Medium |
+| #49 Release management | Infrastructure | Infrastructure | P1 | Next | 3 | Low |
+| #50 Backup & disaster recovery | Infrastructure | Infrastructure | P1 | Next | 3 | High |
+| #51 Feature flags infra | Growth | Infrastructure | P1 | Next | 3 | Low |
+| #52 Experimentation platform | Growth | Feature | P2 | Later | 3 | Medium |
+
+Reasoning behind the notable deviations from a flat "copy the parent's values":
+
+- **Sizes are smaller than the parent's `8`** (mostly 2–3) — that's the point of
+  splitting: each piece should now fit in a single PR.
+- **#48 (shared components/test infra) is P1/Next**, ahead of the individual
+  feature migrations — the other 8 sub-issues of #17 build on it.
+- **#38 (system health/log/backup) and #35 (Review Queue integration) are
+  Low risk** — they're wiring/visibility work; the real risk lives in the
+  systems they surface (#20, #15), not in the admin glue code.
+- **#50 (backup/disaster recovery) is High risk**, higher than its parent
+  (#20 was Medium) — an untested restore path is a correctness/data-loss risk
+  in its own right, independent of the release-process half of #20.
+- **#51 (feature flags) is Priority P1 / Horizon Next**, pulled forward from
+  the parent's P2/Later — it has no dependency on #29 and is a cheap, reusable
+  enabler; #52 (experimentation) keeps the parent's P2/Later since it's
+  genuinely `blocked by` #29.
+- Admin/shop/referral/users-groups-leagues (#36, #37) and the later Mini App
+  migrations (#44, #46, #47) are pushed to **Horizon Later** — useful but not
+  needed for the initial "run the game without touching JSON/scripts" goal
+  that #33/#34/#35/#38 and #40/#41 (Daily, Arena) serve first.
+
+Status was left at the board default (`Backlog`) for all 20 — moving any of
+them to `Ready` is a Project decision, not something this review makes.
