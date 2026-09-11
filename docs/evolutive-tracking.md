@@ -58,6 +58,38 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 4. A PR that completes the whole issue must use `Closes #<issue>`; a partial PR only references it. Move the item to `Review` when implementation and tests are ready; use `Done` only after merge/verification.
 5. Keep this index lightweight: update it when creating, splitting, closing or materially redefining roadmap work, but never copy all Project-field values here.
 
+## Creating a new issue
+
+An issue left in `Backlog` with unset Project fields is not usable roadmap
+data — it's invisible to prioritization and to WIP tracking. Before moving on:
+
+1. **Assign every Project field**: `Area` (one of the ten official values
+   below — never a legacy aggregate), `Work Type`, `Priority`, `Horizon`,
+   `Size`, `Risk`. `Status` defaults to `Backlog`, which is correct for a new
+   issue; don't leave the rest blank "for later".
+2. **Size the issue honestly.** If the scope genuinely needs `Size 8`, split it
+   into sub-issues *before* starting implementation rather than after — see
+   `project-dependency-review.md` for a worked example (#12, #17, #20, #22).
+   A `Size 8` epic is fine as a parent; it should not itself carry
+   implementation work.
+3. **Model dependencies at the right strength**:
+   - **Hard** (the child is technically impossible without the parent): create
+     a real GitHub `sub-issue` and/or `blocked by` relation via the GraphQL
+     `addSubIssue` / `addBlockedBy` mutations (the `gh` CLI has no built-in
+     command for either as of this writing).
+   - **Soft / related** (helpful ordering, not a technical blocker): do **not**
+     create a GitHub relation. Add a short comment on the issue stating the
+     relation and why it's soft, so the reasoning is visible without
+     constraining the Project board's dependency view.
+   - Don't invent a relation that isn't there — most issues have none.
+4. **Apply cross-cutting labels only when the content actually earns them**:
+   `security`, `breaking-change`, `needs-decision`, `data-risk` (defined in
+   #11). Do not use labels to re-encode a Project field (e.g. don't add an
+   `admin` label — that's what `Area` is for).
+5. Update this index's table and, for anything non-trivial, add one line to
+   the tracking log below with the date and the reasoning — not the full
+   Project state, which lives on the board.
+
 ## Key delivery relationships
 
 As of 2026-09-11 these are real GitHub sub-issue / `blocked by` relations, not
