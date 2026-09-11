@@ -272,6 +272,43 @@ async def legal_css():
         return Response(f.read(), media_type="text/css")
 
 
+DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
+
+
+@app.get("/app/v2", response_class=HTMLResponse)
+async def webapp_v2_page(lang: str | None = None):
+    if lang in ("it", "en", "es"):
+        STATE["user"]["language"] = lang
+    dist_index = os.path.join(DIST_DIR, "index.html")
+    if not os.path.exists(dist_index):
+        return HTMLResponse(
+            "<h2>Mini App V2 non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
+            status_code=503,
+        )
+    with open(dist_index, encoding="utf-8") as f:
+        html = f.read()
+    shim = TELEGRAM_SHIM % (USER_ID, _lang())
+    if "<body>" in html:
+        return HTMLResponse(html.replace("<body>", "<body>" + shim, 1))
+    return HTMLResponse(html + shim)
+
+
+@app.get("/app/v2/assets/{file_path:path}")
+async def webapp_v2_assets(file_path: str):
+    assets_dir = os.path.abspath(os.path.join(DIST_DIR, "assets"))
+    full_path = os.path.abspath(os.path.join(assets_dir, file_path))
+    if not full_path.startswith(assets_dir) or not os.path.exists(full_path) or not os.path.isfile(full_path):
+        return Response("Not Found", status_code=404)
+    with open(full_path, "rb") as f:
+        content = f.read()
+    media_type = "application/javascript" if full_path.endswith(".js") else (
+        "text/css" if full_path.endswith(".css") else (
+            "application/json" if full_path.endswith(".map") else "application/octet-stream"
+        )
+    )
+    return Response(content, media_type=media_type)
+
+
 @app.post("/app/api/me")
 async def me(payload: dict = Body(default={})):
     return build_profile(USER_ID, lang=_lang())

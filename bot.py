@@ -354,6 +354,50 @@ def client_referrals_style(request: Request):
     return _static_response("referrals.css", request, "text/css")
 
 
+DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
+
+
+@app.get("/app/v2", response_class=HTMLResponse)
+def webapp_v2_page(request: Request):
+    dist_index = os.path.join(DIST_DIR, "index.html")
+    if not os.path.exists(dist_index):
+        return HTMLResponse(
+            "<h2>Mini App V2 non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
+            status_code=503,
+        )
+    with open(dist_index, encoding="utf-8") as f:
+        content = f.read()
+    etag = '"' + hashlib.sha256(content.encode()).hexdigest() + '"'
+    headers = {"ETag": etag, "Cache-Control": "public, max-age=0, must-revalidate"}
+    candidates = request.headers.get("if-none-match", "").split(",")
+    if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
+        return Response(status_code=304, headers=headers)
+    return Response(content, media_type="text/html", headers=headers)
+
+
+@app.get("/app/v2/assets/{file_path:path}")
+def webapp_v2_assets(file_path: str, request: Request):
+    assets_dir = os.path.abspath(os.path.join(DIST_DIR, "assets"))
+    full_path = os.path.abspath(os.path.join(assets_dir, file_path))
+    if not full_path.startswith(assets_dir):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+        raise HTTPException(status_code=404, detail="Not Found")
+    with open(full_path, "rb") as f:
+        content = f.read()
+    media_type = "application/javascript" if full_path.endswith(".js") else (
+        "text/css" if full_path.endswith(".css") else (
+            "application/json" if full_path.endswith(".map") else "application/octet-stream"
+        )
+    )
+    etag = '"' + hashlib.sha256(content).hexdigest() + '"'
+    headers = {"ETag": etag, "Cache-Control": "public, max-age=31536000, immutable"}
+    candidates = request.headers.get("if-none-match", "").split(",")
+    if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
+        return Response(status_code=304, headers=headers)
+    return Response(content, media_type=media_type, headers=headers)
+
+
 def _webapp_user(payload, cost=1):
     """Chi sta chiamando, secondo la **sola** firma di initData.
 

@@ -21,9 +21,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "npm"
+
+      - name: Installa dipendenze frontend
+        run: npm ci
+
+      - name: Type check frontend (TypeScript)
+        run: npm run typecheck
+
+      - name: Compila il bundle frontend (Vite)
+        run: npm run build
 
       - name: Test client senza bundler
         run: node --test tests/client.test.cjs
+
+      - name: Test frontend unitari
+        run: npm run test:frontend
 
       - name: Controllo sintassi
         run: python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py

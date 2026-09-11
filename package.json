@@ -1,0 +1,20 @@
+{
+  "name": "guess-the-player-miniapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/client.test.cjs && tsx --test tests/frontend/**/*.test.ts",
+    "test:client": "node --test tests/client.test.cjs",
+    "test:frontend": "tsx --test tests/frontend/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.9",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}

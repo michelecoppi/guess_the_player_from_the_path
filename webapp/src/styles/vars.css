@@ -1,0 +1,50 @@
+/*
+  Telegram Mini App Theme Tokens & CSS Variables.
+  Conforms to Telegram theme guidelines, falling back to the dark football pitch palette.
+*/
+:root {
+  --bg: var(--tg-theme-bg-color, #0a131e);
+  --bg-secondary: var(--tg-theme-secondary-bg-color, #132437);
+  --card: var(--tg-theme-section-bg-color, #1a2c40);
+  --card-hover: #22374e;
+  --edge: #273e56;
+  --edge-subtle: #1e3349;
+  --text: var(--tg-theme-text-color, #ecf2f8);
+  --muted: var(--tg-theme-hint-color, #8ea2b6);
+  --accent: var(--tg-theme-button-color, #38bd82);
+  --accent-text: var(--tg-theme-button-text-color, #0a1a12);
+  --accent-glow: rgba(56, 189, 130, 0.2);
+  --track: #2c445c;
+  --danger: #e5484d;
+  --danger-bg: rgba(229, 72, 77, 0.15);
+  --warn: #f0a63a;
+  --warn-bg: rgba(240, 166, 58, 0.15);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.15);
+
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 12px 14px calc(80px + env(safe-area-inset-bottom));
+  font-family: var(--font-family);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
