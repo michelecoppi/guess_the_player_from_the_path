@@ -211,25 +211,40 @@ class EnvironmentValidator:
             )
 
     def check_dotenv_file(self) -> None:
-        """Verifica la presenza del file .env locale."""
+        """Verifica la presenza del file .env locale (opzionale sia in locale che in produzione)."""
         env_file = self.project_root / ".env"
         if env_file.exists():
-            self.add_result(
-                category="Configuration",
-                name=".env File",
-                status=CheckStatus.PASS,
-                message="File .env trovato nella root del progetto",
-            )
+            if self.mode in ("prod", "all"):
+                self.add_result(
+                    category="Configuration",
+                    name=".env File",
+                    status=CheckStatus.INFO,
+                    message="File .env trovato nella root (in produzione le variabili dell'ambiente di sistema hanno precedenza)",
+                )
+            else:
+                self.add_result(
+                    category="Configuration",
+                    name=".env File",
+                    status=CheckStatus.PASS,
+                    message="File .env trovato nella root del progetto",
+                )
         else:
-            status = CheckStatus.FAIL if self.mode == "prod" else CheckStatus.WARN
-            self.add_result(
-                category="Configuration",
-                name=".env File",
-                status=status,
-                message="File .env non trovato nella root del progetto",
-                remediation="Copia il file di esempio ed imposta le variabili d'ambiente necessarie:\n"
-                            "    copy .env.example .env  (Windows) oppure cp .env.example .env (Linux/WSL)",
-            )
+            if self.mode in ("prod", "all"):
+                self.add_result(
+                    category="Configuration",
+                    name=".env File",
+                    status=CheckStatus.INFO,
+                    message="Nessun file .env presente: la configurazione e' letta direttamente dall'ambiente di sistema (es. Cloud Run / Secret Manager)",
+                )
+            else:
+                self.add_result(
+                    category="Configuration",
+                    name=".env File",
+                    status=CheckStatus.INFO,
+                    message="File .env non trovato: le variabili vengono lette dall'ambiente di sistema o dai default di configurazione.",
+                    remediation="Copia il file di esempio ed imposta le variabili d'ambiente necessarie:\n"
+                                "    copy .env.example .env  (Windows) oppure cp .env.example .env (Linux/WSL)",
+                )
 
     def check_telegram_configuration(self) -> None:
         """Verifica la configurazione del bot Telegram (BOT_TOKEN, BOT_USERNAME, ADMIN_TELEGRAM_IDS)."""
@@ -240,7 +255,7 @@ class EnvironmentValidator:
                 name="BOT_TOKEN",
                 status=CheckStatus.FAIL,
                 message="BOT_TOKEN non e' impostato. Il bot e l'interfaccia admin non possono avviarsi.",
-                remediation="Richiedi un token a @BotFather su Telegram e aggiungilo al tuo .env:\n"
+                remediation="Richiedi un token a @BotFather su Telegram e aggiungilo al tuo .env o all'ambiente:\n"
                             "    BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
             )
         else:
@@ -318,9 +333,10 @@ class EnvironmentValidator:
             )
 
     def check_firebase_configuration(self) -> None:
-        """Verifica la configurazione di Firebase / Firestore (Emulatore locale vs Credenziali di produzione)."""
+        """Verifica la configurazione di Firebase / Firestore (Emulatore locale vs Credenziali di produzione / ADC)."""
         emulator_host = os.getenv("FIRESTORE_EMULATOR_HOST", "").strip()
         credentials_path_str = os.getenv("FIREBASE_CREDENTIALS_PATH", "").strip()
+        google_app_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
 
         # In dev mode: e' sufficiente l'emulatore OPPURE le credenziali
         if emulator_host:
@@ -353,7 +369,7 @@ class EnvironmentValidator:
                         message=f"Emulatore Firestore attivo e raggiungibile su {emulator_host}",
                     )
                 else:
-                    msg_status = CheckStatus.WARN if self.mode == "dev" else CheckStatus.FAIL
+                    msg_status = CheckStatus.WARN if self.mode in ("dev", "api") else CheckStatus.FAIL
                     self.add_result(
                         category="Firebase",
                         name="Firestore Emulator",
@@ -370,13 +386,13 @@ class EnvironmentValidator:
                 cred_path = self.project_root / cred_path
 
             if not cred_path.exists():
-                if emulator_host and self.mode == "dev":
+                if emulator_host and self.mode in ("dev", "api"):
                     self.add_result(
                         category="Firebase",
                         name="FIREBASE_CREDENTIALS_PATH",
                         status=CheckStatus.INFO,
                         message=f"FIREBASE_CREDENTIALS_PATH impostato su '{cred_path.name}', ma il file non esiste. "
-                                "FIRESTORE_EMULATOR_HOST e' attivo per lo sviluppo locale.",
+                                "FIRESTORE_EMULATOR_HOST e' configurato per l'ambiente locale.",
                     )
                 else:
                     self.add_result(
@@ -384,7 +400,7 @@ class EnvironmentValidator:
                         name="FIREBASE_CREDENTIALS_PATH",
                         status=CheckStatus.FAIL,
                         message=f"File credenziali Firebase non trovato: '{cred_path}'",
-                        remediation="Verifica che FIREBASE_CREDENTIALS_PATH nel .env punti a un file JSON esistente "
+                        remediation="Verifica che FIREBASE_CREDENTIALS_PATH punti a un file JSON esistente "
                                     "(es. firebase-key.json).",
                     )
             else:
@@ -416,7 +432,26 @@ class EnvironmentValidator:
                     )
 
         if not emulator_host and not credentials_path_str:
-            if self.mode == "dev":
+            if google_app_creds:
+                cred_p = Path(google_app_creds)
+                if not cred_p.is_absolute():
+                    cred_p = self.project_root / cred_p
+                if cred_p.exists():
+                    self.add_result(
+                        category="Firebase",
+                        name="GOOGLE_APPLICATION_CREDENTIALS",
+                        status=CheckStatus.PASS,
+                        message=f"Credenziali ADC configurate tramite GOOGLE_APPLICATION_CREDENTIALS ({cred_p.name})",
+                    )
+                else:
+                    self.add_result(
+                        category="Firebase",
+                        name="GOOGLE_APPLICATION_CREDENTIALS",
+                        status=CheckStatus.FAIL,
+                        message=f"File GOOGLE_APPLICATION_CREDENTIALS non trovato: '{cred_p}'",
+                        remediation="Verifica il percorso del file di credenziali specificato.",
+                    )
+            elif self.mode in ("dev", "api"):
                 self.add_result(
                     category="Firebase",
                     name="Database Setup",
@@ -431,14 +466,21 @@ class EnvironmentValidator:
             else:
                 self.add_result(
                     category="Firebase",
-                    name="FIREBASE_CREDENTIALS_PATH",
-                    status=CheckStatus.FAIL,
-                    message="In produzione FIREBASE_CREDENTIALS_PATH e' obbligatorio (oppure credenziali ADC su Cloud Run).",
-                    remediation="Configura FIREBASE_CREDENTIALS_PATH con il percorso del file di credenziali.",
+                    name="Database Setup",
+                    status=CheckStatus.INFO,
+                    message="Nessun file FIREBASE_CREDENTIALS_PATH configurato: il runtime utilizzera' le "
+                            "Application Default Credentials (ADC) dell'ambiente (es. Cloud Run Service Account o Workload Identity).",
                 )
 
     def check_cloud_tasks_and_hardening(self) -> None:
-        """Verifica la configurazione di Cloud Tasks e dei segreti di sicurezza (lifespan e worker)."""
+        """Verifica la configurazione di Cloud Tasks e dei segreti di sicurezza (lifespan e worker).
+
+        Distingue:
+        - mode 'dev': sviluppo locale isolato (test, emulatore, preview webapp); le code e segreti sono opzionali (INFO).
+        - mode 'api': avvio del runtime completo bot.py (make api); WEBHOOK_SECRET, TASK_SECRET, code e PUBLIC_BASE_URL
+                      sono obbligatori per il lifespan FastAPI e task_queue.validate_configuration().
+        - mode 'prod': produzione su Cloud Run; formato rigoroso GCP e segreti obbligatori.
+        """
         webhook_secret = os.getenv("WEBHOOK_SECRET", "").strip()
         task_secret = os.getenv("TASK_SECRET", "").strip()
         tasks_queue = os.getenv("TASKS_QUEUE", "").strip()
@@ -448,21 +490,21 @@ class EnvironmentValidator:
         secret_regex = r"^[A-Za-z0-9_-]{32,256}$"
         queue_regex = r"^projects/[^/]+/locations/[^/]+/queues/[^/]+$"
 
-        # Modalità dev: le code Cloud Tasks sono opzionali a meno che non si voglia avviare bot.py con lifespan completo
+        requires_api_secrets = self.mode in ("api", "prod", "all")
         is_prod = self.mode in ("prod", "all")
 
-        # 1. WEBHOOK_SECRET
+        # 1. WEBHOOK_SECRET (richiesto da bot.py lifespan: re.fullmatch(r"[A-Za-z0-9_-]{32,256}", WEBHOOK_SECRET))
         if webhook_secret:
             if re.match(secret_regex, webhook_secret):
                 self.add_result(
-                    category="Security & Hardening",
+                    category="FastAPI Runtime (bot.py)",
                     name="WEBHOOK_SECRET",
                     status=CheckStatus.PASS,
                     message="WEBHOOK_SECRET valido (lunghezza adeguata, caratteri URL-safe)",
                 )
             else:
                 self.add_result(
-                    category="Security & Hardening",
+                    category="FastAPI Runtime (bot.py)",
                     name="WEBHOOK_SECRET",
                     status=CheckStatus.FAIL,
                     message="WEBHOOK_SECRET non valido: deve contenere da 32 a 256 caratteri URL-safe ([A-Za-z0-9_-]).",
@@ -470,27 +512,36 @@ class EnvironmentValidator:
                                 "    python -c \"import secrets; print(secrets.token_urlsafe(48))\"",
                 )
         else:
-            status = CheckStatus.FAIL if is_prod else CheckStatus.INFO
-            self.add_result(
-                category="Security & Hardening",
-                name="WEBHOOK_SECRET",
-                status=status,
-                message="WEBHOOK_SECRET non impostato (richiesto da bot.py per la registrazione e verifica del webhook).",
-                remediation="Genera il segreto con: python -c \"import secrets; print(secrets.token_urlsafe(48))\" e impostalo in .env.",
-            )
+            if requires_api_secrets:
+                self.add_result(
+                    category="FastAPI Runtime (bot.py)",
+                    name="WEBHOOK_SECRET",
+                    status=CheckStatus.FAIL,
+                    message="WEBHOOK_SECRET non impostato. Obbligatorio per il lifespan di bot.py (avvio server FastAPI).",
+                    remediation="Genera il segreto con: python -c \"import secrets; print(secrets.token_urlsafe(48))\" ed impostalo nel .env.",
+                )
+            else:
+                self.add_result(
+                    category="FastAPI Runtime (bot.py)",
+                    name="WEBHOOK_SECRET",
+                    status=CheckStatus.INFO,
+                    message="WEBHOOK_SECRET non impostato (opzionale per sviluppo isolato: test, emulatore, preview webapp; "
+                            "NECESSARIO per avviare il server bot.py con 'make api' o '--mode api').",
+                    remediation="Se intendi avviare bot.py (make api), genera un segreto di 32+ caratteri ed impostalo in .env.",
+                )
 
-        # 2. TASK_SECRET
+        # 2. TASK_SECRET (richiesto da task_queue.validate_configuration())
         if task_secret:
             if re.match(secret_regex, task_secret):
                 self.add_result(
-                    category="Security & Hardening",
+                    category="FastAPI Runtime (bot.py)",
                     name="TASK_SECRET",
                     status=CheckStatus.PASS,
                     message="TASK_SECRET valido (lunghezza adeguata, caratteri URL-safe)",
                 )
             else:
                 self.add_result(
-                    category="Security & Hardening",
+                    category="FastAPI Runtime (bot.py)",
                     name="TASK_SECRET",
                     status=CheckStatus.FAIL,
                     message="TASK_SECRET non valido: deve contenere da 32 a 256 caratteri URL-safe ([A-Za-z0-9_-]).",
@@ -498,42 +549,59 @@ class EnvironmentValidator:
                                 "    python -c \"import secrets; print(secrets.token_urlsafe(48))\"",
                 )
         else:
-            status = CheckStatus.FAIL if is_prod else CheckStatus.INFO
-            self.add_result(
-                category="Security & Hardening",
-                name="TASK_SECRET",
-                status=status,
-                message="TASK_SECRET non impostato (richiesto per proteggere gli endpoint worker Cloud Tasks).",
-                remediation="Genera il segreto con: python -c \"import secrets; print(secrets.token_urlsafe(48))\" e impostalo in .env.",
-            )
+            if requires_api_secrets:
+                self.add_result(
+                    category="FastAPI Runtime (bot.py)",
+                    name="TASK_SECRET",
+                    status=CheckStatus.FAIL,
+                    message="TASK_SECRET non impostato. Obbligatorio per services.task_queue.validate_configuration() al lifespan di bot.py.",
+                    remediation="Genera il segreto con: python -c \"import secrets; print(secrets.token_urlsafe(48))\" ed impostalo nel .env.",
+                )
+            else:
+                self.add_result(
+                    category="FastAPI Runtime (bot.py)",
+                    name="TASK_SECRET",
+                    status=CheckStatus.INFO,
+                    message="TASK_SECRET non impostato (opzionale per sviluppo isolato; "
+                            "NECESSARIO per avviare il server bot.py con 'make api' o '--mode api').",
+                    remediation="Se intendi avviare bot.py (make api), genera un segreto di 32+ caratteri ed impostalo in .env.",
+                )
 
         # 3. TASKS_QUEUE e BROADCAST_QUEUE
         for var_name, q_val in [("TASKS_QUEUE", tasks_queue), ("BROADCAST_QUEUE", broadcast_queue)]:
             if q_val:
-                if re.match(queue_regex, q_val):
+                if is_prod and not re.match(queue_regex, q_val):
                     self.add_result(
-                        category="Cloud Tasks",
+                        category="FastAPI Runtime (bot.py)",
                         name=var_name,
-                        status=CheckStatus.PASS,
-                        message=f"{var_name} configurata con percorso risorsa GCP valido",
+                        status=CheckStatus.FAIL,
+                        message=f"{var_name} non valida per produzione: '{q_val}'. Formato atteso: projects/<p>/locations/<l>/queues/<q>",
+                        remediation="Configura il percorso completo della coda come indicato in docs/runtime-hardening.md.",
                     )
                 else:
                     self.add_result(
-                        category="Cloud Tasks",
+                        category="FastAPI Runtime (bot.py)",
                         name=var_name,
-                        status=CheckStatus.FAIL,
-                        message=f"{var_name} non valida: '{q_val}'. Formato atteso: projects/<p>/locations/<l>/queues/<q>",
-                        remediation="Configura il percorso completo della coda come indicato in docs/runtime-hardening.md.",
+                        status=CheckStatus.PASS,
+                        message=f"{var_name} configurata: {q_val}",
                     )
             else:
-                status = CheckStatus.FAIL if is_prod else CheckStatus.INFO
-                self.add_result(
-                    category="Cloud Tasks",
-                    name=var_name,
-                    status=status,
-                    message=f"{var_name} non configurata (necessaria in produzione per le code Cloud Tasks).",
-                    remediation="Crea la coda su Cloud Tasks e imposta il percorso completo nel .env (vedi docs/runtime-hardening.md).",
-                )
+                if requires_api_secrets:
+                    self.add_result(
+                        category="FastAPI Runtime (bot.py)",
+                        name=var_name,
+                        status=CheckStatus.FAIL,
+                        message=f"{var_name} non configurata. Obbligatoria per services.task_queue.validate_configuration() al lifespan di bot.py.",
+                        remediation=f"Imposta {var_name} nel .env (in locale puo' essere un nome sintetico, es. projects/dev/locations/eu/queues/tasks).",
+                    )
+                else:
+                    self.add_result(
+                        category="FastAPI Runtime (bot.py)",
+                        name=var_name,
+                        status=CheckStatus.INFO,
+                        message=f"{var_name} non configurata (opzionale per sviluppo isolato; NECESSARIA per avviare bot.py con 'make api').",
+                        remediation=f"Per avviare 'make api', imposta {var_name} nel .env (vedi docs/local-development.md).",
+                    )
 
         # 4. GENERATION_SECRET
         if generation_secret:
@@ -556,42 +624,52 @@ class EnvironmentValidator:
     def check_miniapp_and_urls(self) -> None:
         """Verifica la configurazione degli URL pubblici e della Mini App Telegram."""
         public_url = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
-        is_prod = self.mode in ("prod", "all")
+        requires_api = self.mode in ("api", "prod", "all")
 
         if public_url:
-            if is_prod and not public_url.startswith("https://"):
-                self.add_result(
-                    category="Mini App",
-                    name="PUBLIC_BASE_URL",
-                    status=CheckStatus.FAIL,
-                    message=f"PUBLIC_BASE_URL deve iniziare con 'https://' per la consegna dei task e la Mini App: '{public_url}'",
-                    remediation="Imposta un URL pubblico HTTPS (es. https://xxx.run.app).",
-                )
-            elif not public_url.startswith(("http://", "https://")):
-                self.add_result(
-                    category="Mini App",
-                    name="PUBLIC_BASE_URL",
-                    status=CheckStatus.WARN,
-                    message=f"PUBLIC_BASE_URL deve includere lo schema http:// o https://: '{public_url}'",
-                    remediation="Correggi PUBLIC_BASE_URL in .env aggiungendo https:// o http://.",
-                )
+            if not public_url.startswith("https://"):
+                # task_queue.validate_configuration() richiede rigorosamente https:// sia in dev che in prod
+                if requires_api:
+                    self.add_result(
+                        category="Mini App & URLs",
+                        name="PUBLIC_BASE_URL",
+                        status=CheckStatus.FAIL,
+                        message=f"PUBLIC_BASE_URL deve iniziare con 'https://' per task_queue e Mini App: '{public_url}'",
+                        remediation="Imposta un URL HTTPS (es. https://localhost:8000 per sviluppo o il tunnel ngrok/Cloudflare).",
+                    )
+                else:
+                    self.add_result(
+                        category="Mini App & URLs",
+                        name="PUBLIC_BASE_URL",
+                        status=CheckStatus.WARN,
+                        message=f"PUBLIC_BASE_URL non usa https:// ('{public_url}'). Funziona per preview statica, ma blocchera' bot.py.",
+                        remediation="Aggiungi https:// a PUBLIC_BASE_URL nel .env per consentire l'avvio del server bot.py.",
+                    )
             else:
                 self.add_result(
-                    category="Mini App",
+                    category="Mini App & URLs",
                     name="PUBLIC_BASE_URL",
                     status=CheckStatus.PASS,
                     message=f"PUBLIC_BASE_URL configurato: {public_url} (Mini App su {public_url}/app)",
                 )
         else:
-            status = CheckStatus.FAIL if is_prod else CheckStatus.WARN
-            self.add_result(
-                category="Mini App",
-                name="PUBLIC_BASE_URL",
-                status=status,
-                message="PUBLIC_BASE_URL non impostato: il bottone 'Play' della Mini App e i link ai duelli non compariranno.",
-                remediation="In locale puoi usare scripts/preview_webapp.py (porta 8888) senza configurare PUBLIC_BASE_URL.\n"
-                            "Per provare bot.py con la Mini App o webhook, usa un tunnel HTTPS (ngrok/localtunnel) ed imposta PUBLIC_BASE_URL.",
-            )
+            if requires_api:
+                self.add_result(
+                    category="Mini App & URLs",
+                    name="PUBLIC_BASE_URL",
+                    status=CheckStatus.FAIL,
+                    message="PUBLIC_BASE_URL non impostato. Obbligatorio con protocollo https:// per services.task_queue.validate_configuration() in bot.py.",
+                    remediation="Imposta un URL HTTPS in .env (es. PUBLIC_BASE_URL=https://localhost:8000 per test locali).",
+                )
+            else:
+                self.add_result(
+                    category="Mini App & URLs",
+                    name="PUBLIC_BASE_URL",
+                    status=CheckStatus.INFO,
+                    message="PUBLIC_BASE_URL non impostato: non necessario per lo sviluppo isolato o anteprima Mini App (make webapp); "
+                            "NECESSARIO (con https://) per avviare il server bot.py con 'make api'.",
+                    remediation="Per anteprima isolata usa 'make webapp' (porta 8888). Per avviare bot.py imposta PUBLIC_BASE_URL=https://...",
+                )
 
     def check_developer_tooling(self) -> None:
         """Verifica la presenza di strumenti e librerie di sviluppo utili (pytest, ruff, mypy, node, gcloud)."""
@@ -738,9 +816,13 @@ def main() -> int:
     )
     parser.add_argument(
         "--mode",
-        choices=["dev", "prod", "all"],
+        choices=["dev", "api", "prod", "all"],
         default="dev",
-        help="Ambiente target per la validazione (default: dev). 'prod' verifica anche chiavi e code Cloud Tasks.",
+        help="Ambiente target per la validazione:\n"
+             "  dev: sviluppo locale isolato (test, emulatore, preview webapp);\n"
+             "  api: avvio del server FastAPI bot.py con lifespan completo (make api);\n"
+             "  prod: deploy di produzione Cloud Run (verifica segreti e code GCP senza richiedere file .env);\n"
+             "  all: esegue tutti i controlli combinati.",
     )
     parser.add_argument(
         "--strict",

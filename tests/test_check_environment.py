@@ -207,16 +207,63 @@ def test_cloud_tasks_dev_mode_vs_prod_mode(temp_project, monkeypatch):
     monkeypatch.delenv("TASKS_QUEUE", raising=False)
     monkeypatch.delenv("BROADCAST_QUEUE", raising=False)
 
-    # In dev mode, missing secrets are INFO
+    # In dev mode, missing secrets are INFO (isolated development)
     dev_validator = EnvironmentValidator(project_root=temp_project, mode="dev")
     dev_validator.check_cloud_tasks_and_hardening()
     assert not any(r.status == CheckStatus.FAIL for r in dev_validator.results)
+
+    # In api mode, missing secrets are FAIL (required for bot.py lifespan)
+    api_validator = EnvironmentValidator(project_root=temp_project, mode="api")
+    api_validator.check_cloud_tasks_and_hardening()
+    api_failures = [r for r in api_validator.results if r.status == CheckStatus.FAIL]
+    assert len(api_failures) == 4
 
     # In prod mode, missing secrets are FAIL
     prod_validator = EnvironmentValidator(project_root=temp_project, mode="prod")
     prod_validator.check_cloud_tasks_and_hardening()
     prod_failures = [r for r in prod_validator.results if r.status == CheckStatus.FAIL]
-    assert len(prod_failures) >= 4
+    assert len(prod_failures) == 4
+
+
+def test_api_mode_valid_configuration_passes(temp_project, monkeypatch):
+    monkeypatch.setenv("WEBHOOK_SECRET", "a" * 48)
+    monkeypatch.setenv("TASK_SECRET", "b" * 48)
+    monkeypatch.setenv("TASKS_QUEUE", "projects/p/locations/l/queues/tasks")
+    monkeypatch.setenv("BROADCAST_QUEUE", "projects/p/locations/l/queues/broadcast")
+    monkeypatch.setenv("PUBLIC_BASE_URL", "https://localhost:8000")
+
+    validator = EnvironmentValidator(project_root=temp_project, mode="api")
+    validator.check_cloud_tasks_and_hardening()
+    validator.check_miniapp_and_urls()
+    assert not validator.has_failures
+
+
+def test_prod_mode_without_dotenv_file_does_not_fail(temp_project):
+    env_file = temp_project / ".env"
+    if env_file.exists():
+        env_file.unlink()
+
+    validator = EnvironmentValidator(project_root=temp_project, mode="prod")
+    validator.check_dotenv_file()
+
+    dotenv_item = next(r for r in validator.results if r.name == ".env File")
+    assert dotenv_item.status == CheckStatus.INFO
+    assert "Nessun file .env presente" in dotenv_item.message
+    assert not validator.has_failures
+
+
+def test_prod_mode_firebase_adc_support(temp_project, monkeypatch):
+    monkeypatch.delenv("FIRESTORE_EMULATOR_HOST", raising=False)
+    monkeypatch.delenv("FIREBASE_CREDENTIALS_PATH", raising=False)
+    monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+
+    validator = EnvironmentValidator(project_root=temp_project, mode="prod")
+    validator.check_firebase_configuration()
+
+    db_item = next(r for r in validator.results if r.name == "Database Setup")
+    assert db_item.status == CheckStatus.INFO
+    assert "Application Default Credentials" in db_item.message
+    assert not validator.has_failures
 
 
 def test_cloud_tasks_secret_regex_validation(temp_project, monkeypatch):
@@ -234,10 +281,15 @@ def test_cloud_tasks_secret_regex_validation(temp_project, monkeypatch):
 def test_miniapp_url_validation(temp_project, monkeypatch):
     monkeypatch.setenv("PUBLIC_BASE_URL", "http://insecure.test")
 
-    # In dev mode, http is accepted with warning/pass
+    # In dev mode, http is accepted with warning
     dev_validator = EnvironmentValidator(project_root=temp_project, mode="dev")
     dev_validator.check_miniapp_and_urls()
     assert not dev_validator.has_failures
+
+    # In api mode, http without https is FAIL (task_queue.validate_configuration requires https://)
+    api_validator = EnvironmentValidator(project_root=temp_project, mode="api")
+    api_validator.check_miniapp_and_urls()
+    assert api_validator.has_failures
 
     # In prod mode, http without https is FAIL
     prod_validator = EnvironmentValidator(project_root=temp_project, mode="prod")

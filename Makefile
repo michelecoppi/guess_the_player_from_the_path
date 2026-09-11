@@ -7,13 +7,16 @@
 
 PYTHON ?= python
 
-.PHONY: help check-env test test-cov test-node lint typecheck syntax dataset-check check api admin webapp emulator
+.PHONY: help check-env check-api test test-cov test-node lint typecheck syntax dataset-check check api admin webapp emulator
 
 help:
 	@$(PYTHON) -m tools.dev --help
 
 check-env:
 	@$(PYTHON) -m tools.check_environment
+
+check-api:
+	@$(PYTHON) -m tools.check_environment --mode api
 
 test:
 	@$(PYTHON) -m pytest -q
@@ -40,7 +43,7 @@ check:
 	@$(PYTHON) -m tools.dev check
 
 api:
-	@$(PYTHON) -m uvicorn bot:app --reload --port 8000
+	@$(PYTHON) -m tools.dev api
 
 admin:
 	@$(PYTHON) -m streamlit run admin_ui.py

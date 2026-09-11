@@ -112,8 +112,14 @@ def cmd_dataset_check(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
+def cmd_check_api(extra_args: list[str]) -> int:
+    """Verifica i requisiti per l'avvio del server FastAPI bot.py con tools.check_environment --mode api."""
+    cmd = [sys.executable, "-m", "tools.check_environment", "--mode", "api"] + extra_args
+    return _run_cmd(cmd)
+
+
 def cmd_check(extra_args: list[str]) -> int:
-    """Esegue l'intera suite di verifiche locali: sintassi, lint, mypy, dataset, test node e pytest."""
+    """Esegue la suite standard di validazione locale: sintassi, lint, mypy, dataset, test node e pytest."""
     steps = [
         ("Controllo ambiente", cmd_check_env, []),
         ("Controllo sintassi (compileall)", cmd_syntax, []),
@@ -129,12 +135,64 @@ def cmd_check(extra_args: list[str]) -> int:
         if code != 0:
             print(f"\n[FAIL] Step '{label}' fallito con codice {code}. Interrompo.")
             return code
-    print("\n[SUCCESS] Tutte le verifiche locali sono state superate con successo!")
+    print("\n[SUCCESS] Tutte le verifiche locali standard sono state superate con successo!")
     return 0
 
 
 def cmd_api(extra_args: list[str]) -> int:
-    """Avvia il server FastAPI/bot in modalita' reload su localhost:8000."""
+    """Avvia il server FastAPI/bot in modalita' reload su localhost:8000.
+
+    bot.py esegue il lifespan FastAPI completo e richiede configurate le variabili:
+    WEBHOOK_SECRET, TASK_SECRET, TASKS_QUEUE, BROADCAST_QUEUE e PUBLIC_BASE_URL (HTTPS).
+    Se mancano, fornisce un avviso chiaro ed azionabile prima di lanciare uvicorn.
+    """
+    import re
+    # Carica il file .env se non gia' presente in os.environ
+    env_file = ROOT_DIR / ".env"
+    if env_file.exists():
+        try:
+            from dotenv import load_dotenv
+            load_dotenv(env_file)
+        except Exception:
+            pass
+
+    webhook_secret = os.environ.get("WEBHOOK_SECRET", "").strip()
+    task_secret = os.environ.get("TASK_SECRET", "").strip()
+    tasks_queue = os.environ.get("TASKS_QUEUE", "").strip()
+    broadcast_queue = os.environ.get("BROADCAST_QUEUE", "").strip()
+    public_base_url = (os.environ.get("PUBLIC_BASE_URL") or "").strip().rstrip("/")
+
+    secret_pattern = r"^[A-Za-z0-9_-]{32,256}$"
+    missing = []
+
+    if not re.fullmatch(secret_pattern, webhook_secret):
+        missing.append("WEBHOOK_SECRET (richiesto da bot.py lifespan: 32-256 caratteri URL-safe)")
+    if not re.fullmatch(secret_pattern, task_secret):
+        missing.append("TASK_SECRET (richiesto da task_queue: 32-256 caratteri URL-safe)")
+    if not tasks_queue:
+        missing.append("TASKS_QUEUE (richiesto da task_queue.validate_configuration())")
+    if not broadcast_queue:
+        missing.append("BROADCAST_QUEUE (richiesto da task_queue.validate_configuration())")
+    if not public_base_url.startswith("https://"):
+        missing.append("PUBLIC_BASE_URL (richiesto con schema https:// da task_queue.validate_configuration())")
+
+    if missing:
+        print("\n============================================================")
+        print(" [ERRORE AVVIO API] Requisiti del runtime bot.py non soddisfatti")
+        print("============================================================\n")
+        print("Il server FastAPI 'bot.py' esegue controlli rigorosi al lifespan di avvio.")
+        print("I seguenti requisiti non sono soddisfatti nell'ambiente corrente:\n")
+        for item in missing:
+            print(f"  * {item}")
+        print("\nAzioni consigliate:")
+        print("  1. Per diagnosticare l'ambiente del server:")
+        print("     python -m tools.check_environment --mode api")
+        print("  2. Per configurare valori di test conformi nel .env consulta:")
+        print("     docs/local-development.md (Sezione 5.4)")
+        print("  3. Se desideri unicamente testare la Mini App senza il server bot.py:")
+        print("     make webapp   (oppure: python -m tools.dev webapp)\n")
+        return 1
+
     port = os.environ.get("PORT", "8000")
     cmd = [sys.executable, "-m", "uvicorn", "bot:app", "--reload", "--port", port] + extra_args
     return _run_cmd(cmd)
@@ -164,7 +222,8 @@ def cmd_emulator(extra_args: list[str]) -> int:
 # ---------------------------------------------------------------------------
 
 COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
-    "check-env": (cmd_check_env, "Verifica l'ambiente locale e configurazione (.env, dataset, python)"),
+    "check-env": (cmd_check_env, "Verifica l'ambiente locale (modalita' dev: isolato per test/webapp/emulator)"),
+    "check-api": (cmd_check_api, "Verifica i requisiti per l'avvio del server FastAPI bot.py (lifespan e code)"),
     "test": (cmd_test, "Esegue i test unitari con pytest"),
     "test-cov": (cmd_test_cov, "Esegue i test con report di copertura del codice"),
     "test-node": (cmd_test_node, "Esegue i test client per la Mini App (richiede Node.js)"),
@@ -172,7 +231,7 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "typecheck": (cmd_typecheck, "Verifica i tipi con mypy su services/"),
     "syntax": (cmd_syntax, "Verifica la sintassi Python di tutti i moduli"),
     "dataset-check": (cmd_dataset_check, "Controlla salute ed integrita' del dataset calciatori"),
-    "check": (cmd_check, "Esegue tutte le verifiche di qualita' (syntax, lint, mypy, dataset, test)"),
+    "check": (cmd_check, "Suite standard di validazione locale (ambiente, syntax, lint, mypy, dataset, test)"),
     "api": (cmd_api, "Avvia il server API / bot con uvicorn (--reload)"),
     "admin": (cmd_admin, "Avvia la dashboard admin con Streamlit (admin_ui.py)"),
     "webapp": (cmd_webapp, "Avvia l'anteprima isolata della Mini App (preview_webapp.py)"),
@@ -191,6 +250,7 @@ def print_help() -> None:
         print(f"  {name.ljust(max_len + 2)} : {desc}")
     print("\nEsempi:")
     print("  python -m tools.dev check-env")
+    print("  python -m tools.dev check-api")
     print("  python -m tools.dev test")
     print("  python -m tools.dev check")
     print("  python -m tools.dev admin")
@@ -210,6 +270,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     aliases = {
         "check_env": "check-env",
         "env": "check-env",
+        "check_api": "check-api",
+        "api-check": "check-api",
+        "api_check": "check-api",
         "tests": "test",
         "coverage": "test-cov",
         "type-check": "typecheck",
