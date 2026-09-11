@@ -750,6 +750,40 @@ correggere qualcosa a mano.
 **subito**, senza redeploy: utile quando un utente segnala una carriera sbagliata. Le sfide
 già presenti nel buffer non cambiano, si controllano con `/admin_next`.
 
+## Sviluppo locale e validatore configurazione
+
+La guida completa per avviare e configurare tutti i componenti dello stack in locale è disponibile in:
+👉 [`docs/local-development.md`](docs/local-development.md)
+
+### 1. Verifica preventiva dell'ambiente
+Per diagnosticare problemi di configurazione (.env, chiavi Firebase, token Telegram, dataset e dipendenze):
+
+```bash
+python -m tools.check_environment              # controlli per sviluppo locale isolato (dev)
+python -m tools.check_environment --mode api    # controlli requisiti per avvio server FastAPI bot.py
+python -m tools.check_environment --mode prod   # controlli per deploy/produzione Cloud Run
+python -m tools.check_environment --json        # output strutturato per script
+```
+
+### 2. Comandi di sviluppo rapidi
+È disponibile un runner unificato multipiattaforma (`Makefile` su Linux/macOS/WSL, `.\dev.ps1` su Windows PowerShell o `python -m tools.dev`):
+
+```bash
+make check-env      # oppure .\dev.ps1 check-env     -> valida ambiente per sviluppo isolato
+make check-api      # oppure .\dev.ps1 check-api     -> valida requisiti avvio server FastAPI bot.py
+make test           # oppure .\dev.ps1 test          -> esegue i test unitari (pytest -q)
+make test-cov       # oppure .\dev.ps1 test-cov      -> test con report di copertura
+make test-node      # oppure .\dev.ps1 test-node     -> test client Mini App (node)
+make lint           # oppure .\dev.ps1 lint          -> linter ruff
+make typecheck      # oppure .\dev.ps1 typecheck     -> typecheck mypy su services/
+make dataset-check  # oppure .\dev.ps1 dataset-check -> controllo integrita' dataset calciatori
+make check          # oppure .\dev.ps1 check         -> suite standard di validazione locale
+make emulator       # oppure .\dev.ps1 emulator      -> avvia emulatore Firestore locale (porta 8571)
+make api            # oppure .\dev.ps1 api           -> avvia FastAPI/bot con reload (porta 8000)
+make admin          # oppure .\dev.ps1 admin         -> avvia dashboard admin Streamlit (admin_ui.py)
+make webapp         # oppure .\dev.ps1 webapp        -> avvia anteprima locale Mini App (porta 8888)
+```
+
 ## Anteprima locale della mini app
 
 ```bash
