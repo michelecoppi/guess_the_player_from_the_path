@@ -6,6 +6,7 @@ import logging
 import os
 import re
 from contextlib import asynccontextmanager
+from pathlib import Path
 from time import perf_counter
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
@@ -377,17 +378,23 @@ def webapp_v2_page(request: Request):
 
 @app.get("/app/v2/assets/{file_path:path}")
 def webapp_v2_assets(file_path: str, request: Request):
-    assets_dir = os.path.abspath(os.path.join(DIST_DIR, "assets"))
-    full_path = os.path.abspath(os.path.join(assets_dir, file_path))
-    if not full_path.startswith(assets_dir):
+    base_assets = Path(DIST_DIR).resolve() / "assets"
+    try:
+        target = (base_assets / file_path).resolve()
+    except (ValueError, RuntimeError):
         raise HTTPException(status_code=403, detail="Forbidden")
-    if not os.path.exists(full_path) or not os.path.isfile(full_path):
+
+    if not target.is_relative_to(base_assets) or target == base_assets:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not target.is_file():
         raise HTTPException(status_code=404, detail="Not Found")
-    with open(full_path, "rb") as f:
+
+    with open(target, "rb") as f:
         content = f.read()
-    media_type = "application/javascript" if full_path.endswith(".js") else (
-        "text/css" if full_path.endswith(".css") else (
-            "application/json" if full_path.endswith(".map") else "application/octet-stream"
+    suffix = target.suffix.lower()
+    media_type = "application/javascript" if suffix == ".js" else (
+        "text/css" if suffix == ".css" else (
+            "application/json" if suffix == ".map" else "application/octet-stream"
         )
     )
     etag = '"' + hashlib.sha256(content).hexdigest() + '"'

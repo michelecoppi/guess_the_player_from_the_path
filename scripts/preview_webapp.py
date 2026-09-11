@@ -21,6 +21,7 @@ import base64
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -295,15 +296,21 @@ async def webapp_v2_page(lang: str | None = None):
 
 @app.get("/app/v2/assets/{file_path:path}")
 async def webapp_v2_assets(file_path: str):
-    assets_dir = os.path.abspath(os.path.join(DIST_DIR, "assets"))
-    full_path = os.path.abspath(os.path.join(assets_dir, file_path))
-    if not full_path.startswith(assets_dir) or not os.path.exists(full_path) or not os.path.isfile(full_path):
+    base_assets = Path(DIST_DIR).resolve() / "assets"
+    try:
+        target = (base_assets / file_path).resolve()
+    except (ValueError, RuntimeError):
+        return Response("Forbidden", status_code=403)
+    if not target.is_relative_to(base_assets) or target == base_assets:
+        return Response("Forbidden", status_code=403)
+    if not target.is_file():
         return Response("Not Found", status_code=404)
-    with open(full_path, "rb") as f:
+    with open(target, "rb") as f:
         content = f.read()
-    media_type = "application/javascript" if full_path.endswith(".js") else (
-        "text/css" if full_path.endswith(".css") else (
-            "application/json" if full_path.endswith(".map") else "application/octet-stream"
+    suffix = target.suffix.lower()
+    media_type = "application/javascript" if suffix == ".js" else (
+        "text/css" if suffix == ".css" else (
+            "application/json" if suffix == ".map" else "application/octet-stream"
         )
     )
     return Response(content, media_type=media_type)
