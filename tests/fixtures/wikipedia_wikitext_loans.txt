@@ -1,0 +1,19 @@
+{{Bio
+|Nome = Jón
+|Cognome = Daði Böðvarsson
+|AnnoNascita = 1992
+|Nazionalità = islandese
+}}
+
+{{Sportivo
+|ruolo = Attaccante
+|codicenazione = {{ISL}}
+|squadre = {{Carriera sportivo
+|sport = Calcio
+|2010-2013|[[Selfoss (calcio)|Selfoss]]|45 (12)
+|2013-2015|[[Viking FK|Viking]]|50 (18)
+|2015-2016|→ [[1. FC Kaiserslautern|Kaiserslautern]]|28 (5)
+|2016-2019|[[Wolverhampton Wanderers F.C.|Wolverhampton]]|48 (5)
+|2019-2021|[[Millwall F.C.|Millwall]]|62 (10)
+}}
+}}

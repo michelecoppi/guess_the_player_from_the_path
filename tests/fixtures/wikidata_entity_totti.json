@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "Q170984": {
+      "type": "item",
+      "id": "Q170984",
+      "labels": {
+        "it": {"language": "it", "value": "Francesco Totti"},
+        "en": {"language": "en", "value": "Francesco Totti"}
+      },
+      "aliases": {
+        "it": [
+          {"language": "it", "value": "totti"},
+          {"language": "it", "value": "er pupone"}
+        ],
+        "en": [
+          {"language": "en", "value": "Totti"}
+        ]
+      },
+      "claims": {
+        "P569": [
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P569",
+              "datavalue": {
+                "type": "time",
+                "value": {"time": "+1976-09-27T00:00:00Z", "precision": 11}
+              }
+            }
+          }
+        ],
+        "P27": [
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P27",
+              "datavalue": {
+                "type": "wikibase-entityid",
+                "value": {"entity-type": "item", "id": "Q38"}
+              }
+            }
+          }
+        ],
+        "P413": [
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P413",
+              "datavalue": {
+                "type": "wikibase-entityid",
+                "value": {"entity-type": "item", "id": "Q193592"}
+              }
+            }
+          }
+        ],
+        "P54": [
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P54",
+              "datavalue": {
+                "type": "wikibase-entityid",
+                "value": {"entity-type": "item", "id": "Q2565"}
+              }
+            },
+            "qualifiers": {
+              "P580": [
+                {
+                  "snaktype": "value",
+                  "property": "P580",
+                  "datavalue": {
+                    "type": "time",
+                    "value": {"time": "+1993-01-01T00:00:00Z", "precision": 9}
+                  }
+                }
+              ],
+              "P582": [
+                {
+                  "snaktype": "value",
+                  "property": "P582",
+                  "datavalue": {
+                    "type": "time",
+                    "value": {"time": "+2017-01-01T00:00:00Z", "precision": 9}
+                  }
+                }
+              ],
+              "P1642": [
+                {
+                  "snaktype": "value",
+                  "property": "P1642",
+                  "datavalue": {
+                    "type": "quantity",
+                    "value": {"amount": "+619", "unit": "1"}
+                  }
+                }
+              ],
+              "P1351": [
+                {
+                  "snaktype": "value",
+                  "property": "P1351",
+                  "datavalue": {
+                    "type": "quantity",
+                    "value": {"amount": "+250", "unit": "1"}
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
