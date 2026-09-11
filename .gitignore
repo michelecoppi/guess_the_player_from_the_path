@@ -9,6 +9,12 @@ __pycache__/
 # locali per costruzione, non fanno parte del dataset ufficiale finche' non sono importati.
 data/incoming/
 
+# Staging e storage isolato per il ciclo di vita dei Candidate Players (#54):
+data/candidates/
+
+# Worktree locali di sviluppo:
+.worktrees/
+
 # Export JSON di scripts/migrate_firestore.py: dati utente reali, non va committato.
 backup/
 # Report di coverage locale (in CI si rigenera ad ogni run).
