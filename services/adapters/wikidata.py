@@ -13,11 +13,12 @@ Wikidata properties used:
   - P580 (start time) qualifier — start year
   - P582 (end time) qualifier — end year
   - P118 (league) qualifier — league
-  - P1642 (number of matches played) qualifier — appearances
-  - P1351 (number of goals) qualifier — goals
+  - P1350 (number of matches played/races/starts) qualifier — appearances
+  - P1351 (number of goals/points scored) qualifier — goals
 """
 from __future__ import annotations
 
+import json
 import re
 import urllib.parse
 from typing import Any, Optional
@@ -26,6 +27,7 @@ from services.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
+    AdapterSearchResult,
     CareerEntry,
     PlayerSourceAdapter,
 )
@@ -80,7 +82,7 @@ class WikidataAdapter(PlayerSourceAdapter):
         try:
             entity = self._fetch_entity(qid)
         except Exception as exc:
-            result.errors.append(self._error_from_exception(exc, qid))
+            result.errors.append(self._error_from_exception(exc, qid, phase="fetch"))
             return result
 
         if entity is None:
@@ -88,6 +90,7 @@ class WikidataAdapter(PlayerSourceAdapter):
                 error_type=AdapterErrorType.NOT_FOUND,
                 message=f"Entità non trovata: {qid}",
                 source_name=_SOURCE_NAME,
+                details={"phase": "fetch", "identifier": qid},
                 retryable=False,
             ))
             return result
@@ -104,15 +107,16 @@ class WikidataAdapter(PlayerSourceAdapter):
                 error_type=AdapterErrorType.PARSE,
                 message=f"Errore nel parsing dell'entità: {exc}",
                 source_name=_SOURCE_NAME,
-                details={"qid": qid},
+                details={"phase": "extraction", "qid": qid, "exception": str(exc)},
                 retryable=False,
             ))
 
         result.success = bool(result.player_name or result.career)
         return result
 
-    def search_player(self, query: str, limit: int = 5) -> list[str]:
+    def search_player(self, query: str, limit: int = 5) -> AdapterSearchResult:
         """Search Wikidata for entity QIDs matching a query."""
+        result = AdapterSearchResult(source_name=_SOURCE_NAME, query=query)
         url = (
             "https://www.wikidata.org/w/api.php"
             "?action=wbsearchentities"
@@ -122,9 +126,20 @@ class WikidataAdapter(PlayerSourceAdapter):
         try:
             resp = self._http.get(url)
             data = resp.json()
-            return [hit["id"] for hit in data.get("search", [])]
-        except Exception:
-            return []
+            if not isinstance(data, dict):
+                raise ValueError("Risposta API Wikidata non valida: atteso dizionario JSON")
+            search_items = data.get("search", [])
+            if not isinstance(search_items, list):
+                raise ValueError("Risposta API Wikidata non valida: 'search' non è una lista")
+            result.identifiers = [
+                hit["id"] for hit in search_items if isinstance(hit, dict) and "id" in hit
+            ]
+            result.success = True
+            return result
+        except Exception as exc:
+            result.success = False
+            result.errors.append(self._error_from_exception(exc, query, phase="search"))
+            return result
 
     # ── HTTP layer ───────────────────────────────────────────────────────
 
@@ -133,8 +148,15 @@ class WikidataAdapter(PlayerSourceAdapter):
         url = _ENTITY_API.format(qid=qid)
         resp = self._http.get(url)
         data = resp.json()
-        entities = data.get("entities", {})
-        return entities.get(qid)
+        if not isinstance(data, dict):
+            raise ValueError("Risposta Wikidata non valida: atteso oggetto JSON")
+        entities = data.get("entities")
+        if not isinstance(entities, dict):
+            raise ValueError("Risposta Wikidata non valida: blocco 'entities' mancante o non valido")
+        entity = entities.get(qid)
+        if entity is None or not isinstance(entity, dict):
+            return None
+        return entity
 
     # ── Data extraction ──────────────────────────────────────────────────
 
@@ -235,7 +257,7 @@ class WikidataAdapter(PlayerSourceAdapter):
                 "team": team_qid,  # QID — downstream resolves to name
                 "start_year": cls._year_from_qualifier(qualifiers, "P580"),
                 "end_year": cls._year_from_qualifier(qualifiers, "P582"),
-                "apps": cls._int_from_qualifier(qualifiers, "P1642"),
+                "apps": cls._int_from_qualifier(qualifiers, "P1350"),
                 "goals": cls._int_from_qualifier(qualifiers, "P1351"),
             }
 
@@ -283,15 +305,30 @@ class WikidataAdapter(PlayerSourceAdapter):
 
     # ── Error helpers ────────────────────────────────────────────────────
 
-    def _error_from_exception(self, exc: Exception, identifier: str) -> AdapterError:
+    @classmethod
+    def _error_from_exception(
+        cls,
+        exc: Exception,
+        identifier: str,
+        *,
+        phase: str = "response_parsing",
+    ) -> AdapterError:
         """Convert an exception into a structured ``AdapterError``."""
+        if isinstance(exc, (json.JSONDecodeError, ValueError, TypeError)):
+            return AdapterError(
+                error_type=AdapterErrorType.PARSE,
+                message=f"Risposta non valida o malformata per {identifier}: {exc}",
+                source_name=_SOURCE_NAME,
+                details={"phase": phase, "identifier": identifier, "exception": str(exc)},
+                retryable=False,
+            )
         if isinstance(exc, HttpError):
             if exc.status_code == 404:
                 return AdapterError(
                     error_type=AdapterErrorType.NOT_FOUND,
                     message=f"Entità non trovata: {identifier}",
                     source_name=_SOURCE_NAME,
-                    details={"status_code": exc.status_code, "url": exc.url},
+                    details={"status_code": exc.status_code, "url": exc.url, "phase": phase},
                     retryable=False,
                 )
             if exc.status_code == 429:
@@ -299,14 +336,14 @@ class WikidataAdapter(PlayerSourceAdapter):
                     error_type=AdapterErrorType.RATE_LIMIT,
                     message=f"Rate limited: {identifier}",
                     source_name=_SOURCE_NAME,
-                    details={"status_code": exc.status_code},
+                    details={"status_code": exc.status_code, "phase": phase},
                     retryable=True,
                 )
             return AdapterError(
                 error_type=AdapterErrorType.TRANSPORT,
                 message=f"HTTP {exc.status_code}: {exc.message}",
                 source_name=_SOURCE_NAME,
-                details={"status_code": exc.status_code, "url": exc.url},
+                details={"status_code": exc.status_code, "url": exc.url, "phase": phase},
                 retryable=exc.retryable,
             )
         if isinstance(exc, TimeoutError):
@@ -314,13 +351,13 @@ class WikidataAdapter(PlayerSourceAdapter):
                 error_type=AdapterErrorType.TIMEOUT,
                 message=f"Timeout: {exc}",
                 source_name=_SOURCE_NAME,
-                details={"identifier": identifier},
+                details={"identifier": identifier, "phase": phase},
                 retryable=True,
             )
         return AdapterError(
             error_type=AdapterErrorType.UNKNOWN,
             message=f"{type(exc).__name__}: {exc}",
             source_name=_SOURCE_NAME,
-            details={"identifier": identifier},
+            details={"identifier": identifier, "phase": phase},
             retryable=False,
         )

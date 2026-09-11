@@ -11,6 +11,7 @@ from services.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
+    AdapterSearchResult,
     CareerEntry,
     PlayerSourceAdapter,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "AdapterError",
     "AdapterErrorType",
     "AdapterResult",
+    "AdapterSearchResult",
     "CareerEntry",
     "HttpClient",
     "HttpError",

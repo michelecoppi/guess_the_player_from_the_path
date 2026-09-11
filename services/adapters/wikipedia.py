@@ -11,6 +11,7 @@ its parsing functions and wraps the HTTP layer via the injectable
 """
 from __future__ import annotations
 
+import json
 import re
 import urllib.parse
 from typing import Any, Optional
@@ -19,6 +20,7 @@ from services.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
+    AdapterSearchResult,
     CareerEntry,
     PlayerSourceAdapter,
 )
@@ -64,7 +66,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
         try:
             wikitext = self._fetch_wikitext(identifier)
         except Exception as exc:
-            result.errors.append(self._error_from_exception(exc, identifier))
+            result.errors.append(self._error_from_exception(exc, identifier, phase="fetch"))
             return result
 
         if wikitext is None:
@@ -115,8 +117,9 @@ class WikipediaAdapter(PlayerSourceAdapter):
         result.success = bool(result.player_name or result.career)
         return result
 
-    def search_player(self, query: str, limit: int = 5) -> list[str]:
+    def search_player(self, query: str, limit: int = 5) -> AdapterSearchResult:
         """Search for page titles matching a query on it.wikipedia.org."""
+        result = AdapterSearchResult(source_name=_SOURCE_NAME, query=query)
         url = (
             _API
             + "?action=query&list=search&srsearch="
@@ -126,12 +129,22 @@ class WikipediaAdapter(PlayerSourceAdapter):
         try:
             resp = self._http.get(url)
             data = resp.json()
-            return [
+            if not isinstance(data, dict):
+                raise ValueError("Risposta API Wikipedia non valida: atteso dizionario JSON")
+            search_items = data.get("query", {}).get("search", [])
+            if not isinstance(search_items, list):
+                raise ValueError("Risposta API Wikipedia non valida: 'search' non è una lista")
+            result.identifiers = [
                 hit["title"]
-                for hit in data.get("query", {}).get("search", [])
+                for hit in search_items
+                if isinstance(hit, dict) and "title" in hit
             ]
-        except Exception:
-            return []
+            result.success = True
+            return result
+        except Exception as exc:
+            result.success = False
+            result.errors.append(self._error_from_exception(exc, query, phase="search"))
+            return result
 
     # ── HTTP layer ───────────────────────────────────────────────────────
 
@@ -145,10 +158,18 @@ class WikipediaAdapter(PlayerSourceAdapter):
         )
         resp = self._http.get(url)
         data = resp.json()
-
+        if not isinstance(data, dict):
+            raise ValueError("Risposta MediaWiki non valida: atteso oggetto JSON")
+        if "error" in data and isinstance(data["error"], dict):
+            if data["error"].get("code") in ("missingtitle", "nosuchpageid"):
+                return None
+            raise ValueError(f"MediaWiki API error: {data['error'].get('info', 'Unknown error')}")
         if "parse" not in data:
             return None
-        return data["parse"]["wikitext"]
+        parse_obj = data["parse"]
+        if not isinstance(parse_obj, dict) or "wikitext" not in parse_obj:
+            raise ValueError("Risposta MediaWiki non valida: wikitext mancante o non valido")
+        return str(parse_obj["wikitext"])
 
     # ── Wikitext parsing (adapted from scripts/wikipedia/wiki.py) ────────
 
@@ -362,15 +383,30 @@ class WikipediaAdapter(PlayerSourceAdapter):
 
     # ── Error helpers ────────────────────────────────────────────────────
 
-    def _error_from_exception(self, exc: Exception, identifier: str) -> AdapterError:
+    @classmethod
+    def _error_from_exception(
+        cls,
+        exc: Exception,
+        identifier: str,
+        *,
+        phase: str = "response_parsing",
+    ) -> AdapterError:
         """Convert an exception into a structured ``AdapterError``."""
+        if isinstance(exc, (json.JSONDecodeError, ValueError, TypeError)):
+            return AdapterError(
+                error_type=AdapterErrorType.PARSE,
+                message=f"Risposta non valida o malformata per {identifier}: {exc}",
+                source_name=_SOURCE_NAME,
+                details={"phase": phase, "identifier": identifier, "exception": str(exc)},
+                retryable=False,
+            )
         if isinstance(exc, HttpError):
             if exc.status_code == 404:
                 return AdapterError(
                     error_type=AdapterErrorType.NOT_FOUND,
                     message=f"Pagina non trovata: {identifier}",
                     source_name=_SOURCE_NAME,
-                    details={"status_code": exc.status_code, "url": exc.url},
+                    details={"status_code": exc.status_code, "url": exc.url, "phase": phase},
                     retryable=False,
                 )
             if exc.status_code == 429:
@@ -378,14 +414,14 @@ class WikipediaAdapter(PlayerSourceAdapter):
                     error_type=AdapterErrorType.RATE_LIMIT,
                     message=f"Rate limited: {identifier}",
                     source_name=_SOURCE_NAME,
-                    details={"status_code": exc.status_code, "url": exc.url},
+                    details={"status_code": exc.status_code, "url": exc.url, "phase": phase},
                     retryable=True,
                 )
             return AdapterError(
                 error_type=AdapterErrorType.TRANSPORT,
                 message=f"HTTP {exc.status_code}: {exc.message}",
                 source_name=_SOURCE_NAME,
-                details={"status_code": exc.status_code, "url": exc.url},
+                details={"status_code": exc.status_code, "url": exc.url, "phase": phase},
                 retryable=exc.retryable,
             )
         if isinstance(exc, TimeoutError):
@@ -393,13 +429,13 @@ class WikipediaAdapter(PlayerSourceAdapter):
                 error_type=AdapterErrorType.TIMEOUT,
                 message=f"Timeout: {exc}",
                 source_name=_SOURCE_NAME,
-                details={"identifier": identifier},
+                details={"identifier": identifier, "phase": phase},
                 retryable=True,
             )
         return AdapterError(
             error_type=AdapterErrorType.UNKNOWN,
             message=f"{type(exc).__name__}: {exc}",
             source_name=_SOURCE_NAME,
-            details={"identifier": identifier},
+            details={"identifier": identifier, "phase": phase},
             retryable=False,
         )

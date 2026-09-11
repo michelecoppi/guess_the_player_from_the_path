@@ -3,10 +3,9 @@
 Provides functions to:
 1. Populate a CandidatePlayer from a successful AdapterResult;
 2. Record structured adapter failures into the candidate error log;
-3. Transition the candidate appropriately (DISCOVERED → FETCHED, or
-   DISCOVERED → REVIEW_REQUIRED on partial/ambiguous data).
+3. Transition the candidate from DISCOVERED to FETCHED on successful acquisition.
 
-Does NOT perform normalization, validation, or production promotion.
+Does NOT perform normalization, validation, review assignment, or production promotion.
 Those responsibilities belong to #26 and #15.
 """
 from __future__ import annotations
@@ -81,16 +80,10 @@ def populate_candidate_from_result(
             increment_retry_count=False,
         )
 
-    # Determine target state
-    is_partial = _is_partial_result(result)
-
-    if is_partial and candidate.can_transition_to(CandidateState.REVIEW_REQUIRED):
-        candidate.transition_to(
-            CandidateState.REVIEW_REQUIRED,
-            reason=f"Dati parziali da {result.source_name}: campi mancanti",
-            actor=f"adapter:{result.source_name}",
-        )
-    elif candidate.can_transition_to(CandidateState.FETCHED):
+    # A successful source fetch transitions DISCOVERED → FETCHED.
+    # Downstream normalization and career validation (#26) decide whether
+    # the candidate later becomes NORMALIZED, VALIDATED, or REVIEW_REQUIRED.
+    if candidate.can_transition_to(CandidateState.FETCHED):
         candidate.transition_to(
             CandidateState.FETCHED,
             reason=f"Dati recuperati da {result.source_name}",
@@ -127,19 +120,3 @@ def record_adapter_failure(
         retryable=error.retryable,
     )
     return candidate
-
-
-def _is_partial_result(result: AdapterResult) -> bool:
-    """Determine if an AdapterResult has significant missing data.
-
-    A result is considered partial if it's missing the player name OR
-    has fewer than 2 career stops (the dataset minimum) OR has non-fatal
-    errors recorded.
-    """
-    if not result.player_name:
-        return True
-    if len(result.career) < 2:
-        return True
-    if result.errors:
-        return True
-    return False

@@ -15,6 +15,7 @@ from services.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
+    AdapterSearchResult,
     PlayerSourceAdapter,
 )
 from services.adapters.candidate_integration import (
@@ -130,6 +131,20 @@ class TestAdapterContract:
         d = err.to_dict()
         assert d["error_type"] == "transport"
         assert d["retryable"] is True
+
+    def test_adapter_search_result_serialization(self):
+        res = AdapterSearchResult(
+            source_name="wikipedia",
+            query="Totti",
+            identifiers=["Francesco Totti"],
+            success=True,
+        )
+        d = res.to_dict()
+        assert d["source_name"] == "wikipedia"
+        assert d["query"] == "Totti"
+        assert d["identifiers"] == ["Francesco Totti"]
+        assert d["success"] is True
+        assert d["errors"] == []
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -349,11 +364,24 @@ class TestWikipediaAdapter:
         result = adapter.fetch_player("BadPage")
 
         assert result.success is False
-        assert len(result.errors) >= 1
+        assert len(result.errors) == 1
+        assert result.errors[0].error_type == AdapterErrorType.PARSE
+        assert result.errors[0].details.get("phase") in ("response_parsing", "fetch")
+
+    def test_fetch_invalid_json_structure(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", HttpResponse(200, json.dumps(["invalid", "array"])))
+
+        result = adapter.fetch_player("BadPage")
+
+        assert result.success is False
+        assert len(result.errors) == 1
+        assert result.errors[0].error_type == AdapterErrorType.PARSE
+        assert result.errors[0].details.get("phase") in ("response_parsing", "fetch")
 
     # ── Search ───────────────────────────────────────────────────────────
 
-    def test_search_returns_titles(self):
+    def test_search_wikipedia_success_with_results(self):
         adapter, client = self._make_adapter()
         search_response = HttpResponse(200, json.dumps({
             "query": {"search": [
@@ -363,17 +391,76 @@ class TestWikipediaAdapter:
         }))
         client.configure("api.php", search_response)
 
-        titles = adapter.search_player("Totti")
+        search_res = adapter.search_player("Totti")
 
-        assert len(titles) == 2
-        assert "Francesco Totti" in titles
+        assert search_res.success is True
+        assert search_res.source_name == "wikipedia"
+        assert search_res.query == "Totti"
+        assert len(search_res.identifiers) == 2
+        assert "Francesco Totti" in search_res.identifiers
+        assert search_res.errors == []
 
-    def test_search_returns_empty_on_error(self):
+    def test_search_wikipedia_success_zero_results(self):
         adapter, client = self._make_adapter()
-        client.configure("api.php", HttpError(500, "error", url="https://wiki", retryable=True))
+        search_response = HttpResponse(200, json.dumps({
+            "query": {"search": []}
+        }))
+        client.configure("api.php", search_response)
 
-        titles = adapter.search_player("Totti")
-        assert titles == []
+        search_res = adapter.search_player("NonExistentPlayer12345")
+
+        assert search_res.success is True
+        assert search_res.source_name == "wikipedia"
+        assert search_res.identifiers == []
+        assert search_res.errors == []
+
+    def test_search_wikipedia_timeout(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", TimeoutError("Request timed out"))
+
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.TIMEOUT
+        assert search_res.errors[0].retryable is True
+
+    def test_search_wikipedia_429_rate_limit(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", HttpError(429, "Too Many Requests", url="https://wiki", retryable=True))
+
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.RATE_LIMIT
+        assert search_res.errors[0].retryable is True
+
+    def test_search_wikipedia_http_failure(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", HttpError(500, "Internal Server Error", url="https://wiki", retryable=True))
+
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.TRANSPORT
+        assert search_res.errors[0].retryable is True
+
+    def test_search_wikipedia_malformed_json(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", HttpResponse(200, "not json at all"))
+
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.PARSE
+        assert search_res.errors[0].retryable is False
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -512,7 +599,116 @@ class TestWikidataAdapter:
         result = adapter.fetch_player("Q999")
 
         assert result.success is False
-        assert len(result.errors) >= 1
+        assert len(result.errors) == 1
+        assert result.errors[0].error_type == AdapterErrorType.PARSE
+        assert result.errors[0].details.get("phase") in ("response_parsing", "fetch")
+
+    def test_fetch_invalid_json_structure(self):
+        adapter, client = self._make_adapter()
+        client.configure("EntityData", HttpResponse(200, json.dumps(["not", "a", "dict"])))
+
+        result = adapter.fetch_player("Q999")
+
+        assert result.success is False
+        assert len(result.errors) == 1
+        assert result.errors[0].error_type == AdapterErrorType.PARSE
+        assert result.errors[0].details.get("phase") in ("response_parsing", "fetch")
+
+    def test_wikidata_apps_p1350_goals_p1351_not_p1642(self):
+        """Regression test: P1350 populates apps, P1351 populates goals,
+        and P1642 is NOT interpreted as appearances.
+        """
+        adapter, client = self._make_adapter()
+        entity_data = {
+            "entities": {
+                "Q12345": {
+                    "id": "Q12345",
+                    "labels": {"it": {"language": "it", "value": "Test Player"}},
+                    "claims": {
+                        "P54": [
+                            {
+                                "mainsnak": {
+                                    "datavalue": {
+                                        "type": "wikibase-entityid",
+                                        "value": {"id": "Q99"},
+                                    }
+                                },
+                                "qualifiers": {
+                                    "P1350": [
+                                        {
+                                            "snaktype": "value",
+                                            "property": "P1350",
+                                            "datavalue": {"type": "quantity", "value": {"amount": "+42", "unit": "1"}},
+                                        }
+                                    ],
+                                    "P1351": [
+                                        {
+                                            "snaktype": "value",
+                                            "property": "P1351",
+                                            "datavalue": {"type": "quantity", "value": {"amount": "+15", "unit": "1"}},
+                                        }
+                                    ],
+                                    "P1642": [
+                                        {
+                                            "snaktype": "value",
+                                            "property": "P1642",
+                                            "datavalue": {"type": "quantity", "value": {"amount": "+999", "unit": "1"}},
+                                        }
+                                    ],
+                                },
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+        client.configure("EntityData", HttpResponse(200, json.dumps(entity_data)))
+
+        result = adapter.fetch_player("Q12345")
+
+        assert result.success is True
+        assert len(result.career) == 1
+        stop = result.career[0]
+        assert stop["apps"] == 42, f"Expected 42 apps from P1350, got {stop['apps']}"
+        assert stop["goals"] == 15, f"Expected 15 goals from P1351, got {stop['goals']}"
+        assert stop["apps"] != 999, "P1642 must not be interpreted as appearances"
+
+        # Separate case: Entity with ONLY P1642 and no P1350
+        entity_p1642_only = {
+            "entities": {
+                "Q54321": {
+                    "id": "Q54321",
+                    "labels": {"it": {"language": "it", "value": "Old Transaction Player"}},
+                    "claims": {
+                        "P54": [
+                            {
+                                "mainsnak": {
+                                    "datavalue": {
+                                        "type": "wikibase-entityid",
+                                        "value": {"id": "Q99"},
+                                    }
+                                },
+                                "qualifiers": {
+                                    "P1642": [
+                                        {
+                                            "snaktype": "value",
+                                            "property": "P1642",
+                                            "datavalue": {"type": "quantity", "value": {"amount": "+500", "unit": "1"}},
+                                        }
+                                    ],
+                                },
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+        client.configure("EntityData", HttpResponse(200, json.dumps(entity_p1642_only)))
+
+        result2 = adapter.fetch_player("Q54321")
+        assert result2.success is True
+        assert len(result2.career) == 1
+        assert result2.career[0]["apps"] is None, "When P1350 is absent, apps must be None (P1642 ignored)"
 
     def test_entity_missing_from_response(self):
         adapter, client = self._make_adapter()
@@ -525,22 +721,82 @@ class TestWikidataAdapter:
 
     # ── Search ───────────────────────────────────────────────────────────
 
-    def test_search_returns_qids(self):
+    def test_search_wikidata_success_with_results(self):
         adapter, client = self._make_adapter()
         search_resp = HttpResponse(200, json.dumps({
             "search": [{"id": "Q170984"}, {"id": "Q12345"}]
         }))
         client.configure("api.php", search_resp)
 
-        qids = adapter.search_player("Totti")
-        assert "Q170984" in qids
+        search_res = adapter.search_player("Totti")
 
-    def test_search_returns_empty_on_error(self):
+        assert search_res.success is True
+        assert search_res.source_name == "wikidata"
+        assert search_res.query == "Totti"
+        assert search_res.identifiers == ["Q170984", "Q12345"]
+        assert search_res.errors == []
+
+    def test_search_wikidata_success_zero_results(self):
+        adapter, client = self._make_adapter()
+        search_resp = HttpResponse(200, json.dumps({
+            "search": []
+        }))
+        client.configure("api.php", search_resp)
+
+        search_res = adapter.search_player("NonExistentPlayer12345")
+
+        assert search_res.success is True
+        assert search_res.source_name == "wikidata"
+        assert search_res.identifiers == []
+        assert search_res.errors == []
+
+    def test_search_wikidata_timeout(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", TimeoutError("timed out"))
+
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.TIMEOUT
+        assert search_res.errors[0].retryable is True
+
+    def test_search_wikidata_429_rate_limit(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", HttpError(429, "Rate limited", url="https://wikidata", retryable=True))
+
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.RATE_LIMIT
+        assert search_res.errors[0].retryable is True
+
+    def test_search_wikidata_http_failure(self):
         adapter, client = self._make_adapter()
         client.configure("api.php", HttpError(500, "error", url="https://wikidata", retryable=True))
 
-        qids = adapter.search_player("Totti")
-        assert qids == []
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.TRANSPORT
+        assert search_res.errors[0].retryable is True
+
+    def test_search_wikidata_malformed_json(self):
+        adapter, client = self._make_adapter()
+        client.configure("api.php", HttpResponse(200, "not json at all"))
+
+        search_res = adapter.search_player("Totti")
+
+        assert search_res.success is False
+        assert search_res.identifiers == []
+        assert len(search_res.errors) == 1
+        assert search_res.errors[0].error_type == AdapterErrorType.PARSE
+        assert search_res.errors[0].retryable is False
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -611,8 +867,13 @@ class TestCandidateIntegration:
         assert candidate.state_history[0].to_state == CandidateState.FETCHED
         assert "wikipedia" in (candidate.state_history[0].actor or "")
 
-    def test_partial_result_goes_to_review(self):
-        """Missing career (<2 stops) should transition to REVIEW_REQUIRED."""
+    def test_partial_result_transitions_to_fetched_and_preserves_errors(self):
+        """A successful fetch with partial/sparse data or non-fatal warnings
+        must transition DISCOVERED → FETCHED deterministically.
+
+        Downstream normalization and validation (#26) will determine whether
+        the candidate later transitions to REVIEW_REQUIRED.
+        """
         candidate = self._make_candidate()
         result = AdapterResult(
             source_name="wikipedia",
@@ -620,14 +881,25 @@ class TestCandidateIntegration:
             success=True,
             player_name="Partial Player",
             career=[{"team": "Solo Club", "start_year": 2020, "end_year": 2024}],
+            errors=[
+                AdapterError(
+                    error_type=AdapterErrorType.PARSE,
+                    message="Warning: infobox missing birthplace",
+                    source_name="wikipedia",
+                    retryable=False,
+                )
+            ],
         )
 
         populate_candidate_from_result(candidate, result)
 
-        # DISCOVERED → REVIEW_REQUIRED is not directly allowed
-        # but DISCOVERED → FETCHED is, then future steps go to REVIEW_REQUIRED
-        # Let's check what actually happened based on the allowed transitions
-        assert candidate.status in (CandidateState.FETCHED, CandidateState.REVIEW_REQUIRED)
+        assert candidate.status == CandidateState.FETCHED
+        assert candidate.full_name == "Partial Player"
+        assert len(candidate.career) == 1
+        assert len(candidate.errors) == 1
+        assert candidate.errors[0].error_type == "parse"
+        assert candidate.errors[0].message == "Warning: infobox missing birthplace"
+        assert candidate.retry_count == 0  # non-fatal warning does not increment retries
 
     def test_failed_result_records_errors(self):
         candidate = self._make_candidate()

@@ -140,6 +140,37 @@ class AdapterResult:
         }
 
 
+@dataclass
+class AdapterSearchResult:
+    """Result container for search operations across adapters.
+
+    Distinguishes genuine empty results (success=True, identifiers=[]) from
+    failures (success=False, errors=[...]).
+
+    Attributes:
+        source_name: Canonical name of the source (e.g. "wikipedia", "wikidata").
+        query: Search query string that was executed.
+        identifiers: List of source-specific identifiers found (empty if none or on failure).
+        success: True when search completed normally (even with 0 results); False on failure.
+        errors: Structured errors if the search failed or encountered issues.
+    """
+
+    source_name: str
+    query: str
+    identifiers: list[str] = field(default_factory=list)
+    success: bool = True
+    errors: list[AdapterError] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_name": self.source_name,
+            "query": self.query,
+            "identifiers": list(self.identifiers),
+            "success": self.success,
+            "errors": [e.to_dict() for e in self.errors],
+        }
+
+
 class PlayerSourceAdapter(abc.ABC):
     """Abstract contract that every player data source must implement.
 
@@ -173,18 +204,18 @@ class PlayerSourceAdapter(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def search_player(self, query: str, limit: int = 5) -> list[str]:
+    def search_player(self, query: str, limit: int = 5) -> AdapterSearchResult:
         """Search for player identifiers matching a free-text query.
 
-        Returns up to ``limit`` source-specific identifiers.  On error returns
-        an empty list rather than raising (search is best-effort).
+        Returns an ``AdapterSearchResult`` allowing callers to distinguish between
+        a successful empty search result and transport/parse failures.
 
         Args:
             query: Free-text search query (player name, nickname, ...).
             limit: Maximum number of identifiers to return.
 
         Returns:
-            List of source-specific identifiers found.
+            An ``AdapterSearchResult`` with found identifiers and/or structured errors.
         """
         ...
 

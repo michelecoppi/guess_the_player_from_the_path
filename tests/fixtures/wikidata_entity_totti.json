@@ -84,10 +84,10 @@
                   }
                 }
               ],
-              "P1642": [
+              "P1350": [
                 {
                   "snaktype": "value",
-                  "property": "P1642",
+                  "property": "P1350",
                   "datavalue": {
                     "type": "quantity",
                     "value": {"amount": "+619", "unit": "1"}
