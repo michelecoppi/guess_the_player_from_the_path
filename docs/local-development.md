@@ -101,7 +101,11 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | `make emulator` | `python -m tools.dev emulator`<br>`.\dev.ps1 emulator` | Avvia l'emulatore Firestore locale su porta 8571 |
 | `make api` | `python -m tools.dev api`<br>`.\dev.ps1 api` | Avvia il server FastAPI (`bot.py`) con `--reload` su porta 8000 |
 | `make admin` | `python -m tools.dev admin`<br>`.\dev.ps1 admin` | Avvia la dashboard Streamlit su `admin_ui.py` |
-| `make webapp` | `python -m tools.dev webapp`<br>`.\dev.ps1 webapp` | Avvia l'anteprima isolata della Mini App su `http://localhost:8888/app` |
+| `make webapp` | `python -m tools.dev webapp`<br>`.\dev.ps1 webapp` | Avvia l'anteprima isolata della Mini App su `http://localhost:8888/app` (e V2 su `/app/v2`) |
+| `make frontend-dev` | `python -m tools.dev frontend-dev`<br>`npm run dev` | Avvia il server di sviluppo Vite con hot reload su `http://localhost:5173` |
+| `make frontend-build` | `python -m tools.dev frontend-build`<br>`npm run build` | Compila il bundle di produzione frontend con Vite e TypeScript (`webapp/dist/`) |
+| `make frontend-typecheck` | `python -m tools.dev frontend-typecheck`<br>`npm run typecheck` | Controllo statico dei tipi TypeScript per il frontend (`tsc --noEmit`) |
+| `make frontend-test` | `python -m tools.dev frontend-test`<br>`npm run test:frontend` | Esegue i test unitari TypeScript della foundation frontend |
 
 > [!NOTE]
 > `make check` (o `python -m tools.dev check`) è la **suite di validazione locale standard** concepita per un ciclo di feedback immediato prima del commit. A differenza di `check`, la pipeline GitHub Actions (`.github/workflows/ci.yml`) avvia in aggiunta un'istanza dell'emulatore Firestore su JVM per verificare le transazioni concorrenti reali ed applica la soglia di copertura minima del 70% (`--cov-fail-under=70`). In locale puoi eseguire i test con copertura usando `make test-cov`.
@@ -145,6 +149,10 @@ make webapp
 Apri il browser su:
 ```
 http://localhost:8888/app
+```
+oppure per testare la nuova shell Vite + TypeScript:
+```
+http://localhost:8888/app/v2
 ```
 Questo avvia un server FastAPI leggero (`scripts/preview_webapp.py`) che inietta un finto utente con tutti i cosmetici già sbloccati, conservando tutto in memoria.
 

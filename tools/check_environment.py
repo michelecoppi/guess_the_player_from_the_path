@@ -210,6 +210,26 @@ class EnvironmentValidator:
                 message="Tutti i file statici della Mini App sono presenti in webapp/",
             )
 
+        # Controllo frontend foundation (Vite + TypeScript)
+        frontend_src = self.project_root / "webapp" / "src"
+        if frontend_src.exists():
+            dist_index = self.project_root / "webapp" / "dist" / "index.html"
+            if dist_index.exists():
+                self.add_result(
+                    category="Mini App",
+                    name="Vite Build Artifacts",
+                    status=CheckStatus.PASS,
+                    message="Bundle compilato della Mini App V2 presente in webapp/dist/",
+                )
+            else:
+                self.add_result(
+                    category="Mini App",
+                    name="Vite Build Artifacts",
+                    status=CheckStatus.INFO,
+                    message="Bundle Mini App V2 non ancora compilato (compilabile con 'npm run build')",
+                    remediation="Esegui 'npm run build' o 'python -m tools.dev frontend-build'.",
+                )
+
     def check_dotenv_file(self) -> None:
         """Verifica la presenza del file .env locale (opzionale sia in locale che in produzione)."""
         env_file = self.project_root / ".env"

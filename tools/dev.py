@@ -112,6 +112,35 @@ def cmd_dataset_check(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
+def _npm_cmd() -> str:
+    import shutil
+    return shutil.which("npm") or "npm"
+
+
+def cmd_frontend_dev(extra_args: list[str]) -> int:
+    """Avvia il server di sviluppo Vite per la Mini App V2 (localhost:5173)."""
+    cmd = [_npm_cmd(), "run", "dev"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_frontend_build(extra_args: list[str]) -> int:
+    """Compila il bundle di produzione frontend con Vite e TypeScript (webapp/dist/)."""
+    cmd = [_npm_cmd(), "run", "build"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_frontend_typecheck(extra_args: list[str]) -> int:
+    """Esegue il controllo statico dei tipi TypeScript per il frontend (tsc --noEmit)."""
+    cmd = [_npm_cmd(), "run", "typecheck"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_frontend_test(extra_args: list[str]) -> int:
+    """Esegue i test unitari TypeScript della nuova foundation frontend."""
+    cmd = [_npm_cmd(), "run", "test:frontend"] + extra_args
+    return _run_cmd(cmd)
+
+
 def cmd_check_api(extra_args: list[str]) -> int:
     """Verifica i requisiti per l'avvio del server FastAPI bot.py con tools.check_environment --mode api."""
     cmd = [sys.executable, "-m", "tools.check_environment", "--mode", "api"] + extra_args
@@ -119,14 +148,17 @@ def cmd_check_api(extra_args: list[str]) -> int:
 
 
 def cmd_check(extra_args: list[str]) -> int:
-    """Esegue la suite standard di validazione locale: sintassi, lint, mypy, dataset, test node e pytest."""
+    """Esegue la suite standard di validazione locale: ambiente, sintassi, lint, mypy, frontend, dataset e test."""
     steps = [
         ("Controllo ambiente", cmd_check_env, []),
         ("Controllo sintassi (compileall)", cmd_syntax, []),
         ("Lint (ruff)", cmd_lint, []),
         ("Type check (mypy)", cmd_typecheck, []),
+        ("Type check frontend (tsc)", cmd_frontend_typecheck, []),
+        ("Build frontend (vite)", cmd_frontend_build, []),
         ("Integrita' dataset", cmd_dataset_check, []),
-        ("Test client (node)", cmd_test_node, []),
+        ("Test client legacy (node)", cmd_test_node, []),
+        ("Test frontend unitari", cmd_frontend_test, []),
         ("Unit test (pytest)", cmd_test, extra_args),
     ]
     for label, fn, args in steps:
@@ -231,11 +263,15 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "typecheck": (cmd_typecheck, "Verifica i tipi con mypy su services/"),
     "syntax": (cmd_syntax, "Verifica la sintassi Python di tutti i moduli"),
     "dataset-check": (cmd_dataset_check, "Controlla salute ed integrita' del dataset calciatori"),
-    "check": (cmd_check, "Suite standard di validazione locale (ambiente, syntax, lint, mypy, dataset, test)"),
+    "check": (cmd_check, "Suite standard di validazione locale (ambiente, syntax, lint, mypy, frontend, dataset, test)"),
     "api": (cmd_api, "Avvia il server API / bot con uvicorn (--reload)"),
     "admin": (cmd_admin, "Avvia la dashboard admin con Streamlit (admin_ui.py)"),
     "webapp": (cmd_webapp, "Avvia l'anteprima isolata della Mini App (preview_webapp.py)"),
     "emulator": (cmd_emulator, "Avvia l'emulatore locale Firestore con gcloud"),
+    "frontend-dev": (cmd_frontend_dev, "Avvia il server di sviluppo Vite per la Mini App (localhost:5173)"),
+    "frontend-build": (cmd_frontend_build, "Compila il bundle di produzione frontend con Vite e TypeScript"),
+    "frontend-typecheck": (cmd_frontend_typecheck, "Verifica i tipi TypeScript per il frontend (tsc --noEmit)"),
+    "frontend-test": (cmd_frontend_test, "Esegue i test unitari TypeScript della nuova foundation"),
 }
 
 
@@ -254,7 +290,8 @@ def print_help() -> None:
     print("  python -m tools.dev test")
     print("  python -m tools.dev check")
     print("  python -m tools.dev admin")
-    print("  python -m tools.dev webapp\n")
+    print("  python -m tools.dev webapp")
+    print("  python -m tools.dev frontend-dev\n")
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -284,6 +321,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         "dev-admin": "admin",
         "dev-webapp": "webapp",
         "dev-emulator": "emulator",
+        "dev-frontend": "frontend-dev",
+        "vite": "frontend-dev",
+        "build-frontend": "frontend-build",
+        "typecheck-frontend": "frontend-typecheck",
+        "ts-check": "frontend-typecheck",
+        "test-frontend": "frontend-test",
     }
     target_cmd = aliases.get(cmd_name, cmd_name)
 

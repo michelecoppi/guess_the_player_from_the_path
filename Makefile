@@ -7,7 +7,7 @@
 
 PYTHON ?= python
 
-.PHONY: help check-env check-api test test-cov test-node lint typecheck syntax dataset-check check api admin webapp emulator
+.PHONY: help check-env check-api test test-cov test-node lint typecheck syntax dataset-check check api admin webapp emulator frontend-dev frontend-build frontend-typecheck frontend-test
 
 help:
 	@$(PYTHON) -m tools.dev --help
@@ -53,3 +53,15 @@ webapp:
 
 emulator:
 	gcloud emulators firestore start --host-port=127.0.0.1:8571
+
+frontend-dev:
+	@$(PYTHON) -m tools.dev frontend-dev
+
+frontend-build:
+	@$(PYTHON) -m tools.dev frontend-build
+
+frontend-typecheck:
+	@$(PYTHON) -m tools.dev frontend-typecheck
+
+frontend-test:
+	@$(PYTHON) -m tools.dev frontend-test

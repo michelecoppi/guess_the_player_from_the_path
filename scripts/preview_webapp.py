@@ -21,6 +21,7 @@ import base64
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -270,6 +271,49 @@ async def terms():
 async def legal_css():
     with open(os.path.join(WEBAPP_DIR, "legal.css"), encoding="utf-8") as f:
         return Response(f.read(), media_type="text/css")
+
+
+DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
+
+
+@app.get("/app/v2", response_class=HTMLResponse)
+async def webapp_v2_page(lang: str | None = None):
+    if lang in ("it", "en", "es"):
+        STATE["user"]["language"] = lang
+    dist_index = os.path.join(DIST_DIR, "index.html")
+    if not os.path.exists(dist_index):
+        return HTMLResponse(
+            "<h2>Mini App V2 non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
+            status_code=503,
+        )
+    with open(dist_index, encoding="utf-8") as f:
+        html = f.read()
+    shim = TELEGRAM_SHIM % (USER_ID, _lang())
+    if "<body>" in html:
+        return HTMLResponse(html.replace("<body>", "<body>" + shim, 1))
+    return HTMLResponse(html + shim)
+
+
+@app.get("/app/v2/assets/{file_path:path}")
+async def webapp_v2_assets(file_path: str):
+    base_assets = Path(DIST_DIR).resolve() / "assets"
+    try:
+        target = (base_assets / file_path).resolve()
+    except (ValueError, RuntimeError):
+        return Response("Forbidden", status_code=403)
+    if not target.is_relative_to(base_assets) or target == base_assets:
+        return Response("Forbidden", status_code=403)
+    if not target.is_file():
+        return Response("Not Found", status_code=404)
+    with open(target, "rb") as f:
+        content = f.read()
+    suffix = target.suffix.lower()
+    media_type = "application/javascript" if suffix == ".js" else (
+        "text/css" if suffix == ".css" else (
+            "application/json" if suffix == ".map" else "application/octet-stream"
+        )
+    )
+    return Response(content, media_type=media_type)
 
 
 @app.post("/app/api/me")

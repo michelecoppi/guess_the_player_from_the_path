@@ -6,6 +6,7 @@ import logging
 import os
 import re
 from contextlib import asynccontextmanager
+from pathlib import Path
 from time import perf_counter
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
@@ -352,6 +353,56 @@ def client_referrals(request: Request):
 @app.get("/app/referrals.css")
 def client_referrals_style(request: Request):
     return _static_response("referrals.css", request, "text/css")
+
+
+DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
+
+
+@app.get("/app/v2", response_class=HTMLResponse)
+def webapp_v2_page(request: Request):
+    dist_index = os.path.join(DIST_DIR, "index.html")
+    if not os.path.exists(dist_index):
+        return HTMLResponse(
+            "<h2>Mini App V2 non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
+            status_code=503,
+        )
+    with open(dist_index, encoding="utf-8") as f:
+        content = f.read()
+    etag = '"' + hashlib.sha256(content.encode()).hexdigest() + '"'
+    headers = {"ETag": etag, "Cache-Control": "public, max-age=0, must-revalidate"}
+    candidates = request.headers.get("if-none-match", "").split(",")
+    if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
+        return Response(status_code=304, headers=headers)
+    return Response(content, media_type="text/html", headers=headers)
+
+
+@app.get("/app/v2/assets/{file_path:path}")
+def webapp_v2_assets(file_path: str, request: Request):
+    base_assets = Path(DIST_DIR).resolve() / "assets"
+    try:
+        target = (base_assets / file_path).resolve()
+    except (ValueError, RuntimeError):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if not target.is_relative_to(base_assets) or target == base_assets:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    with open(target, "rb") as f:
+        content = f.read()
+    suffix = target.suffix.lower()
+    media_type = "application/javascript" if suffix == ".js" else (
+        "text/css" if suffix == ".css" else (
+            "application/json" if suffix == ".map" else "application/octet-stream"
+        )
+    )
+    etag = '"' + hashlib.sha256(content).hexdigest() + '"'
+    headers = {"ETag": etag, "Cache-Control": "public, max-age=31536000, immutable"}
+    candidates = request.headers.get("if-none-match", "").split(",")
+    if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
+        return Response(status_code=304, headers=headers)
+    return Response(content, media_type=media_type, headers=headers)
 
 
 def _webapp_user(payload, cost=1):

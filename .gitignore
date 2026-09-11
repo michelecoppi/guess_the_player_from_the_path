@@ -14,3 +14,8 @@ backup/
 # Report di coverage locale (in CI si rigenera ad ogni run).
 .coverage
 htmlcov/
+
+# Node.js e build artifacts
+node_modules/
+dist/
+webapp/dist/
