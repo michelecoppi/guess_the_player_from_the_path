@@ -69,7 +69,7 @@ class CandidatePlayerRepository(abc.ABC):
 
 
 class InMemoryCandidatePlayerRepository(CandidatePlayerRepository):
-    """Implementazione in-memory thread-safe e isolata, ideale per test veloci."""
+    """Implementazione in-memory veloce e isolata, ideale per test unitari deterministici."""
 
     def __init__(self) -> None:
         self._storage: dict[str, dict] = {}

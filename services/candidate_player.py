@@ -3,7 +3,7 @@
 Fornisce il modello e le regole fondamentali per la pipeline di ingestione dei calciatori:
 - Lifecycle states finiti ed espliciti (DISCOVERED -> ... -> APPROVED / REJECTED);
 - Macchina a stati rigida con eccezione dedicata per transizioni non consentite;
-- Generazione deterministica dell'identificativo del candidato;
+- Generazione deterministica dell'identificativo del candidato, immune a collisioni;
 - Tracciamento della cronologia delle transizioni (audit trail);
 - Tracciamento strutturato degli errori e dei tentativi di retry;
 - Separazione totale e rigorosa dal dataset di produzione data/players.json.
@@ -11,6 +11,7 @@ Fornisce il modello e le regole fondamentali per la pipeline di ingestione dei c
 from __future__ import annotations
 
 import copy
+import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -35,32 +36,46 @@ def _clean_slug(text: str) -> str:
 
 
 def make_candidate_id(source: str, source_id: str) -> str:
-    """Genera un identificatore deterministico e URL-safe per un candidato da fonte esterna.
+    """Genera un identificatore deterministico, collision-safe e URL/filesystem-safe per un candidato.
+
+    Combina uno slug leggibile con un hash crittografico stabile (SHA-256 a 8 caratteri esadecimali)
+    calcolato sui dati grezzi di source e source_id. Questo previene collisioni silenziose tra
+    identificatori esterni distinti che collasserebbero allo stesso slug (es. 'A-B', 'A/B', 'A_B').
 
     Esempio:
-        make_candidate_id("wikipedia", "Francesco Totti") -> "cand_wikipedia_francesco_totti"
-        make_candidate_id("wikidata", "Q1853") -> "cand_wikidata_q1853"
+        make_candidate_id("wikipedia", "Francesco Totti") -> "cand_wikipedia_francesco_totti_..."
+        make_candidate_id("wikidata", "Q1853") -> "cand_wikidata_q1853_..."
     """
     clean_src = _clean_slug(source)
     clean_id = _clean_slug(source_id)
-    if not clean_src or not clean_id:
+    if not clean_src or not str(source_id).strip():
         raise ValueError("source e source_id devono essere stringhe valide e non vuote")
-    return f"cand_{clean_src}_{clean_id}"
+
+    raw_token = f"{source.strip()}:{source_id.strip()}".encode("utf-8")
+    hash_suffix = hashlib.sha256(raw_token).hexdigest()[:8]
+
+    slug_part = clean_id[:40].rstrip("_") if clean_id else "item"
+    return f"cand_{clean_src}_{slug_part}_{hash_suffix}"
 
 
 def make_candidate_id_from_name(full_name: str, birth_year: Optional[int] = None) -> str:
-    """Genera un identificatore deterministico basato su nome e anno di nascita opzionale.
+    """Genera un identificatore deterministico e collision-safe basato su nome e anno di nascita.
 
     Esempio:
-        make_candidate_id_from_name("Lionel Messi", 1987) -> "cand_lionel_messi_1987"
-        make_candidate_id_from_name("Pelé") -> "cand_pele"
+        make_candidate_id_from_name("Lionel Messi", 1987) -> "cand_lionel_messi_1987_..."
+        make_candidate_id_from_name("Pelé") -> "cand_pele_..."
     """
     clean_name = _clean_slug(full_name)
     if not clean_name:
         raise ValueError("full_name deve essere una stringa valida e non vuota")
+
+    raw_token = f"{full_name.strip()}:{birth_year if birth_year is not None else ''}".encode("utf-8")
+    hash_suffix = hashlib.sha256(raw_token).hexdigest()[:8]
+
+    slug_part = clean_name[:40].rstrip("_")
     if birth_year is not None:
-        return f"cand_{clean_name}_{birth_year}"
-    return f"cand_{clean_name}"
+        return f"cand_{slug_part}_{birth_year}_{hash_suffix}"
+    return f"cand_{slug_part}_{hash_suffix}"
 
 
 class CandidateState(str, Enum):
@@ -214,67 +229,139 @@ class CandidateError:
         )
 
 
-@dataclass
+@dataclass(init=False, repr=True)
 class CandidatePlayer:
     """Modello di dominio per un calciatore candidato nella pipeline di ingestione.
 
     Isolato dal dataset di produzione, mantiene la storia delle transizioni, lo stato di
     avanzamento, i metadati di qualità/provenienza e i dettagli sugli errori/retry.
+
+    Lo stato del ciclo di vita (`status`) è protetto da modifiche dirette arbitrarie:
+    solo l'API di transizione `transition_to()` o il meccanismo di deserializzazione
+    possono impostare o far avanzare lo stato.
     """
 
     candidate_id: str
     source: str
     source_id: str
-    status: CandidateState = CandidateState.DISCOVERED
-    created_at: str = field(default_factory=_now_utc_iso)
-    updated_at: str = field(default_factory=_now_utc_iso)
-    last_transition_at: Optional[str] = None
+    _status: CandidateState
+    created_at: str
+    updated_at: str
+    last_transition_at: Optional[str]
 
     # Dati anagrafici e carriera (popolati progressivamente tra FETCHED e NORMALIZED)
-    full_name: Optional[str] = None
-    aliases: list[str] = field(default_factory=list)
-    nationality: Optional[str] = None
-    position: Optional[str] = None
-    birth_year: Optional[int] = None
-    popularity: Optional[int] = None
-    career: list[dict[str, Any]] = field(default_factory=list)
-    raw_data: dict[str, Any] = field(default_factory=dict)
+    full_name: Optional[str]
+    aliases: list[str]
+    nationality: Optional[str]
+    position: Optional[str]
+    birth_year: Optional[int]
+    popularity: Optional[int]
+    career: list[dict[str, Any]]
+    raw_data: dict[str, Any]
 
     # Indicatori di qualità e validazione (agganci per #26 e #27)
-    validation_warnings: list[str] = field(default_factory=list)
-    validation_errors: list[str] = field(default_factory=list)
-    confidence_score: Optional[float] = None
+    validation_warnings: list[str]
+    validation_errors: list[str]
+    confidence_score: Optional[float]
 
     # Gestione retry ed errori
-    retry_count: int = 0
-    max_retries: int = 3
-    errors: list[CandidateError] = field(default_factory=list)
-    last_error: Optional[CandidateError] = None
+    retry_count: int
+    max_retries: int
+    errors: list[CandidateError]
+    last_error: Optional[CandidateError]
 
     # Tracciamento e audit trail
-    state_history: list[StateTransitionRecord] = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    state_history: list[StateTransitionRecord]
+    metadata: dict[str, Any]
 
-    def __post_init__(self) -> None:
-        if isinstance(self.status, str):
-            self.status = CandidateState(self.status)
-        if not self.candidate_id:
+    def __init__(
+        self,
+        candidate_id: str,
+        source: str,
+        source_id: str,
+        *,
+        _status: CandidateState = CandidateState.DISCOVERED,
+        created_at: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        last_transition_at: Optional[str] = None,
+        full_name: Optional[str] = None,
+        aliases: Optional[list[str]] = None,
+        nationality: Optional[str] = None,
+        position: Optional[str] = None,
+        birth_year: Optional[int] = None,
+        popularity: Optional[int] = None,
+        career: Optional[list[dict[str, Any]]] = None,
+        raw_data: Optional[dict[str, Any]] = None,
+        validation_warnings: Optional[list[str]] = None,
+        validation_errors: Optional[list[str]] = None,
+        confidence_score: Optional[float] = None,
+        retry_count: int = 0,
+        max_retries: int = 3,
+        errors: Optional[list[CandidateError]] = None,
+        last_error: Optional[CandidateError] = None,
+        state_history: Optional[list[StateTransitionRecord]] = None,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> None:
+        if not candidate_id:
             raise ValueError("candidate_id non puo' essere vuoto")
-        if not self.source or not self.source_id:
+        if not source or not source_id:
             raise ValueError("source e source_id devono essere valorizzati")
-        if not self.created_at:
-            self.created_at = _now_utc_iso()
-        if not self.updated_at:
-            self.updated_at = self.created_at
+
+        self.candidate_id = candidate_id
+        self.source = source
+        self.source_id = source_id
+
+        if isinstance(_status, str):
+            _status = CandidateState(_status)
+        self._status = _status
+
+        now = _now_utc_iso()
+        self.created_at = created_at or now
+        self.updated_at = updated_at or self.created_at
+        self.last_transition_at = last_transition_at
+
+        self.full_name = full_name
+        self.aliases = list(aliases) if aliases is not None else []
+        self.nationality = nationality
+        self.position = position
+        self.birth_year = birth_year
+        self.popularity = popularity
+        self.career = list(career) if career is not None else []
+        self.raw_data = dict(raw_data) if raw_data is not None else {}
+
+        self.validation_warnings = list(validation_warnings) if validation_warnings is not None else []
+        self.validation_errors = list(validation_errors) if validation_errors is not None else []
+        self.confidence_score = confidence_score
+
+        self.retry_count = int(retry_count)
+        self.max_retries = int(max_retries)
+        self.errors = list(errors) if errors is not None else []
+        self.last_error = last_error
+
+        self.state_history = list(state_history) if state_history is not None else []
+        self.metadata = dict(metadata) if metadata is not None else {}
+
+    @property
+    def status(self) -> CandidateState:
+        """Stato corrente del candidato nel ciclo di vita (in sola lettura)."""
+        return self._status
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name == "status":
+            raise AttributeError(
+                "Lo stato del candidato non puo' essere modificato direttamente: "
+                "utilizzare candidate.transition_to() per eseguire una transizione validata."
+            )
+        super().__setattr__(name, value)
 
     def is_terminal(self) -> bool:
         """Indica se lo stato corrente e' terminale (APPROVED o REJECTED)."""
-        return self.status in (CandidateState.APPROVED, CandidateState.REJECTED)
+        return self._status in (CandidateState.APPROVED, CandidateState.REJECTED)
 
     def can_transition_to(self, target: CandidateState | str) -> bool:
         """Verifica se la transizione verso target e' lecita senza eseguirla."""
         target_state = target if isinstance(target, CandidateState) else CandidateState(target)
-        allowed = ALLOWED_TRANSITIONS.get(self.status, set())
+        allowed = ALLOWED_TRANSITIONS.get(self._status, set())
         return target_state in allowed
 
     def transition_to(
@@ -289,19 +376,19 @@ class CandidatePlayer:
         Solleva InvalidStateTransitionError se la transizione non e' consentita dal grafo.
         """
         target_state = target if isinstance(target, CandidateState) else CandidateState(target)
-        allowed = ALLOWED_TRANSITIONS.get(self.status, set())
+        allowed = ALLOWED_TRANSITIONS.get(self._status, set())
 
         if target_state not in allowed:
             raise InvalidStateTransitionError(
                 candidate_id=self.candidate_id,
-                current_state=self.status,
+                current_state=self._status,
                 target_state=target_state,
                 allowed_states=allowed,
             )
 
         now = _now_utc_iso()
         record = StateTransitionRecord(
-            from_state=self.status,
+            from_state=self._status,
             to_state=target_state,
             timestamp=now,
             reason=reason,
@@ -310,7 +397,7 @@ class CandidatePlayer:
         )
 
         self.state_history.append(record)
-        self.status = target_state
+        self._status = target_state
         self.last_transition_at = now
         self.updated_at = now
         return record
@@ -329,7 +416,7 @@ class CandidatePlayer:
             error_type=error_type,
             message=message,
             timestamp=now,
-            state=self.status,
+            state=self._status,
             details=dict(details or {}),
             retryable=retryable,
         )
@@ -361,7 +448,7 @@ class CandidatePlayer:
             "candidate_id": self.candidate_id,
             "source": self.source,
             "source_id": self.source_id,
-            "status": self.status.value,
+            "status": self._status.value,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "last_transition_at": self.last_transition_at,
@@ -391,7 +478,7 @@ class CandidatePlayer:
             candidate_id=str(data["candidate_id"]),
             source=str(data["source"]),
             source_id=str(data["source_id"]),
-            status=CandidateState(data.get("status", CandidateState.DISCOVERED.value)),
+            _status=CandidateState(data.get("status", CandidateState.DISCOVERED.value)),
             created_at=str(data.get("created_at") or _now_utc_iso()),
             updated_at=str(data.get("updated_at") or _now_utc_iso()),
             last_transition_at=data.get("last_transition_at"),

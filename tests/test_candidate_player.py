@@ -1,5 +1,6 @@
 """Unit tests for Candidate Player domain model, states, transitions, errors, and IDs."""
 import json
+import re
 
 import pytest
 
@@ -47,24 +48,85 @@ def test_candidate_creation_validation():
         CandidatePlayer(candidate_id="cand_1", source="wiki", source_id="")
 
 
+def test_status_immutability_and_protection():
+    """Verifica che lo stato del ciclo di vita non sia mutabile direttamente
+    e che non possa essere impostato arbitrariamente tramite costruttore standard."""
+    cand = CandidatePlayer(candidate_id="cand_protect", source="wiki", source_id="1")
+    assert cand.status == CandidateState.DISCOVERED
+
+    # 1. Tentativo di mutazione diretta di status solleva AttributeError
+    with pytest.raises(AttributeError, match="Lo stato del candidato non puo' essere modificato direttamente"):
+        cand.status = CandidateState.APPROVED  # type: ignore[misc]
+    assert cand.status == CandidateState.DISCOVERED
+
+    # 2. Tentativo di passare 'status' al costruttore pubblico solleva TypeError
+    with pytest.raises(TypeError, match="unexpected keyword argument 'status'"):
+        CandidatePlayer(  # type: ignore[call-arg]
+            candidate_id="cand_bypass",
+            source="wiki",
+            source_id="2",
+            status=CandidateState.APPROVED,
+        )
+
+    # 3. Solo transition_to() puo' avanzare lo stato attraverso il grafo validato
+    cand.transition_to(CandidateState.FETCHED)
+    assert cand.status == CandidateState.FETCHED
+
+    # 4. Deserializzazione da persistenza (from_dict) ripristina lo stato corretto
+    restored = CandidatePlayer.from_dict({
+        "candidate_id": "cand_restored",
+        "source": "wiki",
+        "source_id": "3",
+        "status": CandidateState.VALIDATED.value,
+    })
+    assert restored.status == CandidateState.VALIDATED
+
+
 def test_deterministic_id_generation():
     id1 = make_candidate_id("wikipedia", "Francesco Totti")
-    id2 = make_candidate_id("WIKIPEDIA", "francesco totti")
-    id3 = make_candidate_id("  Wikipedia  ", "Francesco   Totti  ")
+    id2 = make_candidate_id("wikipedia", "Francesco Totti")
 
-    assert id1 == "cand_wikipedia_francesco_totti"
-    assert id1 == id2 == id3
+    # Deterministico: chiamate identiche restituiscono l'ID identico
+    assert id1 == id2
+    assert id1.startswith("cand_wikipedia_francesco_totti_")
+
+    # Sicuro per filesystem e URL: solo caratteri alfanumerici e underscore
+    assert re.fullmatch(r"cand_[a-z0-9_]+", id1) is not None
 
     # Accenti e caratteri speciali
     id_accent = make_candidate_id("wikipedia", "Pelé")
-    assert id_accent == "cand_wikipedia_pele"
+    assert id_accent.startswith("cand_wikipedia_pele_")
 
     id_apostrophe = make_candidate_id("wiki", "N'Golo Kanté")
-    assert id_apostrophe == "cand_wiki_n_golo_kante"
+    assert id_apostrophe.startswith("cand_wiki_n_golo_kante_")
 
     # Wikidata Q-ID
     id_wd = make_candidate_id("wikidata", "Q1853")
-    assert id_wd == "cand_wikidata_q1853"
+    assert id_wd.startswith("cand_wikidata_q1853_")
+
+
+def test_deterministic_id_collision_resistance():
+    """Verifica che identificatori grezzi distinti (che prima collassavano allo stesso slug)
+    producano candidate_id distinti grazie all'hash crittografico stabile."""
+    id_dash = make_candidate_id("wiki", "A-B")
+    id_slash = make_candidate_id("wiki", "A/B")
+    id_underscore = make_candidate_id("wiki", "A_B")
+    id_space = make_candidate_id("wiki", "A B")
+
+    # Devono essere tutti e 4 distinti
+    unique_ids = {id_dash, id_slash, id_underscore, id_space}
+    assert len(unique_ids) == 4, f"Collisione rilevata tra identificatori distinti: {unique_ids}"
+
+    # Tutti mantengono lo slug leggibile come prefisso
+    assert id_dash.startswith("cand_wiki_a_b_")
+    assert id_slash.startswith("cand_wiki_a_b_")
+    assert id_underscore.startswith("cand_wiki_a_b_")
+    assert id_space.startswith("cand_wiki_a_b_")
+
+    # Anche la sorgente differenzia l'ID
+    id_wiki = make_candidate_id("wikipedia", "player_1")
+    id_wd = make_candidate_id("wikidata", "player_1")
+    assert id_wiki != id_wd
 
 
 def test_deterministic_id_invalid_inputs():
@@ -76,12 +138,17 @@ def test_deterministic_id_invalid_inputs():
 
 def test_deterministic_id_from_name():
     id1 = make_candidate_id_from_name("Lionel Messi", 1987)
-    id2 = make_candidate_id_from_name("lionel messi", 1987)
-    assert id1 == "cand_lionel_messi_1987"
+    id2 = make_candidate_id_from_name("Lionel Messi", 1987)
     assert id1 == id2
+    assert id1.startswith("cand_lionel_messi_1987_")
 
     id_no_year = make_candidate_id_from_name("Zinedine Zidane")
-    assert id_no_year == "cand_zinedine_zidane"
+    assert id_no_year.startswith("cand_zinedine_zidane_")
+
+    # Collision resistance on names with hyphens vs spaces
+    id_hyphen = make_candidate_id_from_name("Jean-Pierre Papin", 1963)
+    id_space = make_candidate_id_from_name("Jean Pierre Papin", 1963)
+    assert id_hyphen != id_space
 
     with pytest.raises(ValueError, match="full_name deve essere una stringa valida"):
         make_candidate_id_from_name("   ")

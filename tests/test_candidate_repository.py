@@ -72,10 +72,16 @@ def test_in_memory_repository_crud(sample_candidate: CandidatePlayer):
 def test_in_memory_repository_filtering_and_pagination():
     repo = InMemoryCandidatePlayerRepository()
 
-    c1 = CandidatePlayer(candidate_id="cand_1", source="wiki", source_id="1", status=CandidateState.DISCOVERED)
-    c2 = CandidatePlayer(candidate_id="cand_2", source="wiki", source_id="2", status=CandidateState.FETCHED)
-    c3 = CandidatePlayer(candidate_id="cand_3", source="wiki", source_id="3", status=CandidateState.FETCHED)
-    c4 = CandidatePlayer(candidate_id="cand_4", source="wiki", source_id="4", status=CandidateState.READY)
+    c1 = CandidatePlayer(candidate_id="cand_1", source="wiki", source_id="1")
+    c2 = CandidatePlayer(candidate_id="cand_2", source="wiki", source_id="2")
+    c2.transition_to(CandidateState.FETCHED)
+    c3 = CandidatePlayer(candidate_id="cand_3", source="wiki", source_id="3")
+    c3.transition_to(CandidateState.FETCHED)
+    c4 = CandidatePlayer(candidate_id="cand_4", source="wiki", source_id="4")
+    c4.transition_to(CandidateState.FETCHED)
+    c4.transition_to(CandidateState.NORMALIZED)
+    c4.transition_to(CandidateState.VALIDATED)
+    c4.transition_to(CandidateState.READY)
 
     for c in (c1, c2, c3, c4):
         repo.save(c)
@@ -175,10 +181,14 @@ def test_file_repository_path_traversal_protection(tmp_path: Path):
 def test_file_repository_filtering_and_counts(tmp_path: Path):
     repo = FileCandidatePlayerRepository(storage_dir=tmp_path / "pool")
 
-    p1 = CandidatePlayer(candidate_id="cand_a", source="w", source_id="1", status=CandidateState.DISCOVERED)
-    p2 = CandidatePlayer(candidate_id="cand_b", source="w", source_id="2", status=CandidateState.FETCHED)
-    p3 = CandidatePlayer(candidate_id="cand_c", source="w", source_id="3", status=CandidateState.FETCHED)
-    p4 = CandidatePlayer(candidate_id="cand_d", source="w", source_id="4", status=CandidateState.REVIEW_REQUIRED)
+    p1 = CandidatePlayer(candidate_id="cand_a", source="w", source_id="1")
+    p2 = CandidatePlayer(candidate_id="cand_b", source="w", source_id="2")
+    p2.transition_to(CandidateState.FETCHED)
+    p3 = CandidatePlayer(candidate_id="cand_c", source="w", source_id="3")
+    p3.transition_to(CandidateState.FETCHED)
+    p4 = CandidatePlayer(candidate_id="cand_d", source="w", source_id="4")
+    p4.transition_to(CandidateState.FETCHED)
+    p4.transition_to(CandidateState.REVIEW_REQUIRED)
 
     for p in (p1, p2, p3, p4):
         repo.save(p)
