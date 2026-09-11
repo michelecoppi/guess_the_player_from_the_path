@@ -97,7 +97,7 @@ just prose — see [`project-dependency-review.md`](project-dependency-review.md
 for the full rationale and the soft/related dependencies that were deliberately
 **not** turned into GitHub relations.
 
-- #13 is the Player Data Pipeline epic, with #14, #26, #15, #27 as sub-issues. #15 is `blocked by` #14 and #26. #27 is related-only (soft), not blocked. #15 is also consumed by #12 but retains only one parent.
+- #13 is the Player Data Pipeline epic, with #14, #26, #15, #27 as sub-issues. #15 is `blocked by` #26 (hard); #14 precedes #15 as a soft dependency (documented on the issue). #27 is related-only (soft), not blocked. #15 is also consumed by #12 (via sub-issue #35, which is `blocked by` #15) but retains #13 as its sole parent.
 - #12 is the Admin Control Center epic, split into sub-issues #33–#39. #25 (Dataset Health) stays related, not a sub-issue — it's Area `Data` even though the admin hosts it.
 - #17 is the Mini App migration epic, split into sub-issues #40–#48, all `blocked by` #16 (Vite/TS foundation). #19's frontend checks rely partly on the Vite toolchain (not modeled as a formal block).
 - #20 is split into sub-issues #49 (release management) and #50 (backup/recovery) — two responsibilities, no shared completion criterion.
@@ -113,5 +113,5 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 
 - 2026-09-11: created 22 roadmap issues (#11–#32) and added them to GitHub Project #2.
 - 2026-09-11: began governance refinement: added `Horizon` and `Size`; codified the status flow, WIP limit and PR-closing convention.
-- 2026-09-11: dependency/sub-issue review. Split #12, #17, #20, #22 into 20 skeleton sub-issues (#33–#52); formalized hard dependencies as GitHub sub-issue/`blocked by` relations for #13→(#14,#26,#15,#27), #16→#17 and its sub-issues, #29→#52; documented soft/related dependencies as issue comments instead of GitHub relations; created and applied `data-risk`/`security` labels. Full rationale in [`project-dependency-review.md`](project-dependency-review.md).
+- 2026-09-11: dependency/sub-issue review. Split #12, #17, #20, #22 into 20 skeleton sub-issues (#33–#52); formalized hard dependencies as GitHub sub-issue/`blocked by` relations for #13→(#14,#26,#15,#27), #26→#15, #15→#35, #16→#17 and its sub-issues, #29→#52; reconciled #14→#15 as soft; documented soft/related dependencies as issue comments instead of GitHub relations; created and applied `data-risk`/`security` labels. Full rationale in [`project-dependency-review.md`](project-dependency-review.md).
 - 2026-09-11: classified #33–#52 on the Project (Area, Work Type, Priority, Horizon, Size, Risk), differentiated per sub-issue rather than copied from the parent — e.g. #51 (feature flags) pulled to P1/Next since it has no dependency on #29, while #52 (experimentation) stays P2/Later. Full table in [`project-dependency-review.md`](project-dependency-review.md). Status left at `Backlog` for all 20.
