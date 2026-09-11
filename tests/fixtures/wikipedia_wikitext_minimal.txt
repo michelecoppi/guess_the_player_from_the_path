@@ -1,0 +1,9 @@
+{{Bio
+|Nome = Test
+|Cognome = Player
+|AnnoNascita = 1990
+}}
+
+{{Sportivo
+|ruolo = Difensore
+}}
