@@ -17,14 +17,15 @@ export interface ApiUserSummary {
 
 export interface CareerStop {
   team: string;
-  league?: string;
-  country?: string;
-  start_year?: number;
-  end_year?: number;
+  league?: string | null;
+  country?: string | null;
+  start_year?: number | string | null;
+  end_year?: number | string | null;
   apps?: number | null;
   goals?: number | null;
   loan?: boolean;
 }
+
 
 export interface ApiTodaySummary {
   day?: string;

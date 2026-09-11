@@ -4,7 +4,7 @@ export interface CareerStop {
   team: string;
   league?: string | null;
   country?: string | null;
-  start_year: number | string;
+  start_year?: number | string | null;
   end_year?: number | string | null;
   apps?: number | null;
   goals?: number | null;
@@ -29,7 +29,8 @@ export function renderCareerPath(props: CareerPathProps): string {
 
   const rows = stops.map((stop) => {
     const meta = [stop.league, stop.country].filter(Boolean).map(escapeHtml).join(" · ");
-    const years = stop.end_year ? `${stop.start_year} – ${stop.end_year}` : `${stop.start_year} – …`;
+    const startStr = stop.start_year != null ? String(stop.start_year) : "";
+    const years = stop.end_year ? `${startStr} – ${stop.end_year}` : `${startStr} – …`;
     const apps = stop.apps == null ? "" : (stop.goals == null ? `${stop.apps}` : `${stop.apps} (${stop.goals})`);
     const loanClass = stop.loan ? " loan" : "";
     const loanPrefix = stop.loan ? "→ " : "";

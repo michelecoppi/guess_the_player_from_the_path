@@ -387,6 +387,37 @@
   margin: 3px 0;
 }
 
+/* Result squares and cards */
+.squares {
+  font-size: 20px;
+  letter-spacing: 3px;
+}
+
+.result-card {
+  margin-top: 12px;
+}
+
+.result-card img {
+  width: 100%;
+  max-width: 260px;
+  border-radius: 14px;
+  display: block;
+  margin: 0 auto;
+}
+
+.celebration {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .celebration {
+    display: none;
+  }
+}
+
 /* Hint Panel */
 .hint-panel {
   display: flex;

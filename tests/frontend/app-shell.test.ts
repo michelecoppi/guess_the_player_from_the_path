@@ -1,18 +1,25 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { App } from "../../webapp/src/app/App";
-import { setupGlobalDom, setupTestTelegram } from "./helpers";
+import { setupGlobalDom, setupTestTelegram, mockFetchResponse, createTestDailyChallenge } from "./helpers";
 
-test("App mounts into DOM and renders shared components in Daily demonstration tab", () => {
+test("App mounts into DOM and renders shared components with real Daily feature data", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const restoreFetch = mockFetchResponse({
+    user: { name: "Marco", points: 100, streak: 3 },
+    today: createTestDailyChallenge(),
+  });
 
   try {
     const app = new App(container);
     app.init();
 
-    // Verify header rendered
+    // Verify initial header rendered
     assert.ok(container.querySelector(".app-header"));
+
+    // Wait for DailyController to complete initial async load
+    await app.getDailyController().init();
 
     // Verify CareerPath rendered
     const pathEl = container.querySelector(".path");
@@ -28,8 +35,8 @@ test("App mounts into DOM and renders shared components in Daily demonstration t
     assert.ok(submitBtn, "Submit button was not rendered");
 
     // Verify HintPanel rendered
-    const hintItem = container.querySelector(".hint-taken-item");
-    assert.ok(hintItem, "Hint panel taken items missing");
+    const hintItem = container.querySelector(".feedback");
+    assert.ok(hintItem, "Hint item was not rendered");
     assert.equal(hintItem.textContent, "Ha vinto un Mondiale nel 2006");
 
     // Verify Navigation switching tabs
@@ -46,6 +53,7 @@ test("App mounts into DOM and renders shared components in Daily demonstration t
     playTabBtn.click();
     assert.ok(container.querySelector(".path"));
   } finally {
+    restoreFetch();
     cleanupDom();
     restoreTg();
   }

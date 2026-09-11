@@ -12,6 +12,7 @@ export interface FeedbackBoxProps {
   message?: string;
   clues?: string[];
   comparedName?: string;
+  comparedLabel?: string;
   shareLabel?: string;
   shareId?: string;
   onShare?: boolean;
@@ -38,8 +39,9 @@ export function renderFeedbackBox(props: FeedbackBoxProps): string {
     const items = props.clues
       .map((c) => `<li>${escapeHtml(c)}</li>`)
       .join("");
+    const compLabel = props.comparedLabel ?? (props.comparedName ? "Confronto con" : "");
     const compared = props.comparedName
-      ? `<div>Confronto con <b>${escapeHtml(props.comparedName)}</b>:</div>`
+      ? `<div>${escapeHtml(compLabel)} <b>${escapeHtml(props.comparedName)}</b>:</div>`
       : "";
     cluesHtml = `<div class="clues-container" style="margin-top: 8px;">${compared}<ul>${items}</ul></div>`;
   }
