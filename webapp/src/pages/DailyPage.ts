@@ -1,49 +1,101 @@
-import { renderCard, renderMigrationNotice, renderButton } from "@/components";
+import {
+  renderCard,
+  renderMigrationNotice,
+  renderCareerPath,
+  renderGuessInput,
+  renderHintPanel,
+  renderBadge,
+  type CareerStop,
+} from "@/components";
 import { t } from "@/i18n";
 import { DAILY_FEATURE_METADATA } from "@/features/daily";
 
+const DEMO_CAREER: CareerStop[] = [
+  {
+    team: "Parma",
+    league: "Serie A",
+    country: "Italia",
+    start_year: 1995,
+    end_year: 2001,
+    apps: 168,
+    goals: 0,
+  },
+  {
+    team: "Juventus",
+    league: "Serie A",
+    country: "Italia",
+    start_year: 2001,
+    end_year: 2018,
+    apps: 509,
+    goals: 0,
+  },
+  {
+    team: "Paris Saint-Germain",
+    league: "Ligue 1",
+    country: "Francia",
+    start_year: 2018,
+    end_year: 2019,
+    apps: 17,
+    goals: 0,
+    loan: true,
+  },
+];
+
 export function renderDailyPage(): string {
-  const bodyHtml = `
-    <div style="display: flex; flex-direction: column; gap: 14px;">
-      <div class="shell-status-banner">
-        <span class="shell-status-icon" role="img" aria-label="Field">🏟️</span>
-        <div class="shell-status-content">
-          <h3>Career Path Shell</h3>
-          <p>La vista CareerPath e l'input predittivo del calciatore verranno migrati come componenti riusabili in #48 e #40.</p>
-        </div>
-      </div>
-
-      <div class="details-list">
-        <div class="detail-row">
-          <span class="detail-label">Stato sfida:</span>
-          <span class="detail-value" style="color: var(--accent);">Disponibile</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Tentativi massimi:</span>
-          <span class="detail-value">5</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Indizi rimasti:</span>
-          <span class="detail-value">3</span>
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 8px; margin-top: 4px;">
-        ${renderButton({ id: "btn-guess-demo", label: "Indovina Calciatore", variant: "primary" })}
-        ${renderButton({ id: "btn-hint-demo", label: "Chiedi Indizio", variant: "ghost" })}
-      </div>
-
-      ${renderMigrationNotice({
-        issueNumber: DAILY_FEATURE_METADATA.owningIssue,
-        messageKey: "migration.dailyNotice",
-      })}
-    </div>
-  `;
-
-  return renderCard({
+  const challengeHeaderHtml = renderCard({
     id: "daily-challenge-card",
     kicker: t("pages.dailyKicker"),
     title: t("pages.dailyTitle"),
-    bodyHtml,
+    actionHtml: renderBadge({ label: "Media · 100 pts", variant: "success" }),
+    bodyHtml: `
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+        <div style="font-size: 13px; color: var(--muted);">
+          Tentativi rimasti: <b>5</b> · Sfida #42
+        </div>
+        ${renderBadge({ label: "In corso", variant: "warning" })}
+      </div>
+    `,
   });
+
+  const careerCardHtml = renderCard({
+    id: "daily-career-card",
+    kicker: "Carriera",
+    title: "Percorso club",
+    bodyHtml: renderCareerPath({ stops: DEMO_CAREER }),
+  });
+
+  const interactionCardHtml = renderCard({
+    id: "daily-interaction-card",
+    kicker: "Risposta",
+    title: "Indovina il calciatore",
+    bodyHtml: `
+      ${renderGuessInput({
+        id: "daily-guess-box",
+        placeholder: "Nome calciatore...",
+        buttonLabel: "Invia risposta",
+        helperText: "Componente condiviso GuessInput (migrazione logica in #40)",
+      })}
+      ${renderHintPanel({
+        hintsTaken: ["Ha vinto un Mondiale nel 2006"],
+        hintsTotal: 3,
+        hintsUsed: 1,
+        unlockButtonLabel: "Chiedi indizio",
+        hintsLeftLabel: "indizi rimanenti",
+      })}
+    `,
+  });
+
+  const noticeHtml = renderMigrationNotice({
+    issueNumber: DAILY_FEATURE_METADATA.owningIssue,
+    messageKey: "migration.dailyNotice",
+  });
+
+  return `
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      ${challengeHeaderHtml}
+      ${careerCardHtml}
+      ${interactionCardHtml}
+      ${noticeHtml}
+    </div>
+  `.trim();
 }
