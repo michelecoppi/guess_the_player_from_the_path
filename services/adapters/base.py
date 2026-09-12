@@ -77,6 +77,7 @@ class CareerEntry(TypedDict, total=False):
     goals: Optional[int]
     loan: bool
     link: Optional[str]   # Wiki link target for club resolution
+    stop_id: Optional[str]  # Internal stable stop identifier for provenance tracking (#27)
 
 
 @dataclass
