@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { ArenaController } from "../../webapp/src/features/arena/controller";
 import { renderArenaPage, attachArenaEventListeners } from "../../webapp/src/pages/ArenaPage";
+import { setLanguage, getLanguage, TRANSLATIONS } from "../../webapp/src/i18n";
 import {
   setupGlobalDom,
   setupTestTelegram,
@@ -9,7 +10,13 @@ import {
   createTestDuelData,
   createTestDuelSession,
   createTestOpponentProfile,
+  TEST_DUEL_CODE,
 } from "./helpers";
+
+const CODE_A = "000000000000000000000001"; // pragma: allowlist secret
+const CODE_B = "000000000000000000000002"; // pragma: allowlist secret
+const CODE_C = "000000000000000000000003"; // pragma: allowlist secret
+const CODE_D = "000000000000000000000004"; // pragma: allowlist secret
 
 test("ArenaController: loads open duels list on init when no deep link", async () => {
   const { restore: restoreTg } = setupTestTelegram();
@@ -39,7 +46,7 @@ test("ArenaController: loads open duels list on init when no deep link", async (
 test("ArenaController: detects invitation deep-link via location.search ?duel=", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { cleanup: cleanupDom } = setupGlobalDom();
-  const validCode = "abcdef0123456789abcdef01";
+  const validCode = CODE_A;
   window.location.search = `?duel=${validCode}`;
 
   try {
@@ -57,7 +64,7 @@ test("ArenaController: detects invitation deep-link via location.search ?duel=",
 });
 
 test("ArenaController: detects invitation deep-link via Telegram start_param duel_", async () => {
-  const validCode = "1234567890abcdef12345678";
+  const validCode = CODE_B;
   const { restore: restoreTg } = setupTestTelegram({
     initDataUnsafe: {
       user: { id: 42, first_name: "Marco" },
@@ -80,9 +87,9 @@ test("ArenaController: detects invitation deep-link via Telegram start_param due
 test("ArenaController: createNewDuel calls API with action:create and updates subview to duel", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const newDuel = createTestDuelData({
-    code: "feedface0123456789abcdef",
+    code: CODE_C,
     opponent: null,
-    invite_url: "https://t.me/Bot?start=duel_feedface0123456789abcdef",
+    invite_url: `https://t.me/Bot?start=duel_${CODE_C}`,
   });
   const { requests, restore: restoreFetch } = captureFetchRequests(newDuel);
 
@@ -91,10 +98,10 @@ test("ArenaController: createNewDuel calls API with action:create and updates su
     const result = await controller.createNewDuel();
 
     assert.ok(result);
-    assert.equal(result.code, "feedface0123456789abcdef");
+    assert.equal(result.code, CODE_C);
     const state = controller.getState();
     assert.equal(state.subview, "duel");
-    assert.equal(state.activeDuelCode, "feedface0123456789abcdef");
+    assert.equal(state.activeDuelCode, CODE_C);
 
     const req = requests.find((r) => r.url.includes("/app/api/arena"));
     assert.ok(req);
@@ -108,7 +115,7 @@ test("ArenaController: createNewDuel calls API with action:create and updates su
 
 test("ArenaController: acceptInvitation calls action:join and enters active duel", async () => {
   const { restore: restoreTg } = setupTestTelegram();
-  const joinCode = "9876543210fedcba98765432";
+  const joinCode = CODE_D;
   const joinedDuel = createTestDuelData({
     code: joinCode,
     opponent: { name: "Creator", round: 0, finished: false },
@@ -138,7 +145,7 @@ test("ArenaController: acceptInvitation calls action:join and enters active duel
 
 test("ArenaController: submitGuess sends trimmed answer and revision, handles correct feedback", async () => {
   const { restore: restoreTg } = setupTestTelegram();
-  const code = "0123456789abcdef01234567";
+  const code = TEST_DUEL_CODE;
   const initialDuel = createTestDuelData({
     code,
     session: createTestDuelSession({ revision: 3, round: 1 }),
@@ -184,7 +191,7 @@ test("ArenaController: submitGuess sends trimmed answer and revision, handles co
 
 test("ArenaController: server stale error triggers automatic resync with action:get", async () => {
   const { restore: restoreTg } = setupTestTelegram();
-  const code = "0123456789abcdef01234567";
+  const code = TEST_DUEL_CODE;
   const initialDuel = createTestDuelData({
     code,
     session: createTestDuelSession({ revision: 1 }),
@@ -238,7 +245,7 @@ test("ArenaController: server stale error triggers automatic resync with action:
 
 test("ArenaController: skipRound requires 2 clicks and reveals current round", async () => {
   const { restore: restoreTg } = setupTestTelegram();
-  const code = "0123456789abcdef01234567";
+  const code = TEST_DUEL_CODE;
   const initialDuel = createTestDuelData({
     code,
     session: createTestDuelSession({ revision: 2 }),
@@ -280,7 +287,7 @@ test("ArenaController: skipRound requires 2 clicks and reveals current round", a
 
 test("ArenaController: deleteDuel requires 2 clicks, deletes unjoined duel and refreshes list", async () => {
   const { restore: restoreTg } = setupTestTelegram();
-  const code = "0123456789abcdef01234567";
+  const code = TEST_DUEL_CODE;
   const openList = createTestDuelData({ open: [] });
 
   const originalFetch = globalThis.fetch;
@@ -381,13 +388,13 @@ test("ArenaController: shareInvite opens Telegram link", async () => {
     const controller = new ArenaController();
     (controller as any).updateState({
       data: createTestDuelData({
-        invite_url: "https://t.me/GuessThePlayerBot?start=duel_0123456789abcdef01234567",
+        invite_url: `https://t.me/GuessThePlayerBot?start=duel_${TEST_DUEL_CODE}`,
       }),
     });
 
     controller.shareInvite();
     assert.ok(openedUrl.startsWith("https://t.me/share/url?url="));
-    assert.ok(openedUrl.includes("duel_0123456789abcdef01234567"));
+    assert.ok(openedUrl.includes(`duel_${TEST_DUEL_CODE}`));
   } finally {
     restoreTg();
   }
@@ -554,7 +561,7 @@ test("ArenaPage: renders active duel gameplay with CareerPath, guess form, and s
         opponent: { name: "Matteo", round: 1, finished: false },
         session: createTestDuelSession({ round: 0, total: 5 }),
       }),
-      activeDuelCode: "0123456789abcdef01234567",
+      activeDuelCode: TEST_DUEL_CODE,
       invitationCode: null,
       searchQuery: "",
       searchResults: [],
@@ -602,7 +609,7 @@ test("ArenaPage: renders invitation view with accept button and triggers acceptI
       confirming: null,
       data: null,
       activeDuelCode: null,
-      invitationCode: "0123456789abcdef01234567",
+      invitationCode: TEST_DUEL_CODE,
       searchQuery: "",
       searchResults: [],
       searchError: null,
@@ -617,6 +624,270 @@ test("ArenaPage: renders invitation view with accept button and triggers acceptI
     joinBtn.click();
     assert.equal(acceptCalled, true);
   } finally {
+    cleanup();
+  }
+});
+
+test("ArenaPage: real Arena rendering contains no prototype or sample-data wording across subviews", () => {
+  const { container, cleanup } = setupGlobalDom();
+  try {
+    const baseState = {
+      status: "idle" as const,
+      busy: false,
+      error: null,
+      notice: null,
+      confirming: null,
+      activeDuelCode: TEST_DUEL_CODE,
+      invitationCode: TEST_DUEL_CODE,
+      searchQuery: "Matteo",
+      searchResults: [createTestOpponentProfile()],
+      searchError: null,
+      draftAnswer: "",
+    };
+
+    const subviews = [
+      {
+        subview: "hub" as const,
+        data: createTestDuelData({
+          open: [
+            {
+              code: TEST_DUEL_CODE,
+              opponent: "Andrea",
+              complete: false,
+              round: 2,
+              total: 5,
+              expires_at: "2026-09-20T12:00:00Z",
+            },
+          ],
+        }),
+      },
+      {
+        subview: "challenge" as const,
+        data: createTestDuelData(),
+      },
+      {
+        subview: "duel" as const,
+        data: createTestDuelData({
+          session: createTestDuelSession({ round: 2, total: 5 }),
+        }),
+      },
+      {
+        subview: "invitation" as const,
+        data: null,
+      },
+    ];
+
+    for (const item of subviews) {
+      container.innerHTML = renderArenaPage({ ...baseState, ...item });
+
+      const text = container.textContent?.toLowerCase() || "";
+      assert.equal(
+        text.includes("dati di esempio"),
+        false,
+        `Subview ${item.subview} must not contain 'dati di esempio'`,
+      );
+      assert.equal(
+        text.includes("sample data"),
+        false,
+        `Subview ${item.subview} must not contain 'sample data'`,
+      );
+      assert.equal(
+        container.querySelector(".prototype-notice"),
+        null,
+        `Subview ${item.subview} must not contain .prototype-notice`,
+      );
+      assert.equal(
+        container.querySelector(".prototype"),
+        null,
+        `Subview ${item.subview} must not contain .prototype`,
+      );
+    }
+  } finally {
+    cleanup();
+  }
+});
+
+test("ArenaPage: localization is complete across IT, EN, ES with no leaked Italian strings", () => {
+  const { cleanup } = setupGlobalDom();
+  const initialLang = getLanguage();
+
+  try {
+    // 1. Verify translation structure parity across languages
+    const itArenaKeys = Object.keys(TRANSLATIONS.it.arena).sort();
+    const enArenaKeys = Object.keys(TRANSLATIONS.en.arena).sort();
+    const esArenaKeys = Object.keys(TRANSLATIONS.es.arena).sort();
+
+    assert.deepEqual(enArenaKeys, itArenaKeys, "English arena translation keys must match Italian");
+    assert.deepEqual(esArenaKeys, itArenaKeys, "Spanish arena translation keys must match Italian");
+
+    // 2. Render subviews in EN and ES and assert Italian-only strings do not leak
+    const italianOnlyFragments = [
+      "Chi sfidi oggi?",
+      "Invita un amico o cerca un altro giocatore.",
+      "Gioca con un amico",
+      "Crea una nuova sfida e invia il link a chi vuoi tu.",
+      "Il tuo duello con",
+      "Le tue sfide aperte",
+      "Nessuna sfida aperta",
+      "In attesa di un amico",
+      "Condividi il link per iniziare",
+      "TESTA A TESTA",
+      "Duelli conclusi",
+      "Un avversario",
+    ];
+
+    for (const lang of ["en", "es"] as const) {
+      setLanguage(lang);
+
+      const challengeHtml = renderArenaPage({
+        subview: "challenge",
+        status: "idle",
+        busy: false,
+        error: null,
+        notice: null,
+        confirming: null,
+        data: null,
+        activeDuelCode: null,
+        invitationCode: null,
+        searchQuery: "",
+        searchResults: [],
+        searchError: null,
+        draftAnswer: "",
+      });
+
+      const hubHtml = renderArenaPage({
+        subview: "hub",
+        status: "idle",
+        busy: false,
+        error: null,
+        notice: null,
+        confirming: null,
+        data: createTestDuelData({
+          open: [
+            {
+              code: TEST_DUEL_CODE,
+              opponent: "Friend",
+              complete: false,
+              round: 1,
+              total: 5,
+              expires_at: "2026-09-20T12:00:00Z",
+            },
+          ],
+        }),
+        activeDuelCode: null,
+        invitationCode: null,
+        searchQuery: "",
+        searchResults: [],
+        searchError: null,
+        draftAnswer: "",
+      });
+
+      for (const fragment of italianOnlyFragments) {
+        assert.equal(
+          challengeHtml.includes(fragment),
+          false,
+          `Challenge view in ${lang} leaked Italian string: "${fragment}"`,
+        );
+        assert.equal(
+          hubHtml.includes(fragment),
+          false,
+          `Hub view in ${lang} leaked Italian string: "${fragment}"`,
+        );
+      }
+
+      // Verify specific localized texts render in EN and ES
+      if (lang === "en") {
+        assert.ok(challengeHtml.includes("Who are you challenging today?"));
+        assert.ok(challengeHtml.includes("Play with a friend"));
+        assert.ok(hubHtml.includes("Your duel with Friend"));
+      } else if (lang === "es") {
+        assert.ok(challengeHtml.includes("¿A quién retas hoy?"));
+        assert.ok(challengeHtml.includes("Juega con un amigo"));
+        assert.ok(hubHtml.includes("Tu duelo con Friend"));
+      }
+    }
+  } finally {
+    setLanguage(initialLang);
+    cleanup();
+  }
+});
+
+test("ArenaPage: searched-opponent button creates generic invite and shares link without targeted backend state", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+
+  let shareCalledWithUrl: string | undefined;
+  const newDuel = createTestDuelData({
+    code: TEST_DUEL_CODE,
+    invite_url: `https://t.me/Bot?start=duel_${TEST_DUEL_CODE}`,
+    opponent: null,
+  });
+
+  const { requests, restore: restoreFetch } = captureFetchRequests(newDuel);
+
+  try {
+    const controller = new ArenaController();
+    controller.shareInvite = (url?: string) => {
+      shareCalledWithUrl = url;
+    };
+
+    const targetProfileId = 777;
+    const state = {
+      subview: "challenge" as const,
+      status: "idle" as const,
+      busy: false,
+      error: null,
+      notice: null,
+      confirming: null,
+      data: null,
+      activeDuelCode: null,
+      invitationCode: null,
+      searchQuery: "Lorenzo",
+      searchResults: [
+        createTestOpponentProfile({
+          profile_id: targetProfileId,
+          name: "Lorenzo",
+        }),
+      ],
+      searchError: null,
+      draftAnswer: "",
+    };
+
+    container.innerHTML = renderArenaPage(state);
+    attachArenaEventListeners(container, controller);
+
+    // Verify presence of explanatory note indicating duels are link-based
+    const note = container.querySelector(".arena-search-note");
+    assert.ok(note);
+    assert.ok(note.textContent?.includes("link"));
+
+    // Verify invite button on opponent card
+    const inviteBtn = container.querySelector<HTMLButtonElement>(
+      `[data-arena-invite-user="${targetProfileId}"]`,
+    );
+    assert.ok(inviteBtn);
+    assert.equal(inviteBtn.textContent?.trim(), "Invita");
+
+    // Click invite button
+    inviteBtn.click();
+
+    // Wait for async handler
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Verify backend call semantics: action is "create", mode is "duel", and NO target user ID was sent to backend
+    const req = requests.find((r) => r.url.includes("/app/api/arena"));
+    assert.ok(req);
+    assert.equal(req.body.mode, "duel");
+    assert.equal(req.body.action, "create");
+    assert.equal(req.body.target_user, undefined);
+    assert.equal(req.body.opponent_id, undefined);
+    assert.equal(req.body.profile_id, undefined);
+
+    // Verify invite URL is shared
+    assert.equal(shareCalledWithUrl, `https://t.me/Bot?start=duel_${TEST_DUEL_CODE}`);
+  } finally {
+    restoreFetch();
+    restoreTg();
     cleanup();
   }
 });

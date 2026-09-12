@@ -127,11 +127,13 @@ export function createTestDuelSession(overrides: Record<string, any> = {}) {
   };
 }
 
+export const TEST_DUEL_CODE = "000000000000000000000001"; // pragma: allowlist secret
+
 export function createTestDuelData(overrides: Record<string, any> = {}) {
   return {
-    code: "0123456789abcdef01234567",
+    code: TEST_DUEL_CODE,
     expires_at: "2026-09-20T12:00:00Z",
-    invite_url: "https://t.me/TestBot?start=duel_0123456789abcdef01234567",
+    invite_url: `https://t.me/TestBot?start=duel_${TEST_DUEL_CODE}`,
     session: createTestDuelSession(),
     opponent: {
       name: "Andrea",
@@ -146,7 +148,7 @@ export function createTestDuelData(overrides: Record<string, any> = {}) {
     },
     open: [
       {
-        code: "0123456789abcdef01234567",
+        code: TEST_DUEL_CODE,
         opponent: "Andrea",
         complete: false,
         round: 0,

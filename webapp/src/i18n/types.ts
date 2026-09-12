@@ -154,7 +154,13 @@ export interface TranslationSchema {
     versus: string;
     createFreeDuel: string;
     activeDuelBanner: string;
-    sampleData: string;
+    activeDuelWith: string;
+    challengeSectionTitle: string;
+    challengeSectionSubtitle: string;
+    directInviteTitle: string;
+    directInviteDesc: string;
+    searchInviteNote: string;
+    inviteOpponentBtn: string;
     extraModes: string;
     archiveTitle: string;
     archiveDesc: string;

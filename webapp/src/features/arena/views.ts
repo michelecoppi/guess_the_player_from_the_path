@@ -203,8 +203,8 @@ export function renderHubView(state: ArenaState): string {
       <button class="active-duel" data-arena-duel="${escapeHtml(activeDuel.code)}">
         <span class="duel-indicator">${icon("arena")}</span>
         <span>
-          <b>${escapeHtml(t("arena.activeDuelBanner"))} con ${escapeHtml(activeDuel.opponent || "")}</b>
-          <small>${escapeHtml(t("arena.progress", { n: activeDuel.round, total: activeDuel.total }))} · ${escapeHtml(t("arena.sampleData"))}</small>
+          <b>${escapeHtml(t("arena.activeDuelWith", { name: activeDuel.opponent || "" }))}</b>
+          <small>${escapeHtml(t("arena.progress", { n: activeDuel.round, total: activeDuel.total }))}</small>
         </span>
         <strong>${activeDuel.round} : ${activeDuel.total}</strong>
         ${icon("arrow")}
@@ -275,8 +275,8 @@ export function renderChallengeView(state: ArenaState): string {
               <strong>${escapeHtml(p.name)}</strong>
               <small>${p.points} ${escapeHtml(t("common.points"))} · ${p.trophies} 🏆</small>
             </div>
-            <button class="btn ghost btn-sm" data-arena-challenge-user="${p.profile_id}" ${state.busy ? "disabled" : ""}>
-              ${escapeHtml(t("arena.challengeBtn"))}
+            <button class="btn ghost btn-sm" data-arena-challenge-user="${p.profile_id}" data-arena-invite-user="${p.profile_id}" ${state.busy ? "disabled" : ""}>
+              ${escapeHtml(t("arena.inviteOpponentBtn"))}
             </button>
           </div>
         `,
@@ -301,21 +301,22 @@ export function renderChallengeView(state: ArenaState): string {
 
       <div class="challenge-intro">
         <span class="mode-icon">${icon("referral")}</span>
-        <h3>Chi sfidi oggi?</h3>
-        <p class="muted">Invita un amico o cerca un altro giocatore.</p>
+        <h3>${escapeHtml(t("arena.challengeSectionTitle"))}</h3>
+        <p class="muted">${escapeHtml(t("arena.challengeSectionSubtitle"))}</p>
       </div>
 
       <div class="challenge-search-section">
         <label class="guess-label" for="opponent-search">${escapeHtml(t("arena.searchPlaceholder"))}</label>
         <input class="guess-input" id="opponent-search" placeholder="${escapeHtml(t("arena.searchPlaceholder"))}" value="${escapeHtml(state.searchQuery)}" autocomplete="off" autocorrect="off">
+        <p class="muted arena-search-note">${escapeHtml(t("arena.searchInviteNote"))}</p>
         ${state.status === "searching" ? `<p class="muted arena-search-loading">${escapeHtml(t("arena.searching"))}</p>` : ""}
         ${state.searchError ? `<div class="feedback no mt-2" role="alert">${escapeHtml(state.searchError)}</div>` : ""}
         ${searchResultsHtml}
       </div>
 
       <div class="challenge-direct-invite">
-        <h3>Gioca con un amico</h3>
-        <p class="muted mb-4">Crea una nuova sfida e invia il link a chi vuoi tu.</p>
+        <h3>${escapeHtml(t("arena.directInviteTitle"))}</h3>
+        <p class="muted mb-4">${escapeHtml(t("arena.directInviteDesc"))}</p>
         <button class="btn" id="arena-create-free-duel" ${state.busy ? "disabled" : ""}>
           ${escapeHtml(t("arena.createFreeDuel"))}
         </button>

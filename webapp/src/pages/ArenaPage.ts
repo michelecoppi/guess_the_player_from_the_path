@@ -49,9 +49,11 @@ export function attachArenaEventListeners(
       };
     });
 
-  // Challenge a specific searched opponent
+  // Invite a searched opponent or friend via shareable duel link
   container
-    .querySelectorAll<HTMLButtonElement>("[data-arena-challenge-user]")
+    .querySelectorAll<HTMLButtonElement>(
+      "[data-arena-invite-user], [data-arena-challenge-user]",
+    )
     .forEach((btn) => {
       btn.onclick = async (e) => {
         e.preventDefault();
