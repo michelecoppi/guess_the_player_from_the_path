@@ -171,6 +171,34 @@ export interface TranslationSchema {
     featureDesc: string;
     featureAction: string;
   };
+  training: {
+    title: string;
+    tag: string;
+    desc: string;
+    rules: string;
+    start: string;
+    next: string;
+    reveal: string;
+    revealSure: string;
+    complete: string;
+    round: string;
+    attempts: string;
+    correct: string;
+    wrong: string;
+    ended: string;
+    answer: string;
+    solved: string;
+    spent: string;
+    synced: string;
+    empty: string;
+    stale: string;
+    finished: string;
+    loadError: string;
+    invalid_answer: string;
+    backToArena: string;
+    placeholder: string;
+    submitBtn: string;
+  };
   migration: {
     badge: string;
     dailyNotice: string;

@@ -9,11 +9,17 @@ export interface CapturedRequest {
  * Mocks globalThis.fetch to return a fixed JSON response.
  * Returns a restore function to safely tear down the mock.
  */
-export function mockFetchResponse<T>(data: T, status = 200, headers: Record<string, string> = {}): () => void {
+export function mockFetchResponse<T>(
+  data: T | ((input: RequestInfo | URL, init?: RequestInit) => any),
+  status = 200,
+  headers: Record<string, string> = {},
+): () => void {
   const originalFetch = globalThis.fetch;
 
-  globalThis.fetch = (async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
-    return new Response(JSON.stringify(data), {
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const payload = typeof data === "function" ? await (data as any)(input, init) : data;
+    if (payload instanceof Response) return payload;
+    return new Response(JSON.stringify(payload), {
       status,
       headers: {
         "Content-Type": "application/json",
@@ -37,7 +43,10 @@ export function mockFetchError(status: number, detail = "Errore mock"): () => vo
 /**
  * Captures all calls made to fetch while active.
  */
-export function captureFetchRequests(responsePayload: any = { ok: true }, status = 200): {
+export function captureFetchRequests(
+  responsePayload: any = { ok: true },
+  status = 200,
+): {
   requests: CapturedRequest[];
   restore: () => void;
 } {
@@ -61,7 +70,13 @@ export function captureFetchRequests(responsePayload: any = { ok: true }, status
       headers: new Headers(init?.headers),
     });
 
-    return new Response(JSON.stringify(responsePayload), {
+    const payload =
+      typeof responsePayload === "function"
+        ? await responsePayload(input, init)
+        : responsePayload;
+    if (payload instanceof Response) return payload;
+
+    return new Response(JSON.stringify(payload), {
       status,
       headers: { "Content-Type": "application/json" },
     });

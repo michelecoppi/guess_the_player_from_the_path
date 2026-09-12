@@ -240,6 +240,18 @@ export function renderHubView(state: ArenaState): string {
 
       ${renderHistory(state.data?.ledger)}
 
+      <section class="training-hub-section">
+        <h3>${escapeHtml(t("training.title"))}</h3>
+        <button class="mode-entry training-entry" data-arena-nav="training" type="button">
+          <span class="mode-icon">${icon("training")}</span>
+          <span>
+            <b>${escapeHtml(t("training.title"))}</b>
+            <small>${escapeHtml(t("training.desc"))}</small>
+          </span>
+          ${icon("arrow")}
+        </button>
+      </section>
+
       <section class="extra-modes">
         <h3>${escapeHtml(t("arena.extraModes"))}</h3>
         <button class="mode-entry archive-entry" data-tab="archive" type="button">

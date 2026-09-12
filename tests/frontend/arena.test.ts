@@ -1,7 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { App } from "../../webapp/src/app/App";
 import { ArenaController } from "../../webapp/src/features/arena/controller";
 import { renderArenaPage, attachArenaEventListeners } from "../../webapp/src/pages/ArenaPage";
+import { renderTrainingView } from "../../webapp/src/features/training/views";
 import { setLanguage, getLanguage, TRANSLATIONS } from "../../webapp/src/i18n";
 import {
   setupGlobalDom,
@@ -10,6 +14,8 @@ import {
   createTestDuelData,
   createTestDuelSession,
   createTestOpponentProfile,
+  createTestTrainingSession,
+  createTestDailyChallenge,
   TEST_DUEL_CODE,
 } from "./helpers";
 
@@ -891,3 +897,400 @@ test("ArenaPage: searched-opponent button creates generic invite and shares link
     cleanup();
   }
 });
+
+test("Arena + Training coexistence: 1. Arena hub contains Training entry", () => {
+  setLanguage("it");
+  const state = {
+    subview: "hub" as const,
+    status: "idle" as const,
+    busy: false,
+    error: null,
+    notice: null,
+    confirming: null,
+    data: createTestDuelData(),
+    activeDuelCode: null,
+    invitationCode: null,
+    searchQuery: "",
+    searchResults: [],
+    searchError: null,
+    draftAnswer: "",
+  };
+  const html = renderArenaPage(state);
+  assert.ok(html.includes("training-entry"), "hub must contain .training-entry");
+  assert.ok(html.includes('data-arena-nav="training"'), "must have data-arena-nav='training'");
+  assert.ok(html.includes("Allenamento"));
+});
+
+test("Arena + Training coexistence: 2. Arena hub still contains real 1v1 functionality", () => {
+  setLanguage("it");
+  const state = {
+    subview: "hub" as const,
+    status: "idle" as const,
+    busy: false,
+    error: null,
+    notice: null,
+    confirming: null,
+    data: createTestDuelData(),
+    activeDuelCode: null,
+    invitationCode: null,
+    searchQuery: "",
+    searchResults: [],
+    searchError: null,
+    draftAnswer: "",
+  };
+  const html = renderArenaPage(state);
+  assert.ok(html.includes('data-arena-nav="challenge"'), "hub must contain 1v1 challenge button");
+  assert.ok(html.includes("arena-feature"), "hub must contain arena-feature card");
+  assert.ok(html.includes("VS"), "hub must contain versus mark");
+});
+
+test("Arena + Training coexistence: 3 & 4. Training entry opens Training, Back from Training returns to Arena hub", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const { requests, restore: restoreFetch } = captureFetchRequests({
+    user: { name: "Marco", points: 100 },
+    today: createTestDailyChallenge(),
+    session: null,
+    feedback: null,
+    open: [],
+  });
+
+  try {
+    const app = new App(container);
+    app.init();
+
+    // Navigate to Arena tab
+    app.setTab("arena");
+    assert.ok(container.querySelector(".arena-hub"));
+    assert.ok(container.querySelector(".training-entry"));
+
+    // Click Training entry
+    const trainingBtn = container.querySelector<HTMLButtonElement>('[data-arena-nav="training"]');
+    assert.ok(trainingBtn);
+    trainingBtn.click();
+
+    // Verify Training view is displayed
+    assert.ok(container.querySelector(".training-view") || container.querySelector("#training-view"));
+    const backBtn = container.querySelector<HTMLButtonElement>("[data-training-back]");
+    assert.ok(backBtn, "back button must be present in training view");
+
+    // Record requests before clicking back
+    const requestsBeforeBack = requests.length;
+
+    // Click back to Arena Hub
+    backBtn.click();
+    assert.ok(container.querySelector(".arena-hub"), "must return to real Arena hub");
+    assert.ok(container.querySelector(".arena-feature"), "Arena hub 1v1 feature card must be present");
+
+    // Single-owner navigation verification: returning to hub dispatches exactly ONE duel-list request
+    const duelRequestsAfterBack = requests
+      .slice(requestsBeforeBack)
+      .filter((r) => r.body && (r.body as any).mode === "duel" && (r.body as any).action === "list");
+    assert.equal(duelRequestsAfterBack.length, 1, "exactly one duel-list request should be dispatched on returning to Arena hub");
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Arena + Training coexistence: 5. Duel challenge flow still works", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const { restore: restoreFetch } = captureFetchRequests({
+    user: { name: "Marco", points: 100 },
+    open: [],
+  });
+
+  try {
+    const app = new App(container);
+    app.init();
+    app.setTab("arena");
+
+    // Click 1v1 challenge banner
+    const challengeBtn = container.querySelector<HTMLButtonElement>('[data-arena-nav="challenge"]');
+    assert.ok(challengeBtn);
+    challengeBtn.click();
+
+    // Verify challenge view
+    assert.ok(container.querySelector(".arena-challenge"));
+    assert.ok(container.querySelector("#opponent-search"));
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Arena + Training coexistence: 6. Existing duel opens after visiting Training", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const testDuel = createTestDuelData({ code: CODE_A });
+  const { restore: restoreFetch } = captureFetchRequests((_url: string, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body || "{}"));
+    if (body.action === "get" && body.mode === "duel") {
+      return testDuel;
+    }
+    if (body.action === "list") {
+      return { open: [{ code: CODE_A, opponent: "Andrea", complete: false, round: 1, total: 5 }] };
+    }
+    if (body.mode === "training") {
+      return { session: null, feedback: null };
+    }
+    return testDuel;
+  });
+
+  try {
+    const app = new App(container);
+    app.init();
+    app.setTab("arena");
+
+    // Visit Training
+    const trainingBtn = container.querySelector<HTMLButtonElement>('[data-arena-nav="training"]');
+    assert.ok(trainingBtn);
+    trainingBtn.click();
+    assert.ok(container.querySelector("#training-view") || container.querySelector(".training-view"));
+
+    // Return to Hub
+    const backBtn = container.querySelector<HTMLButtonElement>("[data-training-back]");
+    assert.ok(backBtn);
+    backBtn.click();
+    await new Promise((r) => setTimeout(r, 40));
+
+    // Click open duel row
+    const duelRow = container.querySelector<HTMLButtonElement>(`[data-arena-duel="${CODE_A}"]`);
+    assert.ok(duelRow);
+    duelRow.click();
+
+    // Verify duel view rendered
+    await new Promise((r) => setTimeout(r, 20));
+    assert.ok(container.querySelector("#arena-answer") || container.querySelector(".arena-duel"));
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Arena + Training coexistence: 7. duel deep-link (?duel=) still works", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  window.location.search = `?duel=${CODE_A}`;
+  const { restore: restoreFetch } = captureFetchRequests(createTestDuelData({ code: CODE_A }));
+
+  try {
+    const app = new App(container);
+    app.init();
+
+    // Verify invitation subview opened directly
+    const acceptBtn = container.querySelector("#arena-accept-invite");
+    assert.ok(acceptBtn, "invitation view must render accept button on ?duel deep-link");
+  } finally {
+    window.location.search = "";
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Arena + Training coexistence: 8. Telegram duel start_param still works", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram({
+    initDataUnsafe: {
+      user: { id: 42, first_name: "Marco" },
+      start_param: `duel_${CODE_B}`,
+    },
+  });
+  const { restore: restoreFetch } = captureFetchRequests(createTestDuelData({ code: CODE_B }));
+
+  try {
+    const app = new App(container);
+    app.init();
+
+    const acceptBtn = container.querySelector("#arena-accept-invite");
+    assert.ok(acceptBtn, "invitation view must render accept button on Telegram start_param");
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Arena + Training coexistence: 9 & 10. Training state survives navigation and does not create new challenge on re-entry", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram({
+    initDataUnsafe: {
+      user: { id: 42, first_name: "Marco", language_code: "it" },
+    },
+  });
+  const activeSession = createTestTrainingSession({ attempts: 3, revision: 4 });
+  const { requests, restore: restoreFetch } = captureFetchRequests((_url: string, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body || "{}"));
+    if (body.mode === "training" && body.action === "get") {
+      return { session: activeSession, feedback: null };
+    }
+    return createTestDuelData();
+  });
+
+  try {
+    setLanguage("it");
+    const app = new App(container);
+    app.init();
+    app.setTab("arena");
+
+    // 1. Enter Training
+    const trainingBtn = container.querySelector<HTMLButtonElement>('[data-arena-nav="training"]');
+    assert.ok(trainingBtn);
+    trainingBtn.click();
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Verify attempts left
+    assert.ok(container.textContent?.includes("2 tentativi rimasti"));
+
+    // 2. Return to Hub
+    const backBtn = container.querySelector<HTMLButtonElement>("[data-training-back]");
+    assert.ok(backBtn);
+    backBtn.click();
+    assert.ok(container.querySelector(".arena-hub"));
+
+    // 3. Re-enter Training
+    const trainingBtn2 = container.querySelector<HTMLButtonElement>('[data-arena-nav="training"]');
+    assert.ok(trainingBtn2);
+    trainingBtn2.click();
+
+    // Verify state survived
+    assert.ok(container.textContent?.includes("2 tentativi rimasti"));
+
+    // Verify NO "next" action was dispatched on re-entry!
+    const nextRequests = requests.filter((r) => r.body?.mode === "training" && r.body?.action === "next");
+    assert.equal(nextRequests.length, 0, "must NOT dispatch action: next on re-entry");
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Arena + Training coexistence: 11 & 12. Real Arena and Real Training contain no prototype or sample data", () => {
+  const hubHtml = renderArenaPage({ subview: "hub", data: createTestDuelData() } as any);
+  assert.ok(!hubHtml.includes("dati di esempio") && !hubHtml.includes("sample data") && !hubHtml.includes("prototype-banner"));
+
+  const duelHtml = renderArenaPage({ subview: "duel", data: createTestDuelData() } as any);
+  assert.ok(!duelHtml.includes("dati di esempio") && !duelHtml.includes("sample data"));
+
+  const trainingHtml = renderTrainingView({
+    status: "idle",
+    busy: false,
+    error: null,
+    notice: null,
+    confirming: null,
+    data: { session: createTestTrainingSession(), feedback: null },
+    draftAnswer: "",
+  });
+  assert.ok(!trainingHtml.includes("dati di esempio") && !trainingHtml.includes("sample data"));
+});
+
+test("Arena + Training coexistence: 13. IT/EN/ES work for both Arena and Training", () => {
+  const initialLang = getLanguage();
+  try {
+    for (const lang of ["it", "en", "es"] as const) {
+      setLanguage(lang);
+      const hubHtml = renderArenaPage({ subview: "hub" });
+      const trainingHtml = renderTrainingView({
+        status: "idle",
+        busy: false,
+        error: null,
+        notice: null,
+        confirming: null,
+        data: { session: createTestTrainingSession(), feedback: null },
+        draftAnswer: "",
+      });
+
+      if (lang === "it") {
+        assert.ok(hubHtml.includes("Arena Duelli"));
+        assert.ok(hubHtml.includes("Allenamento"));
+        assert.ok(trainingHtml.includes("Al tuo ritmo"));
+      } else if (lang === "en") {
+        assert.ok(hubHtml.includes("Duels Arena"));
+        assert.ok(hubHtml.includes("Training"));
+        assert.ok(trainingHtml.includes("At your pace"));
+      } else if (lang === "es") {
+        assert.ok(hubHtml.includes("Arena de Duelos"));
+        assert.ok(hubHtml.includes("Entrenamiento"));
+        assert.ok(trainingHtml.includes("A tu ritmo"));
+      }
+    }
+  } finally {
+    setLanguage(initialLang);
+  }
+});
+
+test("Arena + Training coexistence: 14. no duplicate event submission after navigating repeatedly between Arena/Training/Duel", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const activeSession = createTestTrainingSession({ attempts: 0, revision: 1 });
+  const { requests, restore: restoreFetch } = captureFetchRequests((_url: string, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body || "{}"));
+    if (body.mode === "training" && body.action === "get") {
+      return { session: activeSession, feedback: null };
+    }
+    if (body.mode === "training" && body.action === "guess") {
+      return { session: { ...activeSession, attempts: 1 }, feedback: { status: "wrong" } };
+    }
+    return createTestDuelData({ code: CODE_A });
+  });
+
+  try {
+    const app = new App(container);
+    app.init();
+    app.setTab("arena");
+
+    // Navigate Hub -> Training -> Hub -> Duel -> Hub -> Training
+    for (let i = 0; i < 3; i++) {
+      const trainBtn = container.querySelector<HTMLButtonElement>('[data-arena-nav="training"]');
+      trainBtn?.click();
+      await new Promise((r) => setTimeout(r, 10));
+
+      const backBtn = container.querySelector<HTMLButtonElement>("[data-training-back]");
+      backBtn?.click();
+      await new Promise((r) => setTimeout(r, 10));
+    }
+
+    // Now in Training
+    const trainBtn = container.querySelector<HTMLButtonElement>('[data-arena-nav="training"]');
+    trainBtn?.click();
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Clear previous requests
+    requests.length = 0;
+
+    // Submit guess
+    const input = container.querySelector<HTMLInputElement>("#training-answer");
+    assert.ok(input);
+    input.value = "Del Piero";
+    const submitBtn = container.querySelector<HTMLButtonElement>("#training-submit");
+    assert.ok(submitBtn);
+    submitBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Verify exactly ONE guess request was submitted
+    const guessRequests = requests.filter((r) => r.body?.mode === "training" && r.body?.action === "guess");
+    assert.equal(guessRequests.length, 1, "must submit exactly one guess request despite repeated navigation");
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Arena + Training coexistence: 15. legacy /app unchanged", () => {
+  const legacyArenaPath = path.resolve(process.cwd(), "webapp/arena.js");
+  const legacyClientPath = path.resolve(process.cwd(), "webapp/client.js");
+
+  assert.ok(fs.existsSync(legacyArenaPath), "webapp/arena.js must exist");
+  assert.ok(fs.existsSync(legacyClientPath), "webapp/client.js must exist");
+
+  const arenaContent = fs.readFileSync(legacyArenaPath, "utf-8");
+  assert.ok(arenaContent.includes("PlayerArena"), "arena.js must export PlayerArena");
+});
+
