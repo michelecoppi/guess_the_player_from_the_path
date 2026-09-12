@@ -2,49 +2,49 @@
   {
     "package": "python-dotenv",
     "advisory_id": "PYSEC-2026-2270",
-    "reason": "Pinned at 1.0.1 in production requirements; scheduled for upgrade during next dependency cycle.",
+    "reason": "Production dependency pinned at 1.0.1; non-exploitable in local/bot process; scheduled for upgrade in next dependency review cycle.",
     "review_by": "2026-12-31"
   },
   {
     "package": "starlette",
     "advisory_id": "PYSEC-2026-1941",
-    "reason": "Transitive dependency via fastapi 0.115.12; accepted pending FastAPI framework upgrade.",
+    "reason": "Transitive dependency via fastapi==0.115.12; risk mitigated by internal admin authentication boundary; expected remediation via upstream FastAPI release supporting starlette>=0.40.0.",
     "review_by": "2026-12-31"
   },
   {
     "package": "starlette",
     "advisory_id": "PYSEC-2026-1942",
-    "reason": "Transitive dependency via fastapi 0.115.12; accepted pending FastAPI framework upgrade.",
+    "reason": "Transitive dependency via fastapi==0.115.12; risk mitigated by internal admin authentication boundary; expected remediation via upstream FastAPI release supporting starlette>=0.40.0.",
     "review_by": "2026-12-31"
   },
   {
     "package": "starlette",
     "advisory_id": "PYSEC-2026-161",
-    "reason": "Transitive dependency via fastapi 0.115.12; accepted pending FastAPI framework upgrade.",
+    "reason": "Transitive dependency via fastapi==0.115.12; risk mitigated by internal admin authentication boundary; expected remediation via upstream FastAPI release supporting starlette>=0.40.0.",
     "review_by": "2026-12-31"
   },
   {
     "package": "starlette",
     "advisory_id": "PYSEC-2026-2281",
-    "reason": "Transitive dependency via fastapi 0.115.12; accepted pending FastAPI framework upgrade.",
+    "reason": "Transitive dependency via fastapi==0.115.12; risk mitigated by internal admin authentication boundary; expected remediation via upstream FastAPI release supporting starlette>=0.40.0.",
     "review_by": "2026-12-31"
   },
   {
     "package": "starlette",
     "advisory_id": "PYSEC-2026-2280",
-    "reason": "Transitive dependency via fastapi 0.115.12; accepted pending FastAPI framework upgrade.",
+    "reason": "Transitive dependency via fastapi==0.115.12; risk mitigated by internal admin authentication boundary; expected remediation via upstream FastAPI release supporting starlette>=0.40.0.",
     "review_by": "2026-12-31"
   },
   {
     "package": "starlette",
     "advisory_id": "PYSEC-2026-249",
-    "reason": "Transitive dependency via fastapi 0.115.12; accepted pending FastAPI framework upgrade.",
+    "reason": "Transitive dependency via fastapi==0.115.12; risk mitigated by internal admin authentication boundary; expected remediation via upstream FastAPI release supporting starlette>=0.40.0.",
     "review_by": "2026-12-31"
   },
   {
     "package": "starlette",
     "advisory_id": "PYSEC-2026-248",
-    "reason": "Transitive dependency via fastapi 0.115.12; accepted pending FastAPI framework upgrade.",
+    "reason": "Transitive dependency via fastapi==0.115.12; risk mitigated by internal admin authentication boundary; expected remediation via upstream FastAPI release supporting starlette>=0.40.0.",
     "review_by": "2026-12-31"
   }
 ]

@@ -35,33 +35,84 @@ def check_security_exceptions_validity(
     exceptions: list[dict[str, Any]],
     current_date: Optional[str] = None,
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Validates exceptions schema and checks for expiration.
+    """Validates security exceptions schema strictly and checks for expiration.
+
+    A security exception is valid only if it has all required fields:
+    - package: non-empty string;
+    - advisory_id: non-empty string;
+    - reason: non-empty meaningful string;
+    - review_by: valid ISO YYYY-MM-DD date;
+    - review_by is not expired.
 
     Returns:
-        (active_exceptions, expiration_errors)
+        (active_exceptions, validation_errors)
     """
-    today = current_date or _get_today_iso()
+    if current_date and isinstance(current_date, str) and current_date.strip():
+        try:
+            today_date = datetime.strptime(current_date.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            today_date = datetime.now(timezone.utc).date()
+    else:
+        today_date = datetime.now(timezone.utc).date()
+
     active: list[dict[str, Any]] = []
-    expired_errors: list[str] = []
+    errors: list[str] = []
 
-    for exc in exceptions:
-        pkg = exc.get("package", "unknown")
-        adv_id = exc.get("advisory_id", "unknown")
-        review_by = exc.get("review_by", "")
-
-        if not review_by:
-            expired_errors.append(f"Security exception for '{pkg}' ({adv_id}) is missing 'review_by' date.")
+    for idx, exc in enumerate(exceptions):
+        if not isinstance(exc, dict):
+            errors.append(f"Security exception at index {idx} must be a JSON object, got {type(exc).__name__}.")
             continue
 
-        if review_by < today:
-            expired_errors.append(
+        pkg = exc.get("package")
+        adv_id = exc.get("advisory_id")
+        reason = exc.get("reason")
+        review_by = exc.get("review_by")
+
+        # 1. Package validation
+        if not isinstance(pkg, str) or not pkg.strip():
+            errors.append(f"Security exception at index {idx} has invalid or missing 'package': {pkg!r}.")
+            continue
+        pkg = pkg.strip()
+
+        # 2. Advisory ID validation
+        if not isinstance(adv_id, str) or not adv_id.strip():
+            errors.append(f"Security exception for package '{pkg}' has invalid or missing 'advisory_id': {adv_id!r}.")
+            continue
+        adv_id = adv_id.strip()
+
+        # 3. Reason validation
+        if not isinstance(reason, str) or not reason.strip():
+            errors.append(f"Security exception for '{pkg}' ({adv_id}) has invalid or missing 'reason': {reason!r}.")
+            continue
+
+        # 4. Review_by validation
+        if not review_by:
+            errors.append(f"Security exception for '{pkg}' ({adv_id}) is missing 'review_by' date.")
+            continue
+
+        if not isinstance(review_by, str):
+            errors.append(f"Security exception for '{pkg}' ({adv_id}) has non-string 'review_by': {review_by!r}.")
+            continue
+
+        try:
+            review_date = datetime.strptime(review_by.strip(), "%Y-%m-%d").date()
+        except ValueError:
+            errors.append(
+                f"Security exception for '{pkg}' ({adv_id}) has malformed 'review_by' date {review_by!r}. "
+                f"Must be a valid ISO YYYY-MM-DD date."
+            )
+            continue
+
+        # 5. Expiration check
+        if review_date < today_date:
+            errors.append(
                 f"Security exception EXPIRED for '{pkg}' ({adv_id}) on {review_by}. "
                 f"Must be upgraded or review date extended with documented rationale."
             )
         else:
             active.append(exc)
 
-    return active, expired_errors
+    return active, errors
 
 
 def run_pip_audit(
@@ -183,7 +234,12 @@ def run_detect_secrets(
                 errors=[str(e)],
             )
 
-    cmd = ["detect-secrets", "scan"]
+    cmd = [
+        "detect-secrets",
+        "scan",
+        "--exclude-files",
+        r"(?:^|[\\/])\.secrets\.baseline$",
+    ]
     try:
         proc = subprocess.run(cmd, cwd=str(project_root), capture_output=True, text=True)
     except FileNotFoundError:
@@ -216,6 +272,8 @@ def run_detect_secrets(
     current_results = scan_data.get("results", {})
     for fname, items in current_results.items():
         norm_fname = fname.replace("\\", "/")
+        if norm_fname.endswith(".secrets.baseline"):
+            continue
         for item in items:
             hsecret = item.get("hashed_secret", "")
             if (norm_fname, hsecret) not in baseline_findings:

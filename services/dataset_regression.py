@@ -58,6 +58,78 @@ class DatasetMetrics:
         }
 
 
+MANDATORY_BASELINE_METRICS: tuple[str, ...] = (
+    "valid_players",
+    "unknown_clubs",
+    "duplicate_players",
+    "career_validation_errors",
+)
+SUPPORTED_TOLERANCE_DIRECTIONS: frozenset[str] = frozenset({"at_least", "at_most", "exact"})
+
+
+class DatasetBaselineValidationError(ValueError):
+    """Raised when a dataset baseline schema is malformed, incomplete, or invalid."""
+    pass
+
+
+def validate_dataset_baseline_schema(data: Any) -> None:
+    """Validates baseline dictionary against fail-closed requirements.
+
+    Raises DatasetBaselineValidationError on any missing or invalid field.
+    """
+    if not isinstance(data, dict):
+        raise DatasetBaselineValidationError(f"Baseline must be a JSON object, got {type(data).__name__}")
+
+    # Top-level required fields
+    if "version" not in data or not isinstance(data["version"], int) or isinstance(data["version"], bool):
+        raise DatasetBaselineValidationError("Baseline missing or invalid mandatory field: 'version' (must be integer)")
+
+    if "source_file" not in data or not isinstance(data["source_file"], str) or not data["source_file"].strip():
+        raise DatasetBaselineValidationError("Baseline missing or invalid mandatory field: 'source_file' (must be non-empty string)")
+
+    if "reference_year" not in data or not isinstance(data["reference_year"], int) or isinstance(data["reference_year"], bool):
+        raise DatasetBaselineValidationError("Baseline missing or invalid mandatory field: 'reference_year' (must be integer)")
+
+    # Metrics section
+    if "metrics" not in data or not isinstance(data["metrics"], dict):
+        raise DatasetBaselineValidationError("Baseline missing or invalid mandatory section: 'metrics' (must be object)")
+
+    metrics_dict = data["metrics"]
+    for m in MANDATORY_BASELINE_METRICS:
+        if m not in metrics_dict:
+            raise DatasetBaselineValidationError(f"Baseline 'metrics' section missing mandatory metric: '{m}'")
+        val = metrics_dict[m]
+        if not isinstance(val, (int, float)) or isinstance(val, bool):
+            raise DatasetBaselineValidationError(f"Baseline metric '{m}' must be numeric, got {val!r}")
+
+    # Tolerances section
+    if "tolerances" not in data or not isinstance(data["tolerances"], dict):
+        raise DatasetBaselineValidationError("Baseline missing or invalid mandatory section: 'tolerances' (must be object)")
+
+    tolerances_dict = data["tolerances"]
+    for m in MANDATORY_BASELINE_METRICS:
+        if m not in tolerances_dict:
+            raise DatasetBaselineValidationError(f"Baseline 'tolerances' section missing mandatory tolerance: '{m}'")
+        tol = tolerances_dict[m]
+        if not isinstance(tol, dict):
+            raise DatasetBaselineValidationError(f"Baseline tolerance for '{m}' must be an object, got {type(tol).__name__}")
+
+        if "direction" not in tol:
+            raise DatasetBaselineValidationError(f"Baseline tolerance for '{m}' missing mandatory field: 'direction'")
+        direction = tol["direction"]
+        if direction not in SUPPORTED_TOLERANCE_DIRECTIONS:
+            raise DatasetBaselineValidationError(
+                f"Baseline tolerance for '{m}' has unsupported direction: {direction!r}. "
+                f"Supported directions are: {sorted(SUPPORTED_TOLERANCE_DIRECTIONS)}"
+            )
+
+        if "expected" not in tol:
+            raise DatasetBaselineValidationError(f"Baseline tolerance for '{m}' missing mandatory field: 'expected'")
+        expected = tol["expected"]
+        if not isinstance(expected, (int, float)) or isinstance(expected, bool):
+            raise DatasetBaselineValidationError(f"Baseline tolerance for '{m}' has non-numeric expected value: {expected!r}")
+
+
 @dataclass
 class DatasetBaseline:
     version: int
@@ -81,13 +153,14 @@ class DatasetBaseline:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DatasetBaseline:
+        validate_dataset_baseline_schema(data)
         return cls(
-            version=int(data.get("version", 1)),
+            version=int(data["version"]),
             generated_at=str(data.get("generated_at", "")),
-            source_file=str(data.get("source_file", "data/players.json")),
-            reference_year=int(data.get("reference_year", 2026)),
-            metrics=dict(data.get("metrics", {})),
-            tolerances=dict(data.get("tolerances", {})),
+            source_file=str(data["source_file"]),
+            reference_year=int(data["reference_year"]),
+            metrics=dict(data["metrics"]),
+            tolerances=dict(data["tolerances"]),
             known_career_error_players=list(data.get("known_career_error_players", [])),
         )
 
@@ -191,6 +264,7 @@ def check_dataset_regression(
 ) -> list[RegressionFailure]:
     """Compares current dataset metrics against baseline tolerances.
 
+    Fails closed if any mandatory metric or tolerance is missing or invalid.
     Returns a list of RegressionFailure objects if any regression is detected.
     Empty list means all checks passed (improvements are allowed and pass).
     """
@@ -204,13 +278,57 @@ def check_dataset_regression(
         "career_validation_errors": metrics.career_validation_errors,
     }
 
-    for metric_name, actual in actual_values.items():
+    for metric_name in MANDATORY_BASELINE_METRICS:
+        actual = actual_values[metric_name]
         tol = tolerances.get(metric_name)
         if not tol:
+            failures.append(
+                RegressionFailure(
+                    metric_name=metric_name,
+                    expected=0,
+                    actual=actual,
+                    direction="fail_closed",
+                    message=(
+                        f"Fail-closed protection: mandatory baseline tolerance for '{metric_name}' is missing. "
+                        f"CI protects this metric and will not silently skip it."
+                    ),
+                )
+            )
             continue
 
-        direction = tol.get("direction", "at_most")
-        expected = int(tol.get("expected", 0))
+        direction = tol.get("direction")
+        expected_raw = tol.get("expected")
+
+        if direction not in SUPPORTED_TOLERANCE_DIRECTIONS:
+            failures.append(
+                RegressionFailure(
+                    metric_name=metric_name,
+                    expected=0,
+                    actual=actual,
+                    direction=str(direction),
+                    message=(
+                        f"Fail-closed protection: tolerance for '{metric_name}' has unsupported direction {direction!r}. "
+                        f"Must be one of {sorted(SUPPORTED_TOLERANCE_DIRECTIONS)}."
+                    ),
+                )
+            )
+            continue
+
+        if not isinstance(expected_raw, (int, float)) or isinstance(expected_raw, bool):
+            failures.append(
+                RegressionFailure(
+                    metric_name=metric_name,
+                    expected=0,
+                    actual=actual,
+                    direction=str(direction),
+                    message=(
+                        f"Fail-closed protection: tolerance for '{metric_name}' has non-numeric expected value {expected_raw!r}."
+                    ),
+                )
+            )
+            continue
+
+        expected = int(expected_raw)
         diags: list[str] = []
 
         if direction == "at_least":
@@ -275,8 +393,11 @@ def load_dataset_baseline(path: str | Path) -> DatasetBaseline:
     p = Path(path)
     if not p.is_file():
         raise FileNotFoundError(f"Baseline file not found at: {p}")
-    with open(p, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as err:
+        raise DatasetBaselineValidationError(f"Malformed JSON in baseline file '{p}': {err}")
     return DatasetBaseline.from_dict(data)
 
 
