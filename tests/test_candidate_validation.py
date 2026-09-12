@@ -435,7 +435,7 @@ def test_end_to_end_process_candidate_pipeline():
         position="forward",
         aliases=["Er Pupone"],
         career=[
-            {"team": "roma", "start_year": "1992", "end_year": "2017"}
+            {"team": "roma", "league": "Serie A", "start_year": "1992", "end_year": "2017"}
         ],
         metadata={"one_club_career": True},
     )
@@ -452,6 +452,40 @@ def test_end_to_end_process_candidate_pipeline():
     assert processed.career[0]["league"] == "Serie A"
     assert processed.career[0]["start_year"] == 1992
     assert processed.career[0]["end_year"] == 2017
+
+
+def test_known_club_missing_league_regression():
+    """Regression test: known club with missing league must NEVER infer league from identity alone.
+
+    Country may be inferred if unambiguous, but league remains missing and validation emits CLUB_MISSING_LEAGUE.
+    """
+    candidate = CandidatePlayer(
+        candidate_id="cand_known_club_no_league",
+        source="wikipedia",
+        source_id="Test_Player",
+        full_name="Test Player",
+        nationality="Italia",
+        position="Attaccante",
+        career=[
+            {"team": "Juventus", "start_year": 2015, "end_year": 2018},
+            {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 2018, "end_year": 2021},
+        ],
+    )
+    candidate.transition_to(CandidateState.FETCHED)
+
+    processed = process_candidate(candidate, current_year_provider=lambda: 2026)
+
+    # Juventus is known and unambiguous, so country is backfilled to Italia
+    assert processed.career[0]["country"] == "Italia"
+    # Historical league must NOT be backfilled and remains missing
+    assert processed.career[0].get("league") is None
+    # Validation must emit CLUB_MISSING_LEAGUE and flag for review
+    assert processed.status == CandidateState.REVIEW_REQUIRED
+    findings = [CandidateFinding.from_dict(d) for d in processed.metadata["validation_findings"]]
+    assert any(
+        f.code == FindingCode.CLUB_MISSING_LEAGUE and f.field_path == "career[0].league"
+        for f in findings
+    )
 
 
 def test_production_dataset_safety_invariant():

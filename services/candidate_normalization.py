@@ -114,7 +114,6 @@ CONSOLIDATED_CLUB_ALIASES: dict[str, str] = {
     "galatasaray": "Galatasaray",
     "fenerbahce": "Fenerbahce",
     "sporting lisbona": "Sporting CP",
-    "sporting": "Sporting CP",
     "vitoria guimaraes": "Vitoria Guimaraes",
     "boca": "Boca Juniors",
     "river": "River Plate",
@@ -368,7 +367,7 @@ POSITION_STANDARDIZATION: dict[str, str] = {
     "striker": "Attaccante", "st": "Attaccante", "punta": "Attaccante",
 }
 
-_CANONICAL_INDEX: Optional[dict[str, tuple[str, str, str]]] = None
+_CANONICAL_INDEX: Optional[dict[str, tuple[str, str, Optional[str]]]] = None
 
 
 def _clean_key(text: Optional[str]) -> str:
@@ -388,14 +387,20 @@ def _clean_key(text: Optional[str]) -> str:
     return " ".join(cleaned.split())
 
 
-def get_canonical_club_index() -> dict[str, tuple[str, str, str]]:
-    """Builds an index of norm(team) -> (canonical_team_name, country, league)
-    from data/players.json. Strictly read-only."""
+def get_canonical_club_index() -> dict[str, tuple[str, str, Optional[str]]]:
+    """Builds an index of norm(team) -> (canonical_team_name, country, None)
+    from data/players.json. Strictly read-only.
+
+    Deterministic club identity may be used to backfill country when unambiguous.
+    Historical league is intentionally NOT indexed or backfilled purely from club identity,
+    as clubs change divisions across seasons.
+    """
     global _CANONICAL_INDEX
     if _CANONICAL_INDEX is not None:
         return _CANONICAL_INDEX
 
-    index: dict[str, dict[tuple[str, str, str], int]] = {}
+    index: dict[str, dict[tuple[str, str], int]] = {}
+    country_counts: dict[str, set[str]] = {}
     try:
         if os.path.exists(_PLAYERS_PATH):
             with open(_PLAYERS_PATH, "r", encoding="utf-8") as f:
@@ -404,24 +409,70 @@ def get_canonical_club_index() -> dict[str, tuple[str, str, str]]:
                 for stop in player.get("career", []):
                     team = stop.get("team")
                     country = stop.get("country")
-                    league = stop.get("league")
-                    if team and country and league:
+                    if team and country:
                         key = _clean_key(team)
-                        if key:
+                        if key and key not in AMBIGUOUS_CLUB_ALIASES:
                             counts = index.setdefault(key, {})
-                            entry = (team, country, league)
+                            entry = (team, country)
                             counts[entry] = counts.get(entry, 0) + 1
+                            country_counts.setdefault(key, set()).add(country)
     except Exception:
         pass
 
-    result: dict[str, tuple[str, str, str]] = {}
+    result: dict[str, tuple[str, str, Optional[str]]] = {}
     for key, counts in index.items():
-        # Pick the most frequently used triple
-        best = max(counts.items(), key=lambda item: item[1])[0]
-        result[key] = best
+        # Only index when club identity is unambiguous (single country in dataset)
+        if len(country_counts.get(key, set())) == 1:
+            best_team, best_country = max(counts.items(), key=lambda item: item[1])[0]
+            result[key] = (best_team, best_country, None)
 
     _CANONICAL_INDEX = result
     return _CANONICAL_INDEX
+
+
+def resolve_historical_league_with_temporal_evidence(
+    team: str,
+    country: Optional[str] = None,
+    start_year: Optional[int] = None,
+    end_year: Optional[int] = None,
+) -> Optional[str]:
+    """Extension point for future season-aware league resolution.
+
+    Historical league cannot be inferred purely from club identity without temporal
+    evidence because clubs change divisions across seasons.
+    Returns None until a temporal/season-aware resolver is implemented.
+    """
+    return None
+
+
+def parse_loan_flag(raw: Any) -> Optional[bool]:
+    """Deterministically parses a loan flag value.
+
+    Recognizes:
+    - Booleans: True, False
+    - Integers/Floats: 1 -> True, 0 -> False
+    - Strings: "true", "1" -> True; "false", "0" -> False (case-insensitive, trimmed)
+
+    Unknown or unhandled values return None and MUST NOT silently become True.
+    """
+    if raw is None:
+        return False
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        if raw == 1:
+            return True
+        if raw == 0:
+            return False
+        return None
+    if isinstance(raw, str):
+        cleaned = raw.strip().lower()
+        if cleaned in ("true", "1"):
+            return True
+        if cleaned in ("false", "0"):
+            return False
+        return None
+    return None
 
 
 def strip_wiki_markup(text: str) -> str:
@@ -567,6 +618,7 @@ def normalize_club_name(
                 context={"candidates": candidates},
             )
         )
+        return cleaned, findings
 
     # 1. Exact or normalized lookup in known aliases
     if key in CONSOLIDATED_CLUB_ALIASES:
@@ -652,43 +704,43 @@ def normalize_career_stop(
     raw_league = stop.get("league")
     norm_league = normalize_league_name(raw_league, norm_country)
 
-    # 4. Canonical index backfill for missing country/league on known clubs
+    # 4. Canonical index backfill for missing country on known unambiguous clubs.
+    # Deterministic club identity may be used to backfill country when unambiguous.
+    # NEVER backfill league purely from club identity without temporal evidence.
     if norm_team:
         key = _clean_key(norm_team)
-        canonical_index = get_canonical_club_index()
-        if key in canonical_index:
-            _, cat_country, cat_league = canonical_index[key]
-            if not norm_country and cat_country:
-                norm_country = cat_country
-                findings.append(
-                    CandidateFinding(
-                        code=FindingCode.CLUB_NORMALIZED,
-                        severity=FindingSeverity.WARNING,
-                        message=f"Paese del club '{norm_team}' dedotto dal dataset: '{cat_country}'",
-                        field_path=f"career[{stop_index}].country",
-                        input_value=raw_country,
-                        context={"deduced_country": cat_country},
-                        requires_review=False,
+        if key not in AMBIGUOUS_CLUB_ALIASES:
+            canonical_index = get_canonical_club_index()
+            if key in canonical_index:
+                cat_team, cat_country, _ = canonical_index[key]
+                if not norm_country and cat_country:
+                    norm_country = cat_country
+                    findings.append(
+                        CandidateFinding(
+                            code=FindingCode.CLUB_NORMALIZED,
+                            severity=FindingSeverity.WARNING,
+                            message=f"Paese del club '{norm_team}' dedotto dal dataset: '{cat_country}'",
+                            field_path=f"career[{stop_index}].country",
+                            input_value=raw_country,
+                            context={"deduced_country": cat_country},
+                            requires_review=False,
+                        )
                     )
-                )
-            if not norm_league and cat_league:
-                norm_league = cat_league
-                findings.append(
-                    CandidateFinding(
-                        code=FindingCode.LEAGUE_NORMALIZED,
-                        severity=FindingSeverity.WARNING,
-                        message=f"Campionato del club '{norm_team}' dedotto dal dataset: '{cat_league}'",
-                        field_path=f"career[{stop_index}].league",
-                        input_value=raw_league,
-                        context={"deduced_league": cat_league},
-                        requires_review=False,
-                    )
-                )
+
+    # 5. League inference: NEVER backfill from club identity alone without temporal evidence.
+    # Preserve missing league, or consult season-aware extension point.
+    if not norm_league and norm_team:
+        norm_league = resolve_historical_league_with_temporal_evidence(
+            team=norm_team,
+            country=norm_country,
+            start_year=norm_stop.get("start_year"),
+            end_year=norm_stop.get("end_year"),
+        )
 
     norm_stop["country"] = norm_country
     norm_stop["league"] = norm_league
 
-    # 5. Numeric fields conversion
+    # 6. Numeric fields conversion
     for year_field in ("start_year", "end_year"):
         val = norm_stop.get(year_field)
         if val is not None and not isinstance(val, int):
@@ -706,9 +758,25 @@ def normalize_career_stop(
             except (ValueError, TypeError):
                 pass
 
-    # 6. Loan flag standardization
-    if "loan" in norm_stop:
-        norm_stop["loan"] = bool(norm_stop["loan"])
+    # 7. Safe loan flag standardization
+    raw_loan = norm_stop.get("loan")
+    if "loan" in norm_stop and raw_loan is not None:
+        parsed_loan = parse_loan_flag(raw_loan)
+        if parsed_loan is not None:
+            norm_stop["loan"] = parsed_loan
+        else:
+            # Unknown value: must not silently become True
+            norm_stop["loan"] = False
+            findings.append(
+                CandidateFinding(
+                    code=FindingCode.CAREER_APPS_GOALS_INVALID,
+                    severity=FindingSeverity.WARNING,
+                    message=f"Valore del flag prestito non riconosciuto per '{norm_team}': '{raw_loan}' (impostato a False)",
+                    field_path=f"career[{stop_index}].loan",
+                    input_value=raw_loan,
+                    requires_review=False,
+                )
+            )
     else:
         norm_stop["loan"] = False
 

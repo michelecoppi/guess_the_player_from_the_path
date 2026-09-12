@@ -23,6 +23,7 @@ from services.candidate_normalization import (
     clean_text,
     get_canonical_club_index,
     normalize_candidate,
+    parse_loan_flag,
 )
 from services.candidate_player import CandidatePlayer, CandidateState
 from services.career_order import order_career
@@ -302,7 +303,9 @@ def validate_candidate_data(
         league = stop.get("league")
         start_year = stop.get("start_year")
         end_year = stop.get("end_year")
-        loan = bool(stop.get("loan", False))
+        raw_loan = stop.get("loan", False)
+        parsed_loan = parse_loan_flag(raw_loan)
+        loan = parsed_loan if parsed_loan is not None else False
         apps = stop.get("apps")
         goals = stop.get("goals")
 
@@ -509,6 +512,19 @@ def validate_candidate_data(
                             input_value=stat_val,
                         )
                     )
+
+        # Loan validity check
+        if "loan" in stop and stop["loan"] is not None and not isinstance(stop["loan"], bool):
+            if parse_loan_flag(stop["loan"]) is None:
+                findings.append(
+                    CandidateFinding(
+                        code=FindingCode.CAREER_APPS_GOALS_INVALID,
+                        severity=FindingSeverity.ERROR,
+                        message=f"Valore 'loan' non valido ({stop['loan']}) per '{team}': atteso booleano true/false",
+                        field_path=f"career[{idx}].loan",
+                        input_value=stop["loan"],
+                    )
+                )
 
         # Duplicate stop detection
         if team and isinstance(start_year, int):

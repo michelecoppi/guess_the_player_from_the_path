@@ -10,6 +10,8 @@ from services.candidate_normalization import (
     normalize_country,
     normalize_league_name,
     normalize_position,
+    parse_loan_flag,
+    resolve_historical_league_with_temporal_evidence,
     strip_wiki_markup,
 )
 from services.candidate_player import CandidatePlayer, CandidateState
@@ -104,9 +106,97 @@ def test_normalize_club_unresolved_qid():
     assert any(f.code == FindingCode.CLUB_UNRESOLVED_QID and f.severity == FindingSeverity.ERROR for f in findings)
 
 
-def test_normalize_ambiguous_club_alias():
-    team, findings = normalize_club_name("Sporting")
-    assert any(f.code == FindingCode.CLUB_AMBIGUOUS_ALIAS for f in findings)
+def test_normalize_ambiguous_club_aliases_never_silently_resolved():
+    """Ambiguous club aliases (Sporting, Inter, Real, Racing, etc.) must NEVER be silently resolved."""
+    ambiguous_examples = ["Sporting", "Inter", "Real", "Racing", "Nacional", "Dynamo", "Dinamo", "United", "City"]
+    for raw_name in ambiguous_examples:
+        team, findings = normalize_club_name(raw_name)
+        # Preserves cleaned original value without mapping to a canonical club
+        assert team == raw_name
+        # Emits CLUB_AMBIGUOUS_ALIAS
+        assert any(f.code == FindingCode.CLUB_AMBIGUOUS_ALIAS for f in findings), f"Expected CLUB_AMBIGUOUS_ALIAS for {raw_name}"
+        # Does NOT emit CLUB_NORMALIZED
+        assert not any(f.code == FindingCode.CLUB_NORMALIZED for f in findings), f"Unexpected CLUB_NORMALIZED for {raw_name}"
+
+
+def test_parse_loan_flag_safe():
+    """Deterministic parsing for booleans, ints, and string representations."""
+    # Booleans
+    assert parse_loan_flag(True) is True
+    assert parse_loan_flag(False) is False
+
+    # Integers
+    assert parse_loan_flag(1) is True
+    assert parse_loan_flag(0) is False
+
+    # Strings: true / 1
+    assert parse_loan_flag("true") is True
+    assert parse_loan_flag("True") is True
+    assert parse_loan_flag(" TRUE ") is True
+    assert parse_loan_flag("1") is True
+
+    # Strings: false / 0
+    assert parse_loan_flag("false") is False
+    assert parse_loan_flag("False") is False
+    assert parse_loan_flag(" FALSE ") is False
+    assert parse_loan_flag("0") is False
+
+    # Unknown or arbitrary values must NOT silently become True
+    assert parse_loan_flag("si") is None
+    assert parse_loan_flag("yes") is None
+    assert parse_loan_flag("arbitrary") is None
+    assert parse_loan_flag(2) is None
+    assert parse_loan_flag(-1) is None
+    assert parse_loan_flag(None) is False
+
+
+def test_career_stop_loan_string_normalization():
+    """String 'false' and '0' in career stops must normalize to boolean False, not True."""
+    cand = CandidatePlayer(
+        candidate_id="cand_loan_strings",
+        source="wikipedia",
+        source_id="Loan_Test",
+        full_name="Loan Test",
+        nationality="ITA",
+        career=[
+            {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 2010, "end_year": 2012, "loan": "false"},
+            {"team": "Monza", "country": "Italia", "league": "Serie A", "start_year": 2012, "end_year": 2014, "loan": "0"},
+            {"team": "Napoli", "country": "Italia", "league": "Serie A", "start_year": 2014, "end_year": 2016, "loan": "true"},
+            {"team": "Genoa", "country": "Italia", "league": "Serie A", "start_year": 2016, "end_year": 2018, "loan": "1"},
+        ],
+    )
+    cand.transition_to(CandidateState.FETCHED)
+    normalize_candidate(cand)
+
+    assert cand.career[0]["loan"] is False
+    assert cand.career[1]["loan"] is False
+    assert cand.career[2]["loan"] is True
+    assert cand.career[3]["loan"] is True
+
+
+def test_known_club_missing_league_remains_missing():
+    """A known club with missing league must keep league as missing (not guessed)."""
+    candidate = CandidatePlayer(
+        candidate_id="cand_known_club_league",
+        source="wikipedia",
+        source_id="Roma_Player",
+        full_name="Roma Player",
+        nationality="ITA",
+        career=[
+            {"team": "Roma", "start_year": 2010, "end_year": 2015}
+        ],
+    )
+    candidate.transition_to(CandidateState.FETCHED)
+    normalize_candidate(candidate)
+
+    stop = candidate.career[0]
+    assert stop["team"] == "Roma"
+    # Country is inferred because Roma is unambiguous
+    assert stop["country"] == "Italia"
+    # League is NOT inferred and remains missing
+    assert stop.get("league") is None
+    # Explicit extension point is present and returns None until season-aware resolution is implemented
+    assert resolve_historical_league_with_temporal_evidence("Roma", "Italia", 2010, 2015) is None
 
 
 def test_normalize_league_name():
@@ -130,7 +220,7 @@ def test_normalize_candidate_full_lifecycle():
                 "team": "roma",
                 "start_year": "1992",
                 "end_year": "2017",
-                "loan": 0,
+                "loan": "false",
                 "apps": "619",
                 "goals": "250",
             }
@@ -151,9 +241,11 @@ def test_normalize_candidate_full_lifecycle():
     stop = norm_cand.career[0]
     assert stop["team"] == "Roma"
     assert stop["country"] == "Italia"
-    assert stop["league"] == "Serie A"
+    # Historical league is preserved missing without temporal evidence
+    assert stop.get("league") is None
     assert stop["start_year"] == 1992
     assert stop["end_year"] == 2017
+    # String "false" deterministically parsed to boolean False
     assert stop["loan"] is False
     assert stop["apps"] == 619
     assert stop["goals"] == 250
