@@ -37,9 +37,9 @@ export function renderLeaderboardRow(
 
   return `
     <div class="row${isMe ? " me" : ""}" role="listitem" ${isMe ? 'aria-current="true"' : ""}>
-      <span class="pos" aria-label="Posizione ${pos}">${pos}</span>
+      <span class="pos" aria-label="${escapeHtml(t("leaderboard.positionLabel", { n: pos }))}">${pos}</span>
       <div class="name">${nameHtml}</div>
-      <span class="pts" aria-label="${pts} punti">${pts}</span>
+      <span class="pts" aria-label="${escapeHtml(t("leaderboard.pointsLabel", { n: pts }))}">${pts}</span>
     </div>
   `.trim();
 }
@@ -83,9 +83,8 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
   const p = publicProfile.data;
   const u = p.user;
   const cosmetics = p.cosmetics || {};
-  const equipped = cosmetics.equipped || {};
-  const badge = equipped.badge || "";
-  const number = equipped.number || "";
+  const badge = cosmetics.badge || "";
+  const number = cosmetics.number || "";
   const shirt = number ? `<span class="shirt">${escapeHtml(number)}</span>` : "";
   const trophiesCount = u.trophies ?? 0;
 

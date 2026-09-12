@@ -230,6 +230,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       trophies: "trofei",
       wearing: "Cosa indossa",
       loadError: "Impossibile caricare la classifica. Riprova.",
+      positionLabel: "Posizione {n}",
+      pointsLabel: "{n} punti",
+      publicProfileTitle: "Profilo giocatore",
     },
     migration: {
       badge: "In arrivo in #{issue}",
@@ -468,6 +471,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       trophies: "trophies",
       wearing: "Current look",
       loadError: "Failed to load leaderboard. Please try again.",
+      positionLabel: "Position {n}",
+      pointsLabel: "{n} points",
+      publicProfileTitle: "Player profile",
     },
     migration: {
       badge: "Upcoming in #{issue}",
@@ -706,6 +712,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       trophies: "trofeos",
       wearing: "Qué lleva puesto",
       loadError: "No se pudo cargar la clasificación. Inténtalo de nuevo.",
+      positionLabel: "Posición {n}",
+      pointsLabel: "{n} puntos",
+      publicProfileTitle: "Perfil del jugador",
     },
     migration: {
       badge: "Próximamente en #{issue}",

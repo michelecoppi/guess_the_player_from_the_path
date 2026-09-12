@@ -61,8 +61,22 @@ export interface ApiDistributionEntry {
   count: number;
 }
 
+export interface ApiCosmeticsTitle {
+  label: string;
+  color?: string;
+  [key: string]: unknown;
+}
+
 export interface ApiCosmetics {
   equipped?: Record<string, string>;
+  badge?: string;
+  number?: string;
+  frame?: Record<string, unknown>;
+  title?: ApiCosmeticsTitle;
+  theme?: Record<string, unknown>;
+  squares?: Record<string, unknown>;
+  celebration?: string;
+  card?: Record<string, unknown>;
   looks?: Record<string, unknown>;
   owned?: string[];
   [key: string]: unknown;

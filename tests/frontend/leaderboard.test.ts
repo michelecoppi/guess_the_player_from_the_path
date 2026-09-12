@@ -581,3 +581,84 @@ test("30. DOM event wiring triggers tab switches, league selection, profile open
     restoreTg();
   }
 });
+
+test("31. public profile renders resolved cosmetic presentation values and never raw equipped item IDs", () => {
+  setLanguage("it");
+  const profileData = createTestPublicProfile();
+
+  // Verify fixture intentionally demonstrates the distinction
+  assert.equal(profileData.cosmetics.equipped?.badge, "distintivo_stella");
+  assert.equal(profileData.cosmetics.badge, "⭐");
+  assert.equal(profileData.cosmetics.equipped?.number, "maglia_dieci");
+  assert.equal(profileData.cosmetics.number, "10");
+
+  const html = renderLeaderboardPage({
+    status: "ready",
+    error: null,
+    activeTab: "global",
+    selectedLeagueCode: null,
+    globalLeaderboard: [],
+    leagues: [],
+    publicProfile: {
+      profileId: 101,
+      status: "ready",
+      data: profileData,
+      error: null,
+    },
+  });
+
+  // Verify resolved badge emoji is rendered
+  assert.ok(html.includes("⭐"));
+  assert.ok(html.includes("Alessandro Del Piero ⭐"));
+
+  // Verify resolved shirt number is rendered
+  assert.ok(html.includes('<span class="shirt">10</span>'));
+
+  // Verify heading does NOT contain raw cosmetic item IDs
+  const headingMatch = html.match(/<h1 id="public-profile-heading"[^>]*>([\s\S]*?)<\/h1>/);
+  assert.ok(headingMatch, "public profile heading must be rendered");
+  const headingHtml = headingMatch[1];
+  assert.ok(!headingHtml.includes("distintivo_stella"), "heading must not contain raw badge item ID");
+  assert.ok(!headingHtml.includes("maglia_dieci"), "heading must not contain raw number item ID");
+
+  // Verify raw cosmetic item IDs never leak into profile presentation
+  assert.ok(!html.includes("distintivo_stella"), "profile view must not contain raw badge ID");
+  assert.ok(!html.includes("maglia_dieci"), "profile view must not contain raw number ID");
+});
+
+test("32. row accessibility labels (position, points, open profile, current user) are localized across IT, EN, and ES", () => {
+  const rowData = {
+    position: 1,
+    profile_id: 101,
+    name: "Alessandro Del Piero",
+    points: 1540,
+    me: true,
+  };
+
+  // Italian
+  setLanguage("it");
+  const itRow = renderLeaderboardRow(rowData);
+  assert.ok(itRow.includes('aria-label="Posizione 1"'), "IT position aria-label");
+  assert.ok(itRow.includes('aria-label="1540 punti"'), "IT points aria-label");
+  assert.ok(itRow.includes('aria-label="Tu"'), "IT you aria-label");
+  assert.ok(itRow.includes('aria-label="Apri profilo · Alessandro Del Piero"'), "IT open profile aria-label");
+
+  // English
+  setLanguage("en");
+  const enRow = renderLeaderboardRow(rowData);
+  assert.ok(enRow.includes('aria-label="Position 1"'), "EN position aria-label");
+  assert.ok(enRow.includes('aria-label="1540 points"'), "EN points aria-label");
+  assert.ok(enRow.includes('aria-label="You"'), "EN you aria-label");
+  assert.ok(enRow.includes('aria-label="Open profile · Alessandro Del Piero"'), "EN open profile aria-label");
+
+  // Spanish
+  setLanguage("es");
+  const esRow = renderLeaderboardRow(rowData);
+  assert.ok(esRow.includes('aria-label="Posición 1"'), "ES position aria-label");
+  assert.ok(esRow.includes('aria-label="1540 puntos"'), "ES points aria-label");
+  assert.ok(esRow.includes('aria-label="Tú"'), "ES you aria-label");
+  assert.ok(esRow.includes('aria-label="Abrir perfil · Alessandro Del Piero"'), "ES open profile aria-label");
+
+  setLanguage("it");
+});
+

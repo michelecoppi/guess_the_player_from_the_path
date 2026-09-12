@@ -229,6 +229,9 @@ export interface TranslationSchema {
     trophies: string;
     wearing: string;
     loadError: string;
+    positionLabel: string;
+    pointsLabel: string;
+    publicProfileTitle: string;
   };
   migration: {
     badge: string;

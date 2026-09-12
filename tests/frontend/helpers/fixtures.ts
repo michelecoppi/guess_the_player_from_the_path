@@ -253,14 +253,32 @@ export function createTestPublicProfile(overrides: Record<string, any> = {}) {
     },
     cosmetics: {
       equipped: {
-        number: "10",
-        badge: "👑",
+        theme: "notturno",
+        frame: "fascia_capitano",
+        title: "veterano",
+        badge: "distintivo_stella",
+        squares: "quadratini_classici",
+        number: "maglia_dieci",
+        celebration: "nessuna_esultanza",
+        card: "card_classica",
+      },
+      badge: "⭐",
+      number: "10",
+      frame: {
+        ring: "repeating-linear-gradient(45deg, #f5c542 0 7px, #1b3a6b 7px 14px)",
+      },
+      title: {
+        label: "Veterano del pallone",
+        color: "#d9b45b",
+      },
+      theme: {
+        bg: "#0a131e",
       },
     },
     trophies: ["Trophy 1", "Trophy 2"],
     wearing: [
       { kind: "number", name: "Maglia numero 10" },
-      { kind: "badge", name: "Corona oro" },
+      { kind: "badge", name: "Stella" },
     ],
     ...overrides,
   };
