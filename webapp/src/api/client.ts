@@ -1,5 +1,5 @@
 import { clearResolvedAppearance } from "@/appearance";
-import type { ApiProfileResponse, ApiRequestPayload } from "./types";
+import type { ApiProfileResponse, ApiPublicProfileResponse, ApiRequestPayload } from "./types";
 import { getInitData } from "@/telegram/webapp";
 
 export class ApiError extends Error {
@@ -93,13 +93,13 @@ export class ApiClient {
     });
 
     const checkSession = () => {
-    if (authToken !== undefined && this.getAuthToken() !== authToken) {
-      if (this.lastAuthToken === authToken) {
-        clearResolvedAppearance();
-        this.lastAuthToken = this.getAuthToken();
+      if (authToken !== undefined && this.getAuthToken() !== authToken) {
+        if (this.lastAuthToken === authToken) {
+          clearResolvedAppearance();
+          this.lastAuthToken = this.getAuthToken();
+        }
+        throw new ApiError("Session changed", 409);
       }
-      throw new ApiError("Session changed", 409);
-    }
     };
     checkSession();
     if (!response.ok) {
@@ -153,6 +153,13 @@ export class ApiClient {
    */
   async getProfile(payload: { lightweight?: boolean } = {}): Promise<ApiProfileResponse> {
     return this.getMe(payload);
+  }
+
+  /**
+   * Fetches public player profile from POST /app/api/profile/public.
+   */
+  async getPublicProfile(profileId: number): Promise<ApiPublicProfileResponse> {
+    return this.post<ApiPublicProfileResponse>("/profile/public", { profile_id: profileId });
   }
 }
 

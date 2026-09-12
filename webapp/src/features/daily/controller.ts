@@ -69,7 +69,7 @@ export class DailyController {
     const isLightweight = Boolean(options.lightweight && this.state.challenge);
     if (!isLightweight) {
       clearResolvedAppearance();
-      this.updateState({ status: "loading", errorMessage: undefined, user: null, challenge: null, feedback: null, cardImage: null, squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
+      this.updateState({ status: "loading", errorMessage: undefined, user: null, challenge: null, feedback: null, cardImage: null, cardLoading: false, squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
     }
 
     const pending = fetchDailyProfile(this.apiClient, { lightweight: isLightweight });
@@ -181,9 +181,11 @@ export class DailyController {
 
   public async takeHint(): Promise<void> {
     if (this.state.status === "submitting") return;
+    const generation = appearanceGeneration();
 
     try {
       const result = await requestDailyHint(this.apiClient);
+      if (generation !== appearanceGeneration()) return;
       if (result.status === "ok") {
         const tg = getTelegramWebApp();
         try {

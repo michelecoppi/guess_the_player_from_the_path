@@ -105,3 +105,183 @@ export function createTestLeaderboard(): TestLeaderboardItem[] {
     { profile_id: 104, name: "Andrea Pirlo", points: 1210, streak: 4, position: 4 },
   ];
 }
+
+export function createTestDuelSession(overrides: Record<string, any> = {}) {
+  return {
+    round: 0,
+    attempts: 0,
+    solved: 0,
+    spent: 0,
+    revision: 0,
+    finished: false,
+    history: [],
+    total: 5,
+    max_attempts: 3,
+    career_path: [
+      { year: "2010-2015", team: "Palermo", apps: 115 },
+      { year: "2015-2022", team: "Juventus", apps: 293 },
+      { year: "2022-2026", team: "Roma", apps: 85 },
+    ],
+    difficulty_label: "Media",
+    ...overrides,
+  };
+}
+
+export function createTestTrainingSession(
+  overrides: Partial<import("@/features/training/types").TrainingSession> = {},
+): import("@/features/training/types").TrainingSession {
+  return {
+    round: 0,
+    attempts: 0,
+    solved: 0,
+    spent: 0,
+    revision: 1,
+    finished: false,
+    history: [],
+    total: 1,
+    max_attempts: 5,
+    difficulty_label: "Media",
+    career_path: createTestCareerPath(),
+    ...overrides,
+  };
+}
+
+export const TEST_DUEL_CODE = "000000000000000000000001"; // pragma: allowlist secret
+
+export function createTestDuelData(overrides: Record<string, any> = {}) {
+  return {
+    code: TEST_DUEL_CODE,
+    expires_at: "2026-09-20T12:00:00Z",
+    invite_url: `https://t.me/TestBot?start=duel_${TEST_DUEL_CODE}`,
+    session: createTestDuelSession(),
+    opponent: {
+      name: "Andrea",
+      round: 0,
+      finished: false,
+    },
+    complete: false,
+    rounds: [],
+    ledger: {
+      record: { name: "Andrea", won: 3, lost: 2, drawn: 1 },
+      matches: [],
+    },
+    open: [
+      {
+        code: TEST_DUEL_CODE,
+        opponent: "Andrea",
+        complete: false,
+        round: 0,
+        total: 5,
+        expires_at: "2026-09-20T12:00:00Z",
+      },
+    ],
+    ...overrides,
+  };
+}
+
+export function createTestOpponentProfile(overrides: Record<string, any> = {}) {
+  return {
+    profile_id: 999,
+    name: "Giorgio",
+    badge: "⭐",
+    points: 320,
+    trophies: 2,
+    ...overrides,
+  };
+}
+
+export function createTestTrainingData(
+  overrides: Partial<import("@/features/training/types").TrainingData> = {},
+): import("@/features/training/types").TrainingData {
+  return {
+    session: createTestTrainingSession(),
+    feedback: null,
+    ...overrides,
+  };
+}
+
+export function createTestFullProfile(overrides: Record<string, any> = {}) {
+  return {
+    user: {
+      name: "Mario",
+      points: 450,
+      monthly_points: 120,
+      players_guessed: 45,
+      bonus_first_guessed: 3,
+      streak: 5,
+      best_streak: 12,
+      archive_solved: 8,
+      trophies: 2,
+    },
+    leaderboard: [
+      { position: 1, profile_id: 101, name: "Alessandro Del Piero", badge: "👑", points: 1540, me: false },
+      { position: 2, profile_id: 102, name: "Francesco Totti", badge: "🥈", points: 1480, me: false },
+      { position: 3, profile_id: 103, name: "Mario", badge: "⭐", points: 450, me: true },
+      { position: 4, profile_id: 104, name: "Andrea Pirlo", points: 400, me: false },
+    ],
+    leagues: [
+      {
+        code: "BAR01",
+        name: "Amici del Bar",
+        members: 4,
+        position: 2,
+        points: 450,
+        standings: [
+          { position: 1, profile_id: 101, name: "Alessandro Del Piero", points: 1540, me: false },
+          { position: 2, profile_id: 103, name: "Mario", points: 450, me: true },
+          { position: 3, profile_id: 102, name: "Francesco Totti", points: 300, me: false },
+          { position: 4, profile_id: 104, name: "Andrea Pirlo", points: 200, me: false },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+export function createTestPublicProfile(overrides: Record<string, any> = {}) {
+  return {
+    user: {
+      name: "Alessandro Del Piero",
+      points: 1540,
+      monthly_points: 320,
+      players_guessed: 150,
+      bonus_first_guessed: 15,
+      streak: 12,
+      best_streak: 25,
+      archive_solved: 30,
+      trophies: 5,
+    },
+    cosmetics: {
+      equipped: {
+        theme: "notturno",
+        frame: "fascia_capitano",
+        title: "veterano",
+        badge: "distintivo_stella",
+        squares: "quadratini_classici",
+        number: "maglia_dieci",
+        celebration: "nessuna_esultanza",
+        card: "card_classica",
+      },
+      badge: "⭐",
+      number: "10",
+      frame: {
+        ring: "repeating-linear-gradient(45deg, #f5c542 0 7px, #1b3a6b 7px 14px)",
+      },
+      title: {
+        label: "Veterano del pallone",
+        color: "#d9b45b",
+      },
+      theme: {
+        bg: "#0a131e",
+      },
+    },
+    trophies: ["Trophy 1", "Trophy 2"],
+    wearing: [
+      { kind: "number", name: "Maglia numero 10" },
+      { kind: "badge", name: "Stella" },
+    ],
+    ...overrides,
+  };
+}
+
+

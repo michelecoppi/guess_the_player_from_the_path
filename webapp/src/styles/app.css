@@ -1380,7 +1380,7 @@ nav.app-nav button[aria-current="page"] > .icon {
 /* Cosmetic decoration is confined to edges and dedicated identity surfaces. */
 .daily-heading .edition { border-bottom: 2px solid var(--skin-accent); }
 .profile-pass { background-color: var(--skin-profile-surface); background-image: var(--skin-pattern); border-color: var(--skin-accent-secondary); }
-.sheet-heading > svg { color: var(--skin-pitch); }
+.sheet-heading .icon { color: var(--skin-pitch); }
 
 .cosmetic-identity { color: var(--text); }
 .cosmetic-badge { margin-left: 6px; }
@@ -1390,3 +1390,696 @@ nav.app-nav button[aria-current="page"] > .icon {
 .result-card[data-card-finish="foil"] { border: 2px double var(--result-finish-accent, var(--skin-accent)); }
 .result-card[data-card-finish="grain"] { border: 2px dotted var(--result-finish-accent, var(--skin-accent)); }
 .appearance-preview { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--skin-profile-surface); background-image: var(--skin-pattern); }
+/* Arena feature styles */
+.btn-sm {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.arena-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+.arena-versus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  text-align: center;
+}
+.arena-versus div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.arena-versus span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.arena-versus strong {
+  font-size: 18px;
+  font-weight: 750;
+  color: var(--accent);
+}
+.arena-vs {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--sport-highlight, var(--accent));
+  padding: 4px 10px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+.arena-round {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+.arena-rounds {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+.arena-rounds span {
+  flex: 1;
+  padding: 8px 4px;
+  text-align: center;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  background: var(--card);
+}
+.arena-rounds .done {
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+.arena-rounds .current {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.arena-career {
+  margin-bottom: 12px;
+}
+.arena-attempts {
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+.arena-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.arena-open-list {
+  margin-top: 20px;
+}
+.arena-open-list > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.arena-open-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+.arena-open-open {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+.arena-open-open > span:last-child {
+  flex: 1;
+  min-width: 0;
+}
+.arena-open-open strong {
+  display: block;
+  font-size: 14px;
+}
+.arena-open-open small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.arena-path-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 750;
+  flex-shrink: 0;
+}
+.arena-path-mark.ok {
+  background: var(--success-bg);
+  color: var(--accent);
+}
+.arena-path-mark.no {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+.arena-paths {
+  margin-top: 24px;
+}
+.arena-paths > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.arena-path {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+.arena-path strong {
+  display: block;
+  font-size: 14px;
+}
+.arena-path p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.arena-history {
+  margin-top: 24px;
+}
+.arena-history > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.arena-h2h {
+  padding: 16px;
+  background: var(--sport-surface);
+  border-radius: 12px;
+  color: var(--sport-text);
+  margin-bottom: 16px;
+}
+.arena-h2h .arena-eyebrow {
+  color: var(--sport-highlight);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.arena-h2h strong {
+  display: block;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 6px 0;
+  color: var(--sport-highlight);
+  font-variant-numeric: tabular-nums;
+}
+.arena-h2h span {
+  font-size: 12px;
+  color: #c1ddcf;
+}
+.arena-past {
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  margin-top: 8px;
+  padding: 12px 14px;
+}
+.arena-past summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+.arena-past summary::-webkit-details-marker {
+  display: none;
+}
+.arena-past-name {
+  flex: 1;
+  font-weight: 650;
+  font-size: 13px;
+}
+.arena-past-score {
+  font-weight: 750;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.arena-past summary small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.arena-past-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--edge);
+}
+.arena-past-row strong {
+  font-size: 13px;
+}
+.arena-past-row p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.arena-link-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  margin-top: 12px;
+}
+.arena-link {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.arena-link input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+}
+.arena-result {
+  text-align: center;
+  padding: 24px 16px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  margin: 16px 0;
+}
+.arena-result-mark {
+  font-size: 32px;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 8px;
+}
+.arena-result h2 {
+  font-size: 20px;
+  font-weight: 750;
+  margin-bottom: 12px;
+}
+.arena-score {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin: 16px 0;
+}
+.arena-score strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 750;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.arena-score span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.opponent-final-score {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 10px 0 16px;
+}
+.profile-search-results {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+.profile-search-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+.profile-info strong {
+  display: block;
+  font-size: 14px;
+}
+.profile-info small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.challenge-direct-invite {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+}
+.challenge-direct-invite h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.arena-notice {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--success-bg);
+  color: var(--accent);
+  font-size: 13px;
+  margin: 10px 0;
+}
+.arena-error {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  font-size: 13px;
+  margin: 10px 0;
+}
+
+/* Training / Allenamento V2 Mode */
+.training-hub-section {
+  margin-top: 24px;
+}
+.training-hub-section > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.training-entry .mode-icon {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+.training-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 32px;
+}
+.training-empty-card,
+.training-finished-card {
+  padding: 24px 20px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  text-align: center;
+}
+.training-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+}
+.training-icon-wrap .icon {
+  width: 28px;
+  height: 28px;
+}
+.training-empty-card h3 {
+  font-size: 20px;
+  font-weight: 750;
+  margin-bottom: 8px;
+}
+.training-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.training-rules-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px dashed var(--edge);
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.training-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.training-active-challenge {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.training-round-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.training-career-container {
+  margin-bottom: 12px;
+}
+.training-attempts {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  margin: 4px 0 8px;
+}
+.training-result-mark {
+  font-size: 40px;
+  line-height: 1;
+  text-align: center;
+  margin: 4px 0 12px;
+}
+.training-result-mark.ok {
+  color: #22c55e;
+}
+.training-result-mark.ended {
+  color: var(--muted);
+}
+.training-result-title {
+  font-size: 22px;
+  font-weight: 750;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.training-score-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+.training-score-tile {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  text-align: center;
+}
+.training-score-tile strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 750;
+  color: var(--text);
+}
+.training-score-tile span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Leaderboard & Private Leagues V2 Styles (#43) */
+.leaderboard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 24px;
+}
+.leaderboard-header {
+  margin-bottom: 4px;
+}
+.leaderboard-tabs {
+  display: flex;
+  gap: 8px;
+  background: var(--card);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--edge);
+}
+.leaderboard-tab-btn {
+  flex: 1;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.leaderboard-tab-btn.active {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.leaderboard-tab-btn .badge-count {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.leaderboard-hint {
+  margin: 6px 0 10px;
+}
+.leaderboard-columns {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--edge);
+}
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+}
+.profile-link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: underline text-decoration-color transparent;
+  transition: text-decoration-color 0.15s ease;
+}
+.profile-link-btn:hover,
+.profile-link-btn:focus-visible {
+  text-decoration-color: currentColor;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.me-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-left: 4px;
+}
+.league-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  scrollbar-width: none;
+}
+.league-pills::-webkit-scrollbar {
+  display: none;
+}
+.league-pill {
+  min-height: 38px;
+  padding: 6px 14px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.league-pill.active {
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+  border-color: var(--accent);
+}
+.league-card {
+  padding: 16px 20px;
+}
+.league-card-header {
+  margin-bottom: 12px;
+}
+.league-name {
+  font-size: 18px;
+  font-weight: 750;
+}
+.league-code {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: normal;
+  font-family: monospace;
+}
+.league-meta {
+  margin-top: 4px;
+}
+.public-profile-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.public-profile-view .back-link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  font-size: 13px;
+  min-height: 44px;
+}
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+}
+.profile-hero .hero-info {
+  min-width: 0;
+  flex: 1;
+}
+.profile-hero h1 {
+  font-size: 20px;
+  font-weight: 750;
+  margin: 2px 0 4px;
+}
+.wearing-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  font-size: 12px;
+  margin-right: 6px;
+  margin-bottom: 6px;
+}
+
+

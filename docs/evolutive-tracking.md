@@ -27,6 +27,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#17](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/17) | Incremental Mini App migration and frontend tests (epic) |
 | [#40](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/40) | ↳ Migrate Daily feature |
 | [#41](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/41) | ↳ Migrate Arena feature |
+| [#68](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/68) | ↳ Migrate Training feature |
 | [#42](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/42) | ↳ Migrate Profile feature |
 | [#43](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/43) | ↳ Migrate Leaderboard feature |
 | [#44](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/44) | ↳ Migrate Archive feature |
@@ -117,3 +118,5 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 - 2026-09-11: classified #33–#52 on the Project (Area, Work Type, Priority, Horizon, Size, Risk), differentiated per sub-issue rather than copied from the parent — e.g. #51 (feature flags) pulled to P1/Next since it has no dependency on #29, while #52 (experimentation) stays P2/Later. Full table in [`project-dependency-review.md`](project-dependency-review.md). Status left at `Backlog` for all 20.
 
 - 2026-09-12: #66 establishes the V2 dark-only appearance contract before #42/#45; backend cosmetic rules and legacy `/app` remain unchanged. See `miniapp-appearance.md`.
+- 2026-09-12: began #68 (Mini App V2: migrate Training / Allenamento mode). Added to Project #2 (Area: Mini App, Work Type: Feature, Priority: P1, Horizon: Now, Size: 3, Risk: Low, Status: In Progress).
+

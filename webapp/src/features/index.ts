@@ -6,3 +6,4 @@ export * from "./archive";
 export * from "./shop";
 export * from "./referral";
 export * from "./events";
+export * from "./training";

@@ -89,10 +89,14 @@ export function createMockTelegramWebApp(user: TelegramUser = DEFAULT_MOCK_USER)
       console.log("[Telegram Mock] close() called");
     },
     openTelegramLink(url: string) {
-      window.open(url, "_blank", "noopener");
+      if (typeof window !== "undefined" && typeof window.open === "function") {
+        window.open(url, "_blank", "noopener");
+      }
     },
     openLink(url: string) {
-      window.open(url, "_blank", "noopener");
+      if (typeof window !== "undefined" && typeof window.open === "function") {
+        window.open(url, "_blank", "noopener");
+      }
     },
     openInvoice(_url: string, callback?: (status: string) => void) {
       if (callback) callback("paid");
@@ -100,5 +104,6 @@ export function createMockTelegramWebApp(user: TelegramUser = DEFAULT_MOCK_USER)
     switchInlineQuery(query: string) {
       console.log(`[Telegram Mock] switchInlineQuery: ${query}`);
     },
-  };
+    __isMock: true,
+  } as TelegramWebApp;
 }
