@@ -38,14 +38,20 @@ jobs:
       - name: Test frontend unitari
         run: npm run test:frontend
 
+      - name: Audit dipendenze frontend (npm audit)
+        run: npm audit --audit-level=high
+
       - name: Controllo sintassi
-        run: python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py
+        run: python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py tools
 
       - name: Lint (ruff)
         run: ruff check .
 
       - name: Type check (mypy su services/)
         run: mypy services/
+
+      - name: Audit sicurezza e segreti (pip-audit, detect-secrets, npm-audit)
+        run: python -m tools.security
 
       - name: Valida i dataset JSON
         run: |
@@ -58,6 +64,9 @@ jobs:
 
       - name: Controlla integrita e salute del dataset calciatori
         run: python scripts/dataset_report.py --strict
+
+      - name: Verifica regressioni del dataset calciatori
+        run: python -m scripts.dataset_regression --check
 
       # Le transazioni (bonus al primo che indovina, consegna di un acquisto in Stelle,
       # ricevute degli update) non si provano su un finto: un finto fa succedere quello che

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "generated_at": "2026-09-12T09:47:00Z",
+  "source_file": "data/players.json",
+  "reference_year": 2026,
+  "metrics": {
+    "valid_players": 650,
+    "unknown_clubs": 0,
+    "duplicate_players": 0,
+    "career_validation_errors": 23
+  },
+  "tolerances": {
+    "valid_players": {
+      "direction": "at_least",
+      "expected": 650
+    },
+    "unknown_clubs": {
+      "direction": "at_most",
+      "expected": 0
+    },
+    "duplicate_players": {
+      "direction": "at_most",
+      "expected": 0
+    },
+    "career_validation_errors": {
+      "direction": "at_most",
+      "expected": 23
+    }
+  },
+  "known_career_error_players": [
+    "Aymeric Laporte",
+    "Darwin Nunez",
+    "David Alaba",
+    "David Trezeguet",
+    "Denis Čeryšev",
+    "George Best",
+    "Hulk",
+    "John Arne Riise",
+    "Kerlon",
+    "Marc-Andre ter Stegen",
+    "Marcus Rashford",
+    "Maxwel Cornet",
+    "Owen Hargreaves",
+    "Paolo Guerrero",
+    "Pepe Reina",
+    "Robin Gosens",
+    "Romelu Lukaku",
+    "Ruud Gullit",
+    "Salif Diao",
+    "Sunday Oliseh",
+    "Teemu Pukki",
+    "Víctor Valdés",
+    "Youri Djorkaeff"
+  ]
+}
