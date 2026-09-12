@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { App } from "../../webapp/src/app/App";
-import { setupGlobalDom, setupTestTelegram, mockFetchResponse, createTestDailyChallenge } from "./helpers";
+import { setupGlobalDom, setupTestTelegram, mockFetchResponse, captureFetchRequests, createTestDailyChallenge } from "./helpers";
 
 test("App mounts into DOM and renders shared components with real Daily feature data", async () => {
   const { restore: restoreTg } = setupTestTelegram();
@@ -53,6 +53,45 @@ test("App mounts into DOM and renders shared components with real Daily feature 
     playTabBtn.click();
     assert.ok(container.querySelector(".path"));
   } finally {
+    restoreFetch();
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("query-string values (?view=wrong, ?view=solved) cannot trigger a Daily submission in production App", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+
+  // Simulate preview query parameters on window.location.search
+  window.location.search = "?view=wrong";
+
+  const { requests, restore: restoreFetch } = captureFetchRequests({
+    user: { name: "Marco", points: 100, streak: 3 },
+    today: createTestDailyChallenge(),
+  });
+
+  try {
+    const app = new App(container);
+    app.init();
+    await app.getDailyController().init();
+
+    // Verify no automatic guess submission occurred
+    const guessRequests = requests.filter((r) => r.url.includes("/app/api/guess"));
+    assert.equal(guessRequests.length, 0, "Query-string parameter triggered an automatic guess submission!");
+    assert.equal(app.getDailyController().getState().feedback, null);
+
+    // Also test ?view=solved
+    window.location.search = "?view=solved";
+    const app2 = new App(container);
+    app2.init();
+    await app2.getDailyController().init();
+
+    const guessRequests2 = requests.filter((r) => r.url.includes("/app/api/guess"));
+    assert.equal(guessRequests2.length, 0, "?view=solved triggered an automatic guess submission!");
+    assert.equal(app2.getDailyController().getState().feedback, null);
+  } finally {
+    window.location.search = "";
     restoreFetch();
     cleanupDom();
     restoreTg();

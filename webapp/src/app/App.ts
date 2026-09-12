@@ -37,17 +37,7 @@ export class App {
     setLanguage(userLang);
 
     this.render();
-    this.dailyController.init().then(() => {
-      if (typeof window !== "undefined" && window.location?.search) {
-        const p = new URLSearchParams(window.location.search);
-        const view = p.get("view");
-        if (view === "wrong") {
-          this.dailyController.submitGuess("Messi");
-        } else if (view === "solved") {
-          this.dailyController.submitGuess("Vitolo");
-        }
-      }
-    });
+    this.dailyController.init();
   }
 
   public setTab(tab: NavTabId): void {

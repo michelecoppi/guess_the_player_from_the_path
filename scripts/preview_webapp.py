@@ -478,11 +478,11 @@ async def league(payload: dict = Body(default={})):
 
 @app.post("/app/api/guess")
 async def preview_guess(payload: dict = Body(default={})):
-    guess_name = (payload.get("guess") or "").strip()
-    if not guess_name:
+    answer = (payload.get("answer") or payload.get("guess") or "").strip()
+    if not answer:
         return {"status": "error", "reason": "empty_guess"}
 
-    if guess_name.lower() in ("vitolo", "correct", "solve"):
+    if answer.lower() in ("vitolo", "correct", "solve"):
         STATE["user"]["has_guessed_today"] = True
         STATE["user"]["daily_attempts"] = 2
         return {
@@ -506,7 +506,7 @@ async def preview_guess(payload: dict = Body(default={})):
         "attempts_used": 1,
         "attempts_left": 4,
         "comparison": {
-            "name": guess_name,
+            "name": answer,
             "clues": [
                 {"key": "feedback.nationality_diff"},
                 {"key": "feedback.position_same"},

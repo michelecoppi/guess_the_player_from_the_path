@@ -119,3 +119,20 @@ def test_webapp_api_backend_contract_requires_body_initdata(monkeypatch):
     assert valid_response.status_code == 200
     data = valid_response.json()
     assert data["user"]["name"] == "TestUser"
+
+
+def test_preview_webapp_guess_contract():
+    """Preview webapp /app/api/guess must accept 'answer' payload matching production contract."""
+    from scripts import preview_webapp
+    client = TestClient(preview_webapp.app)
+
+    res_wrong = client.post("/app/api/guess", json={"answer": "Messi"})
+    assert res_wrong.status_code == 200
+    data_wrong = res_wrong.json()
+    assert data_wrong["status"] == "wrong"
+    assert data_wrong["comparison"]["name"] == "Messi"
+
+    res_correct = client.post("/app/api/guess", json={"answer": "Vitolo"})
+    assert res_correct.status_code == 200
+    assert res_correct.json()["status"] == "correct"
+
