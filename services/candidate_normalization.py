@@ -19,6 +19,7 @@ from typing import Any, Optional
 
 from services.candidate_finding import CandidateFinding, FindingCode, FindingSeverity
 from services.candidate_player import CandidatePlayer, CandidateState
+from services.candidate_provenance import make_career_stop_id
 from services.career_order import order_career
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -820,6 +821,8 @@ def normalize_candidate(
                 )
             )
         candidate.full_name = cleaned_name
+        if cleaned_name != raw_name and hasattr(candidate, "provenance") and candidate.provenance:
+            candidate.provenance.record_normalization("full_name", raw_name, cleaned_name)
     else:
         all_findings.append(
             CandidateFinding(
@@ -832,10 +835,16 @@ def normalize_candidate(
         )
 
     # 2. Nationality
-    candidate.nationality = normalize_country(candidate.nationality)
+    raw_nationality = candidate.nationality
+    candidate.nationality = normalize_country(raw_nationality)
+    if candidate.nationality != raw_nationality and hasattr(candidate, "provenance") and candidate.provenance:
+        candidate.provenance.record_normalization("nationality", raw_nationality, candidate.nationality)
 
     # 3. Position
-    candidate.position = normalize_position(candidate.position)
+    raw_position = candidate.position
+    candidate.position = normalize_position(raw_position)
+    if candidate.position != raw_position and hasattr(candidate, "provenance") and candidate.provenance:
+        candidate.provenance.record_normalization("position", raw_position, candidate.position)
 
     # 4. Aliases
     candidate.aliases = normalize_aliases(candidate.aliases, candidate.full_name)
@@ -844,8 +853,28 @@ def normalize_candidate(
     normalized_stops: list[dict[str, Any]] = []
     for idx, stop in enumerate(candidate.career or []):
         norm_stop, stop_findings = normalize_career_stop(stop, idx)
+        # Garantisce identità stabile stop_id per ogni tappa
+        norm_stop.setdefault(
+            "_stop_id",
+            make_career_stop_id(getattr(candidate, "source", "cand"), idx, norm_stop.get("team")),
+        )
         normalized_stops.append(norm_stop)
         all_findings.extend(stop_findings)
+
+        # Traccia trasformazioni di normalizzazione nella provenienza
+        if hasattr(candidate, "provenance") and candidate.provenance:
+            sid = norm_stop.get("_stop_id")
+            for f in stop_findings:
+                if f.code in (FindingCode.CLUB_NORMALIZED, FindingCode.LEAGUE_NORMALIZED):
+                    prop = f.field_path.split(".")[-1]
+                    candidate.provenance.record_normalization(
+                        f.field_path,
+                        stop.get(prop),
+                        norm_stop.get(prop),
+                        finding_code=f.code,
+                        rule=f.message,
+                        stop_id=sid,
+                    )
 
     # 6. Career ordering via order_career
     ordered_stops = order_career(normalized_stops)
@@ -861,6 +890,11 @@ def normalize_candidate(
             )
         )
     candidate.career = ordered_stops
+
+    # Riallinea i riferimenti dei percorsi career[i].prop nella provenienza senza perdere _stop_id
+    if hasattr(candidate, "provenance") and candidate.provenance:
+        candidate.provenance.reindex_career_paths(ordered_stops)
+
 
     # 7. Persist structured normalization findings in metadata
     norm_findings_dicts = [f.to_dict() for f in all_findings]

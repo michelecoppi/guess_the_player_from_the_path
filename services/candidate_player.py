@@ -19,6 +19,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
+from services.candidate_provenance import CandidateProvenance
+
 
 def _now_utc_iso() -> str:
     """Restituisce il timestamp UTC corrente in formato ISO-8601 YYYY-MM-DDTHH:MM:SSZ."""
@@ -263,6 +265,7 @@ class CandidatePlayer:
     validation_warnings: list[str]
     validation_errors: list[str]
     confidence_score: Optional[float]
+    provenance: CandidateProvenance
 
     # Gestione retry ed errori
     retry_count: int
@@ -295,6 +298,7 @@ class CandidatePlayer:
         validation_warnings: Optional[list[str]] = None,
         validation_errors: Optional[list[str]] = None,
         confidence_score: Optional[float] = None,
+        provenance: Optional[CandidateProvenance] = None,
         retry_count: int = 0,
         max_retries: int = 3,
         errors: Optional[list[CandidateError]] = None,
@@ -332,6 +336,8 @@ class CandidatePlayer:
         self.validation_warnings = list(validation_warnings) if validation_warnings is not None else []
         self.validation_errors = list(validation_errors) if validation_errors is not None else []
         self.confidence_score = confidence_score
+        self.provenance = provenance if provenance is not None else CandidateProvenance()
+
 
         self.retry_count = int(retry_count)
         self.max_retries = int(max_retries)
@@ -463,6 +469,7 @@ class CandidatePlayer:
             "validation_warnings": list(self.validation_warnings),
             "validation_errors": list(self.validation_errors),
             "confidence_score": self.confidence_score,
+            "provenance": self.provenance.to_dict(),
             "retry_count": self.retry_count,
             "max_retries": self.max_retries,
             "errors": [e.to_dict() for e in self.errors],
@@ -474,6 +481,9 @@ class CandidatePlayer:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CandidatePlayer:
         """Ricostruisce un CandidatePlayer da una rappresentazione a dizionario."""
+        prov_raw = data.get("provenance")
+        provenance = CandidateProvenance.from_dict(prov_raw) if prov_raw else CandidateProvenance()
+
         candidate = cls(
             candidate_id=str(data["candidate_id"]),
             source=str(data["source"]),
@@ -493,6 +503,7 @@ class CandidatePlayer:
             validation_warnings=list(data.get("validation_warnings") or []),
             validation_errors=list(data.get("validation_errors") or []),
             confidence_score=data.get("confidence_score"),
+            provenance=provenance,
             retry_count=int(data.get("retry_count", 0)),
             max_retries=int(data.get("max_retries", 3)),
             errors=[CandidateError.from_dict(e) for e in (data.get("errors") or [])],
@@ -501,3 +512,40 @@ class CandidatePlayer:
             metadata=dict(data.get("metadata") or {}),
         )
         return candidate
+
+    def record_observation(
+        self,
+        field_path: str,
+        source: str,
+        source_id: str,
+        raw_value: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Helper per registrare un'osservazione di fonte sulla provenienza del candidato."""
+        return self.provenance.record_observation(
+            field_path=field_path,
+            source=source,
+            source_id=source_id,
+            raw_value=raw_value,
+            **kwargs,
+        )
+
+    def get_provenance_for_path(self, field_path: str) -> Any:
+        """Helper per accedere alla provenienza di un determinato percorso campo."""
+        return self.provenance.get_provenance_for_path(field_path)
+
+    def record_normalization(
+        self,
+        field_path: str,
+        raw_value: Any,
+        normalized_value: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Helper per registrare una normalizzazione sulla provenienza del candidato."""
+        return self.provenance.record_normalization(
+            field_path=field_path,
+            raw_value=raw_value,
+            normalized_value=normalized_value,
+            **kwargs,
+        )
+
