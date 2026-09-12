@@ -263,6 +263,8 @@ export interface TranslationSchema {
     // Feedback
     correct: string;
     alreadySolved: string;
+    noAttempts: string;
+    refused: string;
     dayUnavailable: string;
     share: string;
   };

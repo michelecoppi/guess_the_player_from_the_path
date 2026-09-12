@@ -80,9 +80,10 @@ function renderArchiveFeedback(feedback: ArchiveGuessResult | null): string {
   }
 
   if (feedback.status === "refused") {
+    const message = feedback.reason === "already_solved" ? t("archive.alreadySolved") : feedback.reason === "no_attempts" ? t("archive.noAttempts") : t("archive.refused");
     return `
       <div class="feedback no" role="status" aria-live="polite">
-        ${escapeHtml(t("archive.alreadySolved"))}
+        ${escapeHtml(message)}
       </div>
     `.trim();
   }
@@ -207,6 +208,7 @@ function renderChallengeView(state: ArchiveState): string {
     : `<p class="muted">${escapeHtml(t("archive.error"))}</p>`;
 
   const feedbackHtml = renderArchiveFeedback(feedback);
+  const exhaustedHtml = !feedback && !challenge.solved && challenge.attempts_left <= 0 ? `<div class="feedback no" role="status">${escapeHtml(t("archive.noAttempts"))}</div>` : "";
 
   const isGameOver =
     challenge.solved ||
@@ -257,6 +259,7 @@ function renderChallengeView(state: ArchiveState): string {
       ${attemptsBar}
     </section>
     ${careerHtml}
+    ${exhaustedHtml}
     ${feedbackHtml}
     ${inputHtml}
     ${errorBanner}

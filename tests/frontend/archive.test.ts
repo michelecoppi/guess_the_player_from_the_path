@@ -628,6 +628,7 @@ test("23. refused status (already solved) displays alreadySolved message", () =>
   setLanguage("it");
   const feedback = createTestArchiveGuessResult({
     status: "refused",
+    reason: "already_solved",
   });
 
   const html = renderArchiveViews({

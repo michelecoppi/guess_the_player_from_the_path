@@ -319,8 +319,8 @@ export function createTestArchiveChallenge(overrides: Partial<ArchiveChallenge> 
     difficulty_label: "Media",
     solved: false,
     attempts_used: 0,
-    attempts_left: 5,
-    max_attempts: 5,
+    attempts_left: 3,
+    max_attempts: 3,
     career_path: createTestCareerPath(),
     ...overrides,
   };
@@ -330,7 +330,7 @@ export function createTestArchiveGuessResult(overrides: Partial<ArchiveGuessResu
   return {
     status: "wrong",
     attempts_used: 1,
-    attempts_left: 4,
+    attempts_left: 2,
     comparison: {
       name: "Pirlo",
       clues: [
@@ -339,7 +339,7 @@ export function createTestArchiveGuessResult(overrides: Partial<ArchiveGuessResu
       ],
     },
     ...overrides,
-  };
+  } as unknown as ArchiveGuessResult;
 }
 
 

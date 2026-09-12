@@ -62,8 +62,8 @@ export interface ArchiveChallenge {
  * The guess result returned by POST /app/api/guess { answer, day }.
  * Matches `play_archive()` wrapped by `with_share_card()` in services/webapp_api.py.
  */
-export interface ArchiveGuessResult {
-  status: "correct" | "wrong" | "refused" | "no_challenge";
+export type ArchiveGuessResult = {
+  status: "correct" | "wrong";
   attempts_used: number;
   attempts_left: number;
   /** Present on wrong guesses — same comparison as the daily game. */
@@ -73,8 +73,8 @@ export interface ArchiveGuessResult {
   /** Present when the game is over (correct or 0 attempts left). Added by with_share_card(). */
   share?: { text: string; url: string };
   /** Present on refused: "already_solved" | "no_attempts_left" | ... */
-  reason?: string;
-}
+  reason?: never;
+} | { status: "refused"; reason: string } | { status: "no_challenge" };
 
 // ---------------------------------------------------------------------------
 // Controller state

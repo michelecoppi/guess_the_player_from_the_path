@@ -227,7 +227,11 @@ export class ArchiveController {
       const isFinished =
         result.status === "correct" ||
         (result.status === "wrong" && result.attempts_left === 0) ||
-        result.status === "refused";
+        result.status === "refused" || result.status === "no_challenge";
+
+      const updatedChallenge = this.state.challenge && (result.status === "correct" || result.status === "wrong")
+        ? { ...this.state.challenge, attempts_used: result.attempts_used, attempts_left: result.attempts_left, solved: result.status === "correct" || this.state.challenge.solved }
+        : this.state.challenge;
 
       this.updateState({
         status: "challenge_ready",
@@ -235,14 +239,7 @@ export class ArchiveController {
         draftAnswer: "",
         challengeFinished: isFinished,
         // Keep challenge in sync with server's attempt counts
-        challenge: this.state.challenge
-          ? {
-              ...this.state.challenge,
-              attempts_used: result.attempts_used,
-              attempts_left: result.attempts_left,
-              solved: result.status === "correct",
-            }
-          : null,
+        challenge: updatedChallenge,
       });
 
       return result;

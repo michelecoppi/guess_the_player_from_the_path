@@ -111,7 +111,8 @@ export function attachArchiveEventListeners(
   if (shareBtn) {
     shareBtn.onclick = (e) => {
       e.preventDefault();
-      const url = controller.getState().feedback?.share?.url;
+      const feedback = controller.getState().feedback;
+      const url = feedback && (feedback.status === "correct" || feedback.status === "wrong") ? feedback.share?.url : undefined;
       if (url) {
         controller.openShareUrl(url);
       }
