@@ -1,3 +1,4 @@
+import { icon as renderIcon } from "./Icon";
 import { escapeHtml } from "@/utils/format";
 import { renderButton } from "./Button";
 
@@ -12,7 +13,7 @@ export interface ErrorStateProps {
 }
 
 export function renderErrorState(props: ErrorStateProps): string {
-  const icon = props.icon || "⚠️";
+  const icon = props.icon || renderIcon("warning");
   const titleHtml = props.title
     ? `<h3 class="error-state-title">${escapeHtml(props.title)}</h3>`
     : "";

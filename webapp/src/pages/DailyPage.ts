@@ -1,15 +1,22 @@
+import { DEFAULT_SQUARE_SYMBOLS } from "@/features/daily/controller";
 import {
   renderCareerPath,
   renderGuessInput,
   renderLoadingState,
   renderErrorState,
+  renderHintPanel,
+  renderEmptyState,
 } from "@/components";
 import { escapeHtml } from "@/utils/format";
-import { squares } from "@/utils/game";
+import { v } from "@/i18n/visual";
+import { icon } from "@/components/Icon";
 import { t } from "@/i18n";
-import type { DailyState, DailyGuessResult, DailyComparison } from "@/features/daily/types";
+import type {
+  DailyState,
+  DailyGuessResult,
+  DailyComparison,
+} from "@/features/daily/types";
 import type { DailyController } from "@/features/daily/controller";
-import { DEFAULT_SQUARE_SYMBOLS } from "@/features/daily/controller";
 
 const CLUES: Record<string, (args: Record<string, any>) => string> = {
   "feedback.nationality_same": () => t("daily.sameNat"),
@@ -55,7 +62,10 @@ function renderResultCard(state: DailyState): string {
   `.trim();
 }
 
-function renderFeedback(feedback: DailyGuessResult | null | undefined, state: DailyState): string {
+function renderFeedback(
+  feedback: DailyGuessResult | null | undefined,
+  state: DailyState,
+): string {
   if (!feedback) return "";
 
   if (feedback.status === "correct") {
@@ -105,122 +115,70 @@ function renderFeedback(feedback: DailyGuessResult | null | undefined, state: Da
   return "";
 }
 
-function renderHints(hints: any): string {
-  if (!hints || !hints.total) {
-    return `<p class="muted center" style="margin: 12px 0 0;">${escapeHtml(t("daily.noHints"))}</p>`;
-  }
-
-  const takenHtml = (hints.taken || [])
-    .map((text: string) => `<div class="feedback">${escapeHtml(text)}</div>`)
-    .join("\n");
-
-  const left = Math.max(0, hints.total - (hints.used || 0));
-  const unlockHtml =
-    left > 0
-      ? `
-        <button class="btn ghost" id="hint" style="margin-top: 10px;">${escapeHtml(t("daily.hintBtn"))}</button>
-        <p class="muted center" style="margin: 6px 0 0; font-size: 12px;">${left} ${escapeHtml(t("daily.hintsLeft"))}</p>
-      `
-      : "";
-
-  return `
-    ${takenHtml}
-    ${unlockHtml}
-  `.trim();
-}
-
 export function renderDailyPage(state?: DailyState): string {
+  const title = `<header class="daily-heading"><p class="eyebrow">Daily Challenge</p><h2>${v("who")}</h2><p class="muted">${v("follow")}</p></header>`;
   if (!state || (state.status === "loading" && !state.challenge)) {
-    return renderLoadingState({ message: t("daily.loading") });
+    return `${title}<div class="career-loading">${renderLoadingState({ message: t("daily.loading") })}<div class="loading-lines" aria-hidden="true">${"<i></i>".repeat(5)}</div></div>`;
   }
-
   if (state.status === "error") {
-    return renderErrorState({
-      message: state.errorMessage || t("daily.error"),
-      retryLabel: t("common.retry"),
-      retryButtonId: "daily-retry",
-    });
+    return `${title}${renderErrorState({ title: v("connection"), message: state.errorMessage || t("daily.error"), retryLabel: t("common.retry"), retryButtonId: "daily-retry" })}`;
   }
-
   const today = state.challenge;
   if (!today || !today.available) {
-    return `<div class="card center muted">${escapeHtml(t("daily.none"))}</div>`;
+    return `${title}${renderEmptyState({ title: v("wait"), description: t("daily.none") })}`;
   }
-
   const done = !!today.solved || (today.attempts_left ?? 0) === 0;
-  const attemptsUsed = today.attempts_used ?? 0;
-  const maxAttempts = today.max_attempts ?? 5;
-  const attemptsLeft = today.attempts_left ?? Math.max(0, maxAttempts - attemptsUsed);
-
-  const statusPill = today.solved
-    ? `<span class="pill done">${escapeHtml(t("daily.solved"))}</span>`
-    : attemptsUsed > 0
-      ? `<span class="pill">${escapeHtml(t("daily.left"))}: ${attemptsLeft}</span>`
-      : `<span class="pill">${escapeHtml(t("daily.notPlayed"))}</span>`;
-
-  const squaresHtml = squares(
-    attemptsUsed,
-    maxAttempts,
-    !!today.solved,
-    state.squaresSymbols || DEFAULT_SQUARE_SYMBOLS
-  );
-
-  const challengeHeaderCardHtml = `
-    <div class="card" id="daily-challenge-card">
-      <h2>${escapeHtml(t("daily.todayTitle"))} #${today.number ?? 1}</h2>
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-        <div>
-          <div><b>${escapeHtml(today.difficulty_label || "")}</b> · ${today.points ?? 0} ${escapeHtml(t("daily.points"))}</div>
-          <div class="squares" aria-label="Tentativi">${squaresHtml}</div>
-        </div>
-        ${statusPill}
-      </div>
-      ${today.bonus_available && !done ? `<p class="muted" style="margin: 8px 0 0; font-size: 12.5px;">${escapeHtml(t("daily.bonus"))}</p>` : ""}
+  const used = today.attempts_used ?? 0;
+  const max = today.max_attempts ?? 5;
+  const left = today.attempts_left ?? Math.max(0, max - used);
+  const submitting = state.status === "submitting";
+  const attempts = Array.from({ length: max }, (_, i) => {
+    const status =
+      i < used
+        ? today.solved && i === used - 1
+          ? "scored"
+          : "missed"
+        : "unused";
+    const key =
+      status === "scored"
+        ? "correct"
+        : status === "missed"
+          ? "wrong"
+          : "unused";
+    const custom =
+      state.squaresSymbols?.[key] !== DEFAULT_SQUARE_SYMBOLS[key]
+        ? state.squaresSymbols?.[key]
+        : undefined;
+    return `<span class="attempt ${status}" aria-hidden="true">${custom ? escapeHtml(custom) : status === "scored" ? icon("check") : status === "missed" ? icon("close") : i + 1}</span>`;
+  }).join("");
+  const hints = today.hints;
+  return `<article class="daily-page" data-state="${state.status}">
+    <header class="daily-heading" id="daily-challenge-card">
+      <div class="edition"><span class="eyebrow">Daily Challenge</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
+      <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>
+      <div class="match-meta"><span>${escapeHtml(today.difficulty_label || t("daily.difficulty"))}</span><span><b>${today.points ?? 0}</b> ${escapeHtml(t("daily.points"))}</span><span>${escapeHtml(today.solved ? t("daily.solved") : done ? v("final") : t("daily.todayTitle"))}</span></div>
+    </header>
+    <div class="daily-layout">
+      <section class="career-sheet" id="daily-career-card" aria-label="${v("career")}">
+        <div class="sheet-heading"><h3>${v("career")}</h3>${icon("career")}</div>
+        <div class="career-columns" aria-hidden="true"><span>${v("season")}</span><span>${v("club")}</span><span>${v("apps")}</span></div>
+        ${renderCareerPath({ stops: today.career_path || [], emptyText: v("missing") })}
+      </section>
+      <section class="answer-desk" id="daily-interaction-card" aria-label="${v("answer")}">
+        <div class="attempts-line"><span>${escapeHtml(done ? v("final") : t("daily.left"))}${done ? "" : ` <b>${left}</b>`}</span><div class="attempts" role="img" aria-label="${used}/${max}">${attempts}</div></div>
+        ${done ? (!state.feedback ? `<div class="feedback ${today.solved ? "ok" : "no"}" role="status"><h3>${escapeHtml(today.solved ? t("daily.solved") : v("final"))}</h3><p>${escapeHtml(today.solved ? v("next") : t("daily.outOfAttempts"))}</p></div>` : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
+        ${state.errorMessage ? `<div class="feedback no" role="alert">${escapeHtml(state.errorMessage)}</div>` : ""}
+        ${renderFeedback(state.feedback, state)}
+        ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: t("daily.hintsLeft"), noHintsLabel: t("daily.noHints") })}
+        ${today.bonus_available && !done ? `<p class="bonus-note">${escapeHtml(t("daily.bonus"))}</p>` : ""}
+      </section>
     </div>
-  `.trim();
-
-  const careerCardHtml = `
-    <div class="card" id="daily-career-card">
-      ${renderCareerPath({ stops: today.career_path || [] })}
-    </div>
-  `.trim();
-
-  const isSubmitting = state.status === "submitting";
-  const guessBoxHtml = done
-    ? ""
-    : renderGuessInput({
-        id: "daily-guess-form",
-        inputId: "answer",
-        submitButtonId: "submit",
-        placeholder: t("daily.placeholder"),
-        buttonLabel: isSubmitting ? t("daily.loading") : t("daily.guessBtn"),
-        disabled: isSubmitting,
-        value: state.inputValue,
-      });
-
-  const feedbackHtml = renderFeedback(state.feedback, state);
-  const hintsHtml = done ? "" : renderHints(today.hints);
-
-  const interactionCardHtml = `
-    <div class="card" id="daily-interaction-card">
-      ${guessBoxHtml}
-      ${feedbackHtml}
-      ${hintsHtml}
-    </div>
-  `.trim();
-
-  return `
-    <div style="display: flex; flex-direction: column; gap: 12px;">
-      ${challengeHeaderCardHtml}
-      ${careerCardHtml}
-      ${interactionCardHtml}
-    </div>
-  `.trim();
+  </article>`;
 }
 
 export function attachDailyEventListeners(
   container: HTMLElement,
-  controller: DailyController
+  controller: DailyController,
 ): void {
   const input = container.querySelector<HTMLInputElement>("#answer");
   if (input) {

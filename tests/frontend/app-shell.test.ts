@@ -35,7 +35,7 @@ test("App mounts into DOM and renders shared components with real Daily feature 
     assert.ok(submitBtn, "Submit button was not rendered");
 
     // Verify HintPanel rendered
-    const hintItem = container.querySelector(".feedback");
+    const hintItem = container.querySelector(".hint-taken-item");
     assert.ok(hintItem, "Hint item was not rendered");
     assert.equal(hintItem.textContent, "Ha vinto un Mondiale nel 2006");
 
@@ -45,7 +45,7 @@ test("App mounts into DOM and renders shared components with real Daily feature 
     arenaTabBtn.click();
 
     // Switched to Arena: career path of daily should not be in arena
-    assert.ok(container.querySelector(".card-title")?.textContent?.includes("Arena"));
+    assert.ok(container.querySelector(".page-title")?.textContent?.includes("Arena"));
 
     // Switch back to Play
     const playTabBtn = container.querySelector<HTMLButtonElement>('nav.app-nav button[data-tab="play"]');
