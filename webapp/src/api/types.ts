@@ -61,8 +61,22 @@ export interface ApiDistributionEntry {
   count: number;
 }
 
+export interface ApiCosmeticsTitle {
+  label: string;
+  color?: string;
+  [key: string]: unknown;
+}
+
 export interface ApiCosmetics {
   equipped?: Record<string, string>;
+  badge?: string;
+  number?: string;
+  frame?: Record<string, unknown>;
+  title?: ApiCosmeticsTitle;
+  theme?: Record<string, unknown>;
+  squares?: Record<string, unknown>;
+  celebration?: string;
+  card?: Record<string, unknown>;
   looks?: Record<string, unknown>;
   owned?: string[];
   [key: string]: unknown;
@@ -75,6 +89,36 @@ export interface ApiTrophies {
   [key: string]: unknown;
 }
 
+export interface ApiLeagueStanding {
+  position: number;
+  profile_id?: number;
+  name: string;
+  points: number;
+  me?: boolean;
+}
+
+export interface ApiLeague {
+  code: string;
+  name: string;
+  members: number;
+  position: number | null;
+  points: number;
+  standings: ApiLeagueStanding[];
+}
+
+export interface ApiPublicProfileItem {
+  kind: string;
+  name: string;
+}
+
+export interface ApiPublicProfileResponse {
+  user: ApiUserSummary;
+  cosmetics: ApiCosmetics;
+  trophies: unknown[];
+  wearing: ApiPublicProfileItem[];
+  [key: string]: unknown;
+}
+
 export interface ApiProfileResponse {
   language?: string;
   user: ApiUserSummary;
@@ -83,7 +127,7 @@ export interface ApiProfileResponse {
   today?: ApiTodaySummary;
   distribution?: ApiDistributionEntry[];
   leaderboard?: ApiLeaderboardEntry[];
-  leagues?: unknown[];
+  leagues?: ApiLeague[];
   [key: string]: unknown;
 }
 
