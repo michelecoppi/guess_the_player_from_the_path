@@ -53,9 +53,13 @@ export class App {
     if (this.activeTab !== tab) {
       this.activeTab = tab;
       this.render();
-      this.rootElement
-        .querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)
-        ?.focus({ preventScroll: true });
+      const heading =
+        this.rootElement.querySelector<HTMLElement>("#app-content h2");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+      window.scrollTo?.({ top: 0 });
     }
   }
 

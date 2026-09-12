@@ -10,6 +10,11 @@ const paths = {
     '<rect x="3" y="5" width="18" height="16" rx="1"/><path d="M7 3v4m10-4v4M3 10h18m-14 4h3m4 0h3m-10 4h3"/>',
   profile:
     '<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
+  reports: '<path d="M4 3h16v13H9l-5 5V3Zm8 4v4m0 2v1"/>',
+  refunds: '<path d="M7 4h13v16H7M4 7l-3 3 3 3m-3-3h10m0 6h5"/>',
+  privacy:
+    '<path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6l9-4Zm-3 8 6 6m0-6-6 6"/>',
+  back: '<path d="M20 12H4m6-6-6 6 6 6"/>',
   more: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   arrow: '<path d="M4 12h16m-6-6 6 6-6 6"/>',
   hint: '<path d="M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0l-1 1H9l-1-1Z"/>',

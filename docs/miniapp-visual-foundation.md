@@ -10,18 +10,18 @@ V2 repeats that structure, adds developer copy above the game, exposes inert
 feature buttons, and limits desktop to a 520px column. Its existing controller,
 API contracts, localization and behavioral tests are useful foundations.
 
-Use the match programme as a composition: an edition number, a ruled career
-sheet, numbered transfer stops, a compact answer desk and a bottom fixture strip.
+Use the compact hierarchy of a football results app: clear scores, restrained green
+interaction accents, grouped career rows and a thumb-friendly bottom navigation.
 The career is the main visual: seasons left, clubs centre, appearances right,
 continuous vertical connection, dashed loan branches, no horizontal scrolling.
 Long names wrap. Never fabricate dates or badges absent from the payload.
 
 ## System
 
-- Paper/chalk neutrals in light; ink/stone neutrals in dark. Muted grass green
-  marks interaction and correctness; rust marks mistakes; ochre marks hints.
-- System sans for body; condensed system display stack for edition numbers and
-  headings; tabular figures for seasons, attempts, scores and rankings.
+- Cool neutral surfaces in light; navy surfaces in dark. Football green marks
+  interaction and correctness; red marks mistakes; amber marks hints.
+- System sans with strong weight contrast for headings; tabular figures for
+  seasons, attempts, scores and rankings.
 - Spacing: 4/8/12/16/24/32/48px. Structural corners 0–2px, controls 6px,
   avatar circles only. Dividers rather than container shadows.
 - One 24px outline SVG family with a custom career/pitch mark.
@@ -29,9 +29,19 @@ Long names wrap. Never fabricate dates or badges absent from the payload.
   brand and feedback colors stay controlled. Equipped cosmetics retain their
   existing controller contract. Telegram and device safe areas protect all edges.
 - Mobile starts at 320px; review at 390×844. At 900px, career and answer desk
-  sit side by side; navigation becomes a top strip within the same programme.
+  sit side by side; navigation becomes a top strip within the same sports interface.
 - Motion only for feedback and hints, 150–220ms; reduced motion removes it.
   No decorative entry animations or perpetual effects.
+
+## Navigation
+
+- Bottom navigation: Daily, Arena, Classifica, Shop, Profilo.
+- Arena is the extra-mode hub: challenge a player, current duel, archive, events.
+  Child screens retain Arena as the active destination and offer a back link.
+- Referral invitations live under Profile, separately from inviting a duel opponent.
+- Header menu: reports, refunds, privacy/forgetme only. These are informational
+  screens: reports integration is pending; refunds explain `/paysupport` and
+  privacy explains `/forgetme`. No message, refund or deletion is triggered.
 
 ## Boundaries and review
 
@@ -63,7 +73,7 @@ Tailwind CSS and its official Vite plugin are development dependencies. There
 are no new runtime dependencies, web fonts or third-party icon requests. Vite
 removes the Daily review harness and its fixtures from production JS. Future
 screen fixtures remain in their explicit prototype namespace and are labelled
-as sample data in the UI. Their editorial copy is Italian for design review;
+as sample data in the UI. Their preview copy is Italian for design review;
 Daily and navigation retain Italian, English and Spanish.
 
 The original component contracts remain available for future migrations;
@@ -89,3 +99,5 @@ attempts use numbered score marks; explicitly equipped symbols are preserved.
 
 References: [Tailwind Vite integration](https://tailwindcss.com/docs/installation/using-vite)
 and [Telegram Mini Apps](https://core.telegram.org/bots/webapps).
+
+Sports revision screenshots: local `.worktrees/issue-64-review/sports-revision/`.

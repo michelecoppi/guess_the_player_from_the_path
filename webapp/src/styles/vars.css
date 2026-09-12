@@ -10,27 +10,30 @@
 }
 :root {
   color-scheme: light;
-  --bg: var(--tg-theme-bg-color, #f4f2e9);
-  --bg-secondary: var(--tg-theme-secondary-bg-color, #eae8de);
-  --card: var(--tg-theme-section-bg-color, #faf9f3);
-  --text: var(--tg-theme-text-color, #202b25);
-  --muted: #61685f;
-  --edge: #c8cdc1;
-  --track: #dce0d5;
-  --accent: #226148;
+  --bg: var(--tg-theme-bg-color, #f1f4f7);
+  --bg-secondary: var(--tg-theme-secondary-bg-color, #e8eef3);
+  --card: var(--tg-theme-section-bg-color, #ffffff);
+  --text: var(--tg-theme-text-color, #142333);
+  --muted: #586b7b;
+  --edge: #dce4eb;
+  --track: #e7eef3;
+  --accent: #087b53;
   --accent-text: #ffffff;
-  --danger: #a33e29;
-  --danger-bg: #f5e6de;
-  --warn: #87601c;
-  --warn-bg: #eee7cf;
-  --success-bg: #e0e9db;
+  --danger: #b63741;
+  --danger-bg: #fff0f0;
+  --warn: #96600d;
+  --warn-bg: #fff3dc;
+  --success-bg: #e4f5ec;
   --font-family:
     "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  --font-display: "Arial Narrow", "Roboto Condensed", Impact, sans-serif;
-  --radius-sm: 2px;
-  --radius-md: 6px;
-  --radius-lg: 6px;
+  --font-display: var(--font-family);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
   --radius-full: 999px;
+  --sport-surface: #123c34;
+  --sport-text: #f4fff9;
+  --sport-highlight: #84e2b2;
   --min-touch-target: 44px;
   --transition-fast: 150ms ease;
   --transition-normal: 220ms ease;
@@ -44,20 +47,20 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: var(--tg-theme-bg-color, #191f1c);
-  --bg-secondary: var(--tg-theme-secondary-bg-color, #252d27);
-  --card: var(--tg-theme-section-bg-color, #202823);
-  --text: var(--tg-theme-text-color, #eeeede);
-  --muted: #adb4a8;
-  --edge: #414b41;
-  --track: #364137;
-  --accent: #b6cba0;
-  --accent-text: #172819;
-  --danger: #ecaa92;
-  --danger-bg: #382a25;
-  --warn: #ddc58f;
-  --warn-bg: #342f22;
-  --success-bg: #2b392a;
+  --bg: var(--tg-theme-bg-color, #101820);
+  --bg-secondary: var(--tg-theme-secondary-bg-color, #172330);
+  --card: var(--tg-theme-section-bg-color, #1a2734);
+  --text: var(--tg-theme-text-color, #f5f8fc);
+  --muted: #a7b7c8;
+  --edge: #314253;
+  --track: #2a3c4b;
+  --accent: #46cc91;
+  --accent-text: #072d22;
+  --danger: #ff9b9f;
+  --danger-bg: #3d242d;
+  --warn: #efb568;
+  --warn-bg: #3c3022;
+  --success-bg: #173a2e;
 }
 * {
   box-sizing: border-box;

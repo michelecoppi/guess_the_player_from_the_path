@@ -69,23 +69,50 @@ test("review navigation and fixture interactions never call an API", () => {
     startReview(container);
     container.querySelector<HTMLButtonElement>("#hint")!.click();
     assert.ok(container.querySelector(".hint-taken-item"));
-    for (const tab of [
-      "arena",
-      "profile",
-      "leaderboard",
-      "archive",
-      "shop",
-      "referral",
-      "events",
-    ]) {
+    const go = (tab: string) =>
       container
         .querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)!
         .click();
+    assert.deepEqual(
+      Array.from(
+        container.querySelectorAll(".app-nav [data-tab]"),
+        (b) => (b as HTMLElement).dataset.tab,
+      ),
+      ["play", "arena", "leaderboard", "shop", "profile"],
+    );
+    go("arena");
+    for (const tab of ["challenge", "duels", "archive", "events"]) {
+      go(tab);
       assert.ok(container.querySelector(`[data-prototype="${tab}"]`));
-      assert.ok(container.querySelector(".prototype-notice"));
+      assert.equal(
+        container
+          .querySelector('.app-nav [aria-current="page"]')
+          ?.getAttribute("data-tab"),
+        "arena",
+      );
       container
-        .querySelectorAll<HTMLButtonElement>(".prototype button")
+        .querySelectorAll<HTMLButtonElement>(
+          ".prototype button:not([data-tab])",
+        )
         .forEach((button) => assert.equal(button.disabled, true));
+      go("arena");
+    }
+    for (const tab of ["leaderboard", "shop", "profile"]) {
+      go(tab);
+      assert.ok(container.querySelector(`[data-prototype="${tab}"]`));
+    }
+    go("referral");
+    assert.equal(
+      container
+        .querySelector('.app-nav [aria-current="page"]')
+        ?.getAttribute("data-tab"),
+      "profile",
+    );
+    go("profile");
+    for (const tab of ["reports", "refunds", "privacy"]) {
+      go(tab);
+      assert.ok(container.querySelector(`[data-support="${tab}"]`));
+      assert.equal(container.querySelector("form"), null);
     }
     assert.equal(requests, 0);
   } finally {

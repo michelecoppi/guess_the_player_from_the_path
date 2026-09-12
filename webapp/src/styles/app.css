@@ -1,11 +1,11 @@
-/* Match programme: structural zones, ruled data, a single career spine. */
+/* Sports-first Mini App: career timeline, compact match data and mode navigation. */
 #root {
-  max-width: 1120px;
+  max-width: 1080px;
   margin: auto;
   display: flex;
   flex-direction: column;
-  padding: calc(12px + var(--safe-top)) calc(20px + var(--safe-right))
-    calc(100px + var(--safe-bottom)) calc(20px + var(--safe-left));
+  padding: calc(12px + var(--safe-top)) calc(16px + var(--safe-right))
+    calc(90px + var(--safe-bottom)) calc(16px + var(--safe-left));
 }
 .icon {
   width: 24px;
@@ -20,17 +20,17 @@
 .eyebrow,
 .page-kicker {
   font-size: 11px;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 700;
+  color: var(--muted);
 }
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 2px solid var(--text);
   padding: 0 0 12px;
-  gap: 16px;
+  gap: 12px;
 }
 .header-brand {
   display: flex;
@@ -38,22 +38,27 @@
   gap: 10px;
 }
 .header-logo {
-  color: var(--accent);
-  display: flex;
+  color: var(--sport-text);
+  background: var(--accent);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
 }
 .header-logo .icon {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
+  color: var(--accent-text);
 }
 .header-title-group h1 {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
 }
 .header-subtitle {
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0;
   color: var(--muted);
 }
 .header-actions {
@@ -62,14 +67,15 @@
   gap: 8px;
 }
 .user-avatar {
+  background: var(--card);
   border: 1px solid var(--edge);
   border-radius: 50%;
   width: 32px;
   height: 32px;
   display: grid;
   place-items: center;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
 }
 .more-nav {
   position: relative;
@@ -88,13 +94,14 @@
 .more-menu {
   position: absolute;
   right: 0;
-  top: 50px;
+  top: 46px;
   z-index: 110;
   background: var(--card);
   border: 1px solid var(--edge);
+  border-radius: 12px;
   box-shadow: 0 8px 24px #0002;
-  width: 230px;
-  padding: 8px;
+  width: 260px;
+  padding: 6px;
 }
 .more-menu button {
   width: 100%;
@@ -125,41 +132,33 @@
   order: 2;
 }
 .daily-heading {
-  padding: 16px 0 12px;
+  padding: 8px 0 14px;
 }
 .edition {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  color: var(--accent);
+  justify-content: space-between;
   margin-bottom: 6px;
 }
 .edition-number {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
-  font-family: var(--font-display);
-  font-size: 22px;
-  letter-spacing: -0.04em;
 }
 .daily-heading h2,
 .page-title {
-  font-family: var(--font-display);
-  font-stretch: condensed;
-  font-size: 34px;
-  line-height: 1.08;
-  letter-spacing: -0.025em;
-  font-weight: 800;
+  font: 750 27px/1.2 var(--font-family);
+  letter-spacing: -0.03em;
 }
 .daily-heading > p {
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 13px;
 }
 .match-meta {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-top: 1px solid var(--edge);
-  border-bottom: 1px solid var(--edge);
-  padding: 9px 0;
   margin-top: 12px;
   font-size: 12px;
 }
@@ -169,11 +168,12 @@
 }
 .match-meta span:last-child {
   margin-left: auto;
-  color: var(--muted);
+  color: var(--accent);
+  font-weight: 650;
 }
 .daily-layout {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 .sheet-heading {
   display: flex;
@@ -192,9 +192,9 @@
 }
 .career-columns {
   display: grid;
-  grid-template-columns: 68px 1fr 52px;
-  gap: 10px;
-  padding-bottom: 8px;
+  grid-template-columns: 66px 1fr 50px;
+  gap: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--edge);
   color: var(--muted);
   font-size: 10px;
@@ -207,30 +207,31 @@
 }
 .stop {
   display: grid;
-  grid-template-columns: 58px 22px minmax(0, 1fr) 48px;
-  gap: 8px;
+  grid-template-columns: 55px 20px minmax(0, 1fr) 48px;
+  gap: 6px;
   align-items: center;
   position: relative;
-  min-height: 49px;
+  min-height: 47px;
 }
 .stop:not(:last-child)::after {
   content: "";
   position: absolute;
-  left: 76px;
+  left: 70px;
   top: 50%;
   bottom: -50%;
-  width: 1px;
-  background: var(--edge);
+  width: 2px;
+  background: var(--track);
 }
 .transfer-node {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border: 1px solid var(--edge);
-  border-radius: 50%;
+  border-radius: 6px;
   display: grid;
   place-items: center;
-  background: var(--bg);
+  background: var(--card);
   font-size: 9px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   z-index: 1;
   color: var(--muted);
@@ -238,11 +239,12 @@
 .stop:first-child .transfer-node,
 .stop:last-child .transfer-node {
   border-color: var(--accent);
+  background: var(--success-bg);
   color: var(--accent);
 }
 .stop .who {
   min-width: 0;
-  padding: 8px 0;
+  padding: 7px 0;
   border-bottom: 1px solid var(--edge);
   align-self: stretch;
   display: flex;
@@ -255,21 +257,22 @@
 .team {
   font-size: 15px;
   line-height: 1.2;
-  font-weight: 750;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 .meta {
   font-size: 11px;
   color: var(--muted);
-  line-height: 1.4;
+  line-height: 1.3;
   margin-top: 3px;
   overflow-wrap: anywhere;
 }
 .years {
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 1.6;
+  line-height: 1.5;
+  color: var(--muted);
 }
 .apps {
   text-align: right;
@@ -286,15 +289,14 @@
   margin-top: 3px;
 }
 .answer-desk {
-  border-top: 2px solid var(--text);
-  padding-top: 12px;
+  padding-top: 0;
 }
 .attempts-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 12px;
 }
 .attempts {
@@ -302,9 +304,11 @@
   gap: 4px;
 }
 .attempt {
-  width: 23px;
+  width: 24px;
   height: 25px;
   border: 1px solid var(--edge);
+  border-radius: 5px;
+  background: var(--card);
   display: grid;
   place-items: center;
   font-size: 10px;
@@ -403,9 +407,8 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  border-top: 1px solid var(--edge);
-  margin-top: 10px;
-  padding-top: 4px;
+  margin-top: 8px;
+  padding-top: 0;
 }
 .hint-panel .btn {
   flex: 1;
@@ -413,7 +416,7 @@
   border: 0;
   justify-content: flex-start;
   padding: 8px 0;
-  color: var(--warn);
+  color: var(--accent);
   font-size: 12px;
 }
 .hints-remaining {
@@ -436,6 +439,7 @@
 .feedback {
   margin-top: 12px;
   border-left: 3px solid var(--edge);
+  border-radius: 0 8px 8px 0;
   padding: 12px;
   background: var(--bg-secondary);
   font-size: 13px;
@@ -563,7 +567,7 @@ nav.app-nav {
   z-index: 100;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  background: var(--bg);
+  background: var(--card);
   border-top: 1px solid var(--edge);
   padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
@@ -574,17 +578,15 @@ nav.app-nav button {
   justify-content: center;
   gap: 4px;
   min-height: 66px;
-  padding: 10px 2px;
+  padding: 8px 2px;
   border: 0;
-  border-top: 3px solid transparent;
   background: none;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 nav.app-nav button[aria-current="page"] {
   color: var(--accent);
-  border-top-color: var(--accent);
-  font-weight: 750;
+  font-weight: 700;
 }
 nav.app-nav .icon {
   width: 21px;
@@ -592,21 +594,20 @@ nav.app-nav .icon {
 }
 .prototype-notice {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   font-size: 11px;
-  color: var(--warn);
-  border-bottom: 1px solid var(--edge);
-  padding: 12px 0;
+  color: var(--muted);
+  padding: 8px 0;
 }
 .prototype-notice p {
   color: var(--muted);
 }
 .prototype {
-  padding-top: 24px;
+  padding-top: 12px;
 }
 .prototype .page-title {
-  margin: 8px 0 24px;
+  margin: 4px 0 18px;
 }
 .prototype-section {
   margin-top: 24px;
@@ -619,19 +620,17 @@ nav.app-nav .icon {
   margin-bottom: 12px;
 }
 .scoreboard {
-  border-top: 3px solid var(--accent);
-  border-bottom: 1px solid var(--edge);
-  background: var(--bg-secondary);
+  background: var(--sport-surface);
+  color: var(--sport-text);
   padding: 24px 16px;
+  border-radius: 12px;
 }
 .scoreboard .score {
-  font-family: var(--font-display);
-  font-size: 72px;
-  line-height: 1;
+  font: 750 64px/1 var(--font-family);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
   text-align: center;
   padding: 20px 0;
+  color: var(--sport-highlight);
 }
 .score-teams {
   display: flex;
@@ -688,8 +687,8 @@ nav.app-nav .icon {
   padding-left: 16px;
 }
 .tile-value {
-  font-family: var(--font-display);
-  font-size: 36px;
+  font-size: 30px;
+  font-weight: 750;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
@@ -736,15 +735,14 @@ nav.app-nav .icon {
   border-radius: 50%;
 }
 .profile-pass {
-  border-top: 3px solid var(--accent);
-  padding: 24px 0;
+  padding: 20px 0;
   display: flex;
   align-items: center;
   gap: 16px;
 }
 .profile-pass h3 {
-  font-family: var(--font-display);
-  font-size: 32px;
+  font-size: 26px;
+  font-weight: 700;
 }
 .calendar-grid {
   display: grid;
@@ -794,7 +792,8 @@ nav.app-nav .icon {
   display: grid;
   place-items: center;
   border: 1px solid var(--edge);
-  background: var(--bg-secondary);
+  border-radius: 10px;
+  background: var(--card);
 }
 .shop-swatch .icon {
   width: 36px;
@@ -811,8 +810,9 @@ nav.app-nav .icon {
 }
 .ticket {
   border: 1px solid var(--edge);
-  border-left: 5px solid var(--accent);
-  padding: 24px;
+  border-radius: 12px;
+  background: var(--card);
+  padding: 20px;
 }
 .ticket h3 {
   font-family: var(--font-display);
@@ -963,80 +963,57 @@ nav.app-nav .icon {
 }
 @media (min-width: 900px) {
   #root {
-    padding: calc(16px + var(--safe-top)) 40px 48px;
-    display: flex;
-    flex-direction: column;
-  }
-  .app-header {
-    padding-bottom: 12px;
-  }
-  .header-title-group h1 {
-    font-size: 18px;
+    padding: calc(20px + var(--safe-top)) 32px 48px;
   }
   nav.app-nav {
     position: static;
     order: 0;
-    margin-top: 16px;
-    border-top: 0;
-    border-bottom: 1px solid var(--edge);
-    padding: 0;
+    max-width: 100%;
+    margin: 8px 0 0;
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    overflow: hidden;
   }
   nav.app-nav button {
     flex-direction: row;
     gap: 10px;
-    min-height: 48px;
+    min-height: 52px;
     font-size: 13px;
-    border-top: 0;
-    border-bottom: 3px solid transparent;
   }
   nav.app-nav button[aria-current="page"] {
-    border-bottom-color: var(--accent);
-  }
-  #app-content {
-    order: 1;
-  }
-  .environment-note,
-  .review-controls {
-    order: 2;
+    background: var(--success-bg);
   }
   .daily-heading {
-    padding: 20px 0 16px;
+    padding: 24px 0 20px;
   }
   .daily-heading h2 {
-    font-size: 40px;
-  }
-  .daily-heading > p {
-    font-size: 15px;
-  }
-  .edition-number {
     font-size: 32px;
   }
-  .match-meta {
-    justify-content: flex-start;
-    max-width: none;
+  .daily-heading > p {
+    font-size: 14px;
   }
   .daily-layout {
-    grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
-    gap: 48px;
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+    gap: 28px;
     align-items: start;
   }
   .stop {
-    grid-template-columns: 82px 24px minmax(0, 1fr) 64px;
+    grid-template-columns: 82px 24px minmax(0, 1fr) 60px;
     min-height: 58px;
-    gap: 12px;
+    gap: 10px;
   }
   .stop:not(:last-child)::after {
-    left: 105px;
+    left: 103px;
   }
   .transfer-node {
     width: 24px;
     height: 24px;
   }
   .career-columns {
-    grid-template-columns: 94px 1fr 64px;
+    grid-template-columns: 92px 1fr 60px;
   }
   .team {
-    font-size: 18px;
+    font-size: 17px;
   }
   .meta,
   .years,
@@ -1044,17 +1021,32 @@ nav.app-nav .icon {
     font-size: 12px;
   }
   .answer-desk {
-    padding-top: 20px;
+    background: var(--card);
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    padding: 20px;
   }
-  .attempts-line {
-    margin-bottom: 24px;
-  }
-  .prototype {
+  .prototype,
+  .support-page {
     max-width: 720px;
     margin: auto;
   }
   .prototype-notice {
     justify-content: center;
+  }
+  .arena-feature {
+    min-height: 210px;
+  }
+  .extra-modes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .extra-modes > h3 {
+    grid-column: 1/-1;
+  }
+  .extra-modes .mode-entry {
+    margin-top: 0;
   }
 }
 @media (max-width: 359px) {
@@ -1063,18 +1055,22 @@ nav.app-nav .icon {
     padding-right: calc(12px + var(--safe-right));
   }
   .daily-heading h2 {
-    font-size: 29px;
+    font-size: 25px;
+  }
+  .career-sheet {
+    padding: 10px !important;
   }
   .stop {
-    grid-template-columns: 48px 20px minmax(0, 1fr) 40px;
-    gap: 6px;
+    grid-template-columns: 43px 18px minmax(0, 1fr) 38px;
+    gap: 5px;
   }
   .stop:not(:last-child)::after {
-    left: 63px;
+    left: 56px;
   }
   .transfer-node {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+    font-size: 8px;
   }
   .team {
     font-size: 13px;
@@ -1085,7 +1081,8 @@ nav.app-nav .icon {
     font-size: 10px;
   }
   .career-columns {
-    grid-template-columns: 54px 1fr 48px;
+    grid-template-columns: 48px 1fr 40px;
+    font-size: 9px;
   }
   .match-meta {
     gap: 8px;
@@ -1100,4 +1097,280 @@ nav.app-nav .icon {
   .attempt {
     width: 21px;
   }
+  .arena-feature {
+    padding: 18px 14px !important;
+  }
+  .arena-feature-copy h3 {
+    font-size: 23px !important;
+  }
+  .versus-mark {
+    display: none !important;
+  }
+  .active-duel {
+    gap: 8px !important;
+    padding: 12px !important;
+  }
+  .duel-indicator {
+    display: none !important;
+  }
+}
+
+.career-sheet {
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 12px;
+}
+nav.app-nav button[aria-current="page"] > .icon {
+  background: var(--success-bg);
+  box-sizing: content-box;
+  padding: 3px 12px;
+  border-radius: 8px;
+  margin: -3px -12px;
+}
+.more-menu button[data-tab="privacy"] {
+  color: var(--danger);
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 650;
+  padding: 8px 0;
+}
+.back-link .icon {
+  width: 18px;
+  height: 18px;
+}
+.arena-feature {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 24px 20px;
+  text-align: left;
+  border: 0;
+  border-radius: 12px;
+  background: var(--sport-surface);
+  color: var(--sport-text);
+}
+.arena-feature-copy {
+  max-width: 360px;
+}
+.mode-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  font-weight: 750;
+  color: var(--sport-highlight);
+}
+.arena-feature-copy h3 {
+  font-size: 26px;
+  font-weight: 750;
+  line-height: 1.15;
+  margin: 8px 0;
+  letter-spacing: -0.03em;
+}
+.arena-feature-copy p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c1ddcf;
+}
+.feature-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 20px;
+  color: var(--sport-highlight);
+}
+.feature-action .icon {
+  width: 17px;
+  height: 17px;
+}
+.versus-mark {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  transform: rotate(8deg);
+}
+.versus-mark span {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #5d8e78;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 750;
+  color: var(--sport-highlight);
+}
+.versus-mark b {
+  font-size: 11px;
+  color: #c1ddcf;
+}
+.active-duel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  margin-top: 12px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  text-align: left;
+}
+.active-duel > span:nth-child(2) {
+  flex: 1;
+}
+.active-duel b {
+  font-size: 13px;
+  font-weight: 650;
+}
+.active-duel small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.active-duel strong {
+  font-size: 22px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.active-duel > .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+.duel-indicator {
+  color: var(--accent);
+}
+.extra-modes {
+  margin-top: 24px;
+}
+.extra-modes > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.mode-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  margin-top: 10px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  text-align: left;
+}
+.mode-entry > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.mode-entry b {
+  font-size: 15px;
+  font-weight: 700;
+}
+.mode-entry small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.mode-entry > .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+.mode-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--success-bg);
+  color: var(--accent);
+}
+.events-entry .mode-icon {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.challenge-intro {
+  padding: 16px 0 24px;
+}
+.challenge-intro h3 {
+  font-size: 21px;
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+.challenge-intro p {
+  font-size: 14px;
+  color: var(--muted);
+}
+.prototype-explanation {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-top: 14px;
+}
+.support-page {
+  padding: 12px 0;
+}
+.support-symbol {
+  color: var(--accent);
+  display: block;
+  margin-bottom: 16px;
+}
+.support-symbol .icon {
+  width: 32px;
+  height: 32px;
+}
+.support-page .page-title {
+  margin-bottom: 16px;
+}
+.support-page > p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.support-block {
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+}
+.support-block h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.support-block code {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+.support-block p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.scoreboard .text-secondary {
+  color: #c1ddcf;
 }

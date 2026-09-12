@@ -26,16 +26,30 @@ export function renderPrototype(id: PrototypeId): string {
   let title = "",
     kicker = "",
     body = "";
+  if (["reports", "refunds", "privacy"].includes(id))
+    return renderSupport(id as "reports" | "refunds" | "privacy");
   switch (id) {
     case "arena":
       title = "Arena";
-      kicker = "DUELLI / 1 CONTRO 1";
+      kicker = "SCEGLI LA TUA PROSSIMA SFIDA";
+      body = `<button class="arena-feature" data-tab="challenge"><div class="arena-feature-copy"><span class="mode-label">1 CONTRO 1</span><h3>Sfida un giocatore</h3><p>Stessa carriera. Vince chi la riconosce prima.</p><span class="feature-action">Scegli l’avversario ${icon("arrow")}</span></div><div class="versus-mark" aria-hidden="true"><span>M</span><b>VS</b><span>?</span></div></button>
+      <button class="active-duel" data-tab="duels"><span class="duel-indicator">${icon("arena")}</span><span><b>Il tuo duello con Andrea</b><small>Round ${duel.current_round} di ${duel.total_rounds} · dati di esempio</small></span><strong>${duel.user_score} : ${duel.opponent_score}</strong>${icon("arrow")}</button>
+      <section class="extra-modes"><h3>Altre modalità</h3><button class="mode-entry archive-entry" data-tab="archive"><span class="mode-icon">${icon("archive")}</span><span><b>Archivio</b><small>Recupera le Daily che hai perso</small></span>${icon("arrow")}</button><button class="mode-entry events-entry" data-tab="events"><span class="mode-icon">${icon("events")}</span><span><b>Eventi</b><small>Carriere speciali, nuove competizioni</small></span>${icon("arrow")}</button></section>`;
+      break;
+    case "challenge":
+      title = "Sfida un giocatore";
+      kicker = "ARENA / 1 CONTRO 1";
+      body = `<div class="challenge-intro"><span class="mode-icon">${icon("referral")}</span><h3>Chi sfidi oggi?</h3><p>Invita un amico o cerca un altro giocatore.</p></div><label class="guess-label" for="opponent-search">Nome o username Telegram</label><input class="guess-input" id="opponent-search" placeholder="Cerca un giocatore" disabled><p class="prototype-explanation">La ricerca dei giocatori sarà disponibile con l’attivazione dei duelli.</p>${section("Gioca con un amico", disabled("Crea un invito al duello"))}`;
+      break;
+    case "duels":
+      title = "Il tuo duello";
+      kicker = "ARENA / PARTITA IN CORSO";
       body = `<div class="scoreboard"><div class="score-teams"><span>MARCO</span><span>Round ${duel.current_round} / ${duel.total_rounds}</span><span>${e(duel.opponent?.name).toUpperCase()}</span></div><div class="score">${duel.user_score} : ${duel.opponent_score}</div><div class="flex justify-between text-secondary text-xs"><span>2 carriere indovinate</span><span>1 carriera indovinata</span></div></div>${section("Il prossimo round", `<p class="muted mb-4">Cinque carriere. Un avversario. Ogni risposta conta.</p>${disabled("Continua il duello")}`)}${section("Un’altra partita", disabled("Sfida un amico"))}`;
       break;
     case "profile":
       title = "La tua carriera";
       kicker = "PROFILO GIOCATORE";
-      body = `<div class="profile-pass">${renderAvatar({ name: profile.name, size: "large" })}<div><p class="eyebrow">PLAYER / 001</p><h3>${e(profile.name)}</h3><p class="muted text-xs">Sette giornate di fila</p></div></div><div class="stat-grid three-cols">${renderStatTile({ value: profile.points, label: "Punti totali" })}${renderStatTile({ value: profile.current_streak, label: "Serie attuale" })}${renderStatTile({ value: profile.best_streak, label: "Serie record" })}</div>${section("Bacheca", `<div class="row">${icon("ranking")}<div class="name">Secondo classificato<p class="muted text-xs">Settembre · classifica mensile</p></div><span class="pts">02</span></div>`)}${section("Il tuo stile", disabled("Personalizza il profilo"))}`;
+      body = `<div class="profile-pass">${renderAvatar({ name: profile.name, size: "large" })}<div><p class="eyebrow">PLAYER / 001</p><h3>${e(profile.name)}</h3><p class="muted text-xs">Sette giornate di fila</p></div></div><div class="stat-grid three-cols">${renderStatTile({ value: profile.points, label: "Punti totali" })}${renderStatTile({ value: profile.current_streak, label: "Serie attuale" })}${renderStatTile({ value: profile.best_streak, label: "Serie record" })}</div>${section("Bacheca", `<div class="row">${icon("ranking")}<div class="name">Secondo classificato<p class="muted text-xs">Settembre · classifica mensile</p></div><span class="pts">02</span></div>`)}${section("Il tuo stile", disabled("Personalizza il profilo"))}<button class="mode-entry" data-tab="referral"><span class="mode-icon">${icon("referral")}</span><span><b>Invita amici</b><small>Fai crescere la tua squadra</small></span>${icon("arrow")}</button>`;
       break;
     case "leaderboard":
       title = "Classifica";
@@ -67,5 +81,22 @@ export function renderPrototype(id: PrototypeId): string {
       kicker = "IL CALENDARIO / EDIZIONI SPECIALI";
       body = `<div class="event-banner">${icon("events")}<p class="eyebrow">15–22 SETTEMBRE</p><h3>${e(event.title)}</h3><p class="muted mt-4">${e(event.theme)}</p></div>${section("Una settimana europea", `<p class="muted mb-4">Percorsi tra i club che hanno scritto la storia delle coppe.</p>${disabled("In arrivo")}`)}`;
   }
-  return `<aside class="prototype-notice"><b>${v("preview")}</b><p>${v("previewNote")}</p></aside><article class="prototype" data-prototype="${id}"><p class="eyebrow">${kicker}</p><h2 class="page-title">${title}</h2>${body}</article>`;
+  const parent = ["archive", "events", "duels", "challenge"].includes(id)
+    ? "arena"
+    : id === "referral"
+      ? "profile"
+      : null;
+  const back = parent
+    ? `<button class="back-link" data-tab="${parent}">${icon("back")}${v(parent === "arena" ? "backArena" : "backProfile")}</button>`
+    : "";
+  return `${back}<aside class="prototype-notice"><b>${v("preview")}</b><p>${v("previewNote")}</p></aside><article class="prototype" data-prototype="${id}"><p class="eyebrow">${kicker}</p><h2 class="page-title">${title}</h2>${body}</article>`;
+}
+
+function renderSupport(id: "reports" | "refunds" | "privacy"): string {
+  const content = {
+    reports: `<p>Hai trovato un errore in una carriera o un problema nella Mini App?</p><div class="support-block"><h3>Cosa indicare</h3><p>Numero della Daily, club o stagione coinvolti e una breve descrizione. Se puoi, aggiungi uno screenshot.</p></div><p class="prototype-explanation">L’invio delle segnalazioni dal menu è in preparazione. Questa anteprima non invia messaggi al bot.</p>`,
+    refunds: `<p>Per un acquisto in Stelle, contatta l’assistenza nella chat privata del bot.</p><div class="support-block"><h3>Richiedi assistenza</h3><code>/paysupport</code><p>Aggiungi la descrizione del problema e l’identificativo dell’acquisto. Il bot inoltrerà la richiesta all’assistenza.</p></div><p>La richiesta viene valutata dall’assistenza; aprire questa pagina non esegue un rimborso.</p>`,
+    privacy: `<p>Puoi richiedere la cancellazione dei tuoi dati di gioco dalla chat privata del bot.</p><div class="support-block"><h3>Gestisci i tuoi dati</h3><code>/forgetme</code><p>Il bot ti mostrerà la richiesta di conferma prima di cancellare i dati.</p></div><p>Questa pagina è informativa e non avvia la cancellazione.</p>`,
+  };
+  return `<button class="back-link" data-tab="play">${icon("back")}${v("backDaily")}</button><article class="support-page" data-support="${id}"><span class="support-symbol">${icon(id)}</span><h2 class="page-title">${v(id)}</h2>${content[id]}</article>`;
 }
