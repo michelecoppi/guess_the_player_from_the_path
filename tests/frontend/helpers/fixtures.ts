@@ -105,3 +105,69 @@ export function createTestLeaderboard(): TestLeaderboardItem[] {
     { profile_id: 104, name: "Andrea Pirlo", points: 1210, streak: 4, position: 4 },
   ];
 }
+
+export function createTestDuelSession(overrides: Record<string, any> = {}) {
+  return {
+    round: 0,
+    attempts: 0,
+    solved: 0,
+    spent: 0,
+    revision: 0,
+    finished: false,
+    history: [],
+    total: 5,
+    max_attempts: 3,
+    career_path: [
+      { year: "2010-2015", team: "Palermo", apps: 115 },
+      { year: "2015-2022", team: "Juventus", apps: 293 },
+      { year: "2022-2026", team: "Roma", apps: 85 },
+    ],
+    difficulty_label: "Media",
+    ...overrides,
+  };
+}
+
+export const TEST_DUEL_CODE = "000000000000000000000001"; // pragma: allowlist secret
+
+export function createTestDuelData(overrides: Record<string, any> = {}) {
+  return {
+    code: TEST_DUEL_CODE,
+    expires_at: "2026-09-20T12:00:00Z",
+    invite_url: `https://t.me/TestBot?start=duel_${TEST_DUEL_CODE}`,
+    session: createTestDuelSession(),
+    opponent: {
+      name: "Andrea",
+      round: 0,
+      finished: false,
+    },
+    complete: false,
+    rounds: [],
+    ledger: {
+      record: { name: "Andrea", won: 3, lost: 2, drawn: 1 },
+      matches: [],
+    },
+    open: [
+      {
+        code: TEST_DUEL_CODE,
+        opponent: "Andrea",
+        complete: false,
+        round: 0,
+        total: 5,
+        expires_at: "2026-09-20T12:00:00Z",
+      },
+    ],
+    ...overrides,
+  };
+}
+
+export function createTestOpponentProfile(overrides: Record<string, any> = {}) {
+  return {
+    profile_id: 999,
+    name: "Giorgio",
+    badge: "⭐",
+    points: 320,
+    trophies: 2,
+    ...overrides,
+  };
+}
+
