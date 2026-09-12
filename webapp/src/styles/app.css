@@ -1374,3 +1374,383 @@ nav.app-nav button[aria-current="page"] > .icon {
 .scoreboard .text-secondary {
   color: #c1ddcf;
 }
+
+/* Arena feature styles */
+.btn-sm {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.arena-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+.arena-versus {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  text-align: center;
+}
+.arena-versus div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.arena-versus span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.arena-versus strong {
+  font-size: 18px;
+  font-weight: 750;
+  color: var(--accent);
+}
+.arena-vs {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--sport-highlight, var(--accent));
+  padding: 4px 10px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+.arena-round {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+.arena-rounds {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+.arena-rounds span {
+  flex: 1;
+  padding: 8px 4px;
+  text-align: center;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  background: var(--card);
+}
+.arena-rounds .done {
+  background: var(--bg-secondary);
+  color: var(--text);
+}
+.arena-rounds .current {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.arena-career {
+  margin-bottom: 12px;
+}
+.arena-attempts {
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+.arena-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.arena-open-list {
+  margin-top: 20px;
+}
+.arena-open-list > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.arena-open-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+.arena-open-open {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+.arena-open-open > span:last-child {
+  flex: 1;
+  min-width: 0;
+}
+.arena-open-open strong {
+  display: block;
+  font-size: 14px;
+}
+.arena-open-open small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.arena-path-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 750;
+  flex-shrink: 0;
+}
+.arena-path-mark.ok {
+  background: var(--success-bg);
+  color: var(--accent);
+}
+.arena-path-mark.no {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+.arena-paths {
+  margin-top: 24px;
+}
+.arena-paths > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.arena-path {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-top: 8px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+.arena-path strong {
+  display: block;
+  font-size: 14px;
+}
+.arena-path p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.arena-history {
+  margin-top: 24px;
+}
+.arena-history > h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.arena-h2h {
+  padding: 16px;
+  background: var(--sport-surface);
+  border-radius: 12px;
+  color: var(--sport-text);
+  margin-bottom: 16px;
+}
+.arena-h2h .arena-eyebrow {
+  color: var(--sport-highlight);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.arena-h2h strong {
+  display: block;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 6px 0;
+  color: var(--sport-highlight);
+  font-variant-numeric: tabular-nums;
+}
+.arena-h2h span {
+  font-size: 12px;
+  color: #c1ddcf;
+}
+.arena-past {
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  margin-top: 8px;
+  padding: 12px 14px;
+}
+.arena-past summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+.arena-past summary::-webkit-details-marker {
+  display: none;
+}
+.arena-past-name {
+  flex: 1;
+  font-weight: 650;
+  font-size: 13px;
+}
+.arena-past-score {
+  font-weight: 750;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.arena-past summary small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.arena-past-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--edge);
+}
+.arena-past-row strong {
+  font-size: 13px;
+}
+.arena-past-row p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.arena-link-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+  margin-top: 12px;
+}
+.arena-link {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.arena-link input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+}
+.arena-result {
+  text-align: center;
+  padding: 24px 16px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+  margin: 16px 0;
+}
+.arena-result-mark {
+  font-size: 32px;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 8px;
+}
+.arena-result h2 {
+  font-size: 20px;
+  font-weight: 750;
+  margin-bottom: 12px;
+}
+.arena-score {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin: 16px 0;
+}
+.arena-score strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 750;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.arena-score span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.opponent-final-score {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 10px 0 16px;
+}
+.profile-search-results {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+.profile-search-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+}
+.profile-info strong {
+  display: block;
+  font-size: 14px;
+}
+.profile-info small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.challenge-direct-invite {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+}
+.challenge-direct-invite h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.arena-notice {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--success-bg);
+  color: var(--accent);
+  font-size: 13px;
+  margin: 10px 0;
+}
+.arena-error {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  font-size: 13px;
+  margin: 10px 0;
+}
+
