@@ -83,8 +83,9 @@ attempts use numbered score marks; explicitly equipped symbols are preserved.
   live theme propagation have automated coverage.
 - Existing hint/card API failure handling remains owned by the existing Daily
   controller. Guess request errors now surface next to the answer field.
-- No automatic rollout or merge. PRs #62/#63 must land before the final main
-  update and security/full-CI rerun; human visual approval remains outstanding.
+- PRs #62/#63 are merged. This branch was rebased onto main after both landed;
+  security and full CI are rerun on that combined state. No automatic rollout
+  or merge; human visual approval remains outstanding.
 
 References: [Tailwind Vite integration](https://tailwindcss.com/docs/installation/using-vite)
 and [Telegram Mini Apps](https://core.telegram.org/bots/webapps).
