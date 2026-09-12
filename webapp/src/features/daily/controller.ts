@@ -77,7 +77,8 @@ export class DailyController {
     try {
       const profile = await pending;
 
-      if (loadSeq !== this.loadSeq || generation !== appearanceGeneration()) return;
+      if (loadSeq !== this.loadSeq) return;
+      if (generation !== appearanceGeneration()) { this.reset(); return; }
       if (profile.language) {
         setLanguage(profile.language as any);
       }
@@ -105,7 +106,7 @@ export class DailyController {
         errorMessage: undefined,
       });
     } catch (err: any) {
-      if (loadSeq !== this.loadSeq || generation !== appearanceGeneration()) return;
+      if (loadSeq !== this.loadSeq) return;
       clearResolvedAppearance();
       this.state.squaresSymbols = { ...DEFAULT_SQUARE_SYMBOLS };
       this.state.user = null;

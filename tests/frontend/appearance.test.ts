@@ -177,3 +177,19 @@ test("every catalog gradient is mapped locally without URL output", () => {
     if (item.kind === "frame" && item.style.ring) assert.ok(identityAppearance({ frame: item.style }).frame.ring, item.id);
   }
 });
+
+test("session change during a lightweight load also removes old Daily symbols", async () => {
+  const { cleanup } = dom(); const previous = globalThis.fetch;
+  let token = "A";
+  const profile = { user: { name: "A" }, today: createTestDailyChallenge(), cosmetics: fixtures.collection };
+  try {
+    globalThis.fetch = async () => new Response(JSON.stringify(profile));
+    const controller = new DailyController(new ApiClient({ getAuthToken: () => token }));
+    await controller.init();
+    globalThis.fetch = async () => { token = "B"; return new Response(JSON.stringify(profile)); };
+    await controller.loadDailyData({ lightweight: true });
+    assert.equal(controller.getState().user, null);
+    assert.equal(getResolvedAppearance().badge, "");
+    assert.deepEqual(controller.getState().squaresSymbols, resultAppearance(undefined).squares);
+  } finally { globalThis.fetch = previous; cleanup(); }
+});
