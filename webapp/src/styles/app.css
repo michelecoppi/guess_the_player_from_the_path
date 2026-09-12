@@ -2082,4 +2082,166 @@ nav.app-nav button[aria-current="page"] > .icon {
   margin-bottom: 6px;
 }
 
+/* ==========================================================================
+   Archive Feature Styles (Issue #44)
+   ========================================================================== */
+
+.archive-calendar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+  padding: 12px 0;
+}
+
+@media (min-width: 480px) {
+  .archive-calendar {
+    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
+    gap: 12px;
+  }
+}
+
+.archive-day-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 80px;
+  min-width: 44px;
+  padding: 10px 6px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  text-align: center;
+  font-family: inherit;
+  color: var(--text);
+  cursor: default;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  user-select: none;
+}
+
+button.archive-day-card {
+  cursor: pointer;
+}
+
+button.archive-day-card:hover,
+button.archive-day-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.archive-day-card.solved {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: var(--success-bg, rgba(34, 197, 94, 0.08));
+}
+
+.archive-day-card.lost {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: var(--danger-bg, rgba(239, 68, 68, 0.08));
+}
+
+.archive-day-card.recovered {
+  border-color: rgba(234, 179, 8, 0.4);
+  background: var(--warn-bg, rgba(234, 179, 8, 0.08));
+}
+
+.archive-day-card.missed {
+  border-color: var(--edge);
+  background: var(--card);
+  opacity: 0.9;
+}
+
+.archive-day-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.archive-day-number {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.archive-day-label {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.archive-day-diff {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.archive-challenge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 14px;
+}
+
+.archive-challenge-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.archive-attempts-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.archive-attempt-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--edge);
+  background: transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.archive-attempt-dot.used {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.archive-attempt-dot.empty {
+  background: transparent;
+  border-color: var(--edge);
+}
+
+.archive-back-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.archive-back-btn:hover {
+  color: var(--text);
+}
+
+.archive-share-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
 

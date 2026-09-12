@@ -3,10 +3,16 @@ import { appearanceFixtures } from "./appearance-fixtures";
 import type { ArenaDuel } from "@/features/arena";
 import type { UserProfileData } from "@/features/profile";
 import type { LeaderboardRank } from "@/features/leaderboard";
-import type { ArchiveCalendarDay } from "@/features/archive";
 import type { ShopCosmeticItem } from "@/features/shop";
 import type { ReferralProgress } from "@/features/referral";
 import type { EventChallenge } from "@/features/events";
+
+export interface PrototypeArchiveDay {
+  date: string;
+  solved: boolean;
+  available: boolean;
+  attempts?: number;
+}
 export const duel: ArenaDuel = {
   duel_id: "sample",
   status: "active",
@@ -32,7 +38,7 @@ export const rankings: LeaderboardRank[] = [
   { rank: 4, user_id: 1, name: "Marco Rossi", points: 128, best_streak: 7 },
   { rank: 5, user_id: 5, name: "Giulia Costa", points: 125, best_streak: 6 },
 ];
-export const days: ArchiveCalendarDay[] = Array.from(
+export const days: PrototypeArchiveDay[] = Array.from(
   { length: 30 },
   (_, i) => ({
     date: `2026-09-${String(i + 1).padStart(2, "0")}`,

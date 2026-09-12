@@ -132,3 +132,58 @@ test("App navigates to leaderboard tab, loads real leaderboard data, and connect
     restoreTg();
   }
 });
+
+test("App navigates to archive tab, loads real calendar data, and does not render prototype", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const restoreFetch = mockFetchResponse({
+    days: [
+      {
+        day: "2026-09-01",
+        label: "01/09/26",
+        number: 42,
+        difficulty: "medium",
+        difficulty_label: "Media",
+        status: "solved",
+        attempts: 2,
+        hints: 0,
+        playable: false,
+      },
+      {
+        day: "2026-09-02",
+        label: "02/09/26",
+        number: 43,
+        difficulty: "hard",
+        difficulty_label: "Difficile",
+        status: "lost",
+        attempts: 5,
+        hints: 1,
+        playable: true,
+      },
+    ],
+  });
+
+  try {
+    const app = new App(container);
+    app.init();
+
+    // Set tab to archive (as if clicking an archive entry or tab)
+    app.setTab("archive");
+    await app.getArchiveController().init();
+
+    // Verify real archive components rendered
+    assert.ok(container.querySelector(".archive-calendar"), "Archive calendar was not rendered");
+    assert.ok(!container.querySelector(".prototype-notice"), "Prototype notice should not be present in archive tab");
+    assert.equal(app.getArchiveController().getState().status, "ready");
+    assert.equal(app.getArchiveController().getState().calendar.length, 2);
+
+    // Verify day cards rendered
+    const dayCards = container.querySelectorAll(".archive-day-card");
+    assert.equal(dayCards.length, 2);
+  } finally {
+    restoreFetch();
+    cleanupDom();
+    restoreTg();
+  }
+});
+
