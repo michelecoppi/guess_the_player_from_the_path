@@ -1,7 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { App } from "../../webapp/src/app/App";
-import { setupGlobalDom, setupTestTelegram, mockFetchResponse, captureFetchRequests, createTestDailyChallenge } from "./helpers";
+import {
+  setupGlobalDom,
+  setupTestTelegram,
+  mockFetchResponse,
+  captureFetchRequests,
+  createTestDailyChallenge,
+  createTestFullProfile,
+} from "./helpers";
 
 test("App mounts into DOM and renders shared components with real Daily feature data", async () => {
   const { restore: restoreTg } = setupTestTelegram();
@@ -92,6 +99,34 @@ test("query-string values (?view=wrong, ?view=solved) cannot trigger a Daily sub
     assert.equal(app2.getDailyController().getState().feedback, null);
   } finally {
     window.location.search = "";
+    restoreFetch();
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("App navigates to leaderboard tab, loads real leaderboard data, and connects LeaderboardController", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const restoreFetch = mockFetchResponse(createTestFullProfile());
+
+  try {
+    const app = new App(container);
+    app.init();
+
+    const leaderboardTabBtn = container.querySelector<HTMLButtonElement>(
+      'nav.app-nav button[data-tab="leaderboard"]',
+    );
+    assert.ok(leaderboardTabBtn);
+    leaderboardTabBtn.click();
+
+    await app.getLeaderboardController().init();
+
+    assert.ok(container.querySelector(".leaderboard-section"));
+    assert.ok(container.querySelector(".leaderboard-tabs"));
+    assert.equal(app.getLeaderboardController().getState().status, "ready");
+    assert.ok(container.textContent?.includes("Alessandro Del Piero"));
+  } finally {
     restoreFetch();
     cleanupDom();
     restoreTg();

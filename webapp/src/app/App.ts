@@ -9,7 +9,10 @@ import {
   type ArenaSubview,
 } from "@/pages/ArenaPage";
 import { renderProfilePage } from "@/pages/ProfilePage";
-import { renderLeaderboardPage } from "@/pages/LeaderboardPage";
+import {
+  renderLeaderboardPage,
+  attachLeaderboardEventListeners,
+} from "@/pages/LeaderboardPage";
 import {
   initTelegram,
   getTelegramUser,
@@ -20,6 +23,7 @@ import { exposeLegacyBridge } from "@/utils/legacy-bridge";
 import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
 import { TrainingController } from "@/features/training/controller";
+import { LeaderboardController } from "@/features/leaderboard/controller";
 
 export class App {
   private rootElement: HTMLElement;
@@ -27,6 +31,7 @@ export class App {
   private dailyController: DailyController;
   private arenaController: ArenaController;
   private trainingController: TrainingController;
+  private leaderboardController: LeaderboardController;
   private lastArenaSubview: ArenaSubview;
 
   constructor(
@@ -34,17 +39,26 @@ export class App {
     dailyController?: DailyController,
     arenaController?: ArenaController,
     trainingController?: TrainingController,
+    leaderboardController?: LeaderboardController,
   ) {
     this.rootElement = rootElement;
     this.dailyController = dailyController || new DailyController();
     this.arenaController = arenaController || new ArenaController();
     this.trainingController = trainingController || new TrainingController();
+    this.leaderboardController =
+      leaderboardController || new LeaderboardController();
     this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
 
     this.dailyController.subscribe(() => {
       if (this.activeTab === "play") {
         this.renderDailyContent();
+      }
+    });
+
+    this.leaderboardController.subscribe(() => {
+      if (this.activeTab === "leaderboard") {
+        this.renderLeaderboardContent();
       }
     });
 
@@ -93,6 +107,10 @@ export class App {
     return this.trainingController;
   }
 
+  public getLeaderboardController(): LeaderboardController {
+    return this.leaderboardController;
+  }
+
   public isArenaTab(tab: NavTabId): boolean {
     return tab === "arena" || tab === "duels" || tab === "challenge";
   }
@@ -115,6 +133,9 @@ export class App {
     this.render();
     this.dailyController.init();
     this.arenaController.init();
+    if (this.activeTab === "leaderboard") {
+      void this.leaderboardController.init();
+    }
   }
 
   public setTab(tab: NavTabId): void {
@@ -127,6 +148,8 @@ export class App {
         this.arenaController.setSubview("duel");
       } else if (tab === "challenge") {
         this.arenaController.setSubview("challenge");
+      } else if (tab === "leaderboard") {
+        void this.leaderboardController.init();
       }
 
       this.render();
@@ -239,6 +262,26 @@ export class App {
     }
   }
 
+  private renderLeaderboardContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "leaderboard") {
+      mainEl.innerHTML = renderLeaderboardPage(
+        this.leaderboardController.getState(),
+      );
+      attachLeaderboardEventListeners(
+        this.rootElement,
+        this.leaderboardController,
+      );
+      const heading = mainEl.querySelector<HTMLElement>(
+        "#public-profile-heading",
+      );
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    }
+  }
+
   private render(): void {
     const user = getTelegramUser();
     const isMock = isMockTelegramEnvironment();
@@ -260,7 +303,9 @@ export class App {
         pageHtml = renderProfilePage({ user });
         break;
       case "leaderboard":
-        pageHtml = renderLeaderboardPage();
+        pageHtml = renderLeaderboardPage(
+          this.leaderboardController.getState(),
+        );
         break;
       default:
         pageHtml = renderPrototype(this.activeTab);
@@ -312,6 +357,11 @@ export class App {
         this.rootElement,
         this.arenaController,
         this.trainingController,
+      );
+    } else if (this.activeTab === "leaderboard") {
+      attachLeaderboardEventListeners(
+        this.rootElement,
+        this.leaderboardController,
       );
     }
   }

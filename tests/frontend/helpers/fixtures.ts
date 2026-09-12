@@ -200,4 +200,70 @@ export function createTestTrainingData(
   };
 }
 
+export function createTestFullProfile(overrides: Record<string, any> = {}) {
+  return {
+    user: {
+      name: "Mario",
+      points: 450,
+      monthly_points: 120,
+      players_guessed: 45,
+      bonus_first_guessed: 3,
+      streak: 5,
+      best_streak: 12,
+      archive_solved: 8,
+      trophies: 2,
+    },
+    leaderboard: [
+      { position: 1, profile_id: 101, name: "Alessandro Del Piero", badge: "👑", points: 1540, me: false },
+      { position: 2, profile_id: 102, name: "Francesco Totti", badge: "🥈", points: 1480, me: false },
+      { position: 3, profile_id: 103, name: "Mario", badge: "⭐", points: 450, me: true },
+      { position: 4, profile_id: 104, name: "Andrea Pirlo", points: 400, me: false },
+    ],
+    leagues: [
+      {
+        code: "BAR01",
+        name: "Amici del Bar",
+        members: 4,
+        position: 2,
+        points: 450,
+        standings: [
+          { position: 1, profile_id: 101, name: "Alessandro Del Piero", points: 1540, me: false },
+          { position: 2, profile_id: 103, name: "Mario", points: 450, me: true },
+          { position: 3, profile_id: 102, name: "Francesco Totti", points: 300, me: false },
+          { position: 4, profile_id: 104, name: "Andrea Pirlo", points: 200, me: false },
+        ],
+      },
+    ],
+    ...overrides,
+  };
+}
+
+export function createTestPublicProfile(overrides: Record<string, any> = {}) {
+  return {
+    user: {
+      name: "Alessandro Del Piero",
+      points: 1540,
+      monthly_points: 320,
+      players_guessed: 150,
+      bonus_first_guessed: 15,
+      streak: 12,
+      best_streak: 25,
+      archive_solved: 30,
+      trophies: 5,
+    },
+    cosmetics: {
+      equipped: {
+        number: "10",
+        badge: "👑",
+      },
+    },
+    trophies: ["Trophy 1", "Trophy 2"],
+    wearing: [
+      { kind: "number", name: "Maglia numero 10" },
+      { kind: "badge", name: "Corona oro" },
+    ],
+    ...overrides,
+  };
+}
+
 

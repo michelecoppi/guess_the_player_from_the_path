@@ -1,4 +1,4 @@
-import type { ApiProfileResponse, ApiRequestPayload } from "./types";
+import type { ApiProfileResponse, ApiPublicProfileResponse, ApiRequestPayload } from "./types";
 import { getInitData } from "@/telegram/webapp";
 
 export class ApiError extends Error {
@@ -136,6 +136,13 @@ export class ApiClient {
    */
   async getProfile(payload: { lightweight?: boolean } = {}): Promise<ApiProfileResponse> {
     return this.getMe(payload);
+  }
+
+  /**
+   * Fetches public player profile from POST /app/api/profile/public.
+   */
+  async getPublicProfile(profileId: number): Promise<ApiPublicProfileResponse> {
+    return this.post<ApiPublicProfileResponse>("/profile/public", { profile_id: profileId });
   }
 }
 

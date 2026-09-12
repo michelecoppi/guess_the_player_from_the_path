@@ -199,6 +199,37 @@ export interface TranslationSchema {
     placeholder: string;
     submitBtn: string;
   };
+  leaderboard: {
+    title: string;
+    kicker: string;
+    tabGlobal: string;
+    tabLeagues: string;
+    colPosPlayer: string;
+    colPoints: string;
+    tapProfileHint: string;
+    youLabel: string;
+    emptyGlobalTitle: string;
+    emptyGlobal: string;
+    emptyLeaguesTitle: string;
+    emptyLeagues: string;
+    noMembers: string;
+    leagueMembers: string;
+    yourPosition: string;
+    yourPoints: string;
+    openProfile: string;
+    backToLeaderboard: string;
+    publicProfileUnavailable: string;
+    numbers: string;
+    totalPoints: string;
+    monthlyPoints: string;
+    guessed: string;
+    streak: string;
+    bestStreak: string;
+    recovered: string;
+    trophies: string;
+    wearing: string;
+    loadError: string;
+  };
   migration: {
     badge: string;
     dailyNotice: string;
