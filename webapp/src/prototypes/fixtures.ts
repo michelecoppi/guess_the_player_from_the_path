@@ -1,3 +1,4 @@
+import { appearanceFixtures } from "./appearance-fixtures";
 /** Design fixtures only. Never interpreted as authenticated user data. */
 import type { ArenaDuel } from "@/features/arena";
 import type { UserProfileData } from "@/features/profile";
@@ -22,7 +23,7 @@ export const profile: UserProfileData = {
   current_streak: 7,
   best_streak: 18,
   trophies: [{ id: "sample", name: "Settembre", position: 2, date: "2026-09" }],
-  cosmetics: {},
+  cosmetics: appearanceFixtures.identity,
 };
 export const rankings: LeaderboardRank[] = [
   { rank: 1, user_id: 2, name: "Andrea Bianchi", points: 148, best_streak: 12 },
@@ -42,32 +43,91 @@ export const days: ArchiveCalendarDay[] = Array.from(
 );
 export const items: ShopCosmeticItem[] = [
   {
-    id: "paper",
-    type: "theme",
-    name: "Match programme",
-    description: "Carta, inchiostro, calcio.",
-    price_stars: 50,
-    unlocked: false,
-    equipped: false,
+    "id": "ghiaccio",
+    "kind": "theme",
+    "name": "Ghiaccio",
+    "description": "Chiarissimo. Per chi gioca alla luce del sole e odia gli schermi neri.",
+    "price": 15,
+    "full_price": 15,
+    "missing": [
+      "ghiaccio"
+    ],
+    "achievement": null,
+    "progress": 0,
+    "style": {
+      "bg": "#eef4fa",
+      "bg2": "#e0eaf4",
+      "card": "#ffffff",
+      "edge": "#cbdbe9",
+      "text": "#16283a",
+      "muted": "#61798f",
+      "accent": "#1f7ae0",
+      "accentText": "#ffffff",
+      "track": "#d3e2ef"
+    },
+    "grants": [],
+    "owned": false,
+    "equipped": false,
+    "free": false,
+    "featured": false,
+    "equippable": true,
+    "rarity": "common",
+    "completes": [],
+    "trophy": null,
+    "welcome": false
   },
   {
-    id: "captain",
-    type: "frame",
-    name: "Capitano",
-    description: "Una fascia per il tuo profilo.",
-    price_stars: 30,
-    unlocked: false,
-    equipped: false,
+    "id": "fascia_capitano",
+    "kind": "frame",
+    "name": "Fascia da capitano",
+    "description": "Le righe della fascia, intorno alla tua faccia.",
+    "price": 15,
+    "full_price": 15,
+    "missing": [
+      "fascia_capitano"
+    ],
+    "achievement": null,
+    "progress": 0,
+    "style": {
+      "ring": "repeating-linear-gradient(45deg, #f5c542 0 7px, #1b3a6b 7px 14px)"
+    },
+    "grants": [],
+    "owned": false,
+    "equipped": false,
+    "free": false,
+    "featured": false,
+    "equippable": true,
+    "rarity": "common",
+    "completes": [],
+    "trophy": null,
+    "welcome": false
   },
   {
-    id: "squares",
-    type: "symbol",
-    name: "Il tabellino",
-    description: "I tuoi tentativi, in campo.",
-    price_stars: 20,
-    unlocked: true,
-    equipped: true,
-  },
+    "id": "quadratini_classici",
+    "kind": "squares",
+    "name": "Quadratini classici",
+    "description": "🟩 🟥 ⬜ - quelli che legge tutto il gruppo.",
+    "price": 0,
+    "full_price": 0,
+    "missing": [],
+    "achievement": null,
+    "progress": 0,
+    "style": {
+      "correct": "🟩",
+      "wrong": "🟥",
+      "unused": "⬜"
+    },
+    "grants": [],
+    "owned": true,
+    "equipped": true,
+    "free": true,
+    "featured": false,
+    "equippable": true,
+    "rarity": "free",
+    "completes": [],
+    "trophy": null,
+    "welcome": false
+  }
 ];
 export const referral: ReferralProgress = {
   qualified_count: 2,

@@ -116,6 +116,7 @@ export class App {
   }
 
   public init(): void {
+    this.dailyController.reset();
     const tg = initTelegram();
     connectTheme(tg);
     const user = getTelegramUser();

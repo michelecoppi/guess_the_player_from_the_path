@@ -1,3 +1,4 @@
+import { identityAppearance } from "@/appearance";
 import { escapeHtml, initials } from "@/utils/format";
 import { t } from "@/i18n";
 import { icon } from "@/components/Icon";
@@ -82,7 +83,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
 
   const p = publicProfile.data;
   const u = p.user;
-  const cosmetics = p.cosmetics || {};
+  const cosmetics = identityAppearance(p.cosmetics);
   const badge = cosmetics.badge || "";
   const number = cosmetics.number || "";
   const shirt = number ? `<span class="shirt">${escapeHtml(number)}</span>` : "";

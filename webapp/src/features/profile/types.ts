@@ -1,3 +1,4 @@
+import type { ResolvedAppearance } from "@/appearance/types";
 /**
  * User Profile Feature Module
  * Ownership: Issue #42 (Mini App: migrare feature Profilo)
@@ -17,10 +18,7 @@ export interface UserProfileData {
   current_streak: number;
   best_streak: number;
   trophies: Trophy[];
-  cosmetics: {
-    avatar_frame?: string;
-    background_theme?: string;
-  };
+  cosmetics?: ResolvedAppearance;
 }
 
 export const PROFILE_FEATURE_METADATA = {

@@ -1,0 +1,356 @@
+{
+  "default": {
+    "equipped": {
+      "theme": "notturno",
+      "frame": "cornice_nessuna",
+      "title": "titolo_nessuno",
+      "badge": "distintivo_nessuno",
+      "squares": "quadratini_classici",
+      "number": "maglia_nessuna",
+      "celebration": "festa_nessuna",
+      "card": "figurina_classica"
+    },
+    "theme": {
+      "bg": "#0a131e",
+      "bg2": "#132437",
+      "card": "#1a2c40",
+      "edge": "#273e56",
+      "text": "#ecf2f8",
+      "muted": "#8ea2b6",
+      "accent": "#38bd82",
+      "accentText": "#0a1a12",
+      "track": "#2c445c"
+    },
+    "frame": {
+      "ring": ""
+    },
+    "badge": "",
+    "squares": {
+      "correct": "🟩",
+      "wrong": "🟥",
+      "unused": "⬜"
+    },
+    "title": {
+      "label": "",
+      "color": ""
+    },
+    "number": "",
+    "celebration": "",
+    "card": {
+      "finish": "plain",
+      "ink": "#ecf2f8",
+      "paper": "#0a131e",
+      "glow": "#38bd82"
+    }
+  },
+  "identity": {
+    "equipped": {
+      "theme": "notturno",
+      "frame": "fascia_capitano",
+      "title": "talent_scout",
+      "badge": "distintivo_pallone",
+      "squares": "quadratini_classici",
+      "number": "maglia_nessuna",
+      "celebration": "festa_nessuna",
+      "card": "figurina_classica"
+    },
+    "theme": {
+      "bg": "#0a131e",
+      "bg2": "#132437",
+      "card": "#1a2c40",
+      "edge": "#273e56",
+      "text": "#ecf2f8",
+      "muted": "#8ea2b6",
+      "accent": "#38bd82",
+      "accentText": "#0a1a12",
+      "track": "#2c445c"
+    },
+    "frame": {
+      "ring": "repeating-linear-gradient(45deg, #f5c542 0 7px, #1b3a6b 7px 14px)"
+    },
+    "badge": "⚽",
+    "squares": {
+      "correct": "🟩",
+      "wrong": "🟥",
+      "unused": "⬜"
+    },
+    "title": {
+      "label": "Talent scout",
+      "color": "#38bd82"
+    },
+    "number": "",
+    "celebration": "",
+    "card": {
+      "finish": "plain",
+      "ink": "#ecf2f8",
+      "paper": "#0a131e",
+      "glow": "#38bd82"
+    }
+  },
+  "collection": {
+    "equipped": {
+      "theme": "notte_di_neve",
+      "frame": "anello_di_ghiaccio",
+      "title": "guerriero_di_gennaio",
+      "badge": "distintivo_fiocco",
+      "squares": "quadratini_neve",
+      "number": "maglia_dieci",
+      "celebration": "festa_neve",
+      "card": "figurina_notturna"
+    },
+    "theme": {
+      "bg": "#070d1a",
+      "bg2": "#0d1729",
+      "card": "#12203a",
+      "edge": "#24365a",
+      "text": "#eaf2ff",
+      "muted": "#a4bade",
+      "accent": "#7fc4ff",
+      "accentText": "#05101f",
+      "track": "#1a2a48",
+      "pattern": "repeating-radial-gradient(circle at 22% 10%, rgba(255,255,255,.14) 0 1.6px, transparent 2px 52px), repeating-radial-gradient(circle at 70% 40%, rgba(255,255,255,.1) 0 1.3px, transparent 2px 39px)"
+    },
+    "frame": {
+      "ring": "conic-gradient(#bfe6ff, #ffffff, #6ba8d8, #eaf6ff, #bfe6ff)",
+      "spin": true
+    },
+    "badge": "❄️",
+    "squares": {
+      "correct": "❄️",
+      "wrong": "❌",
+      "unused": "▫️"
+    },
+    "title": {
+      "label": "Guerriero di gennaio",
+      "color": "#7fc4ff"
+    },
+    "number": "10",
+    "celebration": "snow",
+    "card": {
+      "finish": "night",
+      "ink": "#eaf2ff",
+      "paper": "#050c1c",
+      "glow": "#7fc4ff"
+    }
+  },
+  "squares": {
+    "equipped": {
+      "theme": "notturno",
+      "frame": "cornice_nessuna",
+      "title": "titolo_nessuno",
+      "badge": "distintivo_nessuno",
+      "squares": "quadratini_pallone",
+      "number": "maglia_nessuna",
+      "celebration": "festa_nessuna",
+      "card": "figurina_classica"
+    },
+    "theme": {
+      "bg": "#0a131e",
+      "bg2": "#132437",
+      "card": "#1a2c40",
+      "edge": "#273e56",
+      "text": "#ecf2f8",
+      "muted": "#8ea2b6",
+      "accent": "#38bd82",
+      "accentText": "#0a1a12",
+      "track": "#2c445c"
+    },
+    "frame": {
+      "ring": ""
+    },
+    "badge": "",
+    "squares": {
+      "correct": "⚽",
+      "wrong": "❌",
+      "unused": "⬜"
+    },
+    "title": {
+      "label": "",
+      "color": ""
+    },
+    "number": "",
+    "celebration": "",
+    "card": {
+      "finish": "plain",
+      "ink": "#ecf2f8",
+      "paper": "#0a131e",
+      "glow": "#38bd82"
+    }
+  },
+  "theme": {
+    "equipped": {
+      "theme": "ghiaccio",
+      "frame": "cornice_nessuna",
+      "title": "titolo_nessuno",
+      "badge": "distintivo_nessuno",
+      "squares": "quadratini_classici",
+      "number": "maglia_nessuna",
+      "celebration": "festa_nessuna",
+      "card": "figurina_classica"
+    },
+    "theme": {
+      "bg": "#eef4fa",
+      "bg2": "#e0eaf4",
+      "card": "#ffffff",
+      "edge": "#cbdbe9",
+      "text": "#16283a",
+      "muted": "#61798f",
+      "accent": "#1f7ae0",
+      "accentText": "#ffffff",
+      "track": "#d3e2ef"
+    },
+    "frame": {
+      "ring": ""
+    },
+    "badge": "",
+    "squares": {
+      "correct": "🟩",
+      "wrong": "🟥",
+      "unused": "⬜"
+    },
+    "title": {
+      "label": "",
+      "color": ""
+    },
+    "number": "",
+    "celebration": "",
+    "card": {
+      "finish": "plain",
+      "ink": "#ecf2f8",
+      "paper": "#0a131e",
+      "glow": "#38bd82"
+    }
+  },
+  "number": {
+    "equipped": {
+      "theme": "notturno",
+      "frame": "cornice_nessuna",
+      "title": "titolo_nessuno",
+      "badge": "distintivo_nessuno",
+      "squares": "quadratini_classici",
+      "number": "maglia_sette",
+      "celebration": "festa_nessuna",
+      "card": "figurina_classica"
+    },
+    "theme": {
+      "bg": "#0a131e",
+      "bg2": "#132437",
+      "card": "#1a2c40",
+      "edge": "#273e56",
+      "text": "#ecf2f8",
+      "muted": "#8ea2b6",
+      "accent": "#38bd82",
+      "accentText": "#0a1a12",
+      "track": "#2c445c"
+    },
+    "frame": {
+      "ring": ""
+    },
+    "badge": "",
+    "squares": {
+      "correct": "🟩",
+      "wrong": "🟥",
+      "unused": "⬜"
+    },
+    "title": {
+      "label": "",
+      "color": ""
+    },
+    "number": "7",
+    "celebration": "",
+    "card": {
+      "finish": "plain",
+      "ink": "#ecf2f8",
+      "paper": "#0a131e",
+      "glow": "#38bd82"
+    }
+  },
+  "celebration": {
+    "equipped": {
+      "theme": "notturno",
+      "frame": "cornice_nessuna",
+      "title": "titolo_nessuno",
+      "badge": "distintivo_nessuno",
+      "squares": "quadratini_classici",
+      "number": "maglia_nessuna",
+      "celebration": "festa_coriandoli",
+      "card": "figurina_classica"
+    },
+    "theme": {
+      "bg": "#0a131e",
+      "bg2": "#132437",
+      "card": "#1a2c40",
+      "edge": "#273e56",
+      "text": "#ecf2f8",
+      "muted": "#8ea2b6",
+      "accent": "#38bd82",
+      "accentText": "#0a1a12",
+      "track": "#2c445c"
+    },
+    "frame": {
+      "ring": ""
+    },
+    "badge": "",
+    "squares": {
+      "correct": "🟩",
+      "wrong": "🟥",
+      "unused": "⬜"
+    },
+    "title": {
+      "label": "",
+      "color": ""
+    },
+    "number": "",
+    "celebration": "confetti",
+    "card": {
+      "finish": "plain",
+      "ink": "#ecf2f8",
+      "paper": "#0a131e",
+      "glow": "#38bd82"
+    }
+  },
+  "card": {
+    "equipped": {
+      "theme": "notturno",
+      "frame": "cornice_nessuna",
+      "title": "titolo_nessuno",
+      "badge": "distintivo_nessuno",
+      "squares": "quadratini_classici",
+      "number": "maglia_nessuna",
+      "celebration": "festa_nessuna",
+      "card": "figurina_foil"
+    },
+    "theme": {
+      "bg": "#0a131e",
+      "bg2": "#132437",
+      "card": "#1a2c40",
+      "edge": "#273e56",
+      "text": "#ecf2f8",
+      "muted": "#8ea2b6",
+      "accent": "#38bd82",
+      "accentText": "#0a1a12",
+      "track": "#2c445c"
+    },
+    "frame": {
+      "ring": ""
+    },
+    "badge": "",
+    "squares": {
+      "correct": "🟩",
+      "wrong": "🟥",
+      "unused": "⬜"
+    },
+    "title": {
+      "label": "",
+      "color": ""
+    },
+    "number": "",
+    "celebration": "",
+    "card": {
+      "finish": "foil",
+      "ink": "#fdf7ff",
+      "paper": "#10112e",
+      "glow": "#ff9ce3"
+    }
+  }
+}

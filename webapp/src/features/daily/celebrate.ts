@@ -51,7 +51,7 @@ export function celebrate(effect?: string | null): void {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-  const kind = effect && CELEBRATIONS[effect] ? effect : "confetti";
+  const kind = effect && Object.hasOwn(CELEBRATIONS, effect) ? effect : "";
   const spec = CELEBRATIONS[kind];
   if (!spec) return;
 

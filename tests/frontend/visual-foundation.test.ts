@@ -120,7 +120,7 @@ test("review navigation and fixture interactions never call an API", () => {
     cleanup();
   }
 });
-test("Telegram theme changes preserve host surfaces and combine safe areas", () => {
+test("Telegram theme changes preserve dark identity and combine safe areas", () => {
   const { cleanup } = setupGlobalDom();
   try {
     const tg = createMockTelegramWebApp();
@@ -137,14 +137,14 @@ test("Telegram theme changes preserve host surfaces and combine safe areas", () 
       listeners.delete(event);
     };
     const dispose = connectTheme(tg);
-    assert.equal(document.documentElement.dataset.theme, "light");
+    assert.equal(document.documentElement.dataset.theme, "dark");
     assert.equal(
       document.documentElement.style.getPropertyValue("--tg-safe-top"),
       "56px",
     );
     assert.equal(
       document.documentElement.style.getPropertyValue("--tg-theme-bg-color"),
-      "#ffffff",
+      "",
     );
     tg.colorScheme = "dark";
     tg.themeParams = { bg_color: "#222222", text_color: "#ffffff" };
@@ -152,7 +152,7 @@ test("Telegram theme changes preserve host surfaces and combine safe areas", () 
     assert.equal(document.documentElement.dataset.theme, "dark");
     assert.equal(
       document.documentElement.style.getPropertyValue("--tg-theme-text-color"),
-      "#ffffff",
+      "",
     );
     dispose();
     assert.equal(listeners.size, 0);

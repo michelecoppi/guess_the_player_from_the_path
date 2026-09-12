@@ -1,3 +1,4 @@
+import { clearResolvedAppearance } from "@/appearance";
 import type { ApiProfileResponse, ApiPublicProfileResponse, ApiRequestPayload } from "./types";
 import { getInitData } from "@/telegram/webapp";
 
@@ -35,6 +36,7 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
 export class ApiClient {
   private baseUrl: string;
   private getAuthToken: () => string;
+  private lastAuthToken: string | undefined;
 
   constructor(config: ApiClientConfig = {}) {
     this.baseUrl = (config.baseUrl || "/app/api").replace(/\/+$/, "");
@@ -57,6 +59,9 @@ export class ApiClient {
    * By default, Mini App endpoints use POST with a JSON body containing { initData, ...payload }.
    */
   async request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
+    const authToken = options.skipAuth ? undefined : this.getAuthToken();
+    if (this.lastAuthToken !== undefined && authToken !== undefined && authToken !== this.lastAuthToken) clearResolvedAppearance();
+    if (authToken !== undefined) this.lastAuthToken = authToken;
     const url = this.resolveUrl(endpoint);
     const method = (options.method || "POST").toUpperCase();
     const headers = new Headers(options.headers || {});
@@ -71,7 +76,7 @@ export class ApiClient {
       if (typeof options.body === "string") {
         body = options.body;
       } else {
-        const token = options.skipAuth ? undefined : this.getAuthToken();
+        const token = authToken;
         const payload: ApiRequestPayload = {
           ...(token !== undefined ? { initData: token } : {}),
           ...(options.body || {}),
@@ -87,6 +92,16 @@ export class ApiClient {
       body,
     });
 
+    const checkSession = () => {
+      if (authToken !== undefined && this.getAuthToken() !== authToken) {
+        if (this.lastAuthToken === authToken) {
+          clearResolvedAppearance();
+          this.lastAuthToken = this.getAuthToken();
+        }
+        throw new ApiError("Session changed", 409);
+      }
+    };
+    checkSession();
     if (!response.ok) {
       let errorData: unknown;
       try {
@@ -105,7 +120,9 @@ export class ApiClient {
       );
     }
 
-    return (await response.json()) as T;
+    const data = (await response.json()) as T;
+    checkSession();
+    return data;
   }
 
   /**
