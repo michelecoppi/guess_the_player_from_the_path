@@ -423,8 +423,89 @@ class CandidateProvenance:
             if stop_id and not fp.stop_id:
                 fp.stop_id = stop_id
 
+        # Aggiorna il normalized_value delle sole osservazioni effettivamente supportate dalla trasformazione
+        for obs in fp.observations:
+            if obs.raw_value == raw_value:
+                obs.normalized_value = normalized_value
+            elif isinstance(raw_value, str) and isinstance(obs.raw_value, str):
+                s_obs = obs.raw_value.strip().lower()
+                s_raw = raw_value.strip().lower()
+                s_norm = normalized_value.strip().lower() if isinstance(normalized_value, str) else ""
+                if s_obs == s_raw or (s_norm and s_obs == s_norm):
+                    obs.normalized_value = normalized_value
+
         fp.add_transformation(rec)
         return rec
+
+    def reindex_alias_paths(self, old_aliases: list[str], new_aliases: list[str]) -> None:
+        """Riallinea i percorsi `aliases[i]` dopo la normalizzazione e deduplicazione degli alias.
+
+        Garantisce che:
+        - Le osservazioni puntino all'indice effettivo dell'alias nel candidato;
+        - Fonti diverse per lo stesso alias condividano la provenienza;
+        - Alias differenti non collidano;
+        - Le trasformazioni rimangano tracciate e valide nel rispetto dei dati.
+        """
+        alias_path_regex = re.compile(r"^aliases\[(\d+)\]$")
+
+        def _clean_str(s: Any) -> str:
+            return str(s).strip().lower() if s is not None else ""
+
+        old_idx_to_new_idx: dict[int, int] = {}
+        for old_idx, old_val in enumerate(old_aliases):
+            clean_v = _clean_str(old_val)
+            for new_idx, new_val in enumerate(new_aliases):
+                if _clean_str(new_val) == clean_v:
+                    old_idx_to_new_idx[old_idx] = new_idx
+                    break
+
+        alias_fields: dict[int, FieldProvenance] = {}
+        other_fields: dict[str, FieldProvenance] = {}
+
+        for key, fp in self.fields.items():
+            m = alias_path_regex.match(key)
+            if m:
+                old_idx = int(m.group(1))
+                alias_fields[old_idx] = fp
+            else:
+                other_fields[key] = fp
+
+        new_alias_fields: dict[str, FieldProvenance] = {}
+        for old_idx, fp in alias_fields.items():
+            if old_idx in old_idx_to_new_idx:
+                new_idx = old_idx_to_new_idx[old_idx]
+                target_path = f"aliases[{new_idx}]"
+                target_val = new_aliases[new_idx]
+
+                if target_path in new_alias_fields:
+                    target_fp = new_alias_fields[target_path]
+                    for obs in fp.observations:
+                        target_fp.add_observation(obs)
+                    for tr in fp.transformations:
+                        target_fp.add_transformation(tr)
+                else:
+                    fp.field_path = target_path
+                    fp.current_value = target_val
+                    fp.normalized_value = target_val
+                    new_alias_fields[target_path] = fp
+
+                old_val = old_aliases[old_idx]
+                if old_val != target_val:
+                    rec = NormalizationRecord(
+                        raw_value=old_val,
+                        normalized_value=target_val,
+                        finding_code="ALIAS_NORMALIZED",
+                        timestamp=now_utc_iso(),
+                    )
+                    new_alias_fields[target_path].add_transformation(rec)
+                    for obs in new_alias_fields[target_path].observations:
+                        if obs.raw_value == old_val and obs.normalized_value is None:
+                            obs.normalized_value = target_val
+            else:
+                other_fields[fp.field_path] = fp
+
+        other_fields.update(new_alias_fields)
+        self.fields = other_fields
 
     def reindex_career_paths(self, career: list[dict[str, Any]]) -> None:
         """Riallinea i percorsi `career[i].prop` in base al nuovo ordine delle tappe di carriera.

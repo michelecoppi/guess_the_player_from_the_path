@@ -45,23 +45,34 @@ def _find_matching_career_stop(
 ) -> Optional[int]:
     """Cerca una tappa di carriera esistente compatibile con una nuova tappa in arrivo.
 
-    Criteri di matching:
-    1. Nome della squadra coincidente (case-insensitive o sottostringa rilevante);
-    2. Anno di inizio o fine coincidente o sovrapposto.
+    Criteri di matching deterministico:
+    1. Identita' esatta del club (cleaned) oppure identita' canonica normalizzata dal livello sicuro di normalizzazione.
+       Non usa MAI sottostringhe (in/contains) per evitare fusioni errate (es. Inter vs Inter Miami, Real vs Real Madrid).
+       Gli alias ambigui non sono mai match autoritativi.
+    2. Compatibilita' temporale (anni coincidenti o entro +-1 anno).
     """
     in_raw = incoming_stop.get("team")
-    in_team = str(in_raw or "").strip().lower()
+    if not in_raw or not str(in_raw).strip():
+        return None
+
+    from services.candidate_normalization import (
+        FindingCode,
+        FindingSeverity,
+        clean_text,
+        normalize_club_name,
+    )
+
+    in_clean = clean_text(str(in_raw)).lower()
     in_start = incoming_stop.get("start_year")
     in_end = incoming_stop.get("end_year")
 
-    if not in_team:
-        return None
-
     norm_in = ""
     try:
-        from services.candidate_normalization import normalize_club_name
-        norm_in_res, _ = normalize_club_name(in_raw)
-        norm_in = norm_in_res.strip().lower()
+        norm_in_res, findings_in = normalize_club_name(in_raw, incoming_stop.get("country"))
+        is_ambig_in = any(f.code == FindingCode.CLUB_AMBIGUOUS_ALIAS for f in findings_in)
+        has_err_in = any(f.severity == FindingSeverity.ERROR for f in findings_in)
+        if norm_in_res and not is_ambig_in and not has_err_in:
+            norm_in = clean_text(norm_in_res).lower()
     except Exception:
         pass
 
@@ -70,29 +81,35 @@ def _find_matching_career_stop(
             continue
 
         ex_raw = existing.get("team")
-        ex_team = str(ex_raw or "").strip().lower()
+        if not ex_raw or not str(ex_raw).strip():
+            continue
+
+        ex_clean = clean_text(str(ex_raw)).lower()
         ex_start = existing.get("start_year")
         ex_end = existing.get("end_year")
 
         norm_ex = ""
         try:
-            from services.candidate_normalization import normalize_club_name
-            norm_ex_res, _ = normalize_club_name(ex_raw)
-            norm_ex = norm_ex_res.strip().lower()
+            norm_ex_res, findings_ex = normalize_club_name(ex_raw, existing.get("country"))
+            is_ambig_ex = any(f.code == FindingCode.CLUB_AMBIGUOUS_ALIAS for f in findings_ex)
+            has_err_ex = any(f.severity == FindingSeverity.ERROR for f in findings_ex)
+            if norm_ex_res and not is_ambig_ex and not has_err_ex:
+                norm_ex = clean_text(norm_ex_res).lower()
         except Exception:
             pass
 
-        # Verifica compatibilità del club
+        # Verifica equivalenza deterministica:
+        # - Identita' esatta pulita (in_clean == ex_clean)
+        # - Oppure identita' canonica normalizzata esatta (norm_in == norm_ex)
+        # Sottostringhe / contenimento parziale tassativamente vietati!
         team_match = (
-            in_team == ex_team
-            or in_team in ex_team
-            or ex_team in in_team
-            or (norm_in and norm_ex and norm_in == norm_ex)
+            in_clean == ex_clean
+            or bool(norm_in and norm_ex and norm_in == norm_ex)
         )
         if not team_match:
             continue
 
-        # Se entrambi hanno start_year, devono essere coincidenti o vicini (±1 anno)
+        # Compatibilita' temporale: coincidenti o entro +-1 anno
         if in_start is not None and ex_start is not None:
             if abs(in_start - ex_start) <= 1:
                 return idx
@@ -101,7 +118,6 @@ def _find_matching_career_stop(
                 return idx
         elif in_start is None and in_end is None:
             return idx
-
 
     return None
 
@@ -153,11 +169,24 @@ def populate_candidate_from_result(
 
     # 2. Aliases
     if result.aliases:
-        for a_idx, alias in enumerate(result.aliases):
-            if alias not in candidate.aliases:
+        from services.candidate_normalization import clean_text
+
+        for alias in result.aliases:
+            if not alias or not str(alias).strip():
+                continue
+            clean_a = clean_text(str(alias)).lower()
+            target_idx = None
+            for idx, existing in enumerate(candidate.aliases):
+                if clean_text(str(existing)).lower() == clean_a:
+                    target_idx = idx
+                    break
+
+            if target_idx is None:
                 candidate.aliases.append(alias)
+                target_idx = len(candidate.aliases) - 1
+
             candidate.record_observation(
-                field_path=f"aliases[{a_idx}]",
+                field_path=f"aliases[{target_idx}]",
                 source=result.source_name,
                 source_id=result.source_id,
                 raw_value=alias,
@@ -269,11 +298,12 @@ def populate_candidate_from_result(
 
     # 7. Preserva raw data per auditing e backward-compatibility
     if "sources" not in candidate.raw_data:
-        # Se raw_data ha la vecchia struttura piatta, la migriamo
-        old_src = candidate.raw_data.get("source_name")
+        # Se raw_data ha la vecchia struttura piatta, la migriamo salvando prima old_raw
+        old_raw = copy.deepcopy(candidate.raw_data)
+        old_src = old_raw.get("source_name")
         candidate.raw_data = {"sources": {}}
         if old_src:
-            candidate.raw_data["sources"][old_src] = copy.deepcopy(candidate.raw_data)
+            candidate.raw_data["sources"][old_src] = old_raw
 
     candidate.raw_data["sources"][result.source_name] = {
         "source_name": result.source_name,

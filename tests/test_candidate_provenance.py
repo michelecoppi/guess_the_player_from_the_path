@@ -20,6 +20,7 @@ Covers:
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -687,3 +688,353 @@ def test_production_dataset_zero_mutation_guarantee():
 
     hash_after = _hash_file(_PLAYERS_JSON)
     assert hash_before == hash_after, "data/players.json NON deve essere modificato dalle operazioni di provenance"
+
+
+# ---------------------------------------------------------------------------
+# 7. Focused Review Regression Tests (PR #62)
+# ---------------------------------------------------------------------------
+
+
+def test_legacy_raw_data_survives_subsequent_adapter_merge():
+    """Regression test 1: Prove complete legacy raw payload survives migration and merge."""
+    legacy_payload = {
+        "source_name": "wikipedia",
+        "source_id": "Legacy_Player",
+        "source_metadata": {"url": "https://it.wikipedia.org/wiki/Legacy", "rev_id": 8877},
+        "raw_payload": {"infobox": "{{Bio|nome=Legacy}}", "sections": ["Carriera"]},
+    }
+    cand = CandidatePlayer(
+        candidate_id="cand_legacy_preserve",
+        source="wikipedia",
+        source_id="Legacy_Player",
+        full_name="Legacy Player",
+        raw_data=copy.deepcopy(legacy_payload),
+    )
+    cand.transition_to(CandidateState.FETCHED)
+
+    # Ingest a second adapter result
+    wikidata_result = AdapterResult(
+        source_name="wikidata",
+        source_id="Q12345",
+        success=True,
+        player_name="Legacy Player",
+        birth_year=1991,
+        source_metadata={"url": "https://www.wikidata.org/wiki/Q12345"},
+        raw_payload={"claims": {"P569": "1991"}},
+    )
+    merge_adapter_result(cand, wikidata_result)
+
+    # 1. Check sources structure
+    assert "sources" in cand.raw_data
+    assert "wikipedia" in cand.raw_data["sources"]
+    assert "wikidata" in cand.raw_data["sources"]
+
+    # 2. Complete old source payload preserved
+    old_wiki = cand.raw_data["sources"]["wikipedia"]
+    assert old_wiki["source_name"] == "wikipedia"
+    assert old_wiki["source_id"] == "Legacy_Player"
+    assert old_wiki["source_metadata"] == legacy_payload["source_metadata"]
+    assert old_wiki["raw_payload"] == legacy_payload["raw_payload"]
+
+    # 3. New source payload correctly stored
+    new_wdata = cand.raw_data["sources"]["wikidata"]
+    assert new_wdata["source_name"] == "wikidata"
+    assert new_wdata["source_id"] == "Q12345"
+    assert new_wdata["raw_payload"] == {"claims": {"P569": "1991"}}
+
+    # 4. Backward-compatible top-level fields preserved
+    assert cand.raw_data["source_name"] == "wikidata"
+    assert cand.raw_data["source_id"] == "Q12345"
+
+
+def test_career_stop_matching_no_substring_and_ambiguous_aliases():
+    """Regression test 2: Prove career stop matching rejects substrings and ambiguous aliases,
+    while accepting deterministic aliases and exact cleaned matches.
+    """
+    # 1. Inter and Inter Miami remain separate even with identical/adjacent years
+    cand = CandidatePlayer(candidate_id="cand_inter_test", source="wikipedia", source_id="p1")
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p1",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Inter", country="Italia", league="Serie A", start_year=2023, end_year=2024),
+        ],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    wikidata_res = AdapterResult(
+        source_name="wikidata",
+        source_id="Q1",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Inter Miami", country="USA", league="MLS", start_year=2023, end_year=2024),
+        ],
+    )
+    merge_adapter_result(cand, wikidata_res)
+
+    # Must NOT have merged into 1 stop!
+    assert len(cand.career) == 2
+    assert cand.career[0]["team"] == "Inter"
+    assert cand.career[1]["team"] == "Inter Miami"
+
+    # 2. True deterministic alias: PSG and Paris Saint-Germain match
+    cand_psg = CandidatePlayer(candidate_id="cand_psg_test", source="wikipedia", source_id="p2")
+    res_psg1 = AdapterResult(
+        source_name="wikipedia",
+        source_id="p2",
+        success=True,
+        player_name="Player PSG",
+        career=[
+            CareerEntry(team="PSG", country="Francia", league="Ligue 1", start_year=2020, end_year=2022),
+        ],
+    )
+    populate_candidate_from_result(cand_psg, res_psg1)
+
+    res_psg2 = AdapterResult(
+        source_name="wikidata",
+        source_id="Q2",
+        success=True,
+        player_name="Player PSG",
+        career=[
+            CareerEntry(team="Paris Saint-Germain", country="Francia", league="Ligue 1", start_year=2020, end_year=2022),
+        ],
+    )
+    merge_adapter_result(cand_psg, res_psg2)
+
+    # Must have merged into a single stop
+    assert len(cand_psg.career) == 1
+    stop_prov = cand_psg.provenance.get_provenance_for_path("career[0].team")
+    assert stop_prov is not None
+    assert len(stop_prov.observations) == 2
+
+    # 3. Ambiguous aliases: Real vs Real Madrid, United vs Manchester United never merge
+    cand_ambig = CandidatePlayer(candidate_id="cand_ambig_test", source="wikipedia", source_id="p3")
+    res_ambig1 = AdapterResult(
+        source_name="wikipedia",
+        source_id="p3",
+        success=True,
+        player_name="Player Ambig",
+        career=[
+            CareerEntry(team="Real", country="Spagna", start_year=2015, end_year=2018),
+            CareerEntry(team="United", country="Inghilterra", start_year=2018, end_year=2020),
+        ],
+    )
+    populate_candidate_from_result(cand_ambig, res_ambig1)
+
+    res_ambig2 = AdapterResult(
+        source_name="wikidata",
+        source_id="Q3",
+        success=True,
+        player_name="Player Ambig",
+        career=[
+            CareerEntry(team="Real Madrid", country="Spagna", start_year=2015, end_year=2018),
+            CareerEntry(team="Manchester United", country="Inghilterra", start_year=2018, end_year=2020),
+        ],
+    )
+    merge_adapter_result(cand_ambig, res_ambig2)
+
+    # Must preserve all 4 stops separately because Real and United are ambiguous
+    assert len(cand_ambig.career) == 4
+    teams_present = [s["team"] for s in cand_ambig.career]
+    assert "Real" in teams_present
+    assert "Real Madrid" in teams_present
+    assert "United" in teams_present
+    assert "Manchester United" in teams_present
+
+
+def test_multi_source_alias_provenance_and_reindexing():
+    """Regression test 3:
+    1. Wikipedia aliases [A, B]
+    2. Wikidata aliases [C, A]
+    3. resulting Candidate aliases
+    4. correct observations attached to A/B/C without index collisions
+    5. normalization/dedup round-trip
+    """
+    cand = CandidatePlayer(candidate_id="cand_alias_test", source="wikipedia", source_id="p_alias")
+
+    # 1. Wikipedia fetch: [A, B]
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_alias",
+        success=True,
+        player_name="Target Player",
+        aliases=["AliasAlpha", "AliasBeta"],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    assert cand.aliases == ["AliasAlpha", "AliasBeta"]
+    prov = cand.provenance
+    assert "aliases[0]" in prov.fields
+    assert "aliases[1]" in prov.fields
+    assert prov.fields["aliases[0]"].observations[0].source == "wikipedia"
+    assert prov.fields["aliases[0]"].observations[0].raw_value == "AliasAlpha"
+    assert prov.fields["aliases[1]"].observations[0].source == "wikipedia"
+    assert prov.fields["aliases[1]"].observations[0].raw_value == "AliasBeta"
+
+    # 2. Wikidata fetch: [C, A]
+    wikidata_res = AdapterResult(
+        source_name="wikidata",
+        source_id="Q_alias",
+        success=True,
+        player_name="Target Player",
+        aliases=["AliasGamma", "AliasAlpha"],
+    )
+    merge_adapter_result(cand, wikidata_res)
+
+    # 3. Resulting candidate aliases: [AliasAlpha, AliasBeta, AliasGamma]
+    assert cand.aliases == ["AliasAlpha", "AliasBeta", "AliasGamma"]
+
+    # 4. Correct observations attached to A, B, C:
+    # A is at index 0: shared provenance between wikipedia and wikidata
+    prov_a = prov.get_provenance_for_path("aliases[0]")
+    assert prov_a is not None
+    assert len(prov_a.observations) == 2
+    sources_a = {obs.source for obs in prov_a.observations}
+    assert sources_a == {"wikipedia", "wikidata"}
+    assert prov_a.has_conflict() is False
+
+    # B is at index 1: from wikipedia only
+    prov_b = prov.get_provenance_for_path("aliases[1]")
+    assert prov_b is not None
+    assert len(prov_b.observations) == 1
+    assert prov_b.observations[0].source == "wikipedia"
+    assert prov_b.observations[0].raw_value == "AliasBeta"
+
+    # C is at index 2: from wikidata only (NOT collided with index 0!)
+    prov_c = prov.get_provenance_for_path("aliases[2]")
+    assert prov_c is not None
+    assert len(prov_c.observations) == 1
+    assert prov_c.observations[0].source == "wikidata"
+    assert prov_c.observations[0].raw_value == "AliasGamma"
+
+    # 5. Normalization/dedup round-trip
+    normalize_candidate(cand)
+
+    assert "aliasalpha" in cand.aliases
+    assert "aliasbeta" in cand.aliases
+    assert "aliasgamma" in cand.aliases
+
+    # Prove paths in provenance remain valid after normalization
+    idx_a = cand.aliases.index("aliasalpha")
+    idx_b = cand.aliases.index("aliasbeta")
+    idx_c = cand.aliases.index("aliasgamma")
+
+    norm_prov_a = cand.provenance.get_provenance_for_path(f"aliases[{idx_a}]")
+    norm_prov_b = cand.provenance.get_provenance_for_path(f"aliases[{idx_b}]")
+    norm_prov_c = cand.provenance.get_provenance_for_path(f"aliases[{idx_c}]")
+
+    assert norm_prov_a is not None
+    assert len(norm_prov_a.observations) == 2
+    assert {o.source for o in norm_prov_a.observations} == {"wikipedia", "wikidata"}
+
+    assert norm_prov_b is not None
+    assert len(norm_prov_b.observations) == 1
+    assert norm_prov_b.observations[0].source == "wikipedia"
+
+    assert norm_prov_c is not None
+    assert len(norm_prov_c.observations) == 1
+    assert norm_prov_c.observations[0].source == "wikidata"
+
+
+def test_normalization_resolves_equivalent_source_observations_real_flow():
+    """Regression test 4: End-to-end test using REAL flow:
+    populate_candidate_from_result(Wikipedia) -> merge_adapter_result(Wikidata) -> normalize_candidate()
+
+    Covers:
+    - Equivalent after normalization: Wikipedia 'PSG' + Wikidata 'Paris Saint-Germain'
+      After normalization:
+      * both raw observations remain visible;
+      * both support canonical 'Paris Saint-Germain';
+      * no source conflict remains.
+    - Genuine conflict: Two actually different values preserve conflict after normalization.
+    """
+    # Case 1: Equivalent after normalization
+    cand = CandidatePlayer(candidate_id="cand_real_flow_psg", source="wikipedia", source_id="p_psg")
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_psg",
+        success=True,
+        player_name="Kylian Mbappé",
+        nationality="Francia",
+        career=[
+            CareerEntry(team="PSG", country="Francia", league="Ligue 1", start_year=2017, end_year=2024),
+        ],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    wikidata_res = AdapterResult(
+        source_name="wikidata",
+        source_id="Q_psg",
+        success=True,
+        player_name="Kylian Mbappé",
+        nationality="Francia",
+        career=[
+            CareerEntry(team="Paris Saint-Germain", country="Francia", league="Ligue 1", start_year=2017, end_year=2024),
+        ],
+    )
+    merge_adapter_result(cand, wikidata_res)
+
+    # Before normalization, raw values differ ('PSG' vs 'Paris Saint-Germain')
+    team_prov = cand.provenance.get_provenance_for_path("career[0].team")
+    assert team_prov is not None
+    assert len(team_prov.observations) == 2
+    assert team_prov.has_conflict() is True
+
+    # Real normalization execution
+    normalize_candidate(cand)
+
+    # After normalization:
+    assert cand.career[0]["team"] == "Paris Saint-Germain"
+    team_prov_after = cand.provenance.get_provenance_for_path("career[0].team")
+    assert team_prov_after is not None
+
+    obs_wiki = team_prov_after.get_observation("wikipedia")
+    obs_wdata = team_prov_after.get_observation("wikidata")
+    assert obs_wiki is not None
+    assert obs_wdata is not None
+
+    # Both raw observations remain visible and untouched
+    assert obs_wiki.raw_value == "PSG"
+    assert obs_wdata.raw_value == "Paris Saint-Germain"
+
+    # Both support canonical Paris Saint-Germain
+    assert obs_wiki.normalized_value == "Paris Saint-Germain"
+    assert obs_wdata.normalized_value == "Paris Saint-Germain"
+
+    # No source conflict remains!
+    assert team_prov_after.has_conflict() is False
+    assert set(team_prov_after.supporting_sources("Paris Saint-Germain")) == {"wikipedia", "wikidata"}
+
+    # Case 2: Genuine conflict
+    cand_conflict = CandidatePlayer(candidate_id="cand_real_conflict", source="wikipedia", source_id="p_conf")
+    res1 = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_conf",
+        success=True,
+        player_name="Player Conflict",
+        career=[
+            CareerEntry(team="Chelsea", country="Inghilterra", league="Premier League", start_year=2015, end_year=2018),
+        ],
+    )
+    populate_candidate_from_result(cand_conflict, res1)
+
+    # Construct candidate with second observation directly or simulated conflict on the same stop
+    cand_conflict.record_observation(
+        field_path="career[0].team",
+        source="wikidata",
+        source_id="Q_conf",
+        raw_value="Arsenal",
+        stop_id=cand_conflict.career[0]["_stop_id"],
+    )
+
+    normalize_candidate(cand_conflict)
+
+    conf_prov = cand_conflict.provenance.get_provenance_for_path("career[0].team")
+    assert conf_prov is not None
+    # Chelsea and Arsenal are actually different clubs
+    assert conf_prov.has_conflict() is True
+    assert cand_conflict.metadata["has_source_conflicts"] is True
+

@@ -823,6 +823,14 @@ def normalize_candidate(
         candidate.full_name = cleaned_name
         if cleaned_name != raw_name and hasattr(candidate, "provenance") and candidate.provenance:
             candidate.provenance.record_normalization("full_name", raw_name, cleaned_name)
+        if hasattr(candidate, "provenance") and candidate.provenance:
+            name_fp = candidate.provenance.get_provenance_for_path("full_name")
+            if name_fp:
+                for obs in name_fp.observations:
+                    if obs.raw_value:
+                        c_name = clean_text(str(obs.raw_value))
+                        if not _QID_REGEX.match(c_name):
+                            obs.normalized_value = c_name
     else:
         all_findings.append(
             CandidateFinding(
@@ -839,15 +847,34 @@ def normalize_candidate(
     candidate.nationality = normalize_country(raw_nationality)
     if candidate.nationality != raw_nationality and hasattr(candidate, "provenance") and candidate.provenance:
         candidate.provenance.record_normalization("nationality", raw_nationality, candidate.nationality)
+    if hasattr(candidate, "provenance") and candidate.provenance:
+        nat_fp = candidate.provenance.get_provenance_for_path("nationality")
+        if nat_fp:
+            for obs in nat_fp.observations:
+                if obs.raw_value:
+                    norm_c = normalize_country(obs.raw_value)
+                    if norm_c:
+                        obs.normalized_value = norm_c
 
     # 3. Position
     raw_position = candidate.position
     candidate.position = normalize_position(raw_position)
     if candidate.position != raw_position and hasattr(candidate, "provenance") and candidate.provenance:
         candidate.provenance.record_normalization("position", raw_position, candidate.position)
+    if hasattr(candidate, "provenance") and candidate.provenance:
+        pos_fp = candidate.provenance.get_provenance_for_path("position")
+        if pos_fp:
+            for obs in pos_fp.observations:
+                if obs.raw_value:
+                    norm_p = normalize_position(obs.raw_value)
+                    if norm_p:
+                        obs.normalized_value = norm_p
 
     # 4. Aliases
+    old_aliases = list(candidate.aliases)
     candidate.aliases = normalize_aliases(candidate.aliases, candidate.full_name)
+    if hasattr(candidate, "provenance") and candidate.provenance:
+        candidate.provenance.reindex_alias_paths(old_aliases, candidate.aliases)
 
     # 5. Career stops normalization
     normalized_stops: list[dict[str, Any]] = []
@@ -875,6 +902,25 @@ def normalize_candidate(
                         rule=f.message,
                         stop_id=sid,
                     )
+            # Risolve deterministically le osservazioni multi-source per il club
+            team_fp = candidate.provenance.get_provenance_for_path(f"career[{idx}].team")
+            if team_fp:
+                for obs in team_fp.observations:
+                    obs_raw = obs.raw_value
+                    if obs_raw:
+                        obs_norm, obs_findings = normalize_club_name(obs_raw, norm_stop.get("country"))
+                        is_ambig = any(f.code == FindingCode.CLUB_AMBIGUOUS_ALIAS for f in obs_findings)
+                        has_err = any(f.severity == FindingSeverity.ERROR for f in obs_findings)
+                        if obs_norm and not is_ambig and not has_err:
+                            obs.normalized_value = obs_norm
+                            if obs_norm != obs_raw and not any(t.raw_value == obs_raw and t.normalized_value == obs_norm for t in team_fp.transformations):
+                                from services.candidate_provenance import NormalizationRecord, now_utc_iso
+                                team_fp.add_transformation(NormalizationRecord(
+                                    raw_value=obs_raw,
+                                    normalized_value=obs_norm,
+                                    finding_code=FindingCode.CLUB_NORMALIZED.value if hasattr(FindingCode.CLUB_NORMALIZED, "value") else str(FindingCode.CLUB_NORMALIZED),
+                                    timestamp=now_utc_iso(),
+                                ))
 
     # 6. Career ordering via order_career
     ordered_stops = order_career(normalized_stops)
@@ -894,6 +940,7 @@ def normalize_candidate(
     # Riallinea i riferimenti dei percorsi career[i].prop nella provenienza senza perdere _stop_id
     if hasattr(candidate, "provenance") and candidate.provenance:
         candidate.provenance.reindex_career_paths(ordered_stops)
+        candidate.metadata["has_source_conflicts"] = candidate.provenance.has_conflicts()
 
 
     # 7. Persist structured normalization findings in metadata
