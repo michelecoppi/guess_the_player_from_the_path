@@ -14,6 +14,10 @@ import {
   attachLeaderboardEventListeners,
 } from "@/pages/LeaderboardPage";
 import {
+  renderArchivePage,
+  attachArchiveEventListeners,
+} from "@/pages/ArchivePage";
+import {
   initTelegram,
   getTelegramUser,
   isMockTelegramEnvironment,
@@ -24,6 +28,7 @@ import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
 import { TrainingController } from "@/features/training/controller";
 import { LeaderboardController } from "@/features/leaderboard/controller";
+import { ArchiveController } from "@/features/archive/controller";
 
 export class App {
   private rootElement: HTMLElement;
@@ -32,6 +37,7 @@ export class App {
   private arenaController: ArenaController;
   private trainingController: TrainingController;
   private leaderboardController: LeaderboardController;
+  private archiveController: ArchiveController;
   private lastArenaSubview: ArenaSubview;
 
   constructor(
@@ -40,6 +46,7 @@ export class App {
     arenaController?: ArenaController,
     trainingController?: TrainingController,
     leaderboardController?: LeaderboardController,
+    archiveController?: ArchiveController,
   ) {
     this.rootElement = rootElement;
     this.dailyController = dailyController || new DailyController();
@@ -47,6 +54,7 @@ export class App {
     this.trainingController = trainingController || new TrainingController();
     this.leaderboardController =
       leaderboardController || new LeaderboardController();
+    this.archiveController = archiveController || new ArchiveController();
     this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
 
@@ -93,6 +101,12 @@ export class App {
         this.renderArenaContent();
       }
     });
+
+    this.archiveController.subscribe(() => {
+      if (this.activeTab === "archive") {
+        this.renderArchiveContent();
+      }
+    });
   }
 
   public getDailyController(): DailyController {
@@ -109,6 +123,10 @@ export class App {
 
   public getLeaderboardController(): LeaderboardController {
     return this.leaderboardController;
+  }
+
+  public getArchiveController(): ArchiveController {
+    return this.archiveController;
   }
 
   public isArenaTab(tab: NavTabId): boolean {
@@ -151,6 +169,8 @@ export class App {
         this.arenaController.setSubview("challenge");
       } else if (tab === "leaderboard") {
         void this.leaderboardController.init();
+      } else if (tab === "archive") {
+        void this.archiveController.init();
       }
 
       this.render();
@@ -283,6 +303,26 @@ export class App {
     }
   }
 
+  private renderArchiveContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "archive") {
+      const hadInputFocus =
+        typeof document !== "undefined" &&
+        document.activeElement?.id === "archive-answer";
+      mainEl.innerHTML = renderArchivePage(this.archiveController.getState());
+      attachArchiveEventListeners(this.rootElement, this.archiveController);
+      if (hadInputFocus && this.archiveController.getState().status !== "submitting") {
+        mainEl
+          .querySelector<HTMLInputElement>("#archive-answer")
+          ?.focus({ preventScroll: true });
+      }
+      const feedback = this.rootElement.querySelector(".feedback");
+      if (feedback) {
+        feedback.scrollIntoView?.({ block: "nearest" });
+      }
+    }
+  }
+
   private render(): void {
     const user = getTelegramUser();
     const isMock = isMockTelegramEnvironment();
@@ -307,6 +347,9 @@ export class App {
         pageHtml = renderLeaderboardPage(
           this.leaderboardController.getState(),
         );
+        break;
+      case "archive":
+        pageHtml = renderArchivePage(this.archiveController.getState());
         break;
       default:
         pageHtml = renderPrototype(this.activeTab);
@@ -363,6 +406,11 @@ export class App {
       attachLeaderboardEventListeners(
         this.rootElement,
         this.leaderboardController,
+      );
+    } else if (this.activeTab === "archive") {
+      attachArchiveEventListeners(
+        this.rootElement,
+        this.archiveController,
       );
     }
   }

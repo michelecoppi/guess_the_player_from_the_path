@@ -233,6 +233,41 @@ export interface TranslationSchema {
     pointsLabel: string;
     publicProfileTitle: string;
   };
+  archive: {
+    title: string;
+    heading: string;
+    kicker: string;
+    loading: string;
+    empty: string;
+    error: string;
+    retry: string;
+    // Calendar day statuses (rendered as text labels, not just colors)
+    solved: string;
+    lost: string;
+    recovered: string;
+    missed: string;
+    calendarLabel: string;
+    openChallenge: string;
+    back: string;
+    // Challenge meta
+    dayNumber: string;
+    difficulty: string;
+    challengeLabel: string;
+    // Attempts
+    attemptsLeft: string;
+    attemptsSuffix: string;
+    outOfAttempts: string;
+    // Guess input
+    placeholder: string;
+    submitBtn: string;
+    // Feedback
+    correct: string;
+    alreadySolved: string;
+    noAttempts: string;
+    refused: string;
+    dayUnavailable: string;
+    share: string;
+  };
   migration: {
     badge: string;
     dailyNotice: string;

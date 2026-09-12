@@ -284,4 +284,86 @@ export function createTestPublicProfile(overrides: Record<string, any> = {}) {
   };
 }
 
+import type { ArchiveCalendarDay, ArchiveChallenge, ArchiveGuessResult } from "@/features/archive/types";
+
+export function createTestArchiveDay(overrides: Partial<ArchiveCalendarDay> = {}): ArchiveCalendarDay {
+  return {
+    day: "2026-09-01",
+    label: "01/09/26",
+    number: 42,
+    difficulty: "medium",
+    difficulty_label: "Media",
+    status: "solved",
+    attempts: 2,
+    hints: 0,
+    playable: false,
+    ...overrides,
+  };
+}
+
+export function createTestCalendar(): ArchiveCalendarDay[] {
+  return [
+    createTestArchiveDay({ day: "2026-09-01", number: 40, status: "solved", playable: false, attempts: 2 }),
+    createTestArchiveDay({ day: "2026-09-02", number: 41, status: "lost", playable: true, attempts: 5 }),
+    createTestArchiveDay({ day: "2026-09-03", number: 42, status: "recovered", playable: false, attempts: 3 }),
+    createTestArchiveDay({ day: "2026-09-04", number: 43, status: "missed", playable: true, attempts: null }),
+  ];
+}
+
+export function createTestArchiveChallenge(overrides: Partial<ArchiveChallenge> = {}): ArchiveChallenge {
+  return {
+    day: "2026-09-02",
+    label: "02/09/26",
+    number: 41,
+    difficulty: "medium",
+    difficulty_label: "Media",
+    solved: false,
+    attempts_used: 0,
+    attempts_left: 3,
+    max_attempts: 3,
+    career_path: createTestCareerPath(),
+    ...overrides,
+  };
+}
+
+export function createTestArchiveGuessResult(overrides: Record<string, any> = {}): ArchiveGuessResult {
+  const status = overrides.status || "wrong";
+  if (status === "refused") {
+    return {
+      status: "refused",
+      reason: overrides.reason || "already_solved",
+      ...overrides,
+    };
+  }
+  if (status === "no_challenge") {
+    return {
+      status: "no_challenge",
+      ...overrides,
+    };
+  }
+  if (status === "correct") {
+    return {
+      status: "correct",
+      attempts_used: overrides.attempts_used ?? 1,
+      attempts_left: overrides.attempts_left ?? 2,
+      share: overrides.share ?? { text: "Share", url: "https://t.me/share" },
+      ...overrides,
+    };
+  }
+  return {
+    status: "wrong",
+    attempts_used: overrides.attempts_used ?? 1,
+    attempts_left: overrides.attempts_left ?? 2,
+    comparison: overrides.comparison ?? {
+      name: "Pirlo",
+      clues: [
+        { key: "feedback.nationality_same", args: {} },
+        { key: "feedback.position_diff", args: {} },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+
 
