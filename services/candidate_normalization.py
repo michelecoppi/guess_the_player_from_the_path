@@ -19,7 +19,12 @@ from typing import Any, Optional
 
 from services.candidate_finding import CandidateFinding, FindingCode, FindingSeverity
 from services.candidate_player import CandidatePlayer, CandidateState
-from services.candidate_provenance import make_career_stop_id
+from services.candidate_provenance import (
+    CandidateProvenance,
+    NormalizationRecord,
+    make_career_stop_id,
+    now_utc_iso,
+)
 from services.career_order import order_career
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -188,6 +193,7 @@ KNOWN_LEAGUE_ALIASES: dict[str, str] = {
     "primera division de espana": "La Liga",
     "super league": "Swiss Super League",
     "super lig": "Super Lig",
+    "premier league": "Premier League",
     "premier league inglese": "Premier League",
     "liga portugal": "Primeira Liga",
     "primeira liga portoghese": "Primeira Liga",
@@ -241,6 +247,8 @@ LEAGUE_BY_COUNTRY: dict[tuple[str, str], str] = {
     ("Svizzera", "promotion league"): "Swiss Promotion League",
     ("Inghilterra", "efl championship"): "Championship",
     ("Inghilterra", "northern premier league division one west"): "Northern Premier League",
+    ("Inghilterra", "premier"): "Premier League",
+    ("Inghilterra", "premier league"): "Premier League",
     ("Canada", "major league soccer"): "MLS",
     ("USA", "major league soccer"): "MLS",
     ("Colombia", "categoria primera b"): "Categoria Primera B",
@@ -784,6 +792,177 @@ def normalize_career_stop(
     return norm_stop, findings
 
 
+def _normalize_int_value(val: Any) -> Optional[int]:
+    """Deterministically normalizes an integer value from raw source representation.
+
+    Accepts:
+    - ints: 2018 -> 2018
+    - float strings or floats with integer value: "2018.0", 2018.0 -> 2018
+    - string representations of integers: " 2018 " -> 2018
+
+    Rejects:
+    - booleans (in Python isinstance(True, int) is True!)
+    - None
+    - non-integer floats: 2018.5 -> None
+    - unparseable strings: "2018?", "unknown", "abc" -> None
+    """
+    if val is None or isinstance(val, bool):
+        return None
+    if isinstance(val, int):
+        return val
+    try:
+        s = str(val).strip()
+        if not s:
+            return None
+        if "." in s:
+            f = float(s)
+            if f.is_integer():
+                return int(f)
+            return None
+        return int(s)
+    except (ValueError, TypeError):
+        return None
+
+
+def _normalize_career_observation_value(
+    field_name: str,
+    raw_val: Any,
+    stop_context: dict[str, Any],
+) -> tuple[Optional[Any], Optional[str]]:
+    """Deterministically normalizes a raw career stop observation value.
+
+    Returns:
+        (normalized_value, finding_code) if deterministically normalized without error/ambiguity.
+        (None, None) if the value is invalid, ambiguous, or cannot be deterministically normalized.
+    """
+    if raw_val is None:
+        return None, None
+
+    if field_name == "team":
+        if not isinstance(raw_val, str) or not raw_val.strip():
+            return None, None
+        clean_raw = clean_text(raw_val)
+        if _QID_REGEX.match(clean_raw):
+            return None, None
+        country = stop_context.get("country")
+        norm_team, findings = normalize_club_name(raw_val, country)
+        is_ambig = any(f.code == FindingCode.CLUB_AMBIGUOUS_ALIAS for f in findings)
+        has_err = any(f.severity == FindingSeverity.ERROR for f in findings)
+        if norm_team and not is_ambig and not has_err:
+            return norm_team, FindingCode.CLUB_NORMALIZED
+        return None, None
+
+    elif field_name == "country":
+        if not isinstance(raw_val, str) or not raw_val.strip():
+            return None, None
+        clean_raw = clean_text(raw_val)
+        if _QID_REGEX.match(clean_raw):
+            return None, None
+        norm_c = normalize_country(clean_raw)
+        if norm_c:
+            return norm_c, FindingCode.COUNTRY_NORMALIZED
+        return None, None
+
+    elif field_name == "league":
+        if not isinstance(raw_val, str) or not raw_val.strip():
+            return None, None
+        clean_raw = clean_text(raw_val)
+        if _QID_REGEX.match(clean_raw):
+            return None, None
+        country = stop_context.get("country")
+        norm_l = normalize_league_name(clean_raw, country)
+        if norm_l:
+            return norm_l, FindingCode.LEAGUE_NORMALIZED
+        return None, None
+
+    elif field_name in ("start_year", "end_year", "apps", "goals"):
+        norm_int = _normalize_int_value(raw_val)
+        if norm_int is not None:
+            return norm_int, FindingCode.NUMERIC_STANDARDIZED
+        return None, None
+
+    elif field_name == "loan":
+        norm_loan = parse_loan_flag(raw_val)
+        if norm_loan is not None:
+            return norm_loan, FindingCode.LOAN_STANDARDIZED
+        return None, None
+
+    return None, None
+
+
+CAREER_PROVENANCE_FIELDS: tuple[str, ...] = (
+    "team",
+    "country",
+    "league",
+    "start_year",
+    "end_year",
+    "apps",
+    "goals",
+    "loan",
+)
+
+
+def synchronize_career_stop_provenance(
+    provenance: CandidateProvenance,
+    stop_index: int,
+    norm_stop: dict[str, Any],
+) -> None:
+    """Synchronizes provenance observations for a career stop after deterministic normalization.
+
+    For every career field (team, country, league, start_year, end_year, apps, goals, loan):
+    - Re-evaluates each source observation's raw value using deterministic normalization;
+    - Preserves `raw_value` intact;
+    - Updates `normalized_value` when deterministic normalization succeeds;
+    - Leaves ambiguous/error values without canonical normalized values;
+    - Records a `NormalizationRecord` transformation if `obs_raw` was transformed.
+    """
+    stop_id = norm_stop.get("_stop_id")
+
+    for field_name in CAREER_PROVENANCE_FIELDS:
+        field_path = f"career[{stop_index}].{field_name}"
+        fp = provenance.get_provenance_for_path(field_path)
+        if not fp:
+            continue
+
+        if stop_id and not fp.stop_id:
+            fp.stop_id = stop_id
+
+        canonical_val = norm_stop.get(field_name)
+        if canonical_val is not None:
+            fp.current_value = canonical_val
+            if fp.normalized_value is None:
+                fp.normalized_value = canonical_val
+
+        for obs in fp.observations:
+            obs_raw = obs.raw_value
+            if obs_raw is None:
+                continue
+
+            obs_norm, finding_code = _normalize_career_observation_value(
+                field_name, obs_raw, norm_stop
+            )
+            if obs_norm is not None:
+                obs.normalized_value = obs_norm
+                differs = (obs_raw != obs_norm) or (type(obs_raw) is not type(obs_norm))
+                if differs:
+                    already_recorded = any(
+                        t.raw_value == obs_raw and t.normalized_value == obs_norm
+                        for t in fp.transformations
+                    )
+                    if not already_recorded:
+                        f_code: Optional[str] = None
+                        if finding_code is not None:
+                            f_code = getattr(finding_code, "value", str(finding_code))
+                        fp.add_transformation(
+                            NormalizationRecord(
+                                raw_value=obs_raw,
+                                normalized_value=obs_norm,
+                                finding_code=f_code,
+                                timestamp=now_utc_iso(),
+                            )
+                        )
+
+
 def normalize_candidate(
     candidate: CandidatePlayer,
     actor: str = "service:normalization",
@@ -902,25 +1081,8 @@ def normalize_candidate(
                         rule=f.message,
                         stop_id=sid,
                     )
-            # Risolve deterministically le osservazioni multi-source per il club
-            team_fp = candidate.provenance.get_provenance_for_path(f"career[{idx}].team")
-            if team_fp:
-                for obs in team_fp.observations:
-                    obs_raw = obs.raw_value
-                    if obs_raw:
-                        obs_norm, obs_findings = normalize_club_name(obs_raw, norm_stop.get("country"))
-                        is_ambig = any(f.code == FindingCode.CLUB_AMBIGUOUS_ALIAS for f in obs_findings)
-                        has_err = any(f.severity == FindingSeverity.ERROR for f in obs_findings)
-                        if obs_norm and not is_ambig and not has_err:
-                            obs.normalized_value = obs_norm
-                            if obs_norm != obs_raw and not any(t.raw_value == obs_raw and t.normalized_value == obs_norm for t in team_fp.transformations):
-                                from services.candidate_provenance import NormalizationRecord, now_utc_iso
-                                team_fp.add_transformation(NormalizationRecord(
-                                    raw_value=obs_raw,
-                                    normalized_value=obs_norm,
-                                    finding_code=FindingCode.CLUB_NORMALIZED.value if hasattr(FindingCode.CLUB_NORMALIZED, "value") else str(FindingCode.CLUB_NORMALIZED),
-                                    timestamp=now_utc_iso(),
-                                ))
+            # Sincronizza deterministicamente le osservazioni multi-source per tutti i campi della tappa
+            synchronize_career_stop_provenance(candidate.provenance, idx, norm_stop)
 
     # 6. Career ordering via order_career
     ordered_stops = order_career(normalized_stops)

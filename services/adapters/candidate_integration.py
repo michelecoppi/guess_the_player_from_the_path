@@ -110,13 +110,28 @@ def _find_matching_career_stop(
             continue
 
         # Compatibilita' temporale: coincidenti o entro +-1 anno
-        if in_start is not None and ex_start is not None:
-            if abs(in_start - ex_start) <= 1:
+        def _safe_year(val: Any) -> Optional[int]:
+            if val is None or isinstance(val, bool):
+                return None
+            if isinstance(val, int):
+                return val
+            try:
+                return int(str(val).strip())
+            except (ValueError, TypeError):
+                return None
+
+        s_in_start = _safe_year(in_start)
+        s_ex_start = _safe_year(ex_start)
+        s_in_end = _safe_year(in_end)
+        s_ex_end = _safe_year(ex_end)
+
+        if s_in_start is not None and s_ex_start is not None:
+            if abs(s_in_start - s_ex_start) <= 1:
                 return idx
-        elif in_end is not None and ex_end is not None:
-            if abs(in_end - ex_end) <= 1:
+        elif s_in_end is not None and s_ex_end is not None:
+            if abs(s_in_end - s_ex_end) <= 1:
                 return idx
-        elif in_start is None and in_end is None:
+        elif s_in_start is None and s_in_end is None and s_ex_start is None and s_ex_end is None:
             return idx
 
     return None

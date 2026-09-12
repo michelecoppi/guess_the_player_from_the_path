@@ -1038,3 +1038,279 @@ def test_normalization_resolves_equivalent_source_observations_real_flow():
     assert conf_prov.has_conflict() is True
     assert cand_conflict.metadata["has_source_conflicts"] is True
 
+
+def test_real_flow_equivalent_league_aliases_no_conflict():
+    """Real-flow test: Equivalent league aliases from two sources normalize to canonical league without conflict.
+
+    populate_candidate_from_result -> merge_adapter_result -> normalize_candidate
+    """
+    cand = CandidatePlayer(candidate_id="cand_league_test", source="wikipedia", source_id="p_league")
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_league",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Chelsea", country="Inghilterra", league="Premier", start_year=2018, end_year=2021),
+        ],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    wdata_res = AdapterResult(
+        source_name="wikidata",
+        source_id="Q_league",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Chelsea", country="Inghilterra", league="Premier League", start_year=2018, end_year=2021),
+        ],
+    )
+    merge_adapter_result(cand, wdata_res)
+
+    # Before normalization, raw values differ ("Premier" vs "Premier League") -> conflict exists
+    league_fp = cand.provenance.get_provenance_for_path("career[0].league")
+    assert league_fp is not None
+    assert len(league_fp.observations) == 2
+    assert league_fp.has_conflict() is True
+
+    # Real normalization execution
+    normalize_candidate(cand)
+
+    # After normalization:
+    assert cand.career[0]["league"] == "Premier League"
+    league_fp_after = cand.provenance.get_provenance_for_path("career[0].league")
+    assert league_fp_after is not None
+
+    obs_wiki = league_fp_after.get_observation("wikipedia")
+    obs_wdata = league_fp_after.get_observation("wikidata")
+    assert obs_wiki is not None
+    assert obs_wdata is not None
+
+    # Raw values preserved
+    assert obs_wiki.raw_value == "Premier"
+    assert obs_wdata.raw_value == "Premier League"
+
+    # Normalized values match canonical league
+    assert obs_wiki.normalized_value == "Premier League"
+    assert obs_wdata.normalized_value == "Premier League"
+
+    # No conflict remains!
+    assert league_fp_after.has_conflict() is False
+    assert set(league_fp_after.supporting_sources("Premier League")) == {"wikipedia", "wikidata"}
+
+
+def test_real_flow_equivalent_country_representations_no_conflict():
+    """Real-flow test: Equivalent country representations normalize to canonical country without conflict.
+
+    populate_candidate_from_result -> merge_adapter_result -> normalize_candidate
+    """
+    cand = CandidatePlayer(candidate_id="cand_country_test", source="wikipedia", source_id="p_country")
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_country",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Chelsea", country="England", league="Premier League", start_year=2018, end_year=2021),
+        ],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    wdata_res = AdapterResult(
+        source_name="wikidata",
+        source_id="Q_country",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Chelsea", country="Inghilterra", league="Premier League", start_year=2018, end_year=2021),
+        ],
+    )
+    merge_adapter_result(cand, wdata_res)
+
+    # Before normalization: raw values differ ("England" vs "Inghilterra")
+    country_fp = cand.provenance.get_provenance_for_path("career[0].country")
+    assert country_fp is not None
+    assert len(country_fp.observations) == 2
+    assert country_fp.has_conflict() is True
+
+    # Real normalization execution
+    normalize_candidate(cand)
+
+    # After normalization:
+    assert cand.career[0]["country"] == "Inghilterra"
+    country_fp_after = cand.provenance.get_provenance_for_path("career[0].country")
+    assert country_fp_after is not None
+
+    obs_wiki = country_fp_after.get_observation("wikipedia")
+    obs_wdata = country_fp_after.get_observation("wikidata")
+    assert obs_wiki is not None
+    assert obs_wdata is not None
+
+    # Raw values preserved
+    assert obs_wiki.raw_value == "England"
+    assert obs_wdata.raw_value == "Inghilterra"
+
+    # Normalized values match canonical country
+    assert obs_wiki.normalized_value == "Inghilterra"
+    assert obs_wdata.normalized_value == "Inghilterra"
+
+    # No conflict remains!
+    assert country_fp_after.has_conflict() is False
+    assert set(country_fp_after.supporting_sources("Inghilterra")) == {"wikipedia", "wikidata"}
+
+
+def test_real_flow_genuine_disagreements_remain_conflicts():
+    """Real-flow test: Genuine league and country disagreements remain conflicts after normalization.
+
+    populate_candidate_from_result -> merge_adapter_result -> normalize_candidate
+    """
+    cand = CandidatePlayer(candidate_id="cand_disagree_test", source="wikipedia", source_id="p_disagree")
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_disagree",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Real Madrid", country="Spagna", league="La Liga", start_year=2018, end_year=2021),
+        ],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    wdata_res = AdapterResult(
+        source_name="wikidata",
+        source_id="Q_disagree",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(team="Real Madrid", country="Inghilterra", league="Premier League", start_year=2018, end_year=2021),
+        ],
+    )
+    merge_adapter_result(cand, wdata_res)
+
+    normalize_candidate(cand)
+
+    country_fp = cand.provenance.get_provenance_for_path("career[0].country")
+    assert country_fp is not None
+    assert country_fp.has_conflict() is True
+
+    league_fp = cand.provenance.get_provenance_for_path("career[0].league")
+    assert league_fp is not None
+    assert league_fp.has_conflict() is True
+
+    # Candidate flag reflects conflicts
+    assert cand.metadata["has_source_conflicts"] is True
+
+    # Raw values preserved
+    obs_wiki_c = country_fp.get_observation("wikipedia")
+    obs_wdata_c = country_fp.get_observation("wikidata")
+    assert obs_wiki_c.raw_value == "Spagna"
+    assert obs_wdata_c.raw_value == "Inghilterra"
+
+
+def test_real_flow_numeric_and_loan_standardization():
+    """Real-flow test: Numeric fields and loan flags are deterministically converted from raw representations.
+
+    Raw source values remain preserved.
+    Normalized values match and do not produce false conflicts.
+    """
+    cand = CandidatePlayer(candidate_id="cand_stats_test", source="wikipedia", source_id="p_stats")
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_stats",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(
+                team="Arsenal",
+                country="Inghilterra",
+                league="Premier League",
+                start_year="2018",
+                end_year="2021",
+                apps="50",
+                goals="10",
+                loan="true",
+            ),
+        ],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    wdata_res = AdapterResult(
+        source_name="wikidata",
+        source_id="Q_stats",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(
+                team="Arsenal",
+                country="Inghilterra",
+                league="Premier League",
+                start_year=2018,
+                end_year=2021,
+                apps=50,
+                goals=10,
+                loan=True,
+            ),
+        ],
+    )
+    merge_adapter_result(cand, wdata_res)
+
+    # Before normalization, string vs int/bool creates false conflicts
+    assert cand.provenance.get_provenance_for_path("career[0].start_year").has_conflict() is True
+    assert cand.provenance.get_provenance_for_path("career[0].loan").has_conflict() is True
+
+    normalize_candidate(cand)
+
+    for prop, expected_val in [
+        ("start_year", 2018),
+        ("end_year", 2021),
+        ("apps", 50),
+        ("goals", 10),
+        ("loan", True),
+    ]:
+        fp = cand.provenance.get_provenance_for_path(f"career[0].{prop}")
+        assert fp is not None
+        assert fp.has_conflict() is False
+        obs_wiki = fp.get_observation("wikipedia")
+        obs_wdata = fp.get_observation("wikidata")
+        assert obs_wiki is not None and obs_wdata is not None
+
+        # Raw values preserved (wiki was string, wdata was typed int/bool)
+        assert isinstance(obs_wiki.raw_value, str)
+        # Normalized values standardized
+        assert obs_wiki.normalized_value == expected_val
+        assert obs_wdata.normalized_value == expected_val
+
+    assert cand.provenance.has_conflicts() is False
+
+
+def test_real_flow_ambiguous_and_error_values_not_forced_to_canonical():
+    """Ambiguous or unparseable values must NOT be forced into canonical normalized values."""
+    cand = CandidatePlayer(candidate_id="cand_ambig_test", source="wikipedia", source_id="p_ambig")
+    wiki_res = AdapterResult(
+        source_name="wikipedia",
+        source_id="p_ambig",
+        success=True,
+        player_name="Test Player",
+        career=[
+            CareerEntry(
+                team="Arsenal",
+                country="Q142",
+                league="Q12345",
+                start_year="2018?",
+                end_year="unknown",
+                loan="maybe_loan",
+            ),
+        ],
+    )
+    populate_candidate_from_result(cand, wiki_res)
+
+    normalize_candidate(cand)
+
+    # None of these ambiguous / unresolved values should have a normalized_value set
+    for prop in ("country", "league", "start_year", "end_year", "loan"):
+        fp = cand.provenance.get_provenance_for_path(f"career[0].{prop}")
+        assert fp is not None
+        obs = fp.get_observation("wikipedia")
+        assert obs is not None
+        assert obs.normalized_value is None, f"{prop} was normalized despite being ambiguous/error value"
+
