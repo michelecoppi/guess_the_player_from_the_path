@@ -65,6 +65,10 @@ export interface TelegramWebApp {
   backgroundColor: string;
   MainButton: TelegramMainButton;
   HapticFeedback: TelegramHapticFeedback;
+  safeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  onEvent?(event: string, callback: () => void): void;
+  offEvent?(event: string, callback: () => void): void;
   ready(): void;
   expand(): void;
   close(): void;

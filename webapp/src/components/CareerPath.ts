@@ -1,3 +1,4 @@
+import { v } from "@/i18n/visual";
 import { escapeHtml } from "@/utils/format";
 
 export interface CareerStop {
@@ -27,28 +28,38 @@ export function renderCareerPath(props: CareerPathProps): string {
     return "";
   }
 
-  const rows = stops.map((stop) => {
-    const meta = [stop.league, stop.country].filter(Boolean).map(escapeHtml).join(" · ");
-    const startStr = stop.start_year != null ? String(stop.start_year) : "";
-    const years = stop.end_year ? `${startStr} – ${stop.end_year}` : `${startStr} – …`;
-    const apps = stop.apps == null ? "" : (stop.goals == null ? `${stop.apps}` : `${stop.apps} (${stop.goals})`);
-    const loanClass = stop.loan ? " loan" : "";
-    const loanPrefix = stop.loan ? "→ " : "";
+  const rows = stops
+    .map((stop, index) => {
+      const meta = [stop.league, stop.country]
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join(" · ");
+      const startStr = stop.start_year != null ? String(stop.start_year) : "";
+      const years = stop.end_year
+        ? `${startStr} – ${stop.end_year}`
+        : `${startStr} – …`;
+      const apps =
+        stop.apps == null
+          ? ""
+          : stop.goals == null
+            ? `${stop.apps}`
+            : `${stop.apps} (${stop.goals})`;
+      const loanClass = stop.loan ? " loan" : "";
 
-    return `
+      return `
       <div class="stop${loanClass}" role="listitem">
-        <div class="bar" aria-hidden="true"></div>
+        <div class="years">${escapeHtml(years)}</div>
+        <div class="transfer-node" aria-hidden="true">${String(index + 1).padStart(2, "0")}</div>
         <div class="who">
           <div class="team">${escapeHtml(stop.team)}</div>
           ${meta ? `<div class="meta">${meta}</div>` : ""}
+          ${stop.loan ? `<span class="loan-label">${v("loan")}</span>` : ""}
         </div>
-        <div class="right">
-          <div class="years">${loanPrefix}${escapeHtml(years)}</div>
-          ${apps ? `<div class="apps">${escapeHtml(apps)}</div>` : ""}
-        </div>
+        <div class="apps">${apps ? escapeHtml(apps) : "—"}</div>
       </div>
     `.trim();
-  }).join("\n");
+    })
+    .join("\n");
 
   const idAttr = props.id ? ` id="${escapeHtml(props.id)}"` : "";
   const classAttr = `path ${props.extraClass || ""}`.trim();

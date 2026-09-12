@@ -12,8 +12,10 @@
     "test:frontend": "tsx --test tests/frontend/**/*.test.ts"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.13.9",
     "happy-dom": "^20.14.3",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
     "vite": "^6.2.0"

@@ -1,11 +1,17 @@
+import { renderPrototype } from "@/prototypes/screens";
+import { connectTheme } from "@/telegram/theme";
 import { renderHeader } from "@/components/Header";
 import { renderNavBar, type NavTabId } from "@/components/NavBar";
 import { renderDailyPage, attachDailyEventListeners } from "@/pages/DailyPage";
 import { renderArenaPage } from "@/pages/ArenaPage";
 import { renderProfilePage } from "@/pages/ProfilePage";
 import { renderLeaderboardPage } from "@/pages/LeaderboardPage";
-import { initTelegram, getTelegramUser, isMockTelegramEnvironment } from "@/telegram/webapp";
-import { resolveLanguage, setLanguage, t } from "@/i18n";
+import {
+  initTelegram,
+  getTelegramUser,
+  isMockTelegramEnvironment,
+} from "@/telegram/webapp";
+import { resolveLanguage, setLanguage } from "@/i18n";
 import { exposeLegacyBridge } from "@/utils/legacy-bridge";
 import { DailyController } from "@/features/daily/controller";
 
@@ -32,8 +38,11 @@ export class App {
 
   public init(): void {
     const tg = initTelegram();
+    connectTheme(tg);
     const user = getTelegramUser();
-    const userLang = resolveLanguage(user?.language_code || (tg?.initDataUnsafe?.user?.language_code));
+    const userLang = resolveLanguage(
+      user?.language_code || tg?.initDataUnsafe?.user?.language_code,
+    );
     setLanguage(userLang);
 
     this.render();
@@ -44,14 +53,31 @@ export class App {
     if (this.activeTab !== tab) {
       this.activeTab = tab;
       this.render();
+      this.rootElement
+        .querySelector<HTMLButtonElement>(`[data-tab="${tab}"]`)
+        ?.focus({ preventScroll: true });
     }
   }
 
   private renderDailyContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.activeTab === "play") {
-      mainEl.innerHTML = renderDailyPage(this.dailyController.getState());
+      const state = this.dailyController.getState();
+      const hadInputFocus = document.activeElement?.id === "answer";
+      mainEl.innerHTML = renderDailyPage(state);
       attachDailyEventListeners(this.rootElement, this.dailyController);
+      if (hadInputFocus && state.status !== "submitting")
+        mainEl
+          .querySelector<HTMLInputElement>("#answer")
+          ?.focus({ preventScroll: true });
+      if (
+        ["incorrect", "correct", "completed"].includes(state.status) &&
+        state.feedback
+      ) {
+        mainEl
+          .querySelector(".feedback")
+          ?.scrollIntoView?.({ block: "nearest" });
+      }
     }
   }
 
@@ -74,18 +100,16 @@ export class App {
         pageHtml = renderLeaderboardPage();
         break;
       default:
-        pageHtml = renderDailyPage(this.dailyController.getState());
+        pageHtml = renderPrototype(this.activeTab);
     }
 
-    const mockBannerHtml = isMock && user
-      ? `<div style="background: rgba(240, 166, 58, 0.12); border: 1px dashed var(--warn); border-radius: 12px; padding: 10px 12px; font-size: 12px; color: var(--warn); display: flex; align-items: center; gap: 8px;">
-          <span>🛠️</span>
-          <span>${t("shell.mockNotice", { name: user.first_name })}</span>
-        </div>`
-      : "";
+    const mockBannerHtml =
+      isMock && user
+        ? `<p class="environment-note">Local preview · Telegram not connected</p>`
+        : "";
 
     this.rootElement.innerHTML = `
-      ${renderHeader({ user })}
+      ${renderHeader({ user, activeTab: this.activeTab })}
       ${mockBannerHtml}
       <main id="app-content" role="region" aria-label="Page content">
         ${pageHtml}
@@ -97,7 +121,8 @@ export class App {
   }
 
   private attachEventListeners(): void {
-    const navButtons = this.rootElement.querySelectorAll<HTMLButtonElement>("nav.app-nav button[data-tab]");
+    const navButtons =
+      this.rootElement.querySelectorAll<HTMLButtonElement>("button[data-tab]");
     navButtons.forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -108,6 +133,15 @@ export class App {
       });
     });
 
+    const details =
+      this.rootElement.querySelector<HTMLDetailsElement>(".more-nav");
+    if (details)
+      details.onkeydown = (event) => {
+        if (event.key === "Escape") {
+          details.open = false;
+          details.querySelector("summary")?.focus();
+        }
+      };
     if (this.activeTab === "play") {
       attachDailyEventListeners(this.rootElement, this.dailyController);
     }

@@ -133,7 +133,7 @@ test("renderCareerPath correctly formats stops, loan styling, apps, and metadata
   // Stop 3: Paris Saint-Germain (loan)
   assert.equal(items[2].querySelector(".team")?.textContent, "Paris Saint-Germain");
   assert.ok(items[2].classList.contains("loan"));
-  assert.ok(items[2].querySelector(".years")?.textContent?.startsWith("→ "));
+  assert.equal(items[2].querySelector(".loan-label")?.textContent, "Prestito");
 
   cleanup();
 });
