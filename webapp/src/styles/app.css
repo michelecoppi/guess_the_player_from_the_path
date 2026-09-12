@@ -399,7 +399,7 @@
   width: 100%;
 }
 .btn:disabled {
-  opacity: 0.5;
+  opacity: var(--disabled-opacity);
   cursor: default;
 }
 .hint-panel {
@@ -445,7 +445,7 @@
   font-size: 13px;
 }
 .feedback.ok {
-  border-color: var(--accent);
+  border-color: var(--success);
   background: var(--success-bg);
   animation: reveal 220ms ease;
 }
@@ -715,6 +715,8 @@ nav.app-nav .icon {
   height: 68px;
 }
 .avatar {
+  position: relative;
+  z-index: 1;
   background: var(--track);
   width: 85%;
   height: 85%;
@@ -1374,3 +1376,17 @@ nav.app-nav button[aria-current="page"] > .icon {
 .scoreboard .text-secondary {
   color: #c1ddcf;
 }
+
+/* Cosmetic decoration is confined to edges and dedicated identity surfaces. */
+.daily-heading .edition { border-bottom: 2px solid var(--skin-accent); }
+.profile-pass { background-color: var(--skin-profile-surface); background-image: var(--skin-pattern); border-color: var(--skin-accent-secondary); }
+.sheet-heading > svg { color: var(--skin-pitch); }
+
+.cosmetic-identity { color: var(--text); }
+.cosmetic-badge { margin-left: 6px; }
+.cosmetic-title { border-left: 2px solid var(--skin-accent); padding-left: 6px; color: var(--muted); }
+.cosmetic-number { color: var(--muted); font-variant-numeric: tabular-nums; }
+.result-card[data-card-finish="night"] { border-bottom: 2px solid var(--result-finish-accent, var(--skin-accent)); }
+.result-card[data-card-finish="foil"] { border: 2px double var(--result-finish-accent, var(--skin-accent)); }
+.result-card[data-card-finish="grain"] { border: 2px dotted var(--result-finish-accent, var(--skin-accent)); }
+.appearance-preview { display: flex; gap: 12px; align-items: center; padding: 12px; background: var(--skin-profile-surface); background-image: var(--skin-pattern); }

@@ -1,3 +1,5 @@
+import { getResolvedAppearance } from "@/appearance";
+import { resultCardAttributes } from "@/appearance/surfaces";
 import { DEFAULT_SQUARE_SYMBOLS } from "@/features/daily/controller";
 import {
   renderCareerPath,
@@ -44,7 +46,7 @@ function renderComparison(data?: DailyComparison): string {
 function renderResultCard(state: DailyState): string {
   if (state.cardImage) {
     return `
-      <div class="result-card">
+      <div class="result-card" ${resultCardAttributes(getResolvedAppearance())}>
         <img src="${escapeHtml(state.cardImage)}" alt="${escapeHtml(t("daily.share"))}">
         <p class="muted center" style="text-align: center; margin-top: 8px; font-size: 12px;">
           ${escapeHtml(t("daily.cardHint"))}

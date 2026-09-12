@@ -1,3 +1,4 @@
+import type { ResolvedAppearance } from "@/appearance/types";
 /**
  * API request and response data models.
  * Compatible with FastAPI backend endpoints defined in bot.py & services/webapp_api.py.
@@ -61,12 +62,7 @@ export interface ApiDistributionEntry {
   count: number;
 }
 
-export interface ApiCosmetics {
-  equipped?: Record<string, string>;
-  looks?: Record<string, unknown>;
-  owned?: string[];
-  [key: string]: unknown;
-}
+export type ApiCosmetics = ResolvedAppearance;
 
 export interface ApiTrophies {
   pinned?: unknown[];

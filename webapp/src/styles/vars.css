@@ -9,21 +9,31 @@
   --spacing: 0.25rem;
 }
 :root {
-  color-scheme: light;
-  --bg: var(--tg-theme-bg-color, #f1f4f7);
-  --bg-secondary: var(--tg-theme-secondary-bg-color, #e8eef3);
-  --card: var(--tg-theme-section-bg-color, #ffffff);
-  --text: var(--tg-theme-text-color, #142333);
-  --muted: #586b7b;
-  --edge: #dce4eb;
-  --track: #e7eef3;
-  --accent: #087b53;
-  --accent-text: #ffffff;
-  --danger: #b63741;
-  --danger-bg: #fff0f0;
-  --warn: #96600d;
-  --warn-bg: #fff3dc;
-  --success-bg: #e4f5ec;
+  color-scheme: dark;
+  --bg: #101820;
+  --bg-secondary: #172330;
+  --card: #1a2734;
+  --text: #f5f8fc;
+  --muted: #a7b7c8;
+  --edge: #314253;
+  --track: #2a3c4b;
+  --accent: #46cc91;
+  --accent-text: #072d22;
+  --danger: #ff9b9f;
+  --danger-bg: #3d242d;
+  --warn: #efb568;
+  --warn-bg: #3c3022;
+  --success-bg: #173a2e;
+  /* Product-owned interaction/semantics; cosmetic accents never alias these. */
+  --success: #46cc91;
+  --focus: #84e2b2;
+  --disabled-opacity: 0.5;
+  /* Decorative skin only. Do not use these for text or interactive states. */
+  --skin-accent: #46cc91;
+  --skin-accent-secondary: #314253;
+  --skin-pitch: #2a3c4b;
+  --skin-profile-surface: #1a2734;
+  --skin-pattern: none;
   --font-family:
     "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
   --font-display: var(--font-family);
@@ -45,23 +55,7 @@
   --safe-left: max(env(safe-area-inset-left, 0px), var(--tg-safe-left, 0px));
   --safe-right: max(env(safe-area-inset-right, 0px), var(--tg-safe-right, 0px));
 }
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: var(--tg-theme-bg-color, #101820);
-  --bg-secondary: var(--tg-theme-secondary-bg-color, #172330);
-  --card: var(--tg-theme-section-bg-color, #1a2734);
-  --text: var(--tg-theme-text-color, #f5f8fc);
-  --muted: #a7b7c8;
-  --edge: #314253;
-  --track: #2a3c4b;
-  --accent: #46cc91;
-  --accent-text: #072d22;
-  --danger: #ff9b9f;
-  --danger-bg: #3d242d;
-  --warn: #efb568;
-  --warn-bg: #3c3022;
-  --success-bg: #173a2e;
-}
+
 * {
   box-sizing: border-box;
 }
@@ -100,7 +94,7 @@ a:focus-visible,
 input:focus-visible,
 summary:focus-visible,
 select:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
 .sr-only {

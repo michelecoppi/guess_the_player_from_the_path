@@ -67,7 +67,7 @@ export function renderPrototype(id: PrototypeId): string {
       body = items
         .map(
           (item) =>
-            `<article class="shop-item"><div class="shop-swatch">${icon(item.type === "frame" ? "profile" : "career")}</div><div><h3>${e(item.name)}</h3><p>${e(item.description)}</p>${disabled(item.equipped ? "Equipaggiato" : `${item.price_stars} Stelle`)}</div></article>`,
+            `<article class="shop-item"><div class="shop-swatch">${icon(item.kind === "frame" ? "profile" : "career")}</div><div><h3>${e(item.name)}</h3><p>${e(item.description)}</p>${disabled(item.equipped ? "Equipaggiato" : `${item.price} Stelle`)}</div></article>`,
         )
         .join("");
       break;

@@ -18,16 +18,16 @@ Long names wrap. Never fabricate dates or badges absent from the payload.
 
 ## System
 
-- Cool neutral surfaces in light; navy surfaces in dark. Football green marks
-  interaction and correctness; red marks mistakes; amber marks hints.
+- Fixed dark navy surfaces in V2 (#66). Football green marks interaction and
+  correctness; red marks mistakes; amber marks hints. No light/dark toggle.
 - System sans with strong weight contrast for headings; tabular figures for
   seasons, attempts, scores and rankings.
 - Spacing: 4/8/12/16/24/32/48px. Structural corners 0–2px, controls 6px,
   avatar circles only. Dividers rather than container shadows.
 - One 24px outline SVG family with a custom career/pitch mark.
-- Telegram light/dark and theme-change events set semantic surface/text tokens;
-  brand and feedback colors stay controlled. Equipped cosmetics retain their
-  existing controller contract. Telegram and device safe areas protect all edges.
+- Telegram theme changes do not change structural colors. Safe-area and viewport
+  events still propagate. Device and Telegram safe areas protect all edges.
+  Cosmetics use the shared [appearance contract](miniapp-appearance.md).
 - Mobile starts at 320px; review at 390×844. At 900px, career and answer desk
   sit side by side; navigation becomes a top strip within the same sports interface.
 - Motion only for feedback and hints, 150–220ms; reduced motion removes it.
@@ -64,7 +64,7 @@ npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
 - Real runtime: http://127.0.0.1:5174/app/v2/ (requires API on port 8000 and
   valid Telegram authentication to play).
 - Isolated visual review: http://127.0.0.1:5174/app/v2/?design-review
-  (development build only). State/theme controls appear below the page.
+  (development build only). State/appearance controls appear below the page.
 - Build validation: `npm run typecheck`, `npm test`, `npm run build`,
   `npm audit --audit-level=high`.
 - Route regression: `python -m pytest -q tests/test_webapp_v2_serving.py tests/test_webapp_auth.py`.
@@ -88,7 +88,7 @@ attempts use numbered score marks; explicitly equipped symbols are preserved.
 - Six-stop Daily has a reachable input and submit action at 390×844; longer
   careers and expanded feedback scroll vertically. Club names wrap instead of
   being truncated. Desktop shows the full six-stop career beside the answer.
-- Browser review covers light/dark, 320px layout, and all supplied states.
+- The #64 browser review covered light/dark, 320px layout, and all supplied states.
   Physical Telegram keyboard behavior still needs device review. Safe-area and
   live theme propagation have automated coverage.
 - Existing hint/card API failure handling remains owned by the existing Daily

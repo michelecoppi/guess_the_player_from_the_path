@@ -9,32 +9,15 @@ import {
 } from "./api";
 import { celebrate } from "./celebrate";
 import type { DailyState, DailyGuessResult, DailyCardPayload } from "./types";
-import type { SquareSymbols } from "@/utils/game";
-
-export const DEFAULT_SQUARE_SYMBOLS: SquareSymbols = {
-  correct: "🟩",
-  wrong: "🟥",
-  unused: "⬜",
-};
-
-const THEME_VARS: Record<string, string> = {
-  bg: "--bg",
-  bg2: "--bg-secondary",
-  card: "--card",
-  edge: "--edge",
-  text: "--text",
-  muted: "--muted",
-  accent: "--accent",
-  accentText: "--accent-text",
-  track: "--track",
-  pattern: "--theme-pattern",
-};
+import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
+export { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
 
 export class DailyController {
   private state: DailyState;
   private subscribers: Array<(state: DailyState) => void> = [];
   private apiClient: ApiClient;
   private requestSeq = 0;
+  private loadSeq = 0;
 
   constructor(apiClient: ApiClient = api) {
     this.apiClient = apiClient;
@@ -82,19 +65,25 @@ export class DailyController {
   }
 
   public async loadDailyData(options: { lightweight?: boolean } = {}): Promise<void> {
+    const loadSeq = ++this.loadSeq;
     const isLightweight = Boolean(options.lightweight && this.state.challenge);
     if (!isLightweight) {
-      this.updateState({ status: "loading", errorMessage: undefined });
+      clearResolvedAppearance();
+      this.updateState({ status: "loading", errorMessage: undefined, user: null, challenge: null, feedback: null, cardImage: null, squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
     }
 
+    const pending = fetchDailyProfile(this.apiClient, { lightweight: isLightweight });
+    const generation = appearanceGeneration();
     try {
-      const profile = await fetchDailyProfile(this.apiClient, { lightweight: isLightweight });
+      const profile = await pending;
 
+      if (loadSeq !== this.loadSeq || generation !== appearanceGeneration()) return;
       if (profile.language) {
         setLanguage(profile.language as any);
       }
 
-      this.applyCosmetics(profile.cosmetics);
+      const appearance = applyResolvedAppearance(profile.cosmetics);
+      this.state.squaresSymbols = appearanceSquares(appearance);
 
       const today = profile.today || null;
       let nextStatus = this.state.status;
@@ -116,6 +105,10 @@ export class DailyController {
         errorMessage: undefined,
       });
     } catch (err: any) {
+      if (loadSeq !== this.loadSeq || generation !== appearanceGeneration()) return;
+      clearResolvedAppearance();
+      this.state.squaresSymbols = { ...DEFAULT_SQUARE_SYMBOLS };
+      this.state.user = null;
       const detail = err?.detail || err?.message || "Impossibile caricare la sfida quotidiana.";
       this.updateState({
         status: "error",
@@ -150,11 +143,13 @@ export class DailyController {
       }
 
       if (result.status === "correct") {
-        celebrate();
+        const effect = resultAppearance(getResolvedAppearance()).celebration;
+        if (effect) celebrate(effect);
       }
 
       // Reload fresh profile data
       await this.loadDailyData({ lightweight: result.status === "wrong" });
+      if (currentSeq !== this.requestSeq) return null;
 
       let nextStatus = this.state.status;
       if (result.status === "correct") {
@@ -208,6 +203,7 @@ export class DailyController {
     const ch = this.state.challenge;
     if (this.state.cardLoading || this.state.cardImage) return;
 
+    const generation = appearanceGeneration();
     this.updateState({ cardLoading: true });
 
     try {
@@ -220,11 +216,13 @@ export class DailyController {
       };
 
       const res = await fetchDailyCard(payload, this.apiClient);
+      if (generation !== appearanceGeneration()) return;
       this.updateState({
         cardImage: res.image,
         cardLoading: false,
       });
     } catch {
+      if (generation !== appearanceGeneration()) return;
       this.updateState({ cardLoading: false });
     }
   }
@@ -249,24 +247,13 @@ export class DailyController {
     this.loadDailyData();
   }
 
-  private applyCosmetics(worn: any): void {
-    if (typeof document === "undefined") return;
-    const style = document.documentElement.style;
-    const theme = worn?.theme || {};
-
-    for (const key of Object.keys(THEME_VARS)) {
-      if (theme[key]) {
-        style.setProperty(THEME_VARS[key], theme[key]);
-      } else {
-        style.removeProperty(THEME_VARS[key]);
-      }
-    }
-
-    const squares = worn?.squares || {};
-    this.state.squaresSymbols = {
-      correct: squares.correct || DEFAULT_SQUARE_SYMBOLS.correct,
-      wrong: squares.wrong || DEFAULT_SQUARE_SYMBOLS.wrong,
-      unused: squares.unused || DEFAULT_SQUARE_SYMBOLS.unused,
-    };
+  /** Call before logout/user replacement; also invalidates pending responses. */
+  public reset(): void {
+    this.requestSeq++;
+    this.loadSeq++;
+    clearResolvedAppearance();
+    this.updateState({ status: "loading", user: null, challenge: null, feedback: null,
+      cardImage: null, cardLoading: false, errorMessage: undefined, inputValue: "",
+      squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
   }
 }
