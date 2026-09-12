@@ -208,14 +208,18 @@ function renderChallengeView(state: ArchiveState): string {
     : `<p class="muted">${escapeHtml(t("archive.error"))}</p>`;
 
   const feedbackHtml = renderArchiveFeedback(feedback);
-  const exhaustedHtml = !feedback && !challenge.solved && challenge.attempts_left <= 0 ? `<div class="feedback no" role="status">${escapeHtml(t("archive.noAttempts"))}</div>` : "";
+  const exhaustedHtml =
+    !feedback && !challenge.solved && challenge.attempts_left <= 0
+      ? `<div class="feedback no" role="status" aria-live="polite">${escapeHtml(t("archive.noAttempts"))}</div>`
+      : "";
 
   const isGameOver =
     challenge.solved ||
     challenge.attempts_left <= 0 ||
     feedback?.status === "correct" ||
-    (feedback?.status === "wrong" && (feedback.attempts_left ?? 0) <= 0) ||
-    feedback?.status === "refused";
+    (feedback?.status === "wrong" && feedback.attempts_left <= 0) ||
+    feedback?.status === "refused" ||
+    feedback?.status === "no_challenge";
 
   const submitting = status === "submitting";
 

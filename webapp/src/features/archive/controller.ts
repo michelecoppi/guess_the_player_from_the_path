@@ -134,6 +134,8 @@ export class ArchiveController {
    */
   public async openDay(day: string): Promise<void> {
     const currentSeq = ++this.challengeSeq;
+    ++this.guessSeq;
+
     this.updateState({
       view: "challenge",
       status: "challenge_loading",
@@ -148,7 +150,12 @@ export class ArchiveController {
     try {
       const challenge = await fetchArchiveChallenge(day, this.client);
       if (currentSeq !== this.challengeSeq) return;
-      this.updateState({ status: "challenge_ready", challenge });
+      const isFinished = challenge.solved || challenge.attempts_left <= 0;
+      this.updateState({
+        status: "challenge_ready",
+        challenge,
+        challengeFinished: isFinished,
+      });
     } catch (err: any) {
       if (currentSeq !== this.challengeSeq) return;
       this.updateState({
@@ -172,6 +179,7 @@ export class ArchiveController {
    */
   public async backToCalendar(): Promise<void> {
     ++this.challengeSeq; // Cancel any in-flight challenge load
+    ++this.guessSeq;     // Cancel any in-flight guess
     const needsRefresh = this.state.challengeFinished;
 
     this.updateState({
@@ -201,19 +209,28 @@ export class ArchiveController {
    */
   public async submitGuess(rawAnswer: string): Promise<ArchiveGuessResult | null> {
     const answer = rawAnswer.trim();
-    const { selectedDay } = this.state;
+    const { selectedDay, challenge, challengeFinished } = this.state;
 
-    if (!answer || !selectedDay || this.state.status === "submitting") {
+    if (
+      !answer ||
+      !selectedDay ||
+      this.state.status === "submitting" ||
+      challengeFinished ||
+      !challenge ||
+      challenge.attempts_left <= 0 ||
+      challenge.solved
+    ) {
       return null;
     }
 
     const currentSeq = ++this.guessSeq;
+    const currentDay = selectedDay;
     this.updateState({ status: "submitting", error: null });
 
     try {
-      const result = await submitArchiveGuess(answer, selectedDay, this.client);
+      const result = await submitArchiveGuess(answer, currentDay, this.client);
 
-      if (currentSeq !== this.guessSeq) return null;
+      if (currentSeq !== this.guessSeq || this.state.selectedDay !== currentDay) return null;
 
       const tg = getTelegramWebApp();
       try {
@@ -227,11 +244,18 @@ export class ArchiveController {
       const isFinished =
         result.status === "correct" ||
         (result.status === "wrong" && result.attempts_left === 0) ||
-        result.status === "refused" || result.status === "no_challenge";
+        result.status === "refused" ||
+        result.status === "no_challenge";
 
-      const updatedChallenge = this.state.challenge && (result.status === "correct" || result.status === "wrong")
-        ? { ...this.state.challenge, attempts_used: result.attempts_used, attempts_left: result.attempts_left, solved: result.status === "correct" || this.state.challenge.solved }
-        : this.state.challenge;
+      const updatedChallenge =
+        this.state.challenge && (result.status === "correct" || result.status === "wrong")
+          ? {
+              ...this.state.challenge,
+              attempts_used: result.attempts_used,
+              attempts_left: result.attempts_left,
+              solved: result.status === "correct" || this.state.challenge.solved,
+            }
+          : this.state.challenge;
 
       this.updateState({
         status: "challenge_ready",
@@ -244,7 +268,7 @@ export class ArchiveController {
 
       return result;
     } catch (err: any) {
-      if (currentSeq !== this.guessSeq) return null;
+      if (currentSeq !== this.guessSeq || this.state.selectedDay !== currentDay) return null;
       this.updateState({
         status: "challenge_ready",
         error: err?.detail || err?.message || "loadError",

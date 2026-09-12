@@ -326,12 +326,35 @@ export function createTestArchiveChallenge(overrides: Partial<ArchiveChallenge> 
   };
 }
 
-export function createTestArchiveGuessResult(overrides: Partial<ArchiveGuessResult> = {}): ArchiveGuessResult {
+export function createTestArchiveGuessResult(overrides: Record<string, any> = {}): ArchiveGuessResult {
+  const status = overrides.status || "wrong";
+  if (status === "refused") {
+    return {
+      status: "refused",
+      reason: overrides.reason || "already_solved",
+      ...overrides,
+    };
+  }
+  if (status === "no_challenge") {
+    return {
+      status: "no_challenge",
+      ...overrides,
+    };
+  }
+  if (status === "correct") {
+    return {
+      status: "correct",
+      attempts_used: overrides.attempts_used ?? 1,
+      attempts_left: overrides.attempts_left ?? 2,
+      share: overrides.share ?? { text: "Share", url: "https://t.me/share" },
+      ...overrides,
+    };
+  }
   return {
     status: "wrong",
-    attempts_used: 1,
-    attempts_left: 2,
-    comparison: {
+    attempts_used: overrides.attempts_used ?? 1,
+    attempts_left: overrides.attempts_left ?? 2,
+    comparison: overrides.comparison ?? {
       name: "Pirlo",
       clues: [
         { key: "feedback.nationality_same", args: {} },
@@ -339,7 +362,7 @@ export function createTestArchiveGuessResult(overrides: Partial<ArchiveGuessResu
       ],
     },
     ...overrides,
-  } as unknown as ArchiveGuessResult;
+  };
 }
 
 
