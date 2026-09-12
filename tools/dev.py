@@ -112,6 +112,24 @@ def cmd_dataset_check(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
+def cmd_dataset_regression_check(extra_args: list[str]) -> int:
+    """Verifica le regressioni del dataset calciatori rispetto alla baseline."""
+    cmd = [sys.executable, "-m", "scripts.dataset_regression", "--check"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_dataset_baseline_update(extra_args: list[str]) -> int:
+    """Aggiorna la baseline del dataset calciatori (data/dataset_baseline.json)."""
+    cmd = [sys.executable, "-m", "scripts.dataset_regression", "--update-baseline"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_security_check(extra_args: list[str]) -> int:
+    """Esegue l'audit di sicurezza: pip-audit, detect-secrets e npm-audit."""
+    cmd = [sys.executable, "-m", "tools.security"] + extra_args
+    return _run_cmd(cmd)
+
+
 def _npm_cmd() -> str:
     import shutil
     return shutil.which("npm") or "npm"
@@ -157,6 +175,7 @@ def cmd_check(extra_args: list[str]) -> int:
         ("Type check frontend (tsc)", cmd_frontend_typecheck, []),
         ("Build frontend (vite)", cmd_frontend_build, []),
         ("Integrita' dataset", cmd_dataset_check, []),
+        ("Regressione dataset", cmd_dataset_regression_check, []),
         ("Test client legacy (node)", cmd_test_node, []),
         ("Test frontend unitari", cmd_frontend_test, []),
         ("Unit test (pytest)", cmd_test, extra_args),
@@ -272,6 +291,9 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "frontend-build": (cmd_frontend_build, "Compila il bundle di produzione frontend con Vite e TypeScript"),
     "frontend-typecheck": (cmd_frontend_typecheck, "Verifica i tipi TypeScript per il frontend (tsc --noEmit)"),
     "frontend-test": (cmd_frontend_test, "Esegue i test unitari TypeScript della nuova foundation"),
+    "dataset-regression-check": (cmd_dataset_regression_check, "Verifica regressioni del dataset rispetto alla baseline"),
+    "dataset-baseline-update": (cmd_dataset_baseline_update, "Aggiorna data/dataset_baseline.json con le metriche attuali"),
+    "security-check": (cmd_security_check, "Esegue audit di sicurezza (pip-audit, detect-secrets, npm-audit)"),
 }
 
 
@@ -289,6 +311,8 @@ def print_help() -> None:
     print("  python -m tools.dev check-api")
     print("  python -m tools.dev test")
     print("  python -m tools.dev check")
+    print("  python -m tools.dev security-check")
+    print("  python -m tools.dev dataset-regression-check")
     print("  python -m tools.dev admin")
     print("  python -m tools.dev webapp")
     print("  python -m tools.dev frontend-dev\n")
@@ -327,6 +351,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         "typecheck-frontend": "frontend-typecheck",
         "ts-check": "frontend-typecheck",
         "test-frontend": "frontend-test",
+        "security": "security-check",
+        "sec": "security-check",
+        "security_check": "security-check",
+        "dataset-regression": "dataset-regression-check",
+        "dataset_regression": "dataset-regression-check",
+        "regression-check": "dataset-regression-check",
+        "update-baseline": "dataset-baseline-update",
+        "baseline-update": "dataset-baseline-update",
+        "update_baseline": "dataset-baseline-update",
     }
     target_cmd = aliases.get(cmd_name, cmd_name)
 

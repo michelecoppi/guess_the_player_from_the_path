@@ -19,6 +19,9 @@ def test_commands_table_has_all_required_tasks():
         "admin",
         "webapp",
         "emulator",
+        "security-check",
+        "dataset-regression-check",
+        "dataset-baseline-update",
     }
     assert expected.issubset(COMMANDS.keys())
 
