@@ -155,11 +155,12 @@ export class ArenaController {
     this.updateState({ busy: true, status: "loading", error: null });
     try {
       const data = await fetchDuelList(this.apiClient);
+      const isHub = this.state.subview === "hub";
       this.updateState({
         busy: false,
         status: "idle",
         data,
-        subview: "hub",
+        ...(isHub ? { subview: "hub" } : {}),
       });
     } catch (err: any) {
       const errorKey = err?.detail || "loadError";

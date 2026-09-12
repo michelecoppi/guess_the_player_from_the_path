@@ -127,6 +127,25 @@ export function createTestDuelSession(overrides: Record<string, any> = {}) {
   };
 }
 
+export function createTestTrainingSession(
+  overrides: Partial<import("@/features/training/types").TrainingSession> = {},
+): import("@/features/training/types").TrainingSession {
+  return {
+    round: 0,
+    attempts: 0,
+    solved: 0,
+    spent: 0,
+    revision: 1,
+    finished: false,
+    history: [],
+    total: 1,
+    max_attempts: 5,
+    difficulty_label: "Media",
+    career_path: createTestCareerPath(),
+    ...overrides,
+  };
+}
+
 export const TEST_DUEL_CODE = "000000000000000000000001"; // pragma: allowlist secret
 
 export function createTestDuelData(overrides: Record<string, any> = {}) {
@@ -170,4 +189,15 @@ export function createTestOpponentProfile(overrides: Record<string, any> = {}) {
     ...overrides,
   };
 }
+
+export function createTestTrainingData(
+  overrides: Partial<import("@/features/training/types").TrainingData> = {},
+): import("@/features/training/types").TrainingData {
+  return {
+    session: createTestTrainingSession(),
+    feedback: null,
+    ...overrides,
+  };
+}
+
 

@@ -25,6 +25,8 @@ const paths = {
   referral:
     '<circle cx="8" cy="7" r="3"/><path d="M2 20v-2a6 6 0 0 1 12 0v2m2-16a3 3 0 0 1 0 6m1 4a5 5 0 0 1 5 5"/>',
   events: '<path d="M5 21V3m0 1h14l-3 5 3 5H5"/>',
+  training:
+    '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4"/>',
 } as const;
 export type IconName = keyof typeof paths;
 export function icon(name: IconName): string {

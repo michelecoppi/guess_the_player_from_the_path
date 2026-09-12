@@ -27,6 +27,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#17](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/17) | Incremental Mini App migration and frontend tests (epic) |
 | [#40](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/40) | ↳ Migrate Daily feature |
 | [#41](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/41) | ↳ Migrate Arena feature |
+| [#68](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/68) | ↳ Migrate Training feature |
 | [#42](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/42) | ↳ Migrate Profile feature |
 | [#43](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/43) | ↳ Migrate Leaderboard feature |
 | [#44](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/44) | ↳ Migrate Archive feature |
@@ -115,3 +116,5 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 - 2026-09-11: began governance refinement: added `Horizon` and `Size`; codified the status flow, WIP limit and PR-closing convention.
 - 2026-09-11: dependency/sub-issue review. Split #12, #17, #20, #22 into 20 skeleton sub-issues (#33–#52); formalized hard dependencies as GitHub sub-issue/`blocked by` relations for #13→(#14,#26,#15,#27), #26→#15, #15→#35, #16→#17 and its sub-issues, #29→#52; reconciled #14→#15 as soft; documented soft/related dependencies as issue comments instead of GitHub relations; created and applied `data-risk`/`security` labels. Full rationale in [`project-dependency-review.md`](project-dependency-review.md).
 - 2026-09-11: classified #33–#52 on the Project (Area, Work Type, Priority, Horizon, Size, Risk), differentiated per sub-issue rather than copied from the parent — e.g. #51 (feature flags) pulled to P1/Next since it has no dependency on #29, while #52 (experimentation) stays P2/Later. Full table in [`project-dependency-review.md`](project-dependency-review.md). Status left at `Backlog` for all 20.
+- 2026-09-12: began #68 (Mini App V2: migrate Training / Allenamento mode). Added to Project #2 (Area: Mini App, Work Type: Feature, Priority: P1, Horizon: Now, Size: 3, Risk: Low, Status: In Progress).
+

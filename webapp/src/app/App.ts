@@ -3,7 +3,11 @@ import { connectTheme } from "@/telegram/theme";
 import { renderHeader } from "@/components/Header";
 import { renderNavBar, type NavTabId } from "@/components/NavBar";
 import { renderDailyPage, attachDailyEventListeners } from "@/pages/DailyPage";
-import { renderArenaPage, attachArenaEventListeners } from "@/pages/ArenaPage";
+import {
+  renderArenaPage,
+  attachArenaEventListeners,
+  type ArenaSubview,
+} from "@/pages/ArenaPage";
 import { renderProfilePage } from "@/pages/ProfilePage";
 import { renderLeaderboardPage } from "@/pages/LeaderboardPage";
 import {
@@ -15,21 +19,27 @@ import { resolveLanguage, setLanguage } from "@/i18n";
 import { exposeLegacyBridge } from "@/utils/legacy-bridge";
 import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
+import { TrainingController } from "@/features/training/controller";
 
 export class App {
   private rootElement: HTMLElement;
   private activeTab: NavTabId = "play";
   private dailyController: DailyController;
   private arenaController: ArenaController;
+  private trainingController: TrainingController;
+  private lastArenaSubview: ArenaSubview;
 
   constructor(
     rootElement: HTMLElement,
     dailyController?: DailyController,
     arenaController?: ArenaController,
+    trainingController?: TrainingController,
   ) {
     this.rootElement = rootElement;
     this.dailyController = dailyController || new DailyController();
     this.arenaController = arenaController || new ArenaController();
+    this.trainingController = trainingController || new TrainingController();
+    this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
 
     this.dailyController.subscribe(() => {
@@ -38,8 +48,34 @@ export class App {
       }
     });
 
-    this.arenaController.subscribe(() => {
+    this.arenaController.subscribe((state) => {
       if (this.isArenaTab(this.activeTab)) {
+        const subviewChanged = state.subview !== this.lastArenaSubview;
+        this.lastArenaSubview = state.subview;
+
+        if (state.subview === "training") {
+          if (subviewChanged) {
+            if (
+              !this.trainingController.getState().data &&
+              this.trainingController.getState().status === "idle"
+            ) {
+              void this.trainingController.init();
+            }
+            this.renderArenaContent();
+          }
+        } else {
+          this.renderArenaContent();
+        }
+      } else {
+        this.lastArenaSubview = state.subview;
+      }
+    });
+
+    this.trainingController.subscribe(() => {
+      if (
+        this.isArenaTab(this.activeTab) &&
+        this.arenaController.getState().subview === "training"
+      ) {
         this.renderArenaContent();
       }
     });
@@ -51,6 +87,10 @@ export class App {
 
   public getArenaController(): ArenaController {
     return this.arenaController;
+  }
+
+  public getTrainingController(): TrainingController {
+    return this.trainingController;
   }
 
   public isArenaTab(tab: NavTabId): boolean {
@@ -100,11 +140,16 @@ export class App {
     }
   }
 
+  public setArenaSubview(subview: ArenaSubview): void {
+    this.arenaController.setSubview(subview);
+  }
+
   private renderDailyContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.activeTab === "play") {
       const state = this.dailyController.getState();
-      const hadInputFocus = document.activeElement?.id === "answer";
+      const hadInputFocus =
+        typeof document !== "undefined" && document.activeElement?.id === "answer";
       mainEl.innerHTML = renderDailyPage(state);
       attachDailyEventListeners(this.rootElement, this.dailyController);
       if (hadInputFocus && state.status !== "submitting")
@@ -125,36 +170,71 @@ export class App {
   private renderArenaContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.isArenaTab(this.activeTab)) {
-      const state = this.arenaController.getState();
-      const hadAnswerFocus = document.activeElement?.id === "arena-answer";
-      const hadSearchFocus = document.activeElement?.id === "opponent-search";
-      const searchCursorPos =
-        hadSearchFocus
-          ? (document.activeElement as HTMLInputElement).selectionStart
-          : null;
+      const arenaState = this.arenaController.getState();
+      const trainingState = this.trainingController.getState();
 
-      mainEl.innerHTML = renderArenaPage(state);
-      attachArenaEventListeners(this.rootElement, this.arenaController);
+      if (arenaState.subview === "training") {
+        const hadInputFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "training-answer";
 
-      if (hadAnswerFocus && state.status !== "submitting") {
-        mainEl
-          .querySelector<HTMLInputElement>("#arena-answer")
-          ?.focus({ preventScroll: true });
-      } else if (hadSearchFocus) {
-        const searchInput =
-          mainEl.querySelector<HTMLInputElement>("#opponent-search");
-        if (searchInput) {
-          searchInput.focus({ preventScroll: true });
-          if (searchCursorPos !== null) {
-            searchInput.setSelectionRange(searchCursorPos, searchCursorPos);
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        attachArenaEventListeners(
+          this.rootElement,
+          this.arenaController,
+          this.trainingController,
+        );
+
+        if (hadInputFocus && trainingState.status !== "loading") {
+          mainEl
+            .querySelector<HTMLInputElement>("#training-answer")
+            ?.focus({ preventScroll: true });
+        }
+
+        if (trainingState.data?.feedback) {
+          mainEl
+            .querySelector(".feedback")
+            ?.scrollIntoView?.({ block: "nearest" });
+        }
+      } else {
+        const hadAnswerFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "arena-answer";
+        const hadSearchFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "opponent-search";
+        const searchCursorPos =
+          hadSearchFocus && typeof document !== "undefined"
+            ? (document.activeElement as HTMLInputElement).selectionStart
+            : null;
+
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        attachArenaEventListeners(
+          this.rootElement,
+          this.arenaController,
+          this.trainingController,
+        );
+
+        if (hadAnswerFocus && arenaState.status !== "submitting") {
+          mainEl
+            .querySelector<HTMLInputElement>("#arena-answer")
+            ?.focus({ preventScroll: true });
+        } else if (hadSearchFocus) {
+          const searchInput =
+            mainEl.querySelector<HTMLInputElement>("#opponent-search");
+          if (searchInput) {
+            searchInput.focus({ preventScroll: true });
+            if (searchCursorPos !== null) {
+              searchInput.setSelectionRange(searchCursorPos, searchCursorPos);
+            }
           }
         }
-      }
 
-      if (state.data?.feedback) {
-        mainEl
-          .querySelector(".feedback")
-          ?.scrollIntoView?.({ block: "nearest" });
+        if (arenaState.data?.feedback) {
+          mainEl
+            .querySelector(".feedback")
+            ?.scrollIntoView?.({ block: "nearest" });
+        }
       }
     }
   }
@@ -171,7 +251,10 @@ export class App {
       case "arena":
       case "duels":
       case "challenge":
-        pageHtml = renderArenaPage(this.arenaController.getState());
+        pageHtml = renderArenaPage(
+          this.arenaController.getState(),
+          this.trainingController.getState(),
+        );
         break;
       case "profile":
         pageHtml = renderProfilePage({ user });
@@ -225,7 +308,11 @@ export class App {
     if (this.activeTab === "play") {
       attachDailyEventListeners(this.rootElement, this.dailyController);
     } else if (this.isArenaTab(this.activeTab)) {
-      attachArenaEventListeners(this.rootElement, this.arenaController);
+      attachArenaEventListeners(
+        this.rootElement,
+        this.arenaController,
+        this.trainingController,
+      );
     }
   }
 }
