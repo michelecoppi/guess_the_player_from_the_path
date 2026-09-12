@@ -206,12 +206,42 @@ window.Telegram = { WebApp: {
   MainButton: { setText: function () { return this; }, show: function () { return this; },
                 hide: function () { return this; }, onClick: function () { return this; } },
 } };
+window.addEventListener("load", function () {
+  var p = new URLSearchParams(window.location.search);
+  var mode = p.get("mock_guess") || p.get("view");
+  if (mode === "wrong" || mode === "solved") {
+    setTimeout(function () {
+      var inp = document.querySelector("#answer");
+      if (inp) {
+        inp.value = mode === "solved" ? "Vitolo" : "Messi";
+        inp.dispatchEvent(new Event("input", { bubbles: true }));
+        var btn = document.querySelector("#submit");
+        if (btn) btn.click();
+      }
+    }, 350);
+  }
+});
 </script>"""
+
 
 
 @app.get("/", response_class=HTMLResponse)
 @app.get("/app", response_class=HTMLResponse)
-async def page(lang: str | None = None, referrals: int | None = None):
+async def page(lang: str | None = None, referrals: int | None = None, scenario: str | None = None):
+    if scenario == "solved":
+        from services.dates import today_iso
+        STATE["user"]["last_played_day"] = today_iso()
+        STATE["user"]["has_guessed_today"] = True
+        STATE["user"]["daily_attempts"] = 2
+    elif scenario == "wrong":
+        from services.dates import today_iso
+        STATE["user"]["last_played_day"] = today_iso()
+        STATE["user"]["has_guessed_today"] = False
+        STATE["user"]["daily_attempts"] = 1
+    elif scenario == "reset":
+        STATE["user"]["last_played_day"] = None
+        STATE["user"]["has_guessed_today"] = False
+        STATE["user"]["daily_attempts"] = 0
     if lang in ("it", "en", "es"):
         STATE["user"]["language"] = lang
     if referrals is not None:
@@ -277,7 +307,21 @@ DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
 
 
 @app.get("/app/v2", response_class=HTMLResponse)
-async def webapp_v2_page(lang: str | None = None):
+async def webapp_v2_page(lang: str | None = None, scenario: str | None = None):
+    if scenario == "solved":
+        from services.dates import today_iso
+        STATE["user"]["last_played_day"] = today_iso()
+        STATE["user"]["has_guessed_today"] = True
+        STATE["user"]["daily_attempts"] = 2
+    elif scenario == "wrong":
+        from services.dates import today_iso
+        STATE["user"]["last_played_day"] = today_iso()
+        STATE["user"]["has_guessed_today"] = False
+        STATE["user"]["daily_attempts"] = 1
+    elif scenario == "reset":
+        STATE["user"]["last_played_day"] = None
+        STATE["user"]["has_guessed_today"] = False
+        STATE["user"]["daily_attempts"] = 0
     if lang in ("it", "en", "es"):
         STATE["user"]["language"] = lang
     dist_index = os.path.join(DIST_DIR, "index.html")
@@ -433,11 +477,55 @@ async def league(payload: dict = Body(default={})):
 
 
 @app.post("/app/api/guess")
+async def preview_guess(payload: dict = Body(default={})):
+    answer = (payload.get("answer") or payload.get("guess") or "").strip()
+    if not answer:
+        return {"status": "error", "reason": "empty_guess"}
+
+    if answer.lower() in ("vitolo", "correct", "solve"):
+        STATE["user"]["has_guessed_today"] = True
+        STATE["user"]["daily_attempts"] = 2
+        return {
+            "status": "correct",
+            "attempts_used": 2,
+            "attempts_left": 3,
+            "points": 100,
+            "streak": 10,
+            "best_streak": 31,
+            "squares": "🟥🟩⬜⬜⬜",
+            "player_name": "Vitolo",
+            "share": {
+                "text": "Guess the Player #462 2/5\n🟥🟩⬜⬜⬜",
+                "url": "https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fpreview_bot",
+            },
+        }
+
+    STATE["user"]["daily_attempts"] = 1
+    return {
+        "status": "wrong",
+        "attempts_used": 1,
+        "attempts_left": 4,
+        "comparison": {
+            "name": answer,
+            "clues": [
+                {"key": "feedback.nationality_diff"},
+                {"key": "feedback.position_same"},
+                {"key": "feedback.birth_before", "args": {"year": 1989}},
+            ],
+        },
+    }
+
+
 @app.post("/app/api/hint")
-async def not_in_preview(payload: dict = Body(default={})):
-    """Giocare davvero vorrebbe dire scrivere: in anteprima la partita non serve, servono i
-    colori addosso alla pagina."""
-    return {"status": "error", "reason": "preview"}
+async def preview_hint(payload: dict = Body(default={})):
+    STATE["user"]["daily_hints"] = (STATE["user"].get("daily_hints") or 0) + 1
+    return {
+        "status": "ok",
+        "hint": "Ha vinto 4 Europa League con il Siviglia",
+        "hints_used": STATE["user"]["daily_hints"],
+        "hints_left": max(0, 3 - STATE["user"]["daily_hints"]),
+    }
+
 
 
 @app.post("/app/api/preview/reset")

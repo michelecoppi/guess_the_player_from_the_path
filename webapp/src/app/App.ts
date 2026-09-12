@@ -1,20 +1,33 @@
 import { renderHeader } from "@/components/Header";
 import { renderNavBar, type NavTabId } from "@/components/NavBar";
-import { renderDailyPage } from "@/pages/DailyPage";
+import { renderDailyPage, attachDailyEventListeners } from "@/pages/DailyPage";
 import { renderArenaPage } from "@/pages/ArenaPage";
 import { renderProfilePage } from "@/pages/ProfilePage";
 import { renderLeaderboardPage } from "@/pages/LeaderboardPage";
 import { initTelegram, getTelegramUser, isMockTelegramEnvironment } from "@/telegram/webapp";
 import { resolveLanguage, setLanguage, t } from "@/i18n";
 import { exposeLegacyBridge } from "@/utils/legacy-bridge";
+import { DailyController } from "@/features/daily/controller";
 
 export class App {
   private rootElement: HTMLElement;
   private activeTab: NavTabId = "play";
+  private dailyController: DailyController;
 
-  constructor(rootElement: HTMLElement) {
+  constructor(rootElement: HTMLElement, dailyController?: DailyController) {
     this.rootElement = rootElement;
+    this.dailyController = dailyController || new DailyController();
     exposeLegacyBridge();
+
+    this.dailyController.subscribe(() => {
+      if (this.activeTab === "play") {
+        this.renderDailyContent();
+      }
+    });
+  }
+
+  public getDailyController(): DailyController {
+    return this.dailyController;
   }
 
   public init(): void {
@@ -24,12 +37,21 @@ export class App {
     setLanguage(userLang);
 
     this.render();
+    this.dailyController.init();
   }
 
   public setTab(tab: NavTabId): void {
     if (this.activeTab !== tab) {
       this.activeTab = tab;
       this.render();
+    }
+  }
+
+  private renderDailyContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "play") {
+      mainEl.innerHTML = renderDailyPage(this.dailyController.getState());
+      attachDailyEventListeners(this.rootElement, this.dailyController);
     }
   }
 
@@ -40,7 +62,7 @@ export class App {
     let pageHtml = "";
     switch (this.activeTab) {
       case "play":
-        pageHtml = renderDailyPage();
+        pageHtml = renderDailyPage(this.dailyController.getState());
         break;
       case "arena":
         pageHtml = renderArenaPage();
@@ -52,7 +74,7 @@ export class App {
         pageHtml = renderLeaderboardPage();
         break;
       default:
-        pageHtml = renderDailyPage();
+        pageHtml = renderDailyPage(this.dailyController.getState());
     }
 
     const mockBannerHtml = isMock && user
@@ -85,5 +107,9 @@ export class App {
         }
       });
     });
+
+    if (this.activeTab === "play") {
+      attachDailyEventListeners(this.rootElement, this.dailyController);
+    }
   }
 }
