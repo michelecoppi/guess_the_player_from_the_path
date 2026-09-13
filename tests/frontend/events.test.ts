@@ -13,6 +13,11 @@ import {
   type EventsResponse,
 } from "../../webapp/src/features/events/types";
 import { App } from "../../webapp/src/app/App";
+import { ArenaController } from "../../webapp/src/features/arena/controller";
+import { TrainingController } from "../../webapp/src/features/training/controller";
+import { ReferralController } from "../../webapp/src/features/referral/controller";
+import { ProfileController } from "../../webapp/src/features/profile/controller";
+import { ShopController } from "../../webapp/src/features/shop/controller";
 import { setLanguage } from "../../webapp/src/i18n";
 import {
   setupTestTelegram,
@@ -233,7 +238,7 @@ test("6. Zero active events: renders empty state with CTA to training", async ()
 
   const html = renderEventsPage(controller);
   assert.match(html, /Nessun evento attivo/);
-  assert.match(html, /data-tab="arena"/);
+  assert.match(html, /id="events-open-training"/);
   assert.match(html, /Allenamento/);
 });
 
@@ -417,7 +422,7 @@ test("14. Event type 'career': renders player_name, min_correct, comma guidance,
   const initialHtml = renderEventsPage(controller);
   assert.match(initialHtml, /Zlatan Ibrahimovic/);
   assert.match(initialHtml, /Inserisci fino a 5 club separati da virgole/);
-  assert.match(initialHtml, /Min: 3/);
+  assert.match(initialHtml, /Minimo:\s*3/);
 
   // Submit and verify matched feedback
   await controller.submit("Milan, Ajax, Liverpool");
@@ -1145,6 +1150,7 @@ test("33. Arena Hub -> Events integration test: real App navigation, controller 
       undefined,
       undefined,
       undefined,
+      undefined,
       eventsController,
     );
     app.init();
@@ -1189,6 +1195,7 @@ test("34. App constructor injection: verifies custom EventsController parameter 
       undefined,
       undefined,
       undefined,
+      undefined,
       customController,
     );
     assert.equal(app.getEventsController(), customController);
@@ -1211,3 +1218,345 @@ test("35. Legacy /app files (webapp/arena.js, webapp/index.html, webapp/client.j
   assert.ok(indexHtml.includes("arena.js"), "Legacy index.html script tag must remain present");
   assert.ok(clientJs.includes("escapeHtml"), "Legacy client.js must remain untouched");
 });
+
+// ---------------------------------------------------------------------------
+// 18. REFRESH VS SUBMIT RACE PREVENTION & INVERSE PROTECTION
+// ---------------------------------------------------------------------------
+
+test("36. Race prevention: in-flight detail refresh blocks submit, refresh resolves, new submit uses updated revision", async () => {
+  let resolveGet: (val: any) => void;
+  const getPromise = new Promise((resolve) => {
+    resolveGet = resolve;
+  });
+
+  let guessCalls = 0;
+  let lastGuessPayload: any = null;
+
+  const cardV1 = createTestCard({
+    progress: { attempts: 0, finished: false, solved: false, points: 0 },
+  });
+  const cardV2 = createTestCard({
+    progress: { attempts: 1, finished: false, solved: false, points: 0 },
+  });
+
+  const client: any = {
+    post: async (_url: string, payload: any) => {
+      if (payload.action === "get") {
+        return getPromise;
+      }
+      if (payload.action === "guess") {
+        guessCalls++;
+        lastGuessPayload = payload;
+        return {
+          events: [
+            createTestCard({
+              progress: { attempts: 2, finished: false, solved: false, points: 0 },
+            }),
+          ],
+          feedback: { status: "wrong", points: 0 },
+        };
+      }
+    },
+  };
+
+  const controller = new EventsController(client);
+  // Seed with cardV1 ready state
+  controller["setState"]({
+    status: "ready",
+    events: [cardV1],
+    selectedCode: "champions_cup",
+    draftAnswer: "",
+    feedback: null,
+    error: null,
+  });
+
+  // Start detail refresh
+  const loadPromise = controller.load();
+  assert.equal(controller.getState().status, "loading");
+
+  // Attempt submit while refresh is pending
+  await controller.submit("Zidane");
+  assert.equal(guessCalls, 0, "Submit must not dispatch any guess request while status is loading");
+
+  // Verify UI disables form during loading
+  const loadingHtml = renderEventsPage(controller);
+  assert.match(loadingHtml, /<input[^>]*id="events-answer"[^>]*disabled/);
+  assert.match(loadingHtml, /<button[^>]*type="submit"[^>]*disabled/);
+
+  // Resolve the refresh with cardV2
+  resolveGet!({ events: [cardV2] });
+  await loadPromise;
+
+  assert.equal(controller.getState().status, "ready");
+  assert.equal(controller.selected()?.progress.attempts, 1);
+
+  // Submit now succeeds with updated revision
+  await controller.submit("Del Piero");
+  assert.equal(guessCalls, 1);
+  assert.equal(lastGuessPayload.revision, 1);
+  assert.equal(lastGuessPayload.answer, "Del Piero");
+});
+
+test("37. Inverse protection: in-flight guess blocks refresh dispatch", async () => {
+  let resolveGuess: (val: any) => void;
+  const guessPromise = new Promise((resolve) => {
+    resolveGuess = resolve;
+  });
+
+  let getCalls = 0;
+  const card = createTestCard({
+    progress: { attempts: 1, finished: false, solved: false, points: 0 },
+  });
+
+  const client: any = {
+    post: async (_url: string, payload: any) => {
+      if (payload.action === "guess") {
+        return guessPromise;
+      }
+      if (payload.action === "get") {
+        getCalls++;
+        return { events: [card] };
+      }
+    },
+  };
+
+  const controller = new EventsController(client);
+  controller["setState"]({
+    status: "ready",
+    events: [card],
+    selectedCode: "champions_cup",
+    draftAnswer: "",
+    feedback: null,
+    error: null,
+  });
+
+  const submitPromise = controller.submit("Buffon");
+  assert.equal(controller.getState().status, "submitting");
+
+  // Attempt refresh while submit is in flight
+  await controller.load();
+  assert.equal(getCalls, 0, "Refresh must not dispatch when status is submitting");
+
+  resolveGuess!({
+    events: [card],
+    feedback: { status: "correct", points: 100 },
+  });
+  await submitPromise;
+  assert.equal(controller.getState().status, "ready");
+});
+
+// ---------------------------------------------------------------------------
+// 19. ZERO-EVENTS -> TRAINING NAVIGATION (POST ASYNC PARTIAL RERENDER)
+// ---------------------------------------------------------------------------
+
+test("38. Zero-events empty state -> Training navigation works after async partial rerender", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { cleanup, container } = setupGlobalDom();
+
+  try {
+    let resolveEvents: (val: any) => void;
+    const eventsPromise = new Promise((resolve) => {
+      resolveEvents = resolve;
+    });
+
+    const eventsClient: any = {
+      post: async (_url: string, payload: any) => {
+        if (payload.action === "get") {
+          return eventsPromise;
+        }
+      },
+    };
+
+    const trainingData = {
+      session: {
+        round: 0,
+        attempts: 0,
+        solved: 0,
+        spent: 0,
+        revision: 0,
+        finished: false,
+        history: [],
+        total: 10,
+        max_attempts: 5,
+        career_path: [
+          { team: "Juventus", start_year: 2010, end_year: 2015, apps: 100, goals: 10 },
+        ],
+      },
+    };
+    const trainingClient: any = {
+      post: async () => trainingData,
+    };
+
+    const eventsController = new EventsController(eventsClient);
+    const trainingController = new TrainingController(trainingClient);
+    const arenaController = new ArenaController();
+
+    const app = new App(
+      container,
+      undefined,
+      arenaController,
+      trainingController,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      eventsController,
+    );
+    app.init();
+
+    // Navigate to events tab
+    app.setTab("events");
+
+    // Initially loading state is rendered
+    assert.ok(container.querySelector(".loading-container") || container.innerHTML.includes("Eventi"));
+
+    // Resolve events with 0 events
+    resolveEvents!({ events: [] });
+    await new Promise((r) => setTimeout(r, 30));
+
+    // Empty state should be rendered via partial rerender (renderEventsContent)
+    const emptyTrainingBtn = container.querySelector<HTMLButtonElement>("#events-open-training");
+    assert.ok(emptyTrainingBtn, "#events-open-training button must exist in empty state after async partial rerender");
+
+    // Click "Training" button
+    emptyTrainingBtn.click();
+    await new Promise((r) => setTimeout(r, 30));
+
+    // Verify App state has navigated to Arena with subview training
+    assert.equal(app.getActiveTab(), "arena");
+    assert.equal(arenaController.getState().subview, "training");
+
+    // Verify real Training page/controller renders
+    assert.ok(
+      container.querySelector("#training-view"),
+      "Real training view must be rendered",
+    );
+    assert.ok(
+      container.querySelector("#training-answer") || container.querySelector("#training-start"),
+      "Real training interactive controls must render",
+    );
+  } finally {
+    cleanup();
+    restoreTg();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 20. RUNTIME IT / EN / ES LOCALIZATION OF minCorrect
+// ---------------------------------------------------------------------------
+
+test("39. Runtime IT / EN / ES localization of minCorrect for career events", () => {
+  const card = createTestCard({
+    type: "career",
+    min_correct: 3,
+  });
+
+  const languages: Array<"it" | "en" | "es"> = ["it", "en", "es"];
+  const expectedLabels: Record<string, string> = {
+    it: "Minimo: 3",
+    en: "Minimum: 3",
+    es: "Mínimo: 3",
+  };
+
+  for (const lang of languages) {
+    setLanguage(lang);
+    const controller = new EventsController();
+    controller["setState"]({
+      status: "ready",
+      events: [card],
+      selectedCode: "champions_cup",
+      draftAnswer: "",
+      feedback: null,
+      error: null,
+    });
+
+    const html = renderEventsPage(controller);
+    assert.match(
+      html,
+      new RegExp(expectedLabels[lang]),
+      `Career hint in ${lang} must render localized ${expectedLabels[lang]}`,
+    );
+    assert.equal(
+      html.includes("Min: 3"),
+      false,
+      `Must not render hard-coded "Min: 3" in ${lang}`,
+    );
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 21. CROSS-FEATURE COEXISTENCE (REFERRAL & EVENTS)
+// ---------------------------------------------------------------------------
+
+test("40. Cross-feature coexistence: Referral and Events both fully operational in App", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { cleanup, container } = setupGlobalDom();
+
+  try {
+    const card = createTestCard();
+    const eventsClient: any = {
+      post: async () => ({ events: [card] }),
+    };
+    const referralClient: any = {
+      post: async () => ({
+        stats: { confirmed_count: 3, pending_count: 1, available_points: 150 },
+        referral_link: "https://t.me/bot?start=ref123",
+        milestones: [],
+        friends: [],
+      }),
+    };
+
+    const eventsController = new EventsController(eventsClient);
+    const referralController = new ReferralController(referralClient);
+    const profileController = new ProfileController();
+    const shopController = new ShopController();
+    const arenaController = new ArenaController();
+
+    const app = new App(
+      container,
+      undefined,
+      arenaController,
+      undefined,
+      undefined,
+      undefined,
+      profileController,
+      shopController,
+      referralController,
+      eventsController,
+    );
+    app.init();
+
+    // 1. Profile -> Referral navigation
+    app.setTab("profile");
+    assert.equal(app.getActiveTab(), "profile");
+    const referralNavBtn = container.querySelector<HTMLButtonElement>('button[data-tab="referral"]');
+    if (referralNavBtn) {
+      referralNavBtn.click();
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(app.getActiveTab(), "referral");
+      assert.ok(container.querySelector(".referral-page-shell"), "Referral page must render");
+    }
+
+    // 2. Arena Hub -> Events navigation
+    app.setTab("arena");
+    assert.equal(app.getActiveTab(), "arena");
+    const eventsNavBtn = container.querySelector<HTMLButtonElement>('button[data-tab="events"]');
+    assert.ok(eventsNavBtn, "Events button must exist in Arena Hub");
+    eventsNavBtn.click();
+    await new Promise((r) => setTimeout(r, 20));
+    assert.equal(app.getActiveTab(), "events");
+    assert.ok(container.querySelector(".events-list") || container.querySelector(".events-entry"), "Events page must render");
+
+    // 3. Navigate through standard tabs to verify no regressions
+    const standardTabs = ["play", "shop", "leaderboard", "archive"] as const;
+    for (const tab of standardTabs) {
+      app.setTab(tab);
+      assert.equal(app.getActiveTab(), tab);
+    }
+  } finally {
+    cleanup();
+    restoreTg();
+  }
+});
+

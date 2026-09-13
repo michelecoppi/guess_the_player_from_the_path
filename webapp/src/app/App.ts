@@ -284,6 +284,10 @@ export class App {
     }
   }
 
+  public getActiveTab(): NavTabId {
+    return this.activeTab;
+  }
+
   public setArenaSubview(subview: ArenaSubview): void {
     this.arenaController.setSubview(subview);
   }
@@ -384,8 +388,18 @@ export class App {
       attachProfileEventListeners(
         this.rootElement,
         this.profileController,
-        (tab) => this.setTab(tab),
       );
+      mainEl
+        .querySelectorAll<HTMLButtonElement>("button[data-tab]")
+        .forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            const tab = btn.dataset.tab as NavTabId;
+            if (tab) {
+              this.setTab(tab);
+            }
+          });
+        });
       const heading = mainEl.querySelector<HTMLElement>("#profile-heading");
       if (heading) {
         heading.tabIndex = -1;
@@ -568,7 +582,6 @@ export class App {
       attachProfileEventListeners(
         this.rootElement,
         this.profileController,
-        (tab) => this.setTab(tab),
       );
     } else if (this.activeTab === "shop") {
       attachShopEventListeners(

@@ -208,6 +208,7 @@ export interface TranslationSchema {
     exhausted: string;
     eventWait: string;
     unknownType: string;
+    minCorrect: string;
   };
   training: {
     title: string;

@@ -105,7 +105,7 @@ export function renderEventsPage(controller: EventsController): string {
         <div class="arena-empty">
           <h2>${t("events.empty")}</h2>
           <p>${t("events.emptyDesc")}</p>
-          <button class="btn" data-tab="arena">${t("training.title")}</button>
+          <button class="btn" id="events-open-training">${t("training.title")}</button>
         </div>
       `.trim();
     }
@@ -152,7 +152,9 @@ export function renderEventsPage(controller: EventsController): string {
   let hintHtml = "";
   if (event.type === "career") {
     const minSuffix =
-      event.min_correct > 1 ? ` · Min: ${event.min_correct}` : "";
+      event.min_correct > 1
+        ? ` · ${t("events.minCorrect", { n: event.min_correct })}`
+        : "";
     hintHtml = `<p class="muted event-hint">${t("events.careerHint")}${minSuffix}</p>`;
   } else if (event.type === "father_son") {
     hintHtml = `<p class="muted event-hint">${t("events.fatherSonHint")}</p>`;
@@ -232,9 +234,9 @@ export function renderEventsPage(controller: EventsController): string {
           autocomplete="off"
           maxlength="220"
           placeholder="${t("events.guess")}"
-          ${state.status === "submitting" ? "disabled" : ""}
+          ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}
         >
-        <button class="btn" type="submit" ${state.status === "submitting" ? "disabled" : ""}>
+        <button class="btn" type="submit" ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}>
           ${t("events.submit")}
         </button>
       </form>
@@ -285,10 +287,20 @@ export function renderEventsPage(controller: EventsController): string {
   `.trim();
 }
 
+export interface EventsEventListenersOptions {
+  onOpenTraining?: () => void;
+}
+
 export function attachEventsEventListeners(
   root: HTMLElement,
   controller: EventsController,
+  options?: EventsEventListenersOptions,
 ): void {
+  root.querySelector<HTMLButtonElement>("#events-open-training")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    options?.onOpenTraining?.();
+  });
+
   root
     .querySelectorAll<HTMLButtonElement>("[data-event-open]")
     .forEach((button) => {

@@ -209,6 +209,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       exhausted: "Tentativi esauriti: sfida conclusa.",
       eventWait: "La prossima sfida arriva con la prossima giornata dell’evento.",
       unknownType: "Segui le regole della sfida per completare l'evento.",
+      minCorrect: "Minimo: {n}",
     },
     training: {
       title: "Allenamento",
@@ -699,6 +700,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       exhausted: "Guesses exhausted: challenge ended.",
       eventWait: "The next challenge arrives on the next event day.",
       unknownType: "Follow the challenge rules to complete the event.",
+      minCorrect: "Minimum: {n}",
     },
     training: {
       title: "Training",
@@ -1189,6 +1191,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       exhausted: "Intentos agotados: reto concluido.",
       eventWait: "El próximo reto llega en la siguiente jornada del evento.",
       unknownType: "Sigue las reglas del reto para completar el evento.",
+      minCorrect: "Mínimo: {n}",
     },
     training: {
       title: "Entrenamiento",

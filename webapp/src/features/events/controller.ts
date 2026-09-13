@@ -130,6 +130,7 @@ export class EventsController {
     if (
       !event ||
       this.state.status === "submitting" ||
+      this.state.status === "loading" ||
       !event.available ||
       event.progress.finished ||
       !trimmed
