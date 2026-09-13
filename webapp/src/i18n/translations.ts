@@ -172,6 +172,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       featureDesc: "Stessa carriera. Vince chi la riconosce prima.",
       featureAction: "Scegli l’avversario",
     },
+    events: { title:"Eventi", empty:"Nessun evento attivo", emptyDesc:"Allenati mentre prepariamo il prossimo turno.", play:"Apri", completed:"Completato", refresh:"Aggiorna", back:"Indietro", points:"punti", bonus:"Bonus primo corretto disponibile", attempts:"Tentativi rimasti", score:"I tuoi punti evento", leaderboard:"Classifica", leaderboardEmpty:"Ancora nessun punteggio.", unavailable:"Questo evento non è disponibile oggi.", guess:"La tua risposta", submit:"Invia risposta", careerHint:"Inserisci i club separati da virgole.", fatherSonHint:"Riconosci la coppia padre e figlio.", stale:"Lo stato è cambiato: dati sincronizzati.", expired:"L'evento è scaduto.", finished:"Hai già completato questo turno.", maxAnswers:"Puoi inserire al massimo cinque risposte.", loadError:"Impossibile caricare gli eventi.", synced:"Dati sincronizzati dal server.", invalid:"Richiesta non valida.", invalidAnswer:"Inserisci una risposta valida.", genericError:"Si è verificato un errore.", imageAlt:"Immagine dell'evento {name}", listLabel:"Eventi attivi", formLabel:"Risposta evento" },
     training: {
       title: "Allenamento",
       tag: "Al tuo ritmo",
@@ -579,6 +580,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       featureDesc: "Same career. Whoever guesses first wins.",
       featureAction: "Choose opponent",
     },
+    events: { title:"Events", empty:"No active events", emptyDesc:"Train while the next round is prepared.", play:"Open", completed:"Completed", refresh:"Refresh", back:"Back", points:"points", bonus:"First-correct bonus available", attempts:"Attempts left", score:"Your event points", leaderboard:"Leaderboard", leaderboardEmpty:"No scores yet.", unavailable:"This event is not available today.", guess:"Your answer", submit:"Submit guess", careerHint:"Enter clubs separated by commas.", fatherSonHint:"Recognize the father and son pair.", stale:"The state changed: data synchronized.", expired:"The event has expired.", finished:"You have already completed this round.", maxAnswers:"You can enter at most five answers.", loadError:"Unable to load events.", synced:"Data synchronized from the server.", invalid:"Invalid request.", invalidAnswer:"Enter a valid answer.", genericError:"Something went wrong.", imageAlt:"Event image for {name}", listLabel:"Active events", formLabel:"Event answer" },
     training: {
       title: "Training",
       tag: "At your pace",
@@ -986,6 +988,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       featureDesc: "Misma trayectoria. Gana quien la adivine primero.",
       featureAction: "Elige rival",
     },
+    events: { title:"Eventos", empty:"No hay eventos activos", emptyDesc:"Entrena mientras preparamos la próxima ronda.", play:"Abrir", completed:"Completado", refresh:"Actualizar", back:"Atrás", points:"puntos", bonus:"Bonus disponible para el primer acierto", attempts:"Intentos restantes", score:"Tus puntos del evento", leaderboard:"Clasificación", leaderboardEmpty:"Aún no hay puntuaciones.", unavailable:"Este evento no está disponible hoy.", guess:"Tu respuesta", submit:"Enviar respuesta", careerHint:"Introduce los clubes separados por comas.", fatherSonHint:"Reconoce a la pareja padre e hijo.", stale:"El estado cambió: datos sincronizados.", expired:"El evento ha caducado.", finished:"Ya has completado esta ronda.", maxAnswers:"Puedes introducir como máximo cinco respuestas.", loadError:"No se pudieron cargar los eventos.", synced:"Datos sincronizados desde el servidor.", invalid:"Solicitud no válida.", invalidAnswer:"Introduce una respuesta válida.", genericError:"Algo salió mal.", imageAlt:"Imagen del evento {name}", listLabel:"Eventos activos", formLabel:"Respuesta del evento" },
     training: {
       title: "Entrenamiento",
       tag: "A tu ritmo",
