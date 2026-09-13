@@ -296,7 +296,13 @@ test("Cross-feature navigation sequence (Daily -> Arena -> Training -> Archive -
     assert.equal(app.getLeaderboardController().getState().status, "ready");
     assert.ok(container.querySelector(".leaderboard-section"), "Leaderboard must render");
 
-    // 6. Navigate back to Daily
+    // 6. Navigate to Profile
+    app.setTab("profile");
+    await app.getProfileController().init();
+    assert.equal(app.getProfileController().getState().status, "ready");
+    assert.ok(container.querySelector(".profile-page"), "Profile must render");
+
+    // 7. Navigate back to Daily
     app.setTab("play");
     assert.ok(container.querySelector(".path"), "Daily career path must be restored");
     assert.ok(container.querySelector("#answer"), "Daily guess input must be restored");
@@ -313,6 +319,7 @@ test("Cross-feature navigation sequence (Daily -> Arena -> Training -> Archive -
     assert.ok(app.getTrainingController());
     assert.ok(app.getArchiveController());
     assert.ok(app.getLeaderboardController());
+    assert.ok(app.getProfileController());
     assert.equal(app.getArchiveController().getState().calendar.length, 1);
   } finally {
     globalThis.fetch = originalFetch;

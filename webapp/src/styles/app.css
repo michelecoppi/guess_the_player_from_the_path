@@ -2243,5 +2243,356 @@ button.archive-day-card:focus-visible {
   justify-content: center;
 }
 
+/* ==========================================================================
+   Profile & Trophy Cabinet Feature (Issue #42)
+   ========================================================================== */
+
+.profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-header {
+  padding: 4px 0 8px;
+}
+
+.profile-player-name {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.profile-player-name .shirt {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 7px;
+  background: var(--track);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  color: var(--accent);
+}
+
+.title-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--edge);
+  background: var(--bg-secondary);
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.profile-hero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+.profile-hero .hero-info {
+  min-width: 0;
+}
+
+.profile-showcase-container {
+  grid-column: 1 / -1;
+}
+
+.profile-empty-pinned {
+  font-style: italic;
+}
+
+/* --- Trophies & Plates --- */
+.trophy-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trophy-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--plate, var(--accent));
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 5px 9px 5px 7px;
+  font-size: 12px;
+}
+
+.trophy-tag .medal {
+  font-size: 14px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.trophy-tag .plate-name {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: var(--plate, var(--text));
+}
+
+.trophy-tag .plate-detail {
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: normal;
+}
+
+/* --- Attempt Distribution Histogram --- */
+.distribution-bars {
+  display: grid;
+  gap: 6px;
+}
+
+.distribution-row {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.distribution-attempt {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+
+.distribution-bar-track {
+  width: 100%;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  overflow: hidden;
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.distribution-bar-fill {
+  background: var(--track);
+  color: var(--text);
+  border-radius: 4px;
+  height: 100%;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: width 0.3s ease;
+}
+
+.distribution-bar-fill.best {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.distribution-count {
+  line-height: 1;
+}
+
+/* --- Cabinet subview --- */
+.cabinet-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cabinet-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cabinet-medals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cabinet-medal {
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--plate);
+}
+
+.cabinet-medal .value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cabinet-medal .label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.cabinet-pinned {
+  border-color: var(--accent);
+}
+
+.cabinet-pinned .cap {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.cabinet-filters {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  scrollbar-width: none;
+}
+
+.cabinet-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.cabinet-filter-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--edge);
+  background: var(--bg-secondary);
+  color: var(--muted);
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 44px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.cabinet-filter-btn.active,
+.cabinet-filter-btn[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--track);
+}
+
+.cabinet-year {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 14px 0 6px;
+}
+
+.cabinet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cabinet-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: var(--text);
+  min-height: 52px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--edge);
+  border-left: 3px solid var(--plate);
+  border-radius: 0 10px 10px 0;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.cabinet-row .medal {
+  font-size: 20px;
+  line-height: 1;
+  text-align: center;
+}
+
+.cabinet-row .nm {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.cabinet-row .ds {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.cabinet-row .pin {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid var(--edge);
+  border-radius: 16px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.cabinet-row[aria-pressed="true"] {
+  background: var(--track);
+}
+
+.cabinet-row[aria-pressed="true"] .pin {
+  color: var(--plate, var(--accent));
+  border-color: var(--plate, var(--accent));
+}
+
+.cabinet-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-open-cabinet {
+  min-height: 44px;
+}
+
+.alert {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.alert-error {
+  background: var(--danger-bg, rgba(239, 68, 68, 0.1));
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.alert-success {
+  background: var(--success-bg, rgba(34, 197, 94, 0.1));
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
 
 

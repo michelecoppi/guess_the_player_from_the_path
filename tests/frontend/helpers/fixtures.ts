@@ -202,6 +202,7 @@ export function createTestTrainingData(
 
 export function createTestFullProfile(overrides: Record<string, any> = {}) {
   return {
+    language: "it",
     user: {
       name: "Mario",
       points: 450,
@@ -213,6 +214,95 @@ export function createTestFullProfile(overrides: Record<string, any> = {}) {
       archive_solved: 8,
       trophies: 2,
     },
+    cosmetics: {
+      equipped: {
+        theme: "notturno",
+        frame: "fascia_capitano",
+        title: "veterano",
+        badge: "distintivo_stella",
+        squares: "quadratini_classici",
+        number: "maglia_dieci",
+        celebration: "nessuna_esultanza",
+        card: "card_classica",
+      },
+      badge: "⭐",
+      number: "10",
+      frame: {
+        ring: "repeating-linear-gradient(45deg, #f5c542 0 7px, #1b3a6b 7px 14px)",
+        spin: false,
+      },
+      title: {
+        label: "Veterano del pallone",
+        color: "#d9b45b",
+      },
+      theme: {
+        accent: "#38ef7d",
+      },
+    },
+    trophies: {
+      pinned: [
+        {
+          code: "MON_July_3_2026_1",
+          kind: "monthly",
+          position: 1,
+          medal: "🥇",
+          color: "#e8b647",
+          label: "Luglio",
+          detail: "Classifica mensile 2026 · Stagione 3",
+          year: "2026",
+        },
+        {
+          code: "2_un_amore_una_maglia_20260907",
+          kind: "event",
+          position: 2,
+          medal: "🥈",
+          color: "#c3ccd6",
+          label: "Un amore una maglia",
+          detail: "07/09/2026",
+          year: "2026",
+        },
+      ],
+      all: [
+        {
+          code: "MON_July_3_2026_1",
+          kind: "monthly",
+          position: 1,
+          medal: "🥇",
+          color: "#e8b647",
+          label: "Luglio",
+          detail: "Classifica mensile 2026 · Stagione 3",
+          year: "2026",
+        },
+        {
+          code: "2_un_amore_una_maglia_20260907",
+          kind: "event",
+          position: 2,
+          medal: "🥈",
+          color: "#c3ccd6",
+          label: "Un amore una maglia",
+          detail: "07/09/2026",
+          year: "2026",
+        },
+        {
+          code: "3_mondiali_passati_20250615",
+          kind: "event",
+          position: 3,
+          medal: "🥉",
+          color: "#c98652",
+          label: "Mondiali passati",
+          detail: "15/06/2025",
+          year: "2025",
+        },
+      ],
+      max: 3,
+    },
+    distribution: [
+      { attempts: 1, count: 5 },
+      { attempts: 2, count: 12 },
+      { attempts: 3, count: 8 },
+      { attempts: 4, count: 3 },
+      { attempts: 5, count: 2 },
+    ],
     leaderboard: [
       { position: 1, profile_id: 101, name: "Alessandro Del Piero", badge: "👑", points: 1540, me: false },
       { position: 2, profile_id: 102, name: "Francesco Totti", badge: "🥈", points: 1480, me: false },

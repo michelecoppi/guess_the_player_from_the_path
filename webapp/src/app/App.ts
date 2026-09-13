@@ -8,7 +8,10 @@ import {
   attachArenaEventListeners,
   type ArenaSubview,
 } from "@/pages/ArenaPage";
-import { renderProfilePage } from "@/pages/ProfilePage";
+import {
+  renderProfilePage,
+  attachProfileEventListeners,
+} from "@/pages/ProfilePage";
 import {
   renderLeaderboardPage,
   attachLeaderboardEventListeners,
@@ -29,6 +32,7 @@ import { ArenaController } from "@/features/arena/controller";
 import { TrainingController } from "@/features/training/controller";
 import { LeaderboardController } from "@/features/leaderboard/controller";
 import { ArchiveController } from "@/features/archive/controller";
+import { ProfileController } from "@/features/profile/controller";
 
 export class App {
   private rootElement: HTMLElement;
@@ -38,6 +42,7 @@ export class App {
   private trainingController: TrainingController;
   private leaderboardController: LeaderboardController;
   private archiveController: ArchiveController;
+  private profileController: ProfileController;
   private lastArenaSubview: ArenaSubview;
 
   constructor(
@@ -47,6 +52,7 @@ export class App {
     trainingController?: TrainingController,
     leaderboardController?: LeaderboardController,
     archiveController?: ArchiveController,
+    profileController?: ProfileController,
   ) {
     this.rootElement = rootElement;
     this.dailyController = dailyController || new DailyController();
@@ -55,6 +61,7 @@ export class App {
     this.leaderboardController =
       leaderboardController || new LeaderboardController();
     this.archiveController = archiveController || new ArchiveController();
+    this.profileController = profileController || new ProfileController();
     this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
 
@@ -107,6 +114,12 @@ export class App {
         this.renderArchiveContent();
       }
     });
+
+    this.profileController.subscribe(() => {
+      if (this.activeTab === "profile") {
+        this.renderProfileContent();
+      }
+    });
   }
 
   public getDailyController(): DailyController {
@@ -127,6 +140,10 @@ export class App {
 
   public getArchiveController(): ArchiveController {
     return this.archiveController;
+  }
+
+  public getProfileController(): ProfileController {
+    return this.profileController;
   }
 
   public isArenaTab(tab: NavTabId): boolean {
@@ -155,6 +172,9 @@ export class App {
     if (this.activeTab === "leaderboard") {
       void this.leaderboardController.init();
     }
+    if (this.activeTab === "profile") {
+      void this.profileController.init();
+    }
   }
 
   public setTab(tab: NavTabId): void {
@@ -171,6 +191,8 @@ export class App {
         void this.leaderboardController.init();
       } else if (tab === "archive") {
         void this.archiveController.init();
+      } else if (tab === "profile") {
+        void this.profileController.init();
       }
 
       this.render();
@@ -323,6 +345,24 @@ export class App {
     }
   }
 
+  private renderProfileContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "profile") {
+      mainEl.innerHTML = renderProfilePage(
+        this.profileController.getState(),
+      );
+      attachProfileEventListeners(
+        this.rootElement,
+        this.profileController,
+      );
+      const heading = mainEl.querySelector<HTMLElement>("#profile-heading");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    }
+  }
+
   private render(): void {
     const user = getTelegramUser();
     const isMock = isMockTelegramEnvironment();
@@ -341,7 +381,7 @@ export class App {
         );
         break;
       case "profile":
-        pageHtml = renderProfilePage({ user });
+        pageHtml = renderProfilePage(this.profileController.getState());
         break;
       case "leaderboard":
         pageHtml = renderLeaderboardPage(
@@ -411,6 +451,11 @@ export class App {
       attachArchiveEventListeners(
         this.rootElement,
         this.archiveController,
+      );
+    } else if (this.activeTab === "profile") {
+      attachProfileEventListeners(
+        this.rootElement,
+        this.profileController,
       );
     }
   }
