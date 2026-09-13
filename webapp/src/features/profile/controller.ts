@@ -1,6 +1,6 @@
 import { api, type ApiClient } from "@/api/client";
 import { getTelegramWebApp } from "@/telegram/webapp";
-import { applyResolvedAppearance } from "@/appearance";
+import { applyResolvedAppearance, type ResolvedAppearance } from "@/appearance";
 import { t } from "@/i18n";
 import { fetchOwnProfile, pinTrophies } from "./api";
 import type {
@@ -18,6 +18,9 @@ export class ProfileController {
   private loadSeq = 0;
   /** Stale-response guard for trophy pin mutations */
   private pinSeq = 0;
+  /** Appearance synchronization sequence and cached appearance */
+  private appearanceSeq = 0;
+  private syncedAppearance: ResolvedAppearance | null = null;
 
   /** Prevents duplicate concurrent loads when one is already in flight */
   private loadInFlight: Promise<void> | null = null;
@@ -79,15 +82,32 @@ export class ProfileController {
     return this._loadProfile(true);
   }
 
+  /**
+   * Synchronizes newly equipped appearance directly into profile state without full reload.
+   */
+  public syncAppearance(appearance: ResolvedAppearance): void {
+    this.appearanceSeq++;
+    this.syncedAppearance = appearance;
+    if (this.state.profile) {
+      this.state.profile = {
+        ...this.state.profile,
+        cosmetics: appearance,
+      };
+      this.notify();
+    }
+  }
+
   private async _loadProfile(force = false): Promise<void> {
     if (!force && this.loadInFlight) {
       return this.loadInFlight;
     }
 
     const currentSeq = ++this.loadSeq;
+    const loadAppearanceSeq = this.appearanceSeq;
     this.updateState({ status: "loading", error: null });
 
-    const loadPromise = (async () => {
+    let loadPromise: Promise<void> | null = null;
+    loadPromise = (async () => {
       try {
         const data = await fetchOwnProfile(this.client);
 
@@ -95,8 +115,11 @@ export class ProfileController {
           return;
         }
 
-        // Apply appearance tokens to document while respecting dark-only constraints
-        if (data.cosmetics) {
+        const hasNewerAppearance = this.appearanceSeq !== loadAppearanceSeq;
+        if (hasNewerAppearance && this.syncedAppearance) {
+          data.cosmetics = this.syncedAppearance;
+        } else if (data.cosmetics) {
+          // Apply appearance tokens to document while respecting dark-only constraints
           applyResolvedAppearance(data.cosmetics);
         }
 
@@ -115,7 +138,9 @@ export class ProfileController {
           error: err instanceof Error ? err.message : t("common.error"),
         });
       } finally {
-        this.loadInFlight = null;
+        if (this.loadInFlight === loadPromise) {
+          this.loadInFlight = null;
+        }
       }
     })();
 

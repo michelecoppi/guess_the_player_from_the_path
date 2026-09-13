@@ -9,7 +9,7 @@ import {
 } from "./api";
 import { celebrate } from "./celebrate";
 import type { DailyState, DailyGuessResult, DailyCardPayload } from "./types";
-import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
+import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS, type ResolvedAppearance } from "@/appearance";
 export { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
 
 export class DailyController {
@@ -18,6 +18,7 @@ export class DailyController {
   private apiClient: ApiClient;
   private requestSeq = 0;
   private loadSeq = 0;
+  private appearanceSeq = 0;
 
   constructor(apiClient: ApiClient = api) {
     this.apiClient = apiClient;
@@ -67,24 +68,29 @@ export class DailyController {
   public async loadDailyData(options: { lightweight?: boolean } = {}): Promise<void> {
     const loadSeq = ++this.loadSeq;
     const isLightweight = Boolean(options.lightweight && this.state.challenge);
+    const previousState = this.state;
     if (!isLightweight) {
       clearResolvedAppearance();
       this.updateState({ status: "loading", errorMessage: undefined, user: null, challenge: null, feedback: null, cardImage: null, cardLoading: false, squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
     }
 
     const pending = fetchDailyProfile(this.apiClient, { lightweight: isLightweight });
-    const generation = appearanceGeneration();
+    const sessionGen = appearanceGeneration();
+    const loadAppearanceSeq = this.appearanceSeq;
     try {
       const profile = await pending;
 
       if (loadSeq !== this.loadSeq) return;
-      if (generation !== appearanceGeneration()) { this.reset(); return; }
+      if (sessionGen !== appearanceGeneration()) { this.reset(); return; }
       if (profile.language) {
         setLanguage(profile.language as any);
       }
 
-      const appearance = applyResolvedAppearance(profile.cosmetics);
-      this.state.squaresSymbols = appearanceSquares(appearance);
+      const hasNewerAppearance = this.appearanceSeq !== loadAppearanceSeq;
+      if (!hasNewerAppearance) {
+        const appearance = applyResolvedAppearance(profile.cosmetics);
+        this.state.squaresSymbols = appearanceSquares(appearance);
+      }
 
       const today = profile.today || null;
       let nextStatus = this.state.status;
@@ -107,6 +113,22 @@ export class DailyController {
       });
     } catch (err: any) {
       if (loadSeq !== this.loadSeq) return;
+      // A Shop mutation may have synchronized a newer appearance while this
+      // same-user request was in flight.  Its failure must not undo that
+      // authoritative appearance or discard an already usable challenge.
+      if (sessionGen !== appearanceGeneration()) { this.reset(); return; }
+      if (this.appearanceSeq !== loadAppearanceSeq) {
+        this.updateState({
+          status: previousState.status,
+          user: previousState.user,
+          challenge: previousState.challenge,
+          feedback: previousState.feedback,
+          cardImage: null,
+          cardLoading: false,
+          errorMessage: err?.detail || err?.message || "Impossibile caricare la sfida quotidiana.",
+        });
+        return;
+      }
       clearResolvedAppearance();
       this.state.squaresSymbols = { ...DEFAULT_SQUARE_SYMBOLS };
       this.state.user = null;
@@ -206,7 +228,8 @@ export class DailyController {
     const ch = this.state.challenge;
     if (this.state.cardLoading || this.state.cardImage) return;
 
-    const generation = appearanceGeneration();
+    const sessionGen = appearanceGeneration();
+    const cardAppearanceSeq = this.appearanceSeq;
     this.updateState({ cardLoading: true });
 
     try {
@@ -219,13 +242,13 @@ export class DailyController {
       };
 
       const res = await fetchDailyCard(payload, this.apiClient);
-      if (generation !== appearanceGeneration()) return;
+      if (sessionGen !== appearanceGeneration() || cardAppearanceSeq !== this.appearanceSeq) return;
       this.updateState({
         cardImage: res.image,
         cardLoading: false,
       });
     } catch {
-      if (generation !== appearanceGeneration()) return;
+      if (sessionGen !== appearanceGeneration() || cardAppearanceSeq !== this.appearanceSeq) return;
       this.updateState({ cardLoading: false });
     }
   }
@@ -250,10 +273,18 @@ export class DailyController {
     this.loadDailyData();
   }
 
+  public syncAppearance(appearance: ResolvedAppearance): void {
+    this.appearanceSeq++;
+    this.state.squaresSymbols = appearanceSquares(appearance);
+    this.state.cardImage = null;
+    this.notify();
+  }
+
   /** Call before logout/user replacement; also invalidates pending responses. */
   public reset(): void {
     this.requestSeq++;
     this.loadSeq++;
+    this.appearanceSeq++;
     clearResolvedAppearance();
     this.updateState({ status: "loading", user: null, challenge: null, feedback: null,
       cardImage: null, cardLoading: false, errorMessage: undefined, inputValue: "",
