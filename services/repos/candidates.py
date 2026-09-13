@@ -14,10 +14,12 @@ import copy
 import json
 import os
 import tempfile
+import threading
 from pathlib import Path
 from typing import Optional
 
 from services.candidate_player import CandidatePlayer, CandidateState
+from services.repos.file_lock import ProcessFileLock
 
 
 class CandidateRepositoryError(Exception):
@@ -30,6 +32,20 @@ class CandidatePlayerRepository(abc.ABC):
     @abc.abstractmethod
     def save(self, candidate: CandidatePlayer) -> None:
         """Salva o aggiorna un candidato."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def save_if_revision(
+        self,
+        candidate: CandidatePlayer,
+        expected_persisted_revision: int,
+    ) -> bool:
+        """Salva il candidato solo se la revisione attualmente persistita coincide con expected_persisted_revision.
+
+        Operazione atomica di Compare-And-Swap (CAS).
+        Restituisce True se la revisione corrisponde e il salvataggio ha avuto successo.
+        Restituisce False se la revisione differisce, impedendo qualsiasi sovrascrittura.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -73,10 +89,30 @@ class InMemoryCandidatePlayerRepository(CandidatePlayerRepository):
 
     def __init__(self) -> None:
         self._storage: dict[str, dict] = {}
+        self._lock = threading.RLock()
 
     def save(self, candidate: CandidatePlayer) -> None:
         # Serializza a dizionario per garantire isolamento da modifiche per riferimento
-        self._storage[candidate.candidate_id] = candidate.to_dict()
+        with self._lock:
+            self._storage[candidate.candidate_id] = candidate.to_dict()
+
+    def save_if_revision(
+        self,
+        candidate: CandidatePlayer,
+        expected_persisted_revision: int,
+    ) -> bool:
+        with self._lock:
+            existing = self._storage.get(candidate.candidate_id)
+            if existing is None:
+                persisted_rev = 0
+            else:
+                persisted_rev = int(existing.get("revision", 1))
+
+            if persisted_rev != expected_persisted_revision:
+                return False
+
+            self.save(candidate)
+            return True
 
     def get_by_id(self, candidate_id: str) -> Optional[CandidatePlayer]:
         data = self._storage.get(candidate_id)
@@ -169,11 +205,11 @@ class FileCandidatePlayerRepository(CandidatePlayerRepository):
             raise ValueError(f"candidate_id non valido per il filesystem: '{candidate_id}'")
         return self._dir / f"{clean_id}.json"
 
-    def save(self, candidate: CandidatePlayer) -> None:
-        """Salva il candidato su file JSON in modo atomico."""
-        dest_path = self._file_path(candidate.candidate_id)
+    def _lock_path(self, candidate_id: str) -> Path:
+        clean_id = Path(candidate_id).name
+        return self._dir / f".{clean_id}.lock"
 
-        # Scrittura atomica: crea file temporaneo nella stessa cartella e poi esegue replace
+    def _atomic_write(self, dest_path: Path, candidate: CandidatePlayer) -> None:
         tmp_fd, tmp_path_str = tempfile.mkstemp(
             prefix=f".tmp_{candidate.candidate_id}_",
             suffix=".json",
@@ -192,6 +228,40 @@ class FileCandidatePlayerRepository(CandidatePlayerRepository):
                 except OSError:
                     pass
             raise
+
+    def save(self, candidate: CandidatePlayer) -> None:
+        """Salva il candidato su file JSON in modo atomico e protetto da lock."""
+        lock_file = self._lock_path(candidate.candidate_id)
+        with ProcessFileLock(lock_file):
+            dest_path = self._file_path(candidate.candidate_id)
+            self._atomic_write(dest_path, candidate)
+
+    def save_if_revision(
+        self,
+        candidate: CandidatePlayer,
+        expected_persisted_revision: int,
+    ) -> bool:
+        """Salva il candidato atomicamente SOLO SE la revisione attualmente persistita
+        su disco coincide esattamente con expected_persisted_revision.
+        """
+        lock_file = self._lock_path(candidate.candidate_id)
+        with ProcessFileLock(lock_file):
+            dest_path = self._file_path(candidate.candidate_id)
+            if not dest_path.is_file():
+                persisted_rev = 0
+            else:
+                try:
+                    with open(dest_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    persisted_rev = int(data.get("revision", 1))
+                except Exception:
+                    persisted_rev = 0
+
+            if persisted_rev != expected_persisted_revision:
+                return False
+
+            self._atomic_write(dest_path, candidate)
+            return True
 
     def get_by_id(self, candidate_id: str) -> Optional[CandidatePlayer]:
         path = self._file_path(candidate_id)

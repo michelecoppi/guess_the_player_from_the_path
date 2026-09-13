@@ -2,15 +2,18 @@
 
 Provides the complete domain and service layer for human review and production promotion:
 - Reviewable states: REVIEW_REQUIRED, READY, VALIDATED;
-- Optimistic concurrency protection using candidate revision tokens;
+- Real optimistic concurrency protection using candidate revision tokens (CAS save_if_revision);
+- Process-safe and thread-safe serialization for production dataset mutations and rollback;
 - Structured review projection including findings, warnings, duplicate suggestions, and career timeline;
 - Admin authorization enforcement using repository standard ADMIN_TELEGRAM_IDS;
-- Safe production dataset promotion with pre-write snapshot backup, atomic write, and rollback recovery;
+- Fail-closed validation for missing or corrupt production datasets;
+- Safe production dataset promotion with collision-safe snapshot backup, atomic write, and rollback recovery;
 - Typed allow-list for edits before approval with automatic re-normalization and re-validation;
 - Merge with existing production player without duplicate creation;
-- Explicit source-wrong decision preserving evidence and provenance;
-- Ingestion retry via existing pipeline and FSM-compliant transitions;
-- Idempotency across approve, reject, merge, and retry operations.
+- Explicit source-wrong decision preserving evidence and provenance without terminal locking;
+- Ingestion retry via existing adapters and pipeline;
+- Idempotency across approve, reject, merge, and retry operations;
+- Leak-free sanitized error handling and projection DTOs.
 """
 from __future__ import annotations
 
@@ -22,13 +25,14 @@ import re
 import shutil
 import tempfile
 import unicodedata
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from services.candidate_finding import FindingCode
+from services.adapters.candidate_integration import populate_candidate_from_result
 from services.candidate_normalization import clean_text, normalize_candidate
 from services.candidate_player import (
     CandidatePlayer,
@@ -38,18 +42,16 @@ from services.candidate_validation import (
     validate_candidate,
 )
 from services.career_order import order_career
-from services.matching import normalize as match_normalize
 from services.matching import similarity
 from services.player_pool import (
-    _PLAYERS_PATH,
     reload_dataset,
     validate_dataset,
     validate_player,
 )
 from services.repos.candidates import (
     CandidatePlayerRepository,
-    FileCandidatePlayerRepository,
 )
+from services.repos.file_lock import ProcessFileLock
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,13 @@ except Exception:
 
 def _now_utc_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+REVIEWABLE_STATES = frozenset({
+    CandidateState.VALIDATED,
+    CandidateState.REVIEW_REQUIRED,
+    CandidateState.READY,
+})
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +106,7 @@ class ReviewStatus(str, Enum):
 @dataclass
 class AdminIdentity:
     """Identità verificata dell'amministratore che esegue l'azione di review."""
+
     user_id: int
     username: Optional[str] = None
 
@@ -104,6 +114,7 @@ class AdminIdentity:
 @dataclass
 class PossibleDuplicateMatch:
     """Suggerimento di possibile duplicato presente nel dataset di produzione."""
+
     player_id: str
     player_name: str
     confidence: float
@@ -120,342 +131,346 @@ class PossibleDuplicateMatch:
 
 @dataclass
 class ReviewCandidateProjection:
-    """Proiezione strutturata di contesto per la revisione umana."""
+    """Proiezione di un candidato per la consultazione da parte dell'interfaccia review (#15)."""
+
     candidate_id: str
-    status: CandidateState
-    revision: int
     full_name: Optional[str]
-    normalized_name: Optional[str]
-    aliases: list[str]
+    birth_year: Optional[int]
     nationality: Optional[str]
     position: Optional[str]
-    birth_year: Optional[int]
-    popularity: Optional[int]
+    aliases: list[str]
     career: list[dict[str, Any]]
+    status: str
+    revision: int
     source: str
     source_id: str
-    confidence_score: Optional[float]
-    validation_warnings: list[str]
-    validation_errors: list[str]
-    normalization_findings: list[dict[str, Any]]
-    validation_findings: list[dict[str, Any]]
-    unknown_clubs: list[str]
-    ambiguous_aliases: list[str]
-    has_source_conflicts: bool
-    possible_duplicates: list[PossibleDuplicateMatch]
     created_at: str
     updated_at: str
-    last_transition_at: Optional[str]
-    state_history: list[dict[str, Any]]
+    is_one_club_man: bool
+    is_retired: bool
+    popularity: int
+    validation_errors: list[str]
+    validation_warnings: list[str]
+    findings: list[dict[str, Any]]
+    field_observations: dict[str, list[dict[str, Any]]]
+    has_source_conflicts: bool
+    possible_duplicates: list[PossibleDuplicateMatch]
     review_history: list[dict[str, Any]]
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "candidate_id": self.candidate_id,
-            "status": self.status.value,
-            "revision": self.revision,
             "full_name": self.full_name,
-            "normalized_name": self.normalized_name,
-            "aliases": list(self.aliases),
+            "birth_year": self.birth_year,
             "nationality": self.nationality,
             "position": self.position,
-            "birth_year": self.birth_year,
-            "popularity": self.popularity,
+            "aliases": list(self.aliases),
             "career": copy.deepcopy(self.career),
+            "status": self.status,
+            "revision": self.revision,
             "source": self.source,
             "source_id": self.source_id,
-            "confidence_score": self.confidence_score,
-            "validation_warnings": list(self.validation_warnings),
-            "validation_errors": list(self.validation_errors),
-            "normalization_findings": copy.deepcopy(self.normalization_findings),
-            "validation_findings": copy.deepcopy(self.validation_findings),
-            "unknown_clubs": list(self.unknown_clubs),
-            "ambiguous_aliases": list(self.ambiguous_aliases),
-            "has_source_conflicts": self.has_source_conflicts,
-            "possible_duplicates": [d.to_dict() for d in self.possible_duplicates],
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            "last_transition_at": self.last_transition_at,
-            "state_history": copy.deepcopy(self.state_history),
+            "is_one_club_man": self.is_one_club_man,
+            "is_retired": self.is_retired,
+            "popularity": self.popularity,
+            "validation_errors": list(self.validation_errors),
+            "validation_warnings": list(self.validation_warnings),
+            "findings": copy.deepcopy(self.findings),
+            "field_observations": copy.deepcopy(self.field_observations),
+            "has_source_conflicts": self.has_source_conflicts,
+            "possible_duplicates": [d.to_dict() for d in self.possible_duplicates],
             "review_history": copy.deepcopy(self.review_history),
         }
 
 
 @dataclass
 class ReviewResult:
-    """Risultato tipizzato restituito da tutte le operazioni di revisione."""
+    """Esito strutturato e sicuro di un'operazione del servizio di review."""
+
     success: bool
     status: ReviewStatus
-    candidate_id: str
-    message: str
+    candidate_id: Optional[str] = None
+    message: str = ""
     promoted_player_id: Optional[str] = None
     candidate: Optional[CandidatePlayer] = None
     projection: Optional[ReviewCandidateProjection] = None
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    conflicts: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "success": self.success,
+            "status": self.status.value,
+            "message": self.message,
+        }
+        if self.candidate_id:
+            d["candidate_id"] = self.candidate_id
+        if self.promoted_player_id:
+            d["promoted_player_id"] = self.promoted_player_id
+        if self.errors:
+            d["errors"] = list(self.errors)
+        if self.warnings:
+            d["warnings"] = list(self.warnings)
+        if self.conflicts:
+            d["conflicts"] = list(self.conflicts)
+        if self.projection:
+            d["projection"] = self.projection.to_dict()
+        return d
 
 
 @dataclass
 class ReviewQueuePage:
-    """Pagina paginata della Review Queue."""
+    """Pagina di risultati per la coda dei candidati da revisionare."""
+
     items: list[ReviewCandidateProjection]
     total: int
-    limit: int
     offset: int
+    limit: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "items": [item.to_dict() for item in self.items],
+            "total": self.total,
+            "offset": self.offset,
+            "limit": self.limit,
+        }
+
+
+class ReviewAuthError(Exception):
+    """Eccezione sollevata quando l'operatore non è autenticato."""
+
+
+class ReviewForbiddenError(Exception):
+    """Eccezione sollevata quando l'operatore non ha i privilegi di amministratore."""
+
+
+class StaleRevisionError(Exception):
+    """Eccezione sollevata in caso di conflitto di concorrenza ottimistica."""
 
 
 # ---------------------------------------------------------------------------
-# Exceptions
+# Helper Functions
 # ---------------------------------------------------------------------------
 
-class CandidateReviewError(Exception):
-    """Errore base del servizio di review."""
-    def __init__(self, message: str, status: ReviewStatus = ReviewStatus.VALIDATION_FAILED) -> None:
-        super().__init__(message)
-        self.message = message
-        self.status = status
+def _normalize_name_for_comparison(name: str) -> str:
+    """Normalizza un nome rimuovendo accenti, punteggiatura e spazi doppi."""
+    if not name:
+        return ""
+    norm = unicodedata.normalize("NFKD", name)
+    clean = "".join(c for c in norm if not unicodedata.combining(c))
+    clean = re.sub(r"[^\w\s]", "", clean).strip().lower()
+    return re.sub(r"\s+", " ", clean)
 
 
-class ReviewAuthError(CandidateReviewError):
-    """Mancata autenticazione."""
-    def __init__(self, message: str = "Autenticazione richiesta") -> None:
-        super().__init__(message, status=ReviewStatus.UNAUTHORIZED)
-
-
-class ReviewForbiddenError(CandidateReviewError):
-    """Utente non autorizzato."""
-    def __init__(self, message: str = "Permesso negato") -> None:
-        super().__init__(message, status=ReviewStatus.FORBIDDEN)
-
-
-class StaleRevisionError(CandidateReviewError):
-    """Revisione richiesta non coincidente (conflitto di concorrenza)."""
-    def __init__(self, candidate_id: str, current_rev: int, expected_rev: int) -> None:
-        super().__init__(
-            f"Conflitto di revisione per '{candidate_id}': attesa {expected_rev}, attuale {current_rev}",
-            status=ReviewStatus.STALE_REVISION,
-        )
-        self.current_rev = current_rev
-        self.expected_rev = expected_rev
-
-
-# ---------------------------------------------------------------------------
-# Constants & Allow-lists
-# ---------------------------------------------------------------------------
-
-REVIEWABLE_STATES = {
-    CandidateState.REVIEW_REQUIRED,
-    CandidateState.READY,
-    CandidateState.VALIDATED,
-}
-
-EDITABLE_CANDIDATE_FIELDS = {
-    "full_name",
-    "aliases",
-    "nationality",
-    "position",
-    "birth_year",
-    "popularity",
-    "career",
-}
-
-ALLOWED_CAREER_ENTRY_KEYS = {
-    "team",
-    "country",
-    "league",
-    "start_year",
-    "end_year",
-    "loan",
-    "apps",
-    "goals",
-    "_stop_id",
-}
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def make_production_player_id(
-    full_name: str,
-    existing_ids: set[str],
-    birth_year: Optional[int] = None,
-) -> str:
-    """Genera un identificativo deterministico e collision-safe per data/players.json."""
-    if not full_name or not str(full_name).strip():
-        raise ValueError("full_name non puo' essere vuoto")
-
-    decomposed = unicodedata.normalize("NFKD", str(full_name).strip().lower())
-    without_accents = "".join(char for char in decomposed if not unicodedata.combining(char))
-    cleaned = re.sub(r"[^a-z0-9]+", "_", without_accents).strip("_")
-    slug = cleaned[:40].rstrip("_") or "player"
-
-    # Se non c'è collisione, usa lo slug pulito
-    if slug not in existing_ids:
-        return slug
-
-    # Se c'è collisione e abbiamo un birth_year, prova con l'anno
-    if birth_year is not None:
-        with_year = f"{slug}_{birth_year}"
-        if with_year not in existing_ids:
-            return with_year
-
-    # Altrimenti sequenziale
-    counter = 2
-    while f"{slug}_{counter}" in existing_ids:
-        counter += 1
-    return f"{slug}_{counter}"
+def get_candidate_provenance_conflicts(candidate: CandidatePlayer) -> list[str]:
+    """Rileva i percorsi campo in cui sussiste una reale discordanza irrisolta tra fonti esterne."""
+    if not candidate.provenance:
+        return []
+    conflicts: list[str] = []
+    fields_dict = getattr(candidate.provenance, "fields", {}) if not isinstance(candidate.provenance, dict) else candidate.provenance
+    for path, fp in fields_dict.items():
+        if hasattr(fp, "has_conflict") and fp.has_conflict():
+            conflicts.append(path)
+    return conflicts
 
 
 def find_possible_duplicates(
     candidate: CandidatePlayer,
     production_players: list[dict[str, Any]],
 ) -> list[PossibleDuplicateMatch]:
-    """Individua potenziali duplicati già presenti nel dataset di produzione."""
-    if not candidate.full_name:
-        return []
-
+    """Individua potenziali duplicati già esistenti nel dataset di produzione."""
     matches: list[PossibleDuplicateMatch] = []
-    cand_name_norm = match_normalize(candidate.full_name)
-    cand_aliases_norm = {match_normalize(a) for a in candidate.aliases if a and a.strip()}
-    cand_birth = candidate.birth_year
-    cand_nat = clean_text(candidate.nationality or "").lower()
-    cand_clubs = {
-        clean_text(stop.get("team", "")).lower()
-        for stop in candidate.career
-        if stop.get("team")
-    }
+    c_name = _normalize_name_for_comparison(candidate.full_name or "")
+    if not c_name:
+        return matches
 
-    for p in production_players:
-        pid = p.get("id", "")
-        pname = p.get("full_name", "")
-        pname_norm = match_normalize(pname)
-        p_aliases_norm = {match_normalize(a) for a in p.get("aliases", []) if a}
-        p_birth = p.get("birth_year")
-        p_nat = clean_text(p.get("nationality", "")).lower()
-        p_clubs = {
-            clean_text(stop.get("team", "")).lower()
-            for stop in p.get("career", [])
-            if stop.get("team")
-        }
+    c_aliases = {_normalize_name_for_comparison(a) for a in candidate.aliases if a}
+    c_year = candidate.birth_year
+    c_teams = {clean_text(stop.get("team", "")).lower() for stop in candidate.career if stop.get("team")}
 
-        reasons = []
+    for player in production_players:
+        pid = player.get("id", "")
+        p_name = _normalize_name_for_comparison(player.get("full_name", ""))
+        p_aliases = {_normalize_name_for_comparison(a) for a in player.get("aliases", []) if a}
+        p_year = player.get("birth_year")
+        p_teams = {clean_text(stop.get("team", "")).lower() for stop in player.get("career", []) if stop.get("team")}
+
+        reasons: list[str] = []
         score = 0.0
 
-        # 1. Match esatto sul nome normalizzato
-        if cand_name_norm == pname_norm:
-            score = max(score, 1.0)
-            reasons.append("Nome normalizzato identico")
-        elif cand_name_norm in p_aliases_norm:
+        # 1. Match identico del nome normalizzato
+        if c_name and p_name and c_name == p_name:
+            reasons.append("Nome completo identico")
             score = max(score, 0.95)
-            reasons.append("Il nome coincide con un alias esistente")
-        elif cand_aliases_norm and cand_aliases_norm.intersection(p_aliases_norm):
-            common = sorted(cand_aliases_norm.intersection(p_aliases_norm))
-            score = max(score, 0.90)
-            reasons.append(f"Condivide alias: {common[0]}")
 
-        # 2. Somiglianza fuzzy sul nome
-        sim = similarity(cand_name_norm, pname_norm)
-        if sim >= 0.85:
-            birth_match = (cand_birth is not None and cand_birth == p_birth)
-            nat_match = (cand_nat and cand_nat == p_nat)
-            if birth_match and nat_match:
-                score = max(score, 0.92)
-                reasons.append(f"Nome molto simile ({int(sim*100)}%), stessa nazionalità e anno di nascita")
-            elif birth_match or nat_match:
-                score = max(score, 0.85)
-                reasons.append(f"Nome molto simile ({int(sim*100)}%) con riscontro anagrafico")
-            else:
-                score = max(score, round(sim * 0.85, 2))
-                reasons.append(f"Nome simile ({int(sim*100)}%)")
+        # 2. Match di alias
+        common_aliases = c_aliases.intersection(p_aliases)
+        if common_aliases:
+            reasons.append(f"Alias condiviso ({', '.join(sorted(common_aliases))})")
+            score = max(score, 0.85)
 
-        # 3. Sovrapposizione club in carriera
-        shared_clubs = cand_clubs.intersection(p_clubs) - {"", "?"}
-        if len(shared_clubs) >= 2:
-            career_score = min(0.85, 0.60 + len(shared_clubs) * 0.08)
-            if career_score > score:
-                score = career_score
-            sample_clubs = ", ".join(sorted(shared_clubs)[:3])
-            reasons.append(f"Carriera sovrapposta in {len(shared_clubs)} club ({sample_clubs})")
+        # 3. Match nome candidato coincide con alias produzione (o viceversa)
+        if c_name in p_aliases:
+            reasons.append(f"Nome candidato coincide con alias esistente '{c_name}'")
+            score = max(score, 0.85)
+        if p_name in c_aliases:
+            reasons.append(f"Nome produzione coincide con alias candidato '{p_name}'")
+            score = max(score, 0.85)
 
-        if score >= 0.70 and reasons:
+        # 4. Somiglianza fuzzy sul nome (Levenshtein)
+        sim = similarity(c_name, p_name)
+        if sim >= 0.85 and score < 0.85:
+            reasons.append(f"Somiglianza testuale elevata ({int(sim * 100)}%)")
+            score = max(score, sim * 0.9)
+
+        # 5. Coincidenza anno di nascita
+        if c_year and p_year and c_year == p_year:
+            if reasons:
+                reasons.append(f"Stesso anno di nascita ({c_year})")
+                score = min(1.0, score + 0.1)
+
+        # 6. Squadre di carriera in comune
+        common_teams = c_teams.intersection(p_teams)
+        if common_teams:
+            if reasons:
+                reasons.append(f"Club in comune ({', '.join(sorted(common_teams))})")
+                score = min(1.0, score + 0.05)
+            elif len(common_teams) >= 2:
+                reasons.append(f"2+ club condivisi ({', '.join(sorted(common_teams))})")
+                score = max(score, 0.70)
+
+        if score >= 0.70:
             matches.append(
                 PossibleDuplicateMatch(
                     player_id=pid,
-                    player_name=pname,
-                    confidence=min(1.0, score),
+                    player_name=player.get("full_name", pid),
+                    confidence=score,
                     match_reasons=reasons,
                 )
             )
 
     matches.sort(key=lambda m: m.confidence, reverse=True)
-    return matches[:5]
+    return matches
+
+
+def make_production_player_id(
+    candidate_name: str,
+    existing_ids: set[str],
+    birth_year: Optional[int] = None,
+) -> str:
+    """Genera un identificatore canonico deterministico e privo di collisioni per data/players.json."""
+    norm = unicodedata.normalize("NFKD", candidate_name)
+    clean = "".join(c for c in norm if not unicodedata.combining(c))
+    slug = re.sub(r"[^a-zA-Z0-9]+", "_", clean).strip("_").lower()
+    if not slug:
+        slug = f"player_{birth_year}" if birth_year else "player"
+
+    candidate_id = slug
+    if candidate_id not in existing_ids:
+        return candidate_id
+
+    # Se collidere, tenta con l'anno di nascita se disponibile
+    if birth_year:
+        year_slug = f"{slug}_{birth_year}"
+        if year_slug not in existing_ids:
+            return year_slug
+
+    # Altrimenti aggiunge un suffisso numerico progressivo deterministico
+    counter = 2
+    while True:
+        numbered = f"{slug}_{counter}"
+        if numbered not in existing_ids:
+            return numbered
+        counter += 1
+
+
+def _sanitize_audit_event(event: dict[str, Any]) -> dict[str, Any]:
+    """Rimuove dettagli sensibili o percorsi assoluti da un evento di audit."""
+    sanitized = copy.deepcopy(event)
+    for key in ("backup", "snapshot", "backup_snapshot"):
+        if key in sanitized and isinstance(sanitized[key], str):
+            sanitized[key] = Path(sanitized[key]).name
+    return sanitized
 
 
 def build_review_projection(
     candidate: CandidatePlayer,
     production_players: list[dict[str, Any]],
 ) -> ReviewCandidateProjection:
-    """Costruisce una proiezione sicura e completa per la Review Queue."""
-    norm_name = clean_text(candidate.full_name) if candidate.full_name else None
+    """Costruisce una vista strutturata, sicura e priva di dati grezzi non sanitizzati."""
+    field_observations: dict[str, list[dict[str, Any]]] = {}
+    has_conflicts = False
 
-    # Estrazione findings strutturati
-    norm_findings = list(candidate.metadata.get("normalization_findings", []))
-    val_findings = list(candidate.metadata.get("validation_findings", []))
+    if candidate.provenance:
+        fields_dict = getattr(candidate.provenance, "fields", {}) if not isinstance(candidate.provenance, dict) else candidate.provenance
+        for path, fp in fields_dict.items():
+            obs_list = []
+            for obs in fp.observations:
+                obs_dict = {
+                    "source": obs.source,
+                    "source_id": obs.source_id,
+                    "confidence": obs.confidence,
+                    "confidence_level": obs.confidence_level,
+                    "retrieved_at": obs.retrieved_at,
+                    "raw_value": str(obs.raw_value) if obs.raw_value is not None else None,
+                }
+                obs_list.append(obs_dict)
+            field_observations[path] = obs_list
+            if hasattr(fp, "has_conflict") and fp.has_conflict():
+                has_conflicts = True
 
-    # Analisi club sconosciuti e alias ambigui dai findings
-    unknown_clubs: list[str] = []
-    ambiguous_aliases: list[str] = []
+    raw_findings = candidate.metadata.get("validation_findings", [])
+    findings_list: list[dict[str, Any]] = copy.deepcopy(raw_findings) if isinstance(raw_findings, list) else []
 
-    for f in norm_findings + val_findings:
-        code = f.get("code")
-        val = f.get("input_value")
-        if code in (FindingCode.CLUB_MISSING_COUNTRY, FindingCode.CLUB_MISSING_LEAGUE, FindingCode.CLUB_UNRESOLVED_QID):
-            if val and str(val) not in unknown_clubs:
-                unknown_clubs.append(str(val))
-        elif code in (FindingCode.PLAYER_ALIAS_AMBIGUOUS, FindingCode.CLUB_AMBIGUOUS_ALIAS):
-            if val and str(val) not in ambiguous_aliases:
-                ambiguous_aliases.append(str(val))
+    duplicates = find_possible_duplicates(candidate, production_players)
 
-    has_source_conflicts = bool(
-        candidate.metadata.get("has_source_conflicts")
-        or (hasattr(candidate, "provenance") and candidate.provenance and candidate.provenance.has_conflicts())
-    )
-
-    possible_dups = find_possible_duplicates(candidate, production_players)
-
-    review_history = list(candidate.metadata.get("review_events", []))
+    sanitized_history = []
+    for ev in candidate.metadata.get("review_events", []):
+        if isinstance(ev, dict):
+            sanitized_history.append(_sanitize_audit_event(ev))
 
     return ReviewCandidateProjection(
         candidate_id=candidate.candidate_id,
-        status=candidate.status,
-        revision=candidate.revision,
         full_name=candidate.full_name,
-        normalized_name=norm_name,
-        aliases=list(candidate.aliases),
+        birth_year=candidate.birth_year,
         nationality=candidate.nationality,
         position=candidate.position,
-        birth_year=candidate.birth_year,
-        popularity=candidate.popularity,
+        aliases=list(candidate.aliases),
         career=copy.deepcopy(candidate.career),
+        status=candidate.status.value,
+        revision=candidate.revision,
         source=candidate.source,
         source_id=candidate.source_id,
-        confidence_score=candidate.confidence_score,
-        validation_warnings=list(candidate.validation_warnings),
-        validation_errors=list(candidate.validation_errors),
-        normalization_findings=norm_findings,
-        validation_findings=val_findings,
-        unknown_clubs=unknown_clubs,
-        ambiguous_aliases=ambiguous_aliases,
-        has_source_conflicts=has_source_conflicts,
-        possible_duplicates=possible_dups,
         created_at=candidate.created_at,
         updated_at=candidate.updated_at,
-        last_transition_at=candidate.last_transition_at,
-        state_history=[r.to_dict() for r in candidate.state_history],
-        review_history=review_history,
+        is_one_club_man=bool(candidate.metadata.get("is_one_club_man", False)),
+        is_retired=bool(candidate.metadata.get("is_retired", False)),
+        popularity=candidate.popularity if candidate.popularity in (1, 2, 3, 4, 5) else 3,
+        validation_errors=list(candidate.validation_errors),
+        validation_warnings=list(candidate.validation_warnings),
+        findings=findings_list,
+        field_observations=field_observations,
+        has_source_conflicts=has_conflicts,
+        possible_duplicates=duplicates,
+        review_history=sanitized_history,
     )
+
+
+def _default_adapter_resolver(source: str, source_id: str) -> Optional[Any]:
+    """Risolutore di adapter standard per la pipeline di acquisizione."""
+    src = str(source).strip().lower()
+    if src == "wikipedia":
+        from services.adapters.wikipedia import WikipediaAdapter
+
+        return WikipediaAdapter().fetch_player(source_id)
+    elif src == "wikidata":
+        from services.adapters.wikidata import WikidataAdapter
+
+        return WikidataAdapter().fetch_player(source_id)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -463,22 +478,33 @@ def build_review_projection(
 # ---------------------------------------------------------------------------
 
 class CandidateReviewService:
-    """Servizio per la gestione e approvazione dei Candidate Players."""
+    """Servizio per la coda di revisione umana e la promozione controllata a produzione (#15)."""
 
     def __init__(
         self,
+        repo: Optional[CandidatePlayerRepository] = None,
+        *,
         candidate_repo: Optional[CandidatePlayerRepository] = None,
         players_path: Optional[Path | str] = None,
         backup_dir: Optional[Path | str] = None,
         admin_ids: Optional[list[int]] = None,
         current_year_provider: Optional[Callable[[], int]] = None,
+        adapter_resolver: Optional[Callable[[str, str], Any]] = None,
     ) -> None:
-        self._repo = candidate_repo if candidate_repo is not None else FileCandidatePlayerRepository()
-        self._players_path = Path(players_path).resolve() if players_path else Path(_PLAYERS_PATH).resolve()
-
+        effective_repo = candidate_repo if candidate_repo is not None else repo
+        if effective_repo is None:
+            raise ValueError("Candidate repository must be provided")
+        self._repo = effective_repo
         base_dir = Path(__file__).resolve().parents[1]
+
+        self._players_path = Path(players_path).resolve() if players_path else (base_dir / "data" / "players.json").resolve()
+        self._production_lock_path = self._players_path.with_suffix(".lock")
         self._backup_dir = Path(backup_dir).resolve() if backup_dir else (base_dir / "backup").resolve()
         self._backup_dir.mkdir(parents=True, exist_ok=True)
+
+        # Prevenzione path traversal sulla directory backup
+        if ".." in str(self._backup_dir):
+            raise ValueError(f"Percorso backup non sicuro: {self._backup_dir}")
 
         if admin_ids is not None:
             self._admin_ids = list(admin_ids)
@@ -486,6 +512,7 @@ class CandidateReviewService:
             self._admin_ids = list(CONFIG_ADMIN_TELEGRAM_IDS)
 
         self._current_year_provider = current_year_provider
+        self._adapter_resolver = adapter_resolver or _default_adapter_resolver
 
     def _verify_auth(self, admin: Optional[AdminIdentity]) -> AdminIdentity:
         """Verifica che l'amministratore sia valido e autorizzato."""
@@ -498,24 +525,47 @@ class CandidateReviewService:
         return admin
 
     def _load_production_players(self) -> list[dict[str, Any]]:
-        """Carica in modo sicuro l'elenco dei giocatori dal dataset di produzione."""
+        """Carica in modalità non bloccante l'elenco dei giocatori per proiezioni di sola lettura."""
         if not self._players_path.is_file():
             return []
-        with open(self._players_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return list(data.get("players", []))
+        try:
+            with open(self._players_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return list(data.get("players", []))
+        except Exception:
+            return []
 
-    def _backup_production_dataset(self) -> str:
-        """Crea una copia di backup prima di qualunque mutazione a data/players.json."""
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        dest = self._backup_dir / f"players-review-{stamp}.json"
+    def _load_production_players_strict(self) -> tuple[Optional[list[dict[str, Any]]], Optional[str]]:
+        """Carica il dataset di produzione con semantica FAIL-CLOSED per mutazioni."""
+        if not self._players_path.is_file():
+            return None, "Dataset di produzione mancante o non accessibile."
+        try:
+            with open(self._players_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            logger.error("Impossibile deserializzare il dataset di produzione", exc_info=True)
+            return None, "Dataset di produzione non valido o corrotto."
+
+        if not isinstance(data, dict) or "players" not in data or not isinstance(data["players"], list):
+            return None, "Struttura del dataset di produzione inattesa o non conforme."
+
+        return list(data["players"]), None
+
+    def _backup_production_dataset(self, candidate_id: str) -> tuple[str, Path]:
+        """Crea una copia di backup con identificatore univoco e sicuro (collision-free)."""
+        self._backup_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+        clean_cid = re.sub(r"[^a-zA-Z0-9]+", "_", str(candidate_id)).strip("_")[:20] or "cand"
+        random_suffix = uuid.uuid4().hex[:8]
+        filename = f"players-review-{stamp}_{clean_cid}_{random_suffix}.json"
+        dest = self._backup_dir / filename
+
         if self._players_path.is_file():
-            shutil.copy2(self._players_path, dest)
-        return str(dest)
+            shutil.copy2(str(self._players_path), str(dest))
+        return filename, dest
 
     def _atomic_write_production_dataset(self, players: list[dict[str, Any]]) -> None:
-        """Scrittura atomica sicura del dataset di produzione."""
-        # Legge commento o struttura esistente
+        """Scrittura atomica sicura del dataset di produzione con fsync e replace."""
         comment = (
             "Dataset locale curato di carriere calcistiche. 'verified': true = dati controllati e pronti "
             "per la selezione automatica."
@@ -551,9 +601,6 @@ class CandidateReviewService:
                 except OSError:
                     pass
             raise
-
-        # Svuota cache memoria
-        reload_dataset()
 
     # -----------------------------------------------------------------------
     # Query: list and get
@@ -598,219 +645,259 @@ class CandidateReviewService:
 
         if search is not None and str(search).strip():
             query = clean_text(str(search)).lower()
-            candidates = [
-                c for c in candidates
-                if (c.full_name and query in clean_text(c.full_name).lower())
-                or query in c.candidate_id.lower()
-                or any(query in clean_text(a).lower() for a in c.aliases)
-            ]
+            filtered = []
+            for c in candidates:
+                c_name = (c.full_name or "").lower()
+                c_aliases = " ".join(c.aliases).lower()
+                c_teams = " ".join(stop.get("team", "") for stop in c.career).lower()
+                if query in c_name or query in c_aliases or query in c_teams or query in c.candidate_id.lower():
+                    filtered.append(c)
+            candidates = filtered
 
         # Ordinamento
         if sort_by == "oldest":
             candidates.sort(key=lambda c: c.created_at)
+        elif sort_by == "urgency":
+            candidates.sort(
+                key=lambda c: (
+                    0 if c.validation_errors else (1 if c.validation_warnings else 2),
+                    c.created_at,
+                )
+            )
         else:  # newest
             candidates.sort(key=lambda c: c.created_at, reverse=True)
 
         total = len(candidates)
         sliced = candidates[offset : offset + limit]
 
-        projections = [build_review_projection(c, prod_players) for c in sliced]
-        return ReviewQueuePage(items=projections, total=total, limit=limit, offset=offset)
+        items = [build_review_projection(c, prod_players) for c in sliced]
+        return ReviewQueuePage(items=items, total=total, offset=offset, limit=limit)
 
     def get_candidate_detail(
         self,
         admin: AdminIdentity,
         candidate_id: str,
-    ) -> ReviewCandidateProjection:
-        """Recupera la proiezione di dettaglio di un singolo candidato."""
+    ) -> Optional[ReviewCandidateProjection]:
+        """Recupera la proiezione dettagliata di un candidato per la revisione."""
         self._verify_auth(admin)
         candidate = self._repo.get_by_id(candidate_id)
         if not candidate:
-            raise CandidateReviewError(f"Candidato '{candidate_id}' non trovato.", status=ReviewStatus.NOT_FOUND)
+            return None
 
         prod_players = self._load_production_players()
         return build_review_projection(candidate, prod_players)
 
     # -----------------------------------------------------------------------
-    # Mutazioni: Approve, Edit, Reject, Merge, Source Wrong, Retry
+    # Mutazioni: approve, edit, reject, merge, mark_source_wrong, retry
     # -----------------------------------------------------------------------
 
-    def approve(
+    def approve_candidate(
         self,
         admin: AdminIdentity,
         candidate_id: str,
         expected_revision: int,
+        *,
+        allow_warnings: bool = False,
+        force_allow_warnings: Optional[bool] = None,
         player_id_override: Optional[str] = None,
-        force_allow_warnings: bool = True,
     ) -> ReviewResult:
-        """Approva un candidato e lo promuove nel dataset di produzione."""
+        """Approva un candidato e lo promuove nel dataset di produzione con sezione critica protetta."""
         self._verify_auth(admin)
-        candidate = self._repo.get_by_id(candidate_id)
-        if not candidate:
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.NOT_FOUND,
-                candidate_id=candidate_id,
-                message=f"Candidato '{candidate_id}' non trovato.",
-            )
 
-        # Idempotenza: se già APPROVED, ritorna successo sicuro
-        if candidate.status == CandidateState.APPROVED:
-            promoted_id = candidate.metadata.get("promoted_player_id", "")
-            return ReviewResult(
-                success=True,
-                status=ReviewStatus.ALREADY_PROCESSED,
-                candidate_id=candidate_id,
-                message=f"Il candidato '{candidate_id}' è già stato approvato (player_id: '{promoted_id}').",
-                promoted_player_id=promoted_id,
-                candidate=candidate,
-            )
+        effective_allow_warnings = force_allow_warnings if force_allow_warnings is not None else allow_warnings
 
-        # Controllo concorrenza ottimistica
-        if candidate.revision != expected_revision:
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.STALE_REVISION,
-                candidate_id=candidate_id,
-                message=(
-                    f"Conflitto di revisione per '{candidate_id}': attesa {expected_revision}, "
-                    f"ma il record è stato aggiornato alla revisione {candidate.revision}."
-                ),
-            )
-
-        # Controllo stato autorizzato
-        if candidate.status not in REVIEWABLE_STATES:
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.INVALID_STATE,
-                candidate_id=candidate_id,
-                message=(
-                    f"Impossibile approvare il candidato '{candidate_id}' nello stato "
-                    f"'{candidate.status.value}'. Stati ammessi: {[s.value for s in REVIEWABLE_STATES]}."
-                ),
-            )
-
-        # Riesegue normalizzazione e validazione a fresco
-        normalize_candidate(candidate, actor=f"admin:{admin.user_id}:approve")
-        validate_candidate(
-            candidate,
-            current_year_provider=self._current_year_provider,
-            actor=f"admin:{admin.user_id}:approve",
-        )
-
-        # Verifica assenza di errori bloccanti
-        if candidate.validation_errors:
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.UNRESOLVED_CONFLICT,
-                candidate_id=candidate_id,
-                message=f"Impossibile approvare: presenti {len(candidate.validation_errors)} errori bloccanti.",
-                errors=list(candidate.validation_errors),
-                warnings=list(candidate.validation_warnings),
-            )
-
-        # Verifica warning se force_allow_warnings=False
-        if not force_allow_warnings and candidate.validation_warnings:
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.VALIDATION_FAILED,
-                candidate_id=candidate_id,
-                message=f"Approvazione rifiutata: presenti {len(candidate.validation_warnings)} warning.",
-                warnings=list(candidate.validation_warnings),
-            )
-
-        # Carica il dataset di produzione
-        prod_players = self._load_production_players()
-        existing_ids = {p["id"] for p in prod_players if "id" in p}
-
-        # Determinazione player_id
-        if player_id_override:
-            target_id = str(player_id_override).strip().lower().replace(" ", "_")
-            if target_id in existing_ids:
+        # Sezione critica serializzata per mutazioni su players.json
+        with ProcessFileLock(self._production_lock_path):
+            candidate = self._repo.get_by_id(candidate_id)
+            if not candidate:
                 return ReviewResult(
                     success=False,
-                    status=ReviewStatus.DUPLICATE_PLAYER,
+                    status=ReviewStatus.NOT_FOUND,
                     candidate_id=candidate_id,
-                    message=f"L'id giocatore '{target_id}' esiste già nel dataset di produzione.",
+                    message=f"Candidato '{candidate_id}' non trovato.",
                 )
-        else:
-            target_id = make_production_player_id(
-                candidate.full_name or "player",
-                existing_ids,
-                birth_year=candidate.birth_year,
+
+            # Idempotenza: se già APPROVED, ritorna successo sicuro
+            if candidate.status == CandidateState.APPROVED:
+                promoted_id = candidate.metadata.get("promoted_player_id", "")
+                return ReviewResult(
+                    success=True,
+                    status=ReviewStatus.ALREADY_PROCESSED,
+                    candidate_id=candidate_id,
+                    message=f"Il candidato '{candidate_id}' è già stato approvato (player_id: '{promoted_id}').",
+                    promoted_player_id=promoted_id,
+                    candidate=candidate,
+                )
+
+            # Controllo concorrenza ottimistica
+            if candidate.revision != expected_revision:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.STALE_REVISION,
+                    candidate_id=candidate_id,
+                    message=(
+                        f"Conflitto di revisione per '{candidate_id}': attesa {expected_revision}, "
+                        f"ma il record è stato aggiornato alla revisione {candidate.revision}."
+                    ),
+                )
+
+            # Controllo stato autorizzato
+            if candidate.status not in REVIEWABLE_STATES:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.INVALID_STATE,
+                    candidate_id=candidate_id,
+                    message=(
+                        f"Impossibile approvare il candidato '{candidate_id}' nello stato "
+                        f"'{candidate.status.value}'. Stati ammessi: {[s.value for s in REVIEWABLE_STATES]}."
+                    ),
+                )
+
+            # Riesegue normalizzazione e validazione a fresco
+            normalize_candidate(candidate, actor=f"admin:{admin.user_id}:approve")
+            validate_candidate(
+                candidate,
+                current_year_provider=self._current_year_provider,
+                actor=f"admin:{admin.user_id}:approve",
             )
 
-        # Costruisce la scheda Player canonica
-        clean_career = []
-        for stop in candidate.career:
-            entry = {
-                k: stop[k]
-                for k in ("team", "country", "league", "start_year", "end_year", "loan", "apps", "goals")
-                if k in stop and stop[k] is not None
+            # Verifica assenza di errori bloccanti
+            if candidate.validation_errors:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.UNRESOLVED_CONFLICT,
+                    candidate_id=candidate_id,
+                    message=f"Impossibile approvare: presenti {len(candidate.validation_errors)} errori bloccanti.",
+                    errors=list(candidate.validation_errors),
+                    warnings=list(candidate.validation_warnings),
+                )
+
+            # Verifica assenza di conflitti di provenienza irrisolti
+            provenance_conflicts = get_candidate_provenance_conflicts(candidate)
+            if provenance_conflicts:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.UNRESOLVED_CONFLICT,
+                    candidate_id=candidate_id,
+                    message=(
+                        f"Impossibile approvare: presenti conflitti irrisolti tra fonti nei campi: "
+                        f"{', '.join(provenance_conflicts)}."
+                    ),
+                    conflicts=provenance_conflicts,
+                    warnings=list(candidate.validation_warnings),
+                )
+
+            # Verifica warning con accettazione esplicita
+            if not effective_allow_warnings and candidate.validation_warnings:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.VALIDATION_FAILED,
+                    candidate_id=candidate_id,
+                    message=f"Approvazione rifiutata: presenti {len(candidate.validation_warnings)} warning non confermati.",
+                    warnings=list(candidate.validation_warnings),
+                )
+
+            # Carica il dataset di produzione con FAIL-CLOSED
+            prod_players, load_err = self._load_production_players_strict()
+            if prod_players is None:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.PERSISTENCE_FAILURE,
+                    candidate_id=candidate_id,
+                    message=load_err or "Dataset di produzione non accessibile.",
+                )
+
+            existing_ids = {p["id"] for p in prod_players if "id" in p}
+
+            # Determinazione player_id
+            if player_id_override:
+                target_id = str(player_id_override).strip().lower().replace(" ", "_")
+                if target_id in existing_ids:
+                    return ReviewResult(
+                        success=False,
+                        status=ReviewStatus.DUPLICATE_PLAYER,
+                        candidate_id=candidate_id,
+                        message=f"L'id giocatore '{target_id}' esiste già nel dataset di produzione.",
+                    )
+            else:
+                target_id = make_production_player_id(
+                    candidate.full_name or "player",
+                    existing_ids,
+                    birth_year=candidate.birth_year,
+                )
+
+            # Costruisce la scheda Player canonica
+            clean_career = []
+            for stop in candidate.career:
+                entry = {
+                    k: stop[k]
+                    for k in ("team", "country", "league", "start_year", "end_year", "loan", "apps", "goals")
+                    if k in stop and stop[k] is not None
+                }
+                clean_career.append(entry)
+            clean_career = order_career(clean_career)
+
+            new_player: dict[str, Any] = {
+                "id": target_id,
+                "full_name": candidate.full_name,
+                "aliases": list(candidate.aliases),
+                "nationality": candidate.nationality,
+                "position": candidate.position,
+                "birth_year": candidate.birth_year,
+                "popularity": candidate.popularity if candidate.popularity in (1, 2, 3, 4, 5) else 3,
+                "verified": True,
+                "career": clean_career,
             }
-            clean_career.append(entry)
-        clean_career = order_career(clean_career)
 
-        new_player: dict[str, Any] = {
-            "id": target_id,
-            "full_name": candidate.full_name,
-            "aliases": list(candidate.aliases),
-            "nationality": candidate.nationality,
-            "position": candidate.position,
-            "birth_year": candidate.birth_year,
-            "popularity": candidate.popularity if candidate.popularity in (1, 2, 3, 4, 5) else 3,
-            "verified": True,
-            "career": clean_career,
-        }
+            # Controlli invarianti sul nuovo giocatore e sul dataset complessivo
+            player_problems = validate_player(new_player)
+            if player_problems:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.VALIDATION_FAILED,
+                    candidate_id=candidate_id,
+                    message=f"La scheda canonica generata non rispetta le regole di validazione: {player_problems[0]}",
+                    errors=player_problems,
+                )
 
-        # Controlli invarianti sul nuovo giocatore e sul dataset complessivo
-        player_problems = validate_player(new_player)
-        if player_problems:
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.VALIDATION_FAILED,
-                candidate_id=candidate_id,
-                message=f"La scheda canonica generata non rispetta le regole di validazione: {player_problems[0]}",
-                errors=player_problems,
-            )
+            simulated_dataset = prod_players + [new_player]
+            dataset_problems = validate_dataset(simulated_dataset)
+            if dataset_problems:
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.VALIDATION_FAILED,
+                    candidate_id=candidate_id,
+                    message=f"L'inserimento creerebbe un'incoerenza nel dataset globale: {dataset_problems[0]}",
+                    errors=dataset_problems,
+                )
 
-        simulated_dataset = prod_players + [new_player]
-        dataset_problems = validate_dataset(simulated_dataset)
-        if dataset_problems:
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.VALIDATION_FAILED,
-                candidate_id=candidate_id,
-                message=f"L'inserimento creerebbe un'incoerenza nel dataset globale: {dataset_problems[0]}",
-                errors=dataset_problems,
-            )
+            # Creazione snapshot di backup con identificatore univoco
+            snapshot_name, snapshot_dest = self._backup_production_dataset(candidate.candidate_id)
 
-        # Esecuzione promozione sicura con backup e rollback garantito
-        backup_file = self._backup_production_dataset()
-        try:
-            self._atomic_write_production_dataset(simulated_dataset)
-        except Exception as err:
-            logger.exception("Scrittura del dataset di produzione fallita")
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.PERSISTENCE_FAILURE,
-                candidate_id=candidate_id,
-                message=f"Errore durante la scrittura di data/players.json: {err}",
-            )
+            # Scrittura atomica del nuovo dataset di produzione
+            try:
+                self._atomic_write_production_dataset(simulated_dataset)
+            except Exception as err:
+                logger.exception("Scrittura del dataset di produzione fallita: %s", err)
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.PERSISTENCE_FAILURE,
+                    candidate_id=candidate_id,
+                    message="Errore durante la scrittura del file di produzione.",
+                )
 
-        # Aggiornamento Candidate Player e salvataggio
-        try:
+            # Aggiornamento Candidate Player e salvataggio condizionale (CAS)
             candidate.metadata["promoted_player_id"] = target_id
             candidate.metadata["promoted_at"] = _now_utc_iso()
             candidate.metadata["promoted_by"] = admin.user_id
-            candidate.metadata["backup_snapshot"] = backup_file
+            candidate.metadata["backup_snapshot_id"] = snapshot_name
 
             audit_event = {
                 "action": ReviewAction.APPROVE.value,
                 "actor": admin.user_id,
                 "timestamp": _now_utc_iso(),
                 "promoted_player_id": target_id,
-                "backup": backup_file,
+                "backup_snapshot": snapshot_name,
             }
             candidate.metadata.setdefault("review_events", []).append(audit_event)
 
@@ -818,25 +905,38 @@ class CandidateReviewService:
                 CandidateState.APPROVED,
                 reason=f"Approvato e promosso nel dataset di produzione con ID '{target_id}'",
                 actor=f"admin:{admin.user_id}",
-                metadata={"promoted_player_id": target_id, "backup": backup_file},
+                metadata={"promoted_player_id": target_id, "backup_snapshot": snapshot_name},
             )
-            self._repo.save(candidate)
-        except Exception as err:
-            # Ripristino da backup per garantire atomicità tra candidato e produzione
-            logger.error("Salvataggio candidato fallito dopo scrittura produzione. Eseguo rollback.")
-            try:
-                if os.path.exists(backup_file):
-                    shutil.copy2(backup_file, self._players_path)
-                    reload_dataset()
-            except Exception as rollback_err:
-                logger.critical(f"Rollback del dataset fallito: {rollback_err}")
 
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.PERSISTENCE_FAILURE,
-                candidate_id=candidate_id,
-                message=f"Salvataggio stato candidato fallito (dataset ripristinato da backup): {err}",
-            )
+            # Salvataggio CAS: verifica atomicamente la revisione originale persistita
+            try:
+                saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
+            except Exception as save_err:
+                logger.error("Salvataggio candidato fallito dopo scrittura produzione: %s", save_err, exc_info=True)
+                saved = False
+                save_exc = True
+            else:
+                save_exc = False
+
+            if not saved:
+                # Ripristino da backup per garantire atomicità: mantenuto all'interno del lock di produzione
+                logger.error("Salvataggio fallito o conflitto di revisione. Eseguo rollback di produzione.")
+                try:
+                    if snapshot_dest.is_file():
+                        shutil.copy2(str(snapshot_dest), str(self._players_path))
+                except Exception as rollback_err:
+                    logger.critical("Rollback del dataset di produzione fallito: %s", rollback_err)
+
+                status = ReviewStatus.PERSISTENCE_FAILURE if save_exc else ReviewStatus.STALE_REVISION
+                return ReviewResult(
+                    success=False,
+                    status=status,
+                    candidate_id=candidate_id,
+                    message="Salvataggio del candidato fallito: modifiche al dataset annullate.",
+                )
+
+            # Ricarica dataset in memoria
+            reload_dataset()
 
         projection = build_review_projection(candidate, simulated_dataset)
         return ReviewResult(
@@ -868,12 +968,12 @@ class CandidateReviewService:
                 message=f"Candidato '{candidate_id}' non trovato.",
             )
 
-        if candidate.is_terminal():
+        if candidate.status not in REVIEWABLE_STATES:
             return ReviewResult(
                 success=False,
                 status=ReviewStatus.INVALID_STATE,
                 candidate_id=candidate_id,
-                message=f"Impossibile modificare il candidato '{candidate_id}' in stato terminale '{candidate.status.value}'.",
+                message=f"Impossibile modificare il candidato nello stato '{candidate.status.value}'. Stati ammessi: {[s.value for s in REVIEWABLE_STATES]}.",
             )
 
         if candidate.revision != expected_revision:
@@ -884,58 +984,50 @@ class CandidateReviewService:
                 message=f"Conflitto di revisione per '{candidate_id}': attesa {expected_revision}, attuale {candidate.revision}.",
             )
 
-        # Controllo allow-list campi
-        disallowed_fields = set(updates.keys()) - EDITABLE_CANDIDATE_FIELDS
-        if disallowed_fields:
+        ALLOWED_FIELDS = {
+            "full_name",
+            "birth_year",
+            "nationality",
+            "position",
+            "aliases",
+            "career",
+            "is_one_club_man",
+            "is_retired",
+            "popularity",
+        }
+
+        forbidden = [k for k in updates.keys() if k not in ALLOWED_FIELDS]
+        if forbidden:
             return ReviewResult(
                 success=False,
                 status=ReviewStatus.FORBIDDEN_FIELD,
                 candidate_id=candidate_id,
-                message=f"Campi non modificabili: {sorted(disallowed_fields)}.",
-                errors=[f"Campo '{f}' non consentito nell'allow-list" for f in sorted(disallowed_fields)],
+                message=f"Campi non modificabili: {forbidden}. Campi ammessi: {sorted(ALLOWED_FIELDS)}",
+                errors=forbidden,
             )
 
-        changed_summary: dict[str, Any] = {}
+        # Traccia le modifiche nell'audit trail
+        audit_event = {
+            "action": ReviewAction.EDIT.value,
+            "actor": admin.user_id,
+            "timestamp": _now_utc_iso(),
+            "reason": reason or "Modifica manuale pre-approvazione",
+            "fields_modified": list(updates.keys()),
+        }
 
-        # Applicazione campi autorizzati
-        if "full_name" in updates:
-            changed_summary["full_name"] = {"before": candidate.full_name, "after": updates["full_name"]}
-            candidate.full_name = str(updates["full_name"]).strip() if updates["full_name"] is not None else None
+        for k, v in updates.items():
+            if k == "career":
+                clean_stops = []
+                for stop in v:
+                    clean_stops.append(dict(stop))
+                setattr(candidate, k, clean_stops)
+            else:
+                setattr(candidate, k, v)
 
-        if "aliases" in updates:
-            changed_summary["aliases"] = {"before": candidate.aliases, "after": updates["aliases"]}
-            candidate.aliases = [str(a).strip() for a in (updates["aliases"] or []) if str(a).strip()]
+        candidate.bump_revision()
+        candidate.metadata.setdefault("review_events", []).append(audit_event)
 
-        if "nationality" in updates:
-            changed_summary["nationality"] = {"before": candidate.nationality, "after": updates["nationality"]}
-            candidate.nationality = str(updates["nationality"]).strip() if updates["nationality"] is not None else None
-
-        if "position" in updates:
-            changed_summary["position"] = {"before": candidate.position, "after": updates["position"]}
-            candidate.position = str(updates["position"]).strip() if updates["position"] is not None else None
-
-        if "birth_year" in updates:
-            changed_summary["birth_year"] = {"before": candidate.birth_year, "after": updates["birth_year"]}
-            by = updates["birth_year"]
-            candidate.birth_year = int(by) if by is not None and str(by).strip() != "" else None
-
-        if "popularity" in updates:
-            changed_summary["popularity"] = {"before": candidate.popularity, "after": updates["popularity"]}
-            pop = updates["popularity"]
-            candidate.popularity = int(pop) if pop is not None else None
-
-        if "career" in updates:
-            raw_career = updates["career"] or []
-            sanitized_career: list[dict[str, Any]] = []
-            for stop in raw_career:
-                if not isinstance(stop, dict):
-                    continue
-                clean_stop = {k: stop[k] for k in ALLOWED_CAREER_ENTRY_KEYS if k in stop}
-                sanitized_career.append(clean_stop)
-            changed_summary["career"] = {"stops_count": len(sanitized_career)}
-            candidate.career = sanitized_career
-
-        # Re-normalizzazione e re-validazione
+        # Riesegue normalizzazione deterministica e validazione carriere
         normalize_candidate(candidate, actor=f"admin:{admin.user_id}:edit")
         validate_candidate(
             candidate,
@@ -943,19 +1035,15 @@ class CandidateReviewService:
             actor=f"admin:{admin.user_id}:edit",
         )
 
-        candidate.bump_revision()
+        saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
+        if not saved:
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.STALE_REVISION,
+                candidate_id=candidate_id,
+                message=f"Conflitto di revisione per '{candidate_id}': il record è stato aggiornato contemporaneamente.",
+            )
 
-        audit_event = {
-            "action": ReviewAction.EDIT.value,
-            "actor": admin.user_id,
-            "timestamp": _now_utc_iso(),
-            "reason": reason,
-            "changed_fields": changed_summary,
-            "revision": candidate.revision,
-        }
-        candidate.metadata.setdefault("review_events", []).append(audit_event)
-
-        self._repo.save(candidate)
         prod_players = self._load_production_players()
         projection = build_review_projection(candidate, prod_players)
 
@@ -963,21 +1051,47 @@ class CandidateReviewService:
             success=True,
             status=ReviewStatus.SUCCESS,
             candidate_id=candidate_id,
-            message="Modifiche applicate con successo.",
+            message="Modifiche applicate e validate con successo.",
             candidate=candidate,
             projection=projection,
-            warnings=list(candidate.validation_warnings),
             errors=list(candidate.validation_errors),
+            warnings=list(candidate.validation_warnings),
         )
 
-    def reject(
+    def edit_and_approve(
+        self,
+        admin: AdminIdentity,
+        candidate_id: str,
+        expected_revision: int,
+        updates: dict[str, Any],
+        *,
+        allow_warnings: bool = False,
+        force_allow_warnings: Optional[bool] = None,
+        player_id_override: Optional[str] = None,
+        reason: Optional[str] = None,
+    ) -> ReviewResult:
+        """Modifica e approva in sequenza garantendo la consistenza transazionale."""
+        edit_res = self.edit(admin, candidate_id, expected_revision, updates, reason=reason)
+        if not edit_res.success or not edit_res.candidate:
+            return edit_res
+
+        return self.approve_candidate(
+            admin,
+            candidate_id,
+            expected_revision=edit_res.candidate.revision,
+            allow_warnings=allow_warnings,
+            force_allow_warnings=force_allow_warnings,
+            player_id_override=player_id_override,
+        )
+
+    def reject_candidate(
         self,
         admin: AdminIdentity,
         candidate_id: str,
         expected_revision: int,
         reason: str,
     ) -> ReviewResult:
-        """Rifiuta un candidato preservando cronologia e dati."""
+        """Rifiuta un candidato registrando motivazione e audit trail."""
         self._verify_auth(admin)
         candidate = self._repo.get_by_id(candidate_id)
         if not candidate:
@@ -988,7 +1102,6 @@ class CandidateReviewService:
                 message=f"Candidato '{candidate_id}' non trovato.",
             )
 
-        # Idempotenza
         if candidate.status == CandidateState.REJECTED:
             return ReviewResult(
                 success=True,
@@ -998,12 +1111,12 @@ class CandidateReviewService:
                 candidate=candidate,
             )
 
-        if candidate.is_terminal():
+        if candidate.status not in REVIEWABLE_STATES:
             return ReviewResult(
                 success=False,
                 status=ReviewStatus.INVALID_STATE,
                 candidate_id=candidate_id,
-                message=f"Impossibile rifiutare un candidato nello stato terminale '{candidate.status.value}'.",
+                message=f"Impossibile rifiutare il candidato nello stato '{candidate.status.value}'. Stati ammessi: {[s.value for s in REVIEWABLE_STATES]}.",
             )
 
         if candidate.revision != expected_revision:
@@ -1024,11 +1137,19 @@ class CandidateReviewService:
 
         candidate.transition_to(
             CandidateState.REJECTED,
-            reason=reason or "Candidato rifiutato in fase di revisione",
+            reason=reason,
             actor=f"admin:{admin.user_id}",
             metadata={"decision": "REJECTED"},
         )
-        self._repo.save(candidate)
+
+        saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
+        if not saved:
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.STALE_REVISION,
+                candidate_id=candidate_id,
+                message=f"Conflitto di revisione per '{candidate_id}': il record è stato aggiornato contemporaneamente.",
+            )
 
         prod_players = self._load_production_players()
         projection = build_review_projection(candidate, prod_players)
@@ -1042,7 +1163,7 @@ class CandidateReviewService:
             projection=projection,
         )
 
-    def merge(
+    def merge_candidate(
         self,
         admin: AdminIdentity,
         candidate_id: str,
@@ -1050,7 +1171,7 @@ class CandidateReviewService:
         target_player_id: str,
         reason: str,
     ) -> ReviewResult:
-        """Associa il candidato a un giocatore già esistente senza creare duplicati in produzione."""
+        """Associa il candidato a un giocatore già esistente a produzione."""
         self._verify_auth(admin)
         candidate = self._repo.get_by_id(candidate_id)
         if not candidate:
@@ -1061,27 +1182,22 @@ class CandidateReviewService:
                 message=f"Candidato '{candidate_id}' non trovato.",
             )
 
-        # Idempotenza
-        if (
-            candidate.status == CandidateState.APPROVED
-            and candidate.metadata.get("review_decision") == "MERGED"
-            and candidate.metadata.get("merged_into_player_id") == target_player_id
-        ):
+        if candidate.status == CandidateState.APPROVED and candidate.metadata.get("promoted_player_id") == target_player_id:
             return ReviewResult(
                 success=True,
                 status=ReviewStatus.ALREADY_PROCESSED,
                 candidate_id=candidate_id,
-                message=f"Il candidato è già stato unito al giocatore esistente '{target_player_id}'.",
+                message=f"Il candidato è già associato a '{target_player_id}'.",
                 promoted_player_id=target_player_id,
                 candidate=candidate,
             )
 
-        if candidate.is_terminal():
+        if candidate.status not in REVIEWABLE_STATES:
             return ReviewResult(
                 success=False,
                 status=ReviewStatus.INVALID_STATE,
                 candidate_id=candidate_id,
-                message=f"Impossibile unire un candidato in stato terminale '{candidate.status.value}'.",
+                message=f"Impossibile effettuare il merge del candidato nello stato '{candidate.status.value}'. Stati ammessi: {[s.value for s in REVIEWABLE_STATES]}.",
             )
 
         if candidate.revision != expected_revision:
@@ -1092,10 +1208,9 @@ class CandidateReviewService:
                 message=f"Conflitto di revisione per '{candidate_id}': attesa {expected_revision}, attuale {candidate.revision}.",
             )
 
-        # Verifica esistenza target in produzione
         prod_players = self._load_production_players()
-        existing_targets = {p.get("id"): p for p in prod_players if p.get("id")}
-        if target_player_id not in existing_targets:
+        existing_ids = {p["id"] for p in prod_players if "id" in p}
+        if target_player_id not in existing_ids:
             return ReviewResult(
                 success=False,
                 status=ReviewStatus.INVALID_MERGE_TARGET,
@@ -1103,10 +1218,11 @@ class CandidateReviewService:
                 message=f"Il giocatore target '{target_player_id}' non esiste nel dataset di produzione.",
             )
 
-        candidate.metadata["review_decision"] = "MERGED"
+        candidate.metadata["promoted_player_id"] = target_player_id
+        candidate.metadata["merge_target"] = target_player_id
         candidate.metadata["merged_into_player_id"] = target_player_id
-        candidate.metadata["merged_at"] = _now_utc_iso()
-        candidate.metadata["merged_by"] = admin.user_id
+        candidate.metadata["merge_reason"] = reason
+        candidate.metadata["review_decision"] = "MERGED"
 
         audit_event = {
             "action": ReviewAction.MERGE.value,
@@ -1123,7 +1239,15 @@ class CandidateReviewService:
             actor=f"admin:{admin.user_id}",
             metadata={"decision": "MERGED", "target_player_id": target_player_id},
         )
-        self._repo.save(candidate)
+
+        saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
+        if not saved:
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.STALE_REVISION,
+                candidate_id=candidate_id,
+                message=f"Conflitto di revisione per '{candidate_id}': il record è stato aggiornato contemporaneamente.",
+            )
 
         projection = build_review_projection(candidate, prod_players)
         return ReviewResult(
@@ -1144,7 +1268,7 @@ class CandidateReviewService:
         source: str,
         reason: str,
     ) -> ReviewResult:
-        """Segnala la fonte come errata o inaffidabile preservando l'evidenza."""
+        """Segnala la fonte come errata preservando evidenza e provenienza, consentendo futuro recupero."""
         self._verify_auth(admin)
         candidate = self._repo.get_by_id(candidate_id)
         if not candidate:
@@ -1155,12 +1279,12 @@ class CandidateReviewService:
                 message=f"Candidato '{candidate_id}' non trovato.",
             )
 
-        if candidate.is_terminal():
+        if candidate.status not in REVIEWABLE_STATES:
             return ReviewResult(
                 success=False,
                 status=ReviewStatus.INVALID_STATE,
                 candidate_id=candidate_id,
-                message=f"Impossibile marcare fonte errata su un candidato in stato terminale '{candidate.status.value}'.",
+                message=f"Impossibile marcare fonte errata su un candidato in stato '{candidate.status.value}'. Stati ammessi: {[s.value for s in REVIEWABLE_STATES]}.",
             )
 
         if candidate.revision != expected_revision:
@@ -1172,8 +1296,12 @@ class CandidateReviewService:
             )
 
         candidate.metadata["source_unreliable"] = True
-        candidate.metadata["unreliable_source_key"] = source
-        candidate.metadata["unreliable_source_reason"] = reason
+        candidate.metadata.setdefault("unreliable_sources", []).append({
+            "source": source,
+            "reason": reason,
+            "marked_at": _now_utc_iso(),
+            "marked_by": admin.user_id,
+        })
 
         audit_event = {
             "action": ReviewAction.SOURCE_WRONG.value,
@@ -1184,13 +1312,25 @@ class CandidateReviewService:
         }
         candidate.metadata.setdefault("review_events", []).append(audit_event)
 
-        candidate.transition_to(
-            CandidateState.REJECTED,
-            reason=f"Fonte '{source}' segnalata come non attendibile: {reason}",
-            actor=f"admin:{admin.user_id}",
-            metadata={"decision": "SOURCE_WRONG", "source": source},
-        )
-        self._repo.save(candidate)
+        # Mantiene il candidato in REVIEW_REQUIRED (stato non terminale) per consentire futuro retry/edit
+        if candidate.status != CandidateState.REVIEW_REQUIRED:
+            candidate.transition_to(
+                CandidateState.REVIEW_REQUIRED,
+                reason=f"Fonte '{source}' segnalata come non attendibile: {reason}",
+                actor=f"admin:{admin.user_id}",
+                metadata={"decision": "SOURCE_WRONG", "source": source},
+            )
+        else:
+            candidate.bump_revision()
+
+        saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
+        if not saved:
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.STALE_REVISION,
+                candidate_id=candidate_id,
+                message=f"Conflitto di revisione per '{candidate_id}': il record è stato aggiornato contemporaneamente.",
+            )
 
         prod_players = self._load_production_players()
         projection = build_review_projection(candidate, prod_players)
@@ -1222,7 +1362,6 @@ class CandidateReviewService:
                 message=f"Candidato '{candidate_id}' non trovato.",
             )
 
-        # Se già terminale, la FSM vieta categoricamente di rientrare in pipeline attiva
         if candidate.is_terminal():
             return ReviewResult(
                 success=False,
@@ -1239,11 +1378,36 @@ class CandidateReviewService:
                 message=f"Conflitto di revisione per '{candidate_id}': attesa {expected_revision}, attuale {candidate.revision}.",
             )
 
+        # Risoluzione ed esecuzione del fetch tramite adapter
+        fetcher = adapter_fetcher or self._adapter_resolver
+        try:
+            adapter_result = fetcher(candidate.source, candidate.source_id)
+        except Exception as err:
+            logger.error("Errore durante l'acquisizione della fonte esterna: %s", err, exc_info=True)
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.SOURCE_ERROR,
+                candidate_id=candidate_id,
+                message="Errore durante l'acquisizione della fonte esterna.",
+            )
+
+        if adapter_result is None:
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.SOURCE_ERROR,
+                candidate_id=candidate_id,
+                message=f"Nessun adapter compatibile o disponibile per la fonte '{candidate.source}'.",
+            )
+
+        if not getattr(adapter_result, "success", True):
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.SOURCE_ERROR,
+                candidate_id=candidate_id,
+                message="Acquisizione fallita dalla fonte esterna.",
+            )
+
         # Transizione consentita verso FETCHED tramite FSM
-        # Grafo FSM:
-        # VALIDATED -> REVIEW_REQUIRED -> FETCHED
-        # READY -> REVIEW_REQUIRED -> FETCHED
-        # REVIEW_REQUIRED -> FETCHED
         if candidate.status in (CandidateState.READY, CandidateState.VALIDATED):
             candidate.transition_to(
                 CandidateState.REVIEW_REQUIRED,
@@ -1258,24 +1422,12 @@ class CandidateReviewService:
                 actor=f"admin:{admin.user_id}",
             )
 
-        # Se fornita una funzione o adapter per rifare fetch
-        if adapter_fetcher is not None:
-            try:
-                adapter_result = adapter_fetcher(candidate.source, candidate.source_id)
-                if adapter_result:
-                    from services.adapters.candidate_integration import populate_candidate_from_result
-                    populate_candidate_from_result(candidate, adapter_result)
-                    if getattr(adapter_result, "player_name", None):
-                        candidate.full_name = adapter_result.player_name
-            except Exception as err:
-                return ReviewResult(
-                    success=False,
-                    status=ReviewStatus.SOURCE_ERROR,
-                    candidate_id=candidate_id,
-                    message=f"Errore durante l'acquisizione della fonte: {err}",
-                )
+        # Popolamento e ri-normalizzazione
+        candidate.career = []
+        populate_candidate_from_result(candidate, adapter_result)
+        if getattr(adapter_result, "player_name", None):
+            candidate.full_name = adapter_result.player_name
 
-        # Pipeline standard: normalizzazione deterministica -> validazione
         normalize_candidate(candidate, actor=f"admin:{admin.user_id}:retry")
         validate_candidate(
             candidate,
@@ -1292,7 +1444,15 @@ class CandidateReviewService:
         }
         candidate.metadata.setdefault("review_events", []).append(audit_event)
 
-        self._repo.save(candidate)
+        saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
+        if not saved:
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.STALE_REVISION,
+                candidate_id=candidate_id,
+                message=f"Conflitto di revisione per '{candidate_id}': il record è stato aggiornato contemporaneamente.",
+            )
+
         prod_players = self._load_production_players()
         projection = build_review_projection(candidate, prod_players)
 
@@ -1304,3 +1464,8 @@ class CandidateReviewService:
             candidate=candidate,
             projection=projection,
         )
+
+    # Alias per compatibilità di interfaccia
+    approve = approve_candidate
+    reject = reject_candidate
+    merge = merge_candidate
