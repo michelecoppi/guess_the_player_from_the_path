@@ -1,5 +1,7 @@
 import { identityAppearance } from "@/appearance";
-import { escapeHtml, initials } from "@/utils/format";
+import { escapeHtml } from "@/utils/format";
+import { renderAvatar } from "@/components/Avatar";
+import { profileSurfaceAttributes } from "@/appearance/surfaces";
 import { t } from "@/i18n";
 import { icon } from "@/components/Icon";
 import { renderStatTile } from "@/components/StatTile";
@@ -102,17 +104,16 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
       : "";
 
   return `
-    <section class="public-profile-view" aria-label="${escapeHtml(t("leaderboard.publicProfileTitle"))}">
+    <section class="public-profile-view" ${profileSurfaceAttributes(p.cosmetics)} aria-label="${escapeHtml(t("leaderboard.publicProfileTitle"))}">
       ${backBtn}
       <div class="card profile-hero mt-3">
-        <div class="avatar-wrap large">
-          <div class="avatar">${escapeHtml(initials(u.name))}</div>
-        </div>
+        ${renderAvatar({name:u.name,size:'large',ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
         <div class="hero-info">
           <p class="eyebrow">${escapeHtml(t("leaderboard.publicProfileTitle"))}</p>
-          <h1 id="public-profile-heading" tabindex="-1">
+          <h2 id="public-profile-heading" tabindex="-1">
             ${shirt}${escapeHtml(u.name)}${badge ? ` ${escapeHtml(badge)}` : ""}
-          </h1>
+          </h2>
+          ${cosmetics.title.label ? `<p class="cosmetic-title"${cosmetics.title.color ? ` style="border-color:${escapeHtml(cosmetics.title.color)}"` : ''}>${escapeHtml(cosmetics.title.label)}</p>` : ''}
           <p class="muted text-xs">${trophiesCount} ${escapeHtml(t("leaderboard.trophies"))}</p>
         </div>
       </div>

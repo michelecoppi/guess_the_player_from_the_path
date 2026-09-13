@@ -81,26 +81,26 @@ test("review navigation and fixture interactions never call an API", () => {
       ["play", "arena", "leaderboard", "shop", "profile"],
     );
     go("arena");
-    for (const tab of ["challenge", "duels", "archive", "events"]) {
+    for (const tab of ["archive", "events"]) {
       go(tab);
-      assert.ok(container.querySelector(`[data-prototype="${tab}"]`));
-      assert.equal(
-        container
-          .querySelector('.app-nav [aria-current="page"]')
-          ?.getAttribute("data-tab"),
-        "arena",
-      );
-      container
-        .querySelectorAll<HTMLButtonElement>(
-          ".prototype button:not([data-tab])",
-        )
-        .forEach((button) => assert.equal(button.disabled, true));
+      assert.equal(container.querySelector("[data-prototype]"), null);
+      assert.ok(container.querySelector("#app-content h2"));
+      assert.equal(container.querySelector('.app-nav [aria-current="page"]')?.getAttribute("data-tab"), "arena");
       go("arena");
     }
     for (const tab of ["leaderboard", "shop", "profile"]) {
       go(tab);
-      assert.ok(container.querySelector(`[data-prototype="${tab}"]`));
+      assert.equal(container.querySelector("[data-prototype]"), null);
+      assert.ok(container.querySelector("#app-content h2"));
     }
+    const select = () => container.querySelector<HTMLSelectElement>("#review-page")!;
+    for (const page of ["Daily", "Arena", "Duello", "Allenamento", "Profilo", "Trofei", "Classifica", "Archivio", "Sfida archivio", "Shop", "Guardaroba", "Traguardi", "Acquisti", "Referral", "Eventi", "Dettaglio evento"]) {
+      select().value=page;
+      select().dispatchEvent(new Event("change"));
+      assert.ok(container.querySelector("#app-content")!.textContent!.trim().length>0, page);
+      assert.equal(container.querySelector("[data-prototype]"), null, page);
+    }
+    go("profile");
     go("referral");
     assert.equal(
       container
@@ -114,6 +114,41 @@ test("review navigation and fixture interactions never call an API", () => {
       assert.ok(container.querySelector(`[data-support="${tab}"]`));
       assert.equal(container.querySelector("form"), null);
     }
+    go("arena");
+    container.querySelector<HTMLButtonElement>('[data-arena-nav="duels"]')!.click();
+    container.querySelector<HTMLButtonElement>('[data-arena-nav="challenge"]')!.click();
+    const search=container.querySelector<HTMLInputElement>('#opponent-search')!;
+    search.value='Giu';search.dispatchEvent(new Event('input'));
+    assert.match(container.querySelector('.profile-search-results')!.textContent!, /Giulia/);
+    assert.equal(container.querySelector<HTMLInputElement>('#opponent-search')!.value,'Giu');
+    container.querySelector<HTMLButtonElement>('[data-arena-challenge-user]')!.click();
+    assert.match(container.querySelector('#app-content')!.textContent!,/Giulia/);
+    go("leaderboard");
+    container.querySelector<HTMLButtonElement>('[data-leaderboard-tab="leagues"]')!.click();
+    assert.match(container.querySelector('.league-name')!.textContent!, /Amici del calcetto/);
+    container.querySelector<HTMLButtonElement>('[data-select-league="DEMO2"]')!.click();
+    assert.match(container.querySelector('.league-name')!.textContent!, /Curva Nord/);
+    container.querySelector<HTMLButtonElement>('[data-leaderboard-tab="global"]')!.click();
+    container.querySelector<HTMLButtonElement>('[data-profile-id="1"]')!.click();
+    assert.match(container.querySelector('#public-profile-heading')!.textContent!,/Giulia/);
+    container.querySelector<HTMLButtonElement>('[data-action="close-profile"]')!.click();
+    assert.equal(container.querySelector('.public-profile-view'),null);
+    go("shop");
+    container.querySelector<HTMLButtonElement>('[data-equip="review-number"]')!.click();
+    go("profile");
+    assert.match(container.querySelector('#profile-heading')!.textContent!,/10/);
+    go("shop");
+    container.querySelector<HTMLButtonElement>('[data-equip="review-title"]')!.click();
+    go("profile");
+    assert.match(container.querySelector('#app-content')!.textContent!,/Regista/);
+    assert.match(container.querySelector('#profile-heading')!.textContent!,/10/);
+    go("shop");
+    container.querySelector<HTMLButtonElement>('[data-try="review-frame"]')!.click();
+    assert.ok(container.querySelector('.preview-bar'));
+    container.querySelector<HTMLButtonElement>('#shop-stop-preview')!.click();
+    assert.equal(container.querySelector('.preview-bar'),null);
+    go("profile");
+    assert.match(container.querySelector('#profile-heading')!.textContent!,/10/);
     assert.equal(requests, 0);
   } finally {
     globalThis.fetch = previous;

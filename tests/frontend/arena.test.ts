@@ -440,7 +440,7 @@ test("ArenaPage: renders Hub view with 1v1 feature banner, open duels list and H
   const { container, cleanup } = setupGlobalDom();
   try {
     const state = {
-      subview: "hub" as const,
+      subview: "duels" as const,
       status: "idle" as const,
       busy: false,
       error: null,
@@ -502,7 +502,7 @@ test("ArenaPage: DOM event wiring triggers controller navigation and duel loadin
     };
 
     const state = {
-      subview: "hub" as const,
+      subview: "duels" as const,
       status: "idle" as const,
       busy: false,
       error: null,
@@ -762,7 +762,7 @@ test("ArenaPage: localization is complete across IT, EN, ES with no leaked Itali
       });
 
       const hubHtml = renderArenaPage({
-        subview: "hub",
+        subview: "duels",
         status: "idle",
         busy: false,
         error: null,
@@ -924,7 +924,7 @@ test("Arena + Training coexistence: 1. Arena hub contains Training entry", () =>
 test("Arena + Training coexistence: 2. Arena hub still contains real 1v1 functionality", () => {
   setLanguage("it");
   const state = {
-    subview: "hub" as const,
+    subview: "duels" as const,
     status: "idle" as const,
     busy: false,
     error: null,
@@ -980,7 +980,7 @@ test("Arena + Training coexistence: 3 & 4. Training entry opens Training, Back f
     // Click back to Arena Hub
     backBtn.click();
     assert.ok(container.querySelector(".arena-hub"), "must return to real Arena hub");
-    assert.ok(container.querySelector(".arena-feature"), "Arena hub 1v1 feature card must be present");
+    assert.ok(container.querySelector('[data-arena-nav="duels"]'), "Arena hub must link to the duel submenu");
 
     // Single-owner navigation verification: returning to hub dispatches exactly ONE duel-list request
     const duelRequestsAfterBack = requests
@@ -1006,6 +1006,9 @@ test("Arena + Training coexistence: 5. Duel challenge flow still works", async (
     const app = new App(container);
     app.init();
     app.setTab("arena");
+
+    container.querySelector<HTMLButtonElement>('[data-arena-nav="duels"]')!.click();
+    assert.ok(container.querySelector(".arena-duels"));
 
     // Click 1v1 challenge banner
     const challengeBtn = container.querySelector<HTMLButtonElement>('[data-arena-nav="challenge"]');
@@ -1055,6 +1058,9 @@ test("Arena + Training coexistence: 6. Existing duel opens after visiting Traini
     const backBtn = container.querySelector<HTMLButtonElement>("[data-training-back]");
     assert.ok(backBtn);
     backBtn.click();
+    await new Promise((r) => setTimeout(r, 40));
+
+    container.querySelector<HTMLButtonElement>('[data-arena-nav="duels"]')!.click();
     await new Promise((r) => setTimeout(r, 40));
 
     // Click open duel row

@@ -36,7 +36,14 @@
   --skin-pattern: none;
   --font-family:
     "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  --font-display: var(--font-family);
+  --font-display: "Bahnschrift", "Arial Narrow", var(--font-family);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-structure: 2px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 12px;

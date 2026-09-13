@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { setupGlobalDom, mockFetchResponse, createTestDailyChallenge } from "./helpers";
 import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, parseResolvedAppearance, identityAppearance, resultAppearance, SKIN_TOKENS } from "../../webapp/src/appearance";
-import { renderAppearanceIdentity, resultCardAttributes } from "../../webapp/src/appearance/surfaces";
+import { renderAppearanceIdentity, resultCardAttributes, profileSurfaceAttributes } from "../../webapp/src/appearance/surfaces";
 import { appearanceFixtures as fixtures } from "../../webapp/src/prototypes/appearance-fixtures";
 import { applyTelegramTheme } from "../../webapp/src/telegram/theme";
 import { createMockTelegramWebApp } from "../../webapp/src/telegram/mock";
@@ -192,4 +192,22 @@ test("session change during a lightweight load also removes old Daily symbols", 
     assert.equal(getResolvedAppearance().badge, "");
     assert.deepEqual(controller.getState().squaresSymbols, resultAppearance(undefined).squares);
   } finally { globalThis.fetch = previous; cleanup(); }
+});
+
+
+test("profile themes are scoped and never change the viewer's structural colors", () => {
+  const {container, cleanup}=dom();
+  try {
+    applyResolvedAppearance(fixtures.collection);
+    const before=document.documentElement.getAttribute('style');
+    container.innerHTML=`<section ${profileSurfaceAttributes({theme:{accent:'#aabbcc',card:'#ffffff',bg:'#ffffff',text:'#000000',pattern:'url(https://example.invalid/track)'}})}>Profile</section><section ${profileSurfaceAttributes(undefined)}>Other</section>`;
+    const profiles=container.querySelectorAll<HTMLElement>('section');
+    assert.equal(profiles[0].style.getPropertyValue('--skin-accent'),'#aabbcc');
+    assert.equal(profiles[1].style.getPropertyValue('--skin-accent'),'#46cc91');
+    assert.equal(profiles[0].style.getPropertyValue('--bg'),'');
+    assert.equal(profiles[0].style.getPropertyValue('--text'),'');
+    assert.equal(profiles[0].style.getPropertyValue('--skin-pattern'),'none');
+    assert.equal(document.documentElement.getAttribute('style'),before);
+    assert.equal(container.querySelector('img'),null);
+  } finally {cleanup();}
 });

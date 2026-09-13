@@ -1,6 +1,8 @@
 import { escapeHtml, weekNumber } from "@/utils/format";
 import { t, getLanguage } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
+import { icon } from "@/components/Icon";
+import { profileSurfaceAttributes } from "@/appearance/surfaces";
 import { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
 import { getTelegramUser } from "@/telegram/webapp";
 import type {
@@ -76,12 +78,12 @@ function rarityTag(item: ShopCosmeticItem): string {
   return `<span class="rarity" style="--rare-edge:${escapeHtml(color)}">${escapeHtml(label)}</span>`;
 }
 
-function themeShot(style: Record<string, unknown>): string {
-  const edge = (style.edge as string) || "var(--edge)";
-  const muted = (style.muted as string) || (style.text as string) || "var(--muted)";
-  const bg = (style.card as string) || (style.bg as string) || "var(--card)";
-  const accent = (style.accent as string) || "var(--accent)";
-  const accentText = (style.accentText as string) || (style.bg as string) || "var(--accent-text)";
+function themeShot(_style: Record<string, unknown>): string {
+  const edge = "var(--edge)";
+  const muted = "var(--muted)";
+  const bg = "var(--card)";
+  const accent = "var(--accent)";
+  const accentText = "var(--accent-text)";
 
   return `
     <div class="theme-shot" aria-hidden="true" style="--shot-edge:${escapeHtml(edge)};background:${escapeHtml(bg)}">
@@ -452,8 +454,10 @@ export function renderPreviewBar(state: ShopState): string {
         <b>${escapeHtml(t("shop.previewTrying"))} · ${escapeHtml(item.name)}</b>
         <button type="button" class="btn ghost small" id="shop-stop-preview">${escapeHtml(t("shop.stopPreview"))}</button>
       </div>
+      <div class="preview-profile" ${profileSurfaceAttributes(worn)}>
+      <p class="eyebrow">${escapeHtml(t('profile.title'))}</p>
       <div class="preview-person">
-        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, size: "small" })}
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, size: "large" })}
         <div class="preview-meta">
           <div class="preview-identity">
             ${worn.number ? `<span class="shirt">${escapeHtml(worn.number)}</span>` : ""}
@@ -463,6 +467,10 @@ export function renderPreviewBar(state: ShopState): string {
           <div class="preview-squares">${escapeHtml(squaresStr)}</div>
         </div>
       </div>
+      <div class="preview-item-detail">${shopArtwork(item)}</div>
+      </div>
+      ${item.owned && item.equippable ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${item.equipped || state.equippingItemId ? 'disabled' : ''}>${escapeHtml(t(item.equipped ? 'shop.worn' : 'shop.wear'))}</button>` : ''}
+      <p class="preview-description">${escapeHtml(item.description)}</p>
       <p class="shop-note">${escapeHtml(t("shop.previewHint"))}</p>
     </aside>
   `;
@@ -537,10 +545,10 @@ export function renderShopPage(state: ShopState): string {
 
   const views: ShopSubview[] = ["catalog", "wardrobe", "achievements", "history"];
   const viewIcons: Record<ShopSubview, string> = {
-    catalog: "◇",
-    wardrobe: "▣",
-    achievements: "✧",
-    history: "≡",
+    catalog: icon('shop'),
+    wardrobe: icon('profile'),
+    achievements: icon('ranking'),
+    history: icon('archive'),
   };
 
   const tabsHtml = `

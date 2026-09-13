@@ -194,7 +194,19 @@ function renderOpenDuelsList(state: ArenaState): string {
   `.trim();
 }
 
-export function renderHubView(state: ArenaState): string {
+export function renderHubView(_state: ArenaState): string {
+  return `<div class="arena-view arena-hub">
+    <header class="page-heading"><h2 class="page-title">${escapeHtml(t("nav.arena"))}</h2></header>
+    <nav class="arena-modes" aria-label="${escapeHtml(t("nav.arena"))}">
+      <button class="mode-entry" data-arena-nav="duels" type="button">${icon("arena")}<span><b>${escapeHtml(t("pages.arenaTitle"))}</b><small>${escapeHtml(t("arena.featureDesc"))}</small></span>${icon("arrow")}</button>
+      <button class="mode-entry" data-tab="events" type="button">${icon("events")}<span><b>${escapeHtml(t("arena.eventsTitle"))}</b><small>${escapeHtml(t("arena.eventsDesc"))}</small></span>${icon("arrow")}</button>
+      <button class="mode-entry" data-tab="archive" type="button">${icon("archive")}<span><b>${escapeHtml(t("arena.archiveTitle"))}</b><small>${escapeHtml(t("arena.archiveDesc"))}</small></span>${icon("arrow")}</button>
+      <button class="mode-entry training-entry" data-arena-nav="training" type="button">${icon("training")}<span><b>${escapeHtml(t("training.title"))}</b><small>${escapeHtml(t("training.desc"))}</small></span>${icon("arrow")}</button>
+    </nav>
+  </div>`;
+}
+
+export function renderDuelsHub(state: ArenaState): string {
   const openDuels = state.data?.open || [];
   const activeDuel = openDuels.find((d) => !d.complete && d.opponent);
 
@@ -213,7 +225,8 @@ export function renderHubView(state: ArenaState): string {
     : "";
 
   return `
-    <div class="arena-view arena-hub">
+    <div class="arena-view arena-duels">
+      <button class="back-link" data-arena-nav="hub" type="button">${icon("back")}${escapeHtml(t("nav.arena"))}</button>
       <header class="page-heading">
         <p class="eyebrow">${escapeHtml(t("pages.arenaKicker"))}</p>
         <h2 class="page-title">${escapeHtml(t("pages.arenaTitle"))}</h2>
@@ -240,37 +253,6 @@ export function renderHubView(state: ArenaState): string {
 
       ${renderHistory(state.data?.ledger)}
 
-      <section class="training-hub-section">
-        <h3>${escapeHtml(t("training.title"))}</h3>
-        <button class="mode-entry training-entry" data-arena-nav="training" type="button">
-          <span class="mode-icon">${icon("training")}</span>
-          <span>
-            <b>${escapeHtml(t("training.title"))}</b>
-            <small>${escapeHtml(t("training.desc"))}</small>
-          </span>
-          ${icon("arrow")}
-        </button>
-      </section>
-
-      <section class="extra-modes">
-        <h3>${escapeHtml(t("arena.extraModes"))}</h3>
-        <button class="mode-entry archive-entry" data-tab="archive" type="button">
-          <span class="mode-icon">${icon("archive")}</span>
-          <span>
-            <b>${escapeHtml(t("arena.archiveTitle"))}</b>
-            <small>${escapeHtml(t("arena.archiveDesc"))}</small>
-          </span>
-          ${icon("arrow")}
-        </button>
-        <button class="mode-entry events-entry" data-tab="events" type="button">
-          <span class="mode-icon">${icon("events")}</span>
-          <span>
-            <b>${escapeHtml(t("arena.eventsTitle"))}</b>
-            <small>${escapeHtml(t("arena.eventsDesc"))}</small>
-          </span>
-          ${icon("arrow")}
-        </button>
-      </section>
     </div>
   `.trim();
 }
@@ -302,7 +284,7 @@ export function renderChallengeView(state: ArenaState): string {
 
   return `
     <div class="arena-view arena-challenge">
-      <button class="back-link" data-arena-nav="hub" type="button">
+      <button class="back-link" data-arena-nav="duels" type="button">
         ${icon("back")}${escapeHtml(t("arena.backToList"))}
       </button>
 
@@ -353,7 +335,7 @@ export function renderDuelView(state: ArenaState): string {
   }
 
   const s = d?.session;
-  const backBtn = `<button class="back-link" data-arena-nav="hub" type="button">${icon("back")}${escapeHtml(t("arena.backToList"))}</button>`;
+  const backBtn = `<button class="back-link" data-arena-nav="duels" type="button">${icon("back")}${escapeHtml(t("arena.backToList"))}</button>`;
 
   if (!s) {
     return `
@@ -526,6 +508,8 @@ export function renderArenaPage(state?: ArenaState): string {
   }
 
   switch (state.subview) {
+    case "duels":
+      return renderDuelsHub(state);
     case "challenge":
       return renderChallengeView(state);
     case "duel":
