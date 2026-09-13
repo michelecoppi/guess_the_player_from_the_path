@@ -38,6 +38,8 @@ import { LeaderboardController } from "@/features/leaderboard/controller";
 import { ArchiveController } from "@/features/archive/controller";
 import { ProfileController } from "@/features/profile/controller";
 import { ShopController } from "@/features/shop/controller";
+import { EventsController } from "@/features/events/controller";
+import { renderEventsPage, attachEventsEventListeners } from "@/pages/EventsPage";
 
 export class App {
   private rootElement: HTMLElement;
@@ -49,6 +51,7 @@ export class App {
   private archiveController: ArchiveController;
   private profileController: ProfileController;
   private shopController: ShopController;
+  private eventsController: EventsController;
   private lastArenaSubview: ArenaSubview;
 
   constructor(
@@ -70,6 +73,7 @@ export class App {
     this.archiveController = archiveController || new ArchiveController();
     this.profileController = profileController || new ProfileController();
     this.shopController = shopController || new ShopController();
+    this.eventsController = new EventsController();
     this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
 
@@ -139,6 +143,7 @@ export class App {
         this.renderShopContent();
       }
     });
+    this.eventsController.subscribe(() => { if (this.activeTab === "events") this.renderEventsContent(); });
   }
 
   public getDailyController(): DailyController {
@@ -168,6 +173,7 @@ export class App {
   public getShopController(): ShopController {
     return this.shopController;
   }
+  public getEventsController(): EventsController { return this.eventsController; }
 
   public isArenaTab(tab: NavTabId): boolean {
     return tab === "arena" || tab === "duels" || tab === "challenge";
@@ -224,6 +230,8 @@ export class App {
         void this.profileController.init();
       } else if (tab === "shop") {
         void this.shopController.init();
+      } else if (tab === "events") {
+        void this.eventsController.load();
       }
 
       this.render();
@@ -401,6 +409,7 @@ export class App {
       attachShopEventListeners(this.rootElement, this.shopController);
     }
   }
+  private renderEventsContent(): void { const mainEl=this.rootElement.querySelector("#app-content"); if(mainEl&&this.activeTab==="events"){mainEl.innerHTML=renderEventsPage(this.eventsController);attachEventsEventListeners(this.rootElement,this.eventsController);} }
 
   private render(): void {
     const user = getTelegramUser();
@@ -432,6 +441,9 @@ export class App {
         break;
       case "shop":
         pageHtml = renderShopPage(this.shopController.getState());
+        break;
+      case "events":
+        pageHtml = renderEventsPage(this.eventsController);
         break;
       default:
         pageHtml = renderPrototype(this.activeTab);
@@ -504,6 +516,8 @@ export class App {
         this.rootElement,
         this.shopController,
       );
+    } else if (this.activeTab === "events") {
+      attachEventsEventListeners(this.rootElement, this.eventsController);
     }
   }
 }
