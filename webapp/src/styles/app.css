@@ -3324,6 +3324,138 @@ button.archive-day-card:focus-visible {
   border: 1px solid var(--success);
   color: var(--success);
 }
+/* Special Events feature */
+.event-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.event-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-detail h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.event-description {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.event-rules {
+  font-size: 13px;
+  margin: 0;
+}
+
+.event-end-date {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.event-meta {
+  font-size: 13px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.event-bonus {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.event-player-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+
+.event-hint {
+  font-size: 13px;
+  margin: 0;
+}
+
+.event-image {
+  display: block;
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--surface-secondary, rgba(255, 255, 255, 0.04));
+}
+
+.event-attempts {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.event-terminal {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface-secondary, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.event-terminal h3 {
+  font-size: 16px;
+  margin: 0 0 6px;
+}
+
+.event-terminal.event-solved h3 {
+  color: var(--success);
+}
+
+.event-terminal.event-exhausted h3 {
+  color: var(--muted);
+}
+
+.event-matched {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.event-comparison {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.event-comparison ul {
+  margin: 4px 0 0 16px;
+  padding: 0;
+}
+
+.events-guess-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-leaderboard-section {
+  margin-top: 8px;
+}
+
+.event-leaderboard {
+  padding-left: 20px;
+  margin: 8px 0 0;
+}
+
+.event-leaderboard li {
+  padding: 4px 0;
+  font-size: 14px;
+}
 
 /* ==========================================================================
    Referral Feature Styles (Issue #46)
