@@ -11,7 +11,11 @@ Provides the complete domain and service layer for human review and production p
 - Typed allow-list for edits before approval with automatic re-normalization and re-validation;
 - Merge with existing production player without duplicate creation;
 - Explicit source-wrong decision preserving evidence and provenance without terminal locking;
-- Ingestion retry via existing adapters and pipeline;
+- Review-aware provenance conflict evaluation: observations from explicitly rejected sources are
+  excluded from blocking-conflict computation while remaining fully auditable in provenance;
+- Explicit source selection in retry_ingestion(): retrying an unreliable source without an
+  alternative returns SOURCE_ERROR; legitimate conflicts among still-trusted sources remain blocking;
+- Ingestion retry via existing adapters and pipeline with per-entity source identity;
 - Idempotency across approve, reject, merge, and retry operations;
 - Leak-free sanitized error handling and projection DTOs.
 """
@@ -265,14 +269,95 @@ def _normalize_name_for_comparison(name: str) -> str:
     return re.sub(r"\s+", " ", clean)
 
 
+def _is_source_observation_rejected(
+    source: str,
+    source_id: str,
+    unreliable_entries: list[dict[str, Any]],
+) -> bool:
+    """Returns True if the (source, source_id) pair matches any explicitly rejected entry.
+
+    Identity matching prefers (source, source_id) when source_id was stored; falls back to
+    source-name-only matching when source_id was not captured (legacy records).
+
+    This is intentionally per-entity: marking one vandalized Wikipedia page as wrong
+    does NOT globally distrust all Wikipedia observations.
+    """
+    for entry in unreliable_entries:
+        if entry.get("source") != source:
+            continue
+        stored_sid = entry.get("source_id")
+        if stored_sid is None:
+            # Legacy SOURCE_WRONG without source_id: match on source name only (conservative)
+            return True
+        if stored_sid == source_id:
+            return True
+    return False
+
+
+def _field_has_conflict_excluding_rejected(
+    fp: Any,
+    unreliable_entries: list[dict[str, Any]],
+) -> bool:
+    """Checks if a FieldProvenance has a conflict among still-trusted source observations.
+
+    Observations whose (source, source_id) appears in unreliable_entries are excluded from
+    the conflict computation.  All observations remain present in provenance (auditable).
+
+    This intentionally does NOT mutate the FieldProvenance object.
+    """
+    if not hasattr(fp, "observations"):
+        return False
+
+    trusted_obs = [
+        obs for obs in fp.observations
+        if not _is_source_observation_rejected(obs.source, obs.source_id, unreliable_entries)
+    ]
+
+    # Need at least 2 observations from distinct trusted sources to have a conflict
+    trusted_sources = {obs.source for obs in trusted_obs}
+    if len(trusted_sources) < 2:
+        return False
+
+    def _effective_val(obs: Any) -> Any:
+        val = obs.normalized_value if obs.normalized_value is not None else obs.raw_value
+        if isinstance(val, str):
+            return val.strip().lower()
+        return val
+
+    # Group by source (last observation per source wins, consistent with FieldProvenance.has_conflict)
+    by_source: dict[str, Any] = {}
+    for obs in trusted_obs:
+        by_source[obs.source] = _effective_val(obs)
+
+    unique_effective = set(by_source.values())
+    return len(unique_effective) > 1
+
+
 def get_candidate_provenance_conflicts(candidate: CandidatePlayer) -> list[str]:
-    """Rileva i percorsi campo in cui sussiste una reale discordanza irrisolta tra fonti esterne."""
+    """Rileva i percorsi campo in cui sussiste una reale discordanza irrisolta tra fonti ancora attendibili.
+
+    Le osservazioni provenienti da fonti esplicitamente rifiutate tramite SOURCE_WRONG sono escluse
+    dal computo dei conflitti bloccanti, ma rimangono intatte e consultabili nella provenienza.
+
+    Semantic contract:
+    - All observations remain in provenance.fields (fully auditable).
+    - SOURCE_WRONG decisions are visible in candidate.metadata["unreliable_sources"].
+    - Only observations from explicitly rejected (source, source_id) pairs are excluded.
+    - Legitimate conflicts among still-trusted sources remain blocking (fail-closed).
+    - Marking one source wrong does NOT silently declare every future observation from that
+      provider globally untrusted — identity is matched per (source, source_id) when available.
+    """
     if not candidate.provenance:
         return []
+    unreliable_entries: list[dict[str, Any]] = candidate.metadata.get("unreliable_sources", [])
     conflicts: list[str] = []
-    fields_dict = getattr(candidate.provenance, "fields", {}) if not isinstance(candidate.provenance, dict) else candidate.provenance
+    fields_dict = (
+        getattr(candidate.provenance, "fields", {})
+        if not isinstance(candidate.provenance, dict)
+        else candidate.provenance
+    )
     for path, fp in fields_dict.items():
-        if hasattr(fp, "has_conflict") and fp.has_conflict():
+        if _field_has_conflict_excluding_rejected(fp, unreliable_entries):
             conflicts.append(path)
     return conflicts
 
@@ -1267,8 +1352,19 @@ class CandidateReviewService:
         expected_revision: int,
         source: str,
         reason: str,
+        source_id: Optional[str] = None,
     ) -> ReviewResult:
-        """Segnala la fonte come errata preservando evidenza e provenienza, consentendo futuro recupero."""
+        """Segnala la fonte come errata preservando evidenza e provenienza, consentendo futuro recupero.
+
+        Args:
+            source: Nome canonico della fonte (es. 'wikipedia', 'wikidata').
+            reason: Motivazione leggibile della decisione.
+            source_id: Identificativo specifico dell'entità rifiutata (es. titolo pagina Wikipedia,
+                QID Wikidata).  Quando fornito, il rifiuto è limitato a quella specifica entità:
+                marcare errata una pagina Wikipedia vandalisata NON dichiara globalmente tutte le
+                osservazioni Wikipedia come non attendibili.  Se None, il rifiuto si applica a
+                tutte le osservazioni della fonte per questo candidato.
+        """
         self._verify_auth(admin)
         candidate = self._repo.get_by_id(candidate_id)
         if not candidate:
@@ -1296,20 +1392,26 @@ class CandidateReviewService:
             )
 
         candidate.metadata["source_unreliable"] = True
-        candidate.metadata.setdefault("unreliable_sources", []).append({
+        unreliable_entry: dict[str, Any] = {
             "source": source,
             "reason": reason,
             "marked_at": _now_utc_iso(),
             "marked_by": admin.user_id,
-        })
+        }
+        # Store source_id for per-entity disambiguation (see _is_source_observation_rejected)
+        if source_id is not None:
+            unreliable_entry["source_id"] = source_id
+        candidate.metadata.setdefault("unreliable_sources", []).append(unreliable_entry)
 
-        audit_event = {
+        audit_event: dict[str, Any] = {
             "action": ReviewAction.SOURCE_WRONG.value,
             "actor": admin.user_id,
             "timestamp": _now_utc_iso(),
             "source": source,
             "reason": reason,
         }
+        if source_id is not None:
+            audit_event["source_id"] = source_id
         candidate.metadata.setdefault("review_events", []).append(audit_event)
 
         # Mantiene il candidato in REVIEW_REQUIRED (stato non terminale) per consentire futuro retry/edit
@@ -1349,9 +1451,32 @@ class CandidateReviewService:
         admin: AdminIdentity,
         candidate_id: str,
         expected_revision: int,
+        *,
+        retry_source: Optional[str] = None,
+        retry_source_id: Optional[str] = None,
         adapter_fetcher: Optional[Callable[[str, str], Any]] = None,
     ) -> ReviewResult:
-        """Ritenta l'ingestione tramite la pipeline esistente."""
+        """Ritenta l'ingestione tramite la pipeline esistente, con supporto per selezione esplicita della fonte.
+
+        Args:
+            retry_source: Nome canonico della fonte alternativa (es. 'wikidata', 'wikipedia').
+                Se None, la fonte corrente del candidato viene usata SE non è marcata come
+                non attendibile. Se la fonte corrente è in unreliable_sources, è obbligatorio
+                fornire retry_source — la chiamata restituisce SOURCE_ERROR senza invocare alcun
+                adapter.
+            retry_source_id: Identificativo dell'entità nella fonte alternativa (es. QID Wikidata).
+                Se retry_source è fornito e retry_source_id è None, viene usato il source_id
+                corrente del candidato come fallback (compatibilità per fonti con stesso ID).
+            adapter_fetcher: Callable di test per iniettare un adapter personalizzato.
+                In produzione, usare retry_source/retry_source_id invece di questo parametro.
+                La firma è (source: str, source_id: str) -> AdapterResult.
+
+        Contract:
+            - Se retry_source è None e la fonte corrente è in unreliable_sources →
+              SOURCE_ERROR (selezione fonte richiesta, nessun adapter invocato).
+            - Se retry_source è fornito → l'adapter per retry_source è risolto e invocato.
+            - CAS su expected_revision garantisce l'isolamento da operazioni concorrenti.
+        """
         self._verify_auth(admin)
         candidate = self._repo.get_by_id(candidate_id)
         if not candidate:
@@ -1378,25 +1503,75 @@ class CandidateReviewService:
                 message=f"Conflitto di revisione per '{candidate_id}': attesa {expected_revision}, attuale {candidate.revision}.",
             )
 
-        # Risoluzione ed esecuzione del fetch tramite adapter
-        fetcher = adapter_fetcher or self._adapter_resolver
-        try:
-            adapter_result = fetcher(candidate.source, candidate.source_id)
-        except Exception as err:
-            logger.error("Errore durante l'acquisizione della fonte esterna: %s", err, exc_info=True)
-            return ReviewResult(
-                success=False,
-                status=ReviewStatus.SOURCE_ERROR,
-                candidate_id=candidate_id,
-                message="Errore durante l'acquisizione della fonte esterna.",
-            )
+        # --- Source selection logic ---
+        # Determine the effective source and source_id for this retry attempt.
+        # If adapter_fetcher is provided (test seam), the source routing below is bypassed entirely
+        # and the caller is responsible for the fetch.
+        unreliable_entries: list[dict[str, Any]] = candidate.metadata.get("unreliable_sources", [])
+
+        if adapter_fetcher is None:
+            # Production path: use the real resolver.
+            if retry_source is not None:
+                # Explicit override: caller selects a different source.
+                effective_source = str(retry_source).strip().lower()
+                effective_source_id = (
+                    str(retry_source_id).strip() if retry_source_id is not None
+                    else candidate.source_id
+                )
+            else:
+                # No override supplied: fall back to the candidate's current source.
+                # Fail-closed if that source is already marked unreliable.
+                if _is_source_observation_rejected(
+                    candidate.source,
+                    candidate.source_id,
+                    unreliable_entries,
+                ):
+                    return ReviewResult(
+                        success=False,
+                        status=ReviewStatus.SOURCE_ERROR,
+                        candidate_id=candidate_id,
+                        message=(
+                            f"La fonte corrente '{candidate.source}' è marcata come non attendibile. "
+                            "Specificare una fonte alternativa tramite retry_source e retry_source_id."
+                        ),
+                    )
+                effective_source = candidate.source
+                effective_source_id = candidate.source_id
+
+            # Resolve and call the real adapter.
+            try:
+                adapter_result = self._adapter_resolver(effective_source, effective_source_id)
+            except Exception as err:
+                logger.error("Errore durante l'acquisizione della fonte esterna: %s", err, exc_info=True)
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.SOURCE_ERROR,
+                    candidate_id=candidate_id,
+                    message="Errore durante l'acquisizione della fonte esterna.",
+                )
+        else:
+            # Test seam path: caller provides a fully custom fetcher.
+            # The source used is whatever the fetcher returns — we pass the candidate's current
+            # source/source_id so the fetcher has context, but it may return any source.
+            effective_source = retry_source or candidate.source
+            effective_source_id = retry_source_id or candidate.source_id
+            try:
+                adapter_result = adapter_fetcher(effective_source, effective_source_id)
+            except Exception as err:
+                logger.error("Errore durante l'acquisizione della fonte esterna: %s", err, exc_info=True)
+                return ReviewResult(
+                    success=False,
+                    status=ReviewStatus.SOURCE_ERROR,
+                    candidate_id=candidate_id,
+                    message="Errore durante l'acquisizione della fonte esterna.",
+                )
 
         if adapter_result is None:
             return ReviewResult(
                 success=False,
                 status=ReviewStatus.SOURCE_ERROR,
                 candidate_id=candidate_id,
-                message=f"Nessun adapter compatibile o disponibile per la fonte '{candidate.source}'.",
+                message=f"Nessun adapter compatibile o disponibile per la fonte '{effective_source}'.",
             )
 
         if not getattr(adapter_result, "success", True):
@@ -1407,6 +1582,7 @@ class CandidateReviewService:
                 message="Acquisizione fallita dalla fonte esterna.",
             )
 
+        # --- State machine transitions ---
         # Transizione consentita verso FETCHED tramite FSM
         if candidate.status in (CandidateState.READY, CandidateState.VALIDATED):
             candidate.transition_to(
@@ -1422,7 +1598,11 @@ class CandidateReviewService:
                 actor=f"admin:{admin.user_id}",
             )
 
-        # Popolamento e ri-normalizzazione
+        # --- Populate and re-normalize ---
+        # On a retry, we perform a full re-ingestion from the chosen source.
+        # The career list is reset so that only the new source's data drives the
+        # candidate's career field.  Historical observations from prior sources
+        # remain intact in candidate.provenance.fields for full auditability.
         candidate.career = []
         populate_candidate_from_result(candidate, adapter_result)
         if getattr(adapter_result, "player_name", None):
@@ -1435,14 +1615,19 @@ class CandidateReviewService:
             actor=f"admin:{admin.user_id}:retry",
         )
 
-        audit_event = {
+        audit_event: dict[str, Any] = {
             "action": ReviewAction.RETRY.value,
             "actor": admin.user_id,
             "timestamp": _now_utc_iso(),
+            "retry_source": effective_source,
+            "retry_source_id": effective_source_id,
             "resulting_state": candidate.status.value,
             "revision": candidate.revision,
         }
         candidate.metadata.setdefault("review_events", []).append(audit_event)
+        # Track which source was used for the latest retry for easy inspection
+        candidate.metadata["last_retry_source"] = effective_source
+        candidate.metadata["last_retry_source_id"] = effective_source_id
 
         saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
         if not saved:

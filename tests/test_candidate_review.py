@@ -1318,3 +1318,252 @@ def test_sensitive_exception_details_do_not_leak(temp_env, monkeypatch):
     assert sensitive_path not in res.message
     assert "secret_certs" not in res.message
     assert "Crash reading" not in res.message
+
+
+# ---------------------------------------------------------------------------
+# 11. SOURCE_WRONG → Alternative Source → Approval (regression suite)
+# ---------------------------------------------------------------------------
+
+def test_source_wrong_retry_with_explicit_source_uses_real_adapter(temp_env, monkeypatch):
+    """End-to-end: SOURCE_WRONG + retry_source → real adapter invoked, old observation preserved, approval succeeds.
+
+    Flow:
+    1. Candidate starts with source=wikipedia (wikipedia observation recorded).
+    2. Reviewer marks that specific wikipedia entity as SOURCE_WRONG (with source_id).
+    3. retry_ingestion(..., retry_source="wikidata", retry_source_id="Q9999") is called without
+       adapter_fetcher → the *real* WikidataAdapter.fetch_player must be resolved and invoked.
+    4. Wikidata returns a clean result; both wikipedia and wikidata observations are present in provenance.
+    5. The wikipedia observation is excluded from blocking-conflict evaluation.
+    6. approve_candidate() succeeds and the player lands in the production dataset.
+    """
+    from services.adapters.base import AdapterResult, CareerEntry
+    from services.adapters.wikidata import WikidataAdapter
+
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    # Set up candidate with wikipedia observation for full_name
+    cand = create_sample_candidate(
+        "cand_sw_e2e",
+        "Wikipedia Wrong Name",
+        state=CandidateState.READY,
+        source="wikipedia",
+    )
+    cand.source_id = "Wrong_Wikipedia_Page"
+    # Record the wikipedia observation explicitly (simulates a prior populate step)
+    cand.record_observation(
+        field_path="full_name",
+        source="wikipedia",
+        source_id="Wrong_Wikipedia_Page",
+        raw_value="Wikipedia Wrong Name",
+    )
+    repo.save(cand)
+    rev_after_save = repo.get_by_id("cand_sw_e2e").revision
+
+    # 1. Mark wikipedia entity as SOURCE_WRONG (with source_id)
+    res_sw = service.mark_source_wrong(
+        admin,
+        "cand_sw_e2e",
+        expected_revision=rev_after_save,
+        source="wikipedia",
+        source_id="Wrong_Wikipedia_Page",
+        reason="Page was vandalized",
+    )
+    assert res_sw.success is True, res_sw.message
+    mid = repo.get_by_id("cand_sw_e2e")
+    assert mid.status == CandidateState.REVIEW_REQUIRED
+    assert any(e.get("source_id") == "Wrong_Wikipedia_Page" for e in mid.metadata.get("unreliable_sources", []))
+
+    # 2. Patch WikidataAdapter to avoid real HTTP and verify it is called
+    called_with: list[str] = []
+
+    def mock_wikidata_fetch(self: Any, identifier: str) -> AdapterResult:
+        called_with.append(identifier)
+        return AdapterResult(
+            source_name="wikidata",
+            source_id=identifier,
+            success=True,
+            player_name="Wikidata Correct Name",
+            nationality="Italia",
+            birth_year=1979,
+            position="Centrocampista",
+            career=[
+                CareerEntry(team="Milan", country="Italia", league="Serie A", start_year=1999, end_year=2012),
+                CareerEntry(team="Roma", country="Italia", league="Serie A", start_year=2012, end_year=2015),
+            ],
+        )
+
+    monkeypatch.setattr(WikidataAdapter, "fetch_player", mock_wikidata_fetch)
+
+    # 3. Retry using the real adapter resolver, explicit wikidata source
+    rev_before_retry = repo.get_by_id("cand_sw_e2e").revision
+    res_retry = service.retry_ingestion(
+        admin,
+        "cand_sw_e2e",
+        expected_revision=rev_before_retry,
+        retry_source="wikidata",
+        retry_source_id="Q9999",
+        # adapter_fetcher deliberately omitted → real resolver path
+    )
+    assert res_retry.success is True, res_retry.message
+    assert called_with == ["Q9999"], "WikidataAdapter.fetch_player must be called with the explicit source_id"
+
+    after_retry = repo.get_by_id("cand_sw_e2e")
+    # Wikidata player name applied
+    assert after_retry.full_name == "Wikidata Correct Name"
+    # Both observations still present in provenance (auditable)
+    fp = after_retry.provenance.get_provenance_for_path("full_name")
+    assert fp is not None
+    obs_wiki = fp.get_observation("wikipedia")
+    obs_wdata = fp.get_observation("wikidata")
+    assert obs_wiki is not None, "Wikipedia observation must remain in provenance"
+    assert obs_wdata is not None, "Wikidata observation must be present"
+    assert obs_wiki.raw_value == "Wikipedia Wrong Name"
+    assert obs_wdata.raw_value == "Wikidata Correct Name"
+
+    # 4. The wikipedia observation is excluded from blocking-conflict evaluation
+    from services.candidate_review import get_candidate_provenance_conflicts
+    conflicts = get_candidate_provenance_conflicts(after_retry)
+    assert "full_name" not in conflicts, (
+        f"Wikipedia observation must not create a blocking conflict for full_name. Conflicts: {conflicts}"
+    )
+
+    # 5. Review history contains both events
+    history = after_retry.metadata.get("review_events", [])
+    actions = [h["action"] for h in history]
+    assert ReviewAction.SOURCE_WRONG.value in actions
+    assert ReviewAction.RETRY.value in actions
+
+    # 6. Approval must succeed
+    rev_before_approve = repo.get_by_id("cand_sw_e2e").revision
+    res_approve = service.approve_candidate(
+        admin,
+        "cand_sw_e2e",
+        expected_revision=rev_before_approve,
+        allow_warnings=True,
+    )
+    assert res_approve.success is True, f"Approval must succeed after SOURCE_WRONG + retry: {res_approve.message} | conflicts: {res_approve.conflicts}"
+    prod = service._load_production_players()
+    assert any(p["full_name"] == "Wikidata Correct Name" for p in prod), "Player must be in production dataset"
+
+
+def test_retry_without_alternative_fails_closed_when_source_marked_unreliable(temp_env, monkeypatch):
+    """Retry without retry_source must return SOURCE_ERROR when current source is marked unreliable.
+
+    No adapter must be invoked; the candidate must remain unchanged.
+    """
+    from services.adapters.wikipedia import WikipediaAdapter
+
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    cand = create_sample_candidate("cand_sw_blocked", "Blocked Player", state=CandidateState.READY)
+    cand.source = "wikipedia"
+    cand.source_id = "Vandalized_Page"
+    repo.save(cand)
+
+    # Mark wikipedia SOURCE_WRONG (with source_id so identity is precise)
+    mid_rev = repo.get_by_id("cand_sw_blocked").revision
+    res_sw = service.mark_source_wrong(
+        admin,
+        "cand_sw_blocked",
+        expected_revision=mid_rev,
+        source="wikipedia",
+        source_id="Vandalized_Page",
+        reason="Vandalized",
+    )
+    assert res_sw.success is True
+
+    # Patch WikipediaAdapter to detect if it is called (it must NOT be)
+    wiki_called: list[str] = []
+
+    def spy_fetch(self: Any, identifier: str) -> AdapterResult:
+        wiki_called.append(identifier)
+        return AdapterResult(source_name="wikipedia", source_id=identifier, success=True, player_name="Should Not Be Used")
+
+    monkeypatch.setattr(WikipediaAdapter, "fetch_player", spy_fetch)
+
+    # Retry without providing retry_source (no adapter_fetcher either → production path)
+    rev_before = repo.get_by_id("cand_sw_blocked").revision
+    res_retry = service.retry_ingestion(
+        admin,
+        "cand_sw_blocked",
+        expected_revision=rev_before,
+        # retry_source deliberately omitted → should fail closed
+    )
+    assert res_retry.success is False
+    assert res_retry.status == ReviewStatus.SOURCE_ERROR
+    assert "wikipedia" in res_retry.message.lower() or "non attendibile" in res_retry.message
+    assert wiki_called == [], "WikipediaAdapter must NOT be invoked when source is marked unreliable"
+
+    # Candidate must be unchanged
+    unchanged = repo.get_by_id("cand_sw_blocked")
+    assert unchanged.revision == rev_before
+    assert unchanged.status == CandidateState.REVIEW_REQUIRED
+
+
+def test_trusted_sources_conflict_remains_blocking_after_source_wrong(temp_env):
+    """Conflicts among still-trusted sources remain blocking even after some source is marked wrong.
+
+    Scenario:
+    - wikipedia (entity W1) provides full_name = "Name A"
+    - wikidata (entity D1) provides full_name = "Name B"
+    - wikipedia W1 is marked SOURCE_WRONG.
+    - Only wikidata remains trusted → no cross-source conflict → approval may proceed.
+
+    Separate verification:
+    - If NEITHER source is marked wrong, the conflict still blocks approval (fail-closed).
+    """
+    from services.candidate_review import get_candidate_provenance_conflicts
+
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    # --- Part A: conflict cleared after wikipedia is marked wrong ---
+    cand_a = create_sample_candidate("cand_conflict_cleared", "Name A", state=CandidateState.READY)
+    cand_a.source = "wikipedia"
+    cand_a.source_id = "PageW1"
+    cand_a.record_observation(
+        field_path="full_name", source="wikipedia", source_id="PageW1", raw_value="Name A"
+    )
+    cand_a.record_observation(
+        field_path="full_name", source="wikidata", source_id="D1", raw_value="Name B"
+    )
+    # Verify conflict exists before any SOURCE_WRONG
+    conflicts_before = get_candidate_provenance_conflicts(cand_a)
+    assert "full_name" in conflicts_before, "Conflict must exist with two trusted differing sources"
+
+    # Mark wikipedia SOURCE_WRONG
+    cand_a.metadata.setdefault("unreliable_sources", []).append({
+        "source": "wikipedia",
+        "source_id": "PageW1",
+        "reason": "Test",
+        "marked_at": "2026-01-01T00:00:00Z",
+        "marked_by": 100,
+    })
+    conflicts_after = get_candidate_provenance_conflicts(cand_a)
+    assert "full_name" not in conflicts_after, (
+        "Conflict must be cleared after wikipedia entity is marked wrong; "
+        f"only wikidata remains trusted. Conflicts: {conflicts_after}"
+    )
+
+    # --- Part B: if BOTH are trusted (no SOURCE_WRONG), conflict still blocks ---
+    cand_b = create_sample_candidate("cand_conflict_blocks", "Name A", state=CandidateState.READY)
+    cand_b.record_observation(
+        field_path="full_name", source="wikipedia", source_id="PageW1", raw_value="Name A"
+    )
+    cand_b.record_observation(
+        field_path="full_name", source="wikidata", source_id="D1", raw_value="Name B"
+    )
+    repo.save(cand_b)
+
+    # No SOURCE_WRONG → conflict must block approval
+    rev_b = repo.get_by_id("cand_conflict_blocks").revision
+    res_approve = service.approve_candidate(admin, "cand_conflict_blocks", expected_revision=rev_b)
+    assert res_approve.success is False
+    assert res_approve.status == ReviewStatus.UNRESOLVED_CONFLICT
+    assert "full_name" in res_approve.conflicts
+
