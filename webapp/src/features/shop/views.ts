@@ -247,6 +247,8 @@ function shopArtwork(item: ShopCosmeticItem): string {
 
 export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string {
   const kind = item.kind;
+  const appearanceMutationBusy = Boolean(state.equippingItemId || state.lookMutation === "wear");
+  const equipDisabled = appearanceMutationBusy ? "disabled" : "";
   let actionHtml = "";
 
   if (item.equipped) {
@@ -256,12 +258,12 @@ export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string
       <div class="tag owned-tag">${escapeHtml(t("shop.owned"))}</div>
       ${
         item.equippable
-          ? `<button type="button" class="btn ghost small" data-equip="${escapeHtml(item.id)}">${escapeHtml(t("shop.wearAll"))}</button>`
+          ? `<button type="button" class="btn ghost small" data-equip="${escapeHtml(item.id)}" ${equipDisabled}>${escapeHtml(t("shop.wearAll"))}</button>`
           : ""
       }
     `;
   } else if (item.owned) {
-    actionHtml = `<button type="button" class="btn ghost small" data-equip="${escapeHtml(item.id)}">${escapeHtml(t("shop.wear"))}</button>`;
+    actionHtml = `<button type="button" class="btn ghost small" data-equip="${escapeHtml(item.id)}" ${equipDisabled}>${escapeHtml(t("shop.wear"))}</button>`;
   } else if (item.achievement) {
     actionHtml = `
       <div class="shop-note">${escapeHtml(t("shop.earn"))} · ${item.progress}/${item.achievement.target}</div>
@@ -360,6 +362,7 @@ export function renderWeeklyShowcase(state: ShopState): string {
 
 export function renderSavedLooks(state: ShopState): string {
   const looks = state.catalogue?.looks || [];
+  const wearDisabled = state.equippingItemId || state.lookMutation ? "disabled" : "";
   return `
     <div class="card shop-saved-looks">
       <h2>${escapeHtml(t("shop.looksTitle"))}</h2>
@@ -377,7 +380,7 @@ export function renderSavedLooks(state: ShopState): string {
           <div class="saved-look-row">
             <span class="look-name">${escapeHtml(look.name)}</span>
             <div class="look-actions">
-              <button type="button" class="btn ghost small" data-use-look="${escapeHtml(look.name)}">${escapeHtml(t("shop.wear"))}</button>
+              <button type="button" class="btn ghost small" data-use-look="${escapeHtml(look.name)}" ${wearDisabled}>${escapeHtml(t("shop.wear"))}</button>
               <button type="button" class="btn ghost small delete-btn" data-delete-look="${escapeHtml(look.name)}">${escapeHtml(t("shop.deleteLook"))}</button>
             </div>
           </div>

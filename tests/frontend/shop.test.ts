@@ -328,6 +328,101 @@ test("1 & 2. Shop init calls /app/api/shop and transitions to ready", async () =
   }
 });
 
+async function assertDailyFailureKeepsNewAppearance(mutation: "equip" | "wear") {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup } = setupGlobalDom();
+  clearResolvedAppearance();
+  const old = { badge: "⚽", squares: { correct: "🟩", wrong: "🟥", unused: "⬜" } };
+  const fresh = { badge: mutation === "equip" ? "🔥" : "⚡", squares: { correct: "⭐", wrong: "❌", unused: "▫️" } };
+  let rejectDaily: ((reason?: unknown) => void) | null = null;
+  const pendingFailure = new Promise<Response>((_resolve, reject) => { rejectDaily = reject; });
+  let meCalls = 0;
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/app/api/me")) {
+      meCalls++;
+      if (meCalls === 1) return new Response(JSON.stringify(createTestFullProfile({ cosmetics: old as any })));
+      if (meCalls === 2) return new Response(JSON.stringify({ user: { name: "A", streak: 2 }, today: createTestDailyChallenge({ attempts_left: 2 }), cosmetics: old }));
+      if (meCalls === 3) return pendingFailure;
+      return new Response(JSON.stringify(createTestFullProfile({ cosmetics: fresh as any })));
+    }
+    if (url.includes("/app/api/shop/equip")) return new Response(JSON.stringify({ status: "ok", cosmetics: fresh }));
+    if (url.includes("/app/api/shop/look")) return new Response(JSON.stringify({ status: "ok" }));
+    if (url.includes("/app/api/shop")) return new Response(JSON.stringify(createMockShopCatalogue()));
+    return new Response(JSON.stringify({}));
+  }) as typeof fetch;
+  try {
+    const app = new App(container);
+    const profile = app.getProfileController(); const daily = app.getDailyController(); const shop = app.getShopController();
+    await profile.init(); await daily.init();
+    (daily.getState() as any).cardImage = "cached-result";
+    const staleDaily = daily.loadDailyData();
+    const success = mutation === "equip" ? await shop.equip("badge_fire") : await shop.lookAction("wear", "Night look");
+    assert.equal(success, true);
+    rejectDaily!(new Error("offline")); await staleDaily;
+    assert.equal(getResolvedAppearance().badge, fresh.badge);
+    assert.equal((shop as any).authoritativeAppearance.badge, fresh.badge);
+    assert.equal(profile.getState().profile?.cosmetics?.badge, fresh.badge);
+    assert.equal(daily.getState().squaresSymbols.correct, "⭐");
+    assert.equal(daily.getState().cardImage, null);
+    assert.equal(daily.getState().status, "ready");
+    assert.equal(daily.getState().challenge?.attempts_left, 2);
+    assert.equal(daily.getState().user?.name, "A");
+  } finally { globalThis.fetch = previous; cleanup(); restoreTg(); }
+}
+
+test("Daily pending /me failure after Shop equip preserves the equipped appearance", async () => {
+  await assertDailyFailureKeepsNewAppearance("equip");
+});
+
+test("Daily pending /me failure after saved Look wear preserves the worn appearance", async () => {
+  await assertDailyFailureKeepsNewAppearance("wear");
+});
+
+test("saved Look wear owns appearance mutation while its /me is pending", async () => {
+  const { restore } = setupTestTelegram(); const { cleanup } = setupGlobalDom(); clearResolvedAppearance();
+  let resolveMe: ((value: Response) => void) | null = null;
+  const pendingMe = new Promise<Response>((resolve) => { resolveMe = resolve; });
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/app/api/shop/look")) return new Response(JSON.stringify({ status: "ok" }));
+    if (url.includes("/app/api/me")) return pendingMe;
+    if (url.includes("/app/api/shop/equip")) return new Response(JSON.stringify({ status: "ok", cosmetics: { badge: "C" } }));
+    if (url.includes("/app/api/shop")) return new Response(JSON.stringify(createMockShopCatalogue()));
+    return new Response(JSON.stringify({}));
+  }) as typeof fetch;
+  try {
+    const shop = new ShopController(); const wear = shop.lookAction("wear", "B");
+    assert.equal(await shop.equip("C"), false);
+    resolveMe!(new Response(JSON.stringify(createTestFullProfile({ cosmetics: { badge: "B" } as any }))));
+    assert.equal(await wear, true); assert.equal(getResolvedAppearance().badge, "B");
+    assert.equal((shop as any).authoritativeAppearance.badge, "B");
+  } finally { globalThis.fetch = previous; cleanup(); restore(); }
+});
+
+test("equip owns appearance mutation while saved Look wear is attempted", async () => {
+  const { restore } = setupTestTelegram(); const { cleanup } = setupGlobalDom(); clearResolvedAppearance();
+  let resolveEquip: ((value: Response) => void) | null = null;
+  const pendingEquip = new Promise<Response>((resolve) => { resolveEquip = resolve; });
+  const previous = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/app/api/shop/equip")) return pendingEquip;
+    if (url.includes("/app/api/shop/look")) return new Response(JSON.stringify({ status: "ok" }));
+    if (url.includes("/app/api/shop")) return new Response(JSON.stringify(createMockShopCatalogue()));
+    return new Response(JSON.stringify({}));
+  }) as typeof fetch;
+  try {
+    const shop = new ShopController(); const equip = shop.equip("C");
+    assert.equal(await shop.lookAction("wear", "B"), false);
+    resolveEquip!(new Response(JSON.stringify({ status: "ok", cosmetics: { badge: "C" } })));
+    assert.equal(await equip, true); assert.equal(getResolvedAppearance().badge, "C");
+    assert.equal((shop as any).authoritativeAppearance.badge, "C");
+  } finally { globalThis.fetch = previous; cleanup(); restore(); }
+});
+
 test("3 & 4. Shop loading and error handling with retry", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();
@@ -1590,4 +1685,3 @@ test("103. Catalogue in-flight deduplication: older request cannot clear newer i
     restoreTg();
   }
 });
-

@@ -68,6 +68,7 @@ export class DailyController {
   public async loadDailyData(options: { lightweight?: boolean } = {}): Promise<void> {
     const loadSeq = ++this.loadSeq;
     const isLightweight = Boolean(options.lightweight && this.state.challenge);
+    const previousState = this.state;
     if (!isLightweight) {
       clearResolvedAppearance();
       this.updateState({ status: "loading", errorMessage: undefined, user: null, challenge: null, feedback: null, cardImage: null, cardLoading: false, squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
@@ -112,6 +113,22 @@ export class DailyController {
       });
     } catch (err: any) {
       if (loadSeq !== this.loadSeq) return;
+      // A Shop mutation may have synchronized a newer appearance while this
+      // same-user request was in flight.  Its failure must not undo that
+      // authoritative appearance or discard an already usable challenge.
+      if (sessionGen !== appearanceGeneration()) { this.reset(); return; }
+      if (this.appearanceSeq !== loadAppearanceSeq) {
+        this.updateState({
+          status: previousState.status,
+          user: previousState.user,
+          challenge: previousState.challenge,
+          feedback: previousState.feedback,
+          cardImage: null,
+          cardLoading: false,
+          errorMessage: err?.detail || err?.message || "Impossibile caricare la sfida quotidiana.",
+        });
+        return;
+      }
       clearResolvedAppearance();
       this.state.squaresSymbols = { ...DEFAULT_SQUARE_SYMBOLS };
       this.state.user = null;

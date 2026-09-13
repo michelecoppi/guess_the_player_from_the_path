@@ -58,6 +58,9 @@ export class ShopController {
   private equipSeq = 0;
   private lookSeq = 0;
 
+  /** Equip and saved-look wear change one shared appearance; only one owns it at a time. */
+  private appearanceMutation: "equip" | "wear" | null = null;
+
   /** In-flight deduplication */
   private catalogueInFlight: Promise<void> | null = null;
   private historyInFlight: Promise<void> | null = null;
@@ -260,8 +263,9 @@ export class ShopController {
   // ---------------------------------------------------------------------------
 
   public async equip(itemId: string): Promise<boolean> {
-    if (this.state.equippingItemId) return false;
+    if (this.state.equippingItemId || this.appearanceMutation) return false;
 
+    this.appearanceMutation = "equip";
     const seq = ++this.equipSeq;
     this.updateState({ equippingItemId: itemId });
 
@@ -297,6 +301,8 @@ export class ShopController {
       this.updateState({ equippingItemId: null });
       this.setToast(t("shop.errGeneric"));
       return false;
+    } finally {
+      if (this.appearanceMutation === "equip") this.appearanceMutation = null;
     }
   }
 
@@ -307,12 +313,17 @@ export class ShopController {
   public async lookAction(action: LookAction, name: string): Promise<boolean> {
     if (this.state.lookMutation) return false;
 
+    // Only writes that change the equipped appearance participate in the
+    // shared lock; save/delete remain independent Shop actions.
+    if (action === "wear" && this.appearanceMutation) return false;
+
     const trimmed = (name || "").trim();
     if (action === "save" && (!trimmed || trimmed.length > 30)) {
       this.setToast(t("shop.errInvalidName"));
       return false;
     }
 
+    if (action === "wear") this.appearanceMutation = "wear";
     const seq = ++this.lookSeq;
     this.updateState({ lookMutation: action });
 
@@ -351,6 +362,8 @@ export class ShopController {
       this.updateState({ lookMutation: null });
       this.setToast(t("shop.errGeneric"));
       return false;
+    } finally {
+      if (action === "wear" && this.appearanceMutation === "wear") this.appearanceMutation = null;
     }
   }
 
