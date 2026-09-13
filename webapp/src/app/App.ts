@@ -25,6 +25,10 @@ import {
   attachShopEventListeners,
 } from "@/pages/ShopPage";
 import {
+  renderReferralPage,
+  attachReferralEventListeners,
+} from "@/pages/ReferralPage";
+import {
   initTelegram,
   getTelegramUser,
   isMockTelegramEnvironment,
@@ -38,6 +42,7 @@ import { LeaderboardController } from "@/features/leaderboard/controller";
 import { ArchiveController } from "@/features/archive/controller";
 import { ProfileController } from "@/features/profile/controller";
 import { ShopController } from "@/features/shop/controller";
+import { ReferralController } from "@/features/referral/controller";
 
 export class App {
   private rootElement: HTMLElement;
@@ -49,6 +54,7 @@ export class App {
   private archiveController: ArchiveController;
   private profileController: ProfileController;
   private shopController: ShopController;
+  private referralController: ReferralController;
   private lastArenaSubview: ArenaSubview;
 
   constructor(
@@ -60,6 +66,7 @@ export class App {
     archiveController?: ArchiveController,
     profileController?: ProfileController,
     shopController?: ShopController,
+    referralController?: ReferralController,
   ) {
     this.rootElement = rootElement;
     this.dailyController = dailyController || new DailyController();
@@ -70,10 +77,20 @@ export class App {
     this.archiveController = archiveController || new ArchiveController();
     this.profileController = profileController || new ProfileController();
     this.shopController = shopController || new ShopController();
+    this.referralController = referralController || new ReferralController();
+    this.referralController.setEquipHandler((itemId: string) => {
+      return this.shopController.equip(itemId);
+    });
     this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
 
     this.shopController.onAppearanceChanged = (appearance) => {
+      this.profileController.syncAppearance(appearance);
+      this.dailyController.syncAppearance(appearance);
+      this.referralController.syncAppearance(appearance);
+    };
+
+    this.referralController.onAppearanceChanged = (appearance) => {
       this.profileController.syncAppearance(appearance);
       this.dailyController.syncAppearance(appearance);
     };
@@ -139,6 +156,12 @@ export class App {
         this.renderShopContent();
       }
     });
+
+    this.referralController.subscribe(() => {
+      if (this.activeTab === "referral") {
+        this.renderReferralContent();
+      }
+    });
   }
 
   public getDailyController(): DailyController {
@@ -167,6 +190,10 @@ export class App {
 
   public getShopController(): ShopController {
     return this.shopController;
+  }
+
+  public getReferralController(): ReferralController {
+    return this.referralController;
   }
 
   public isArenaTab(tab: NavTabId): boolean {
@@ -201,6 +228,9 @@ export class App {
     if (this.activeTab === "shop") {
       void this.shopController.init();
     }
+    if (this.activeTab === "referral") {
+      void this.referralController.init();
+    }
   }
 
   public setTab(tab: NavTabId): void {
@@ -224,6 +254,8 @@ export class App {
         void this.profileController.init();
       } else if (tab === "shop") {
         void this.shopController.init();
+      } else if (tab === "referral") {
+        void this.referralController.init();
       }
 
       this.render();
@@ -386,6 +418,17 @@ export class App {
         this.rootElement,
         this.profileController,
       );
+      mainEl
+        .querySelectorAll<HTMLButtonElement>("button[data-tab]")
+        .forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            const tab = btn.dataset.tab as NavTabId;
+            if (tab) {
+              this.setTab(tab);
+            }
+          });
+        });
       const heading = mainEl.querySelector<HTMLElement>("#profile-heading");
       if (heading) {
         heading.tabIndex = -1;
@@ -399,6 +442,21 @@ export class App {
     if (mainEl && this.activeTab === "shop") {
       mainEl.innerHTML = renderShopPage(this.shopController.getState());
       attachShopEventListeners(this.rootElement, this.shopController);
+    }
+  }
+
+  private renderReferralContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "referral") {
+      mainEl.innerHTML = renderReferralPage(
+        this.referralController.getState(),
+        this.referralController.getSelectedMilestone(),
+      );
+      attachReferralEventListeners(
+        this.rootElement,
+        this.referralController,
+        (tab) => this.setTab(tab),
+      );
     }
   }
 
@@ -432,6 +490,12 @@ export class App {
         break;
       case "shop":
         pageHtml = renderShopPage(this.shopController.getState());
+        break;
+      case "referral":
+        pageHtml = renderReferralPage(
+          this.referralController.getState(),
+          this.referralController.getSelectedMilestone(),
+        );
         break;
       default:
         pageHtml = renderPrototype(this.activeTab);
@@ -503,6 +567,12 @@ export class App {
       attachShopEventListeners(
         this.rootElement,
         this.shopController,
+      );
+    } else if (this.activeTab === "referral") {
+      attachReferralEventListeners(
+        this.rootElement,
+        this.referralController,
+        (tab) => this.setTab(tab),
       );
     }
   }
