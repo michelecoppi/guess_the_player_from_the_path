@@ -22,6 +22,8 @@ import { setLanguage } from "../../webapp/src/i18n";
 import {
   setupTestTelegram,
   setupGlobalDom,
+  createTestDuelData,
+  createTestDuelSession,
 } from "./helpers";
 
 function createTestCard(overrides: Partial<EventCard> = {}): EventCard {
@@ -1559,4 +1561,205 @@ test("40. Cross-feature coexistence: Referral and Events both fully operational 
     restoreTg();
   }
 });
+
+// ---------------------------------------------------------------------------
+// 22. ARENA / TRAINING UX REGRESSION & REFERRAL INIT PRESERVATION
+// ---------------------------------------------------------------------------
+
+test("41. Arena opponent search focus & cursor preservation during controller rerender", () => {
+  const { cleanup, container } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+
+  try {
+    const arenaController = new ArenaController();
+    const app = new App(
+      container,
+      undefined,
+      arenaController,
+    );
+    app.init();
+
+    // Navigate to challenge subview
+    app.setTab("challenge");
+    assert.equal(arenaController.getState().subview, "challenge");
+
+    const searchInput = container.querySelector<HTMLInputElement>("#opponent-search");
+    assert.ok(searchInput, "#opponent-search input must exist in challenge view");
+
+    // Type into input and position cursor
+    searchInput.value = "mario";
+    searchInput.focus();
+    searchInput.setSelectionRange(2, 2);
+    assert.equal(document.activeElement, searchInput);
+    assert.equal(searchInput.selectionStart, 2);
+
+    // Trigger an arena controller state update that causes App subscription -> renderArenaContent
+    (arenaController as any).updateState({
+      searchQuery: "mario",
+    });
+
+    const refreshedInput = container.querySelector<HTMLInputElement>("#opponent-search");
+    assert.ok(refreshedInput, "#opponent-search must remain present after rerender");
+    assert.equal(document.activeElement, refreshedInput, "Opponent search input must retain focus after rerender");
+    assert.equal(refreshedInput.selectionStart, 2, "Cursor position (2) must be preserved after rerender");
+  } finally {
+    cleanup();
+    restoreTg();
+  }
+});
+
+test("42. Arena answer input focus preservation during state rerender", () => {
+  const { cleanup, container } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+
+  try {
+    const arenaController = new ArenaController();
+    const app = new App(
+      container,
+      undefined,
+      arenaController,
+    );
+    app.init();
+
+    // Set active duel state in duel subview
+    (arenaController as any).state = {
+      subview: "duel",
+      status: "idle",
+      busy: false,
+      error: null,
+      notice: null,
+      confirming: null,
+      data: createTestDuelData({
+        opponent: { name: "Matteo", round: 1, finished: false },
+        session: createTestDuelSession({ round: 0, total: 5 }),
+      }),
+      activeDuelCode: "duel123",
+      invitationCode: null,
+      searchQuery: "",
+      searchResults: [],
+      searchError: null,
+      draftAnswer: "Dybala",
+    };
+
+    app.setTab("duels");
+    assert.equal(arenaController.getState().subview, "duel");
+
+    const answerInput = container.querySelector<HTMLInputElement>("#arena-answer");
+    assert.ok(answerInput, "#arena-answer must exist in duel view");
+
+    answerInput.focus();
+    assert.equal(document.activeElement, answerInput);
+
+    // Trigger state update / rerender while status is idle (not submitting)
+    (arenaController as any).updateState({
+      draftAnswer: "Dybala",
+    });
+
+    const refreshedInput = container.querySelector<HTMLInputElement>("#arena-answer");
+    assert.ok(refreshedInput);
+    assert.equal(document.activeElement, refreshedInput, "#arena-answer must remain focused after Arena rerender");
+  } finally {
+    cleanup();
+    restoreTg();
+  }
+});
+
+test("43. Training answer input focus preservation during state rerender", () => {
+  const { cleanup, container } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+
+  try {
+    const arenaController = new ArenaController();
+    const trainingController = new TrainingController();
+    const app = new App(
+      container,
+      undefined,
+      arenaController,
+      trainingController,
+    );
+    app.init();
+
+    (trainingController as any).state = {
+      status: "idle",
+      busy: false,
+      error: null,
+      notice: null,
+      confirming: null,
+      data: {
+        session: {
+          round: 0,
+          attempts: 0,
+          solved: 0,
+          spent: 0,
+          revision: 0,
+          finished: false,
+          history: [],
+          total: 10,
+          max_attempts: 5,
+          career_path: [
+            { team: "Juventus", start_year: 2010, end_year: 2015, apps: 100, goals: 10 },
+          ],
+        },
+      },
+      draftAnswer: "",
+    };
+
+    app.setTab("arena");
+    app.setArenaSubview("training");
+    // Render training view inside arena
+    (app as any).renderArenaContent();
+    assert.equal(arenaController.getState().subview, "training");
+
+    const answerInput = container.querySelector<HTMLInputElement>("#training-answer");
+    assert.ok(answerInput, "#training-answer must exist in training active session");
+
+    answerInput.focus();
+    assert.equal(document.activeElement, answerInput);
+
+    // Trigger training controller state update / notify
+    (trainingController as any).state.draftAnswer = "Pirlo";
+    (trainingController as any).notify();
+
+    const refreshedInput = container.querySelector<HTMLInputElement>("#training-answer");
+    assert.ok(refreshedInput);
+    assert.equal(document.activeElement, refreshedInput, "#training-answer must remain focused after Training rerender");
+  } finally {
+    cleanup();
+    restoreTg();
+  }
+});
+
+test("44. Referral initialization in App.init() is preserved when activeTab is referral", () => {
+  const { cleanup, container } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+
+  try {
+    let initCalled = false;
+    const referralController = new ReferralController();
+    referralController.init = async () => {
+      initCalled = true;
+    };
+
+    const app = new App(
+      container,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      referralController,
+    );
+    (app as any).activeTab = "referral";
+    app.init();
+
+    assert.equal(app.getActiveTab(), "referral");
+    assert.equal(initCalled, true, "referralController.init() must be called on App.init() when activeTab is referral");
+  } finally {
+    cleanup();
+    restoreTg();
+  }
+});
+
 

@@ -83,12 +83,11 @@ export class App {
     this.shopController = shopController || new ShopController();
     this.referralController = referralController || new ReferralController();
     this.eventsController = eventsController || new EventsController();
-    this.lastArenaSubview = this.arenaController.getState().subview;
-    exposeLegacyBridge();
-
     this.referralController.setEquipHandler((itemId: string) => {
       return this.shopController.equip(itemId);
     });
+    this.lastArenaSubview = this.arenaController.getState().subview;
+    exposeLegacyBridge();
 
     this.shopController.onAppearanceChanged = (appearance) => {
       this.profileController.syncAppearance(appearance);
@@ -244,6 +243,12 @@ export class App {
     if (this.activeTab === "shop") {
       void this.shopController.init();
     }
+    if (this.activeTab === "referral") {
+      void this.referralController.init();
+    }
+    if (this.activeTab === "events") {
+      void this.eventsController.load();
+    }
   }
 
   public setTab(tab: NavTabId): void {
@@ -318,23 +323,71 @@ export class App {
   private renderArenaContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.isArenaTab(this.activeTab)) {
-      mainEl.innerHTML = renderArenaPage(
-        this.arenaController.getState(),
-        this.trainingController.getState(),
-      );
-      attachArenaEventListeners(
-        this.rootElement,
-        this.arenaController,
-        this.trainingController,
-      );
-      const heading = mainEl.querySelector<HTMLElement>("#duel-heading");
-      if (heading) {
-        heading.tabIndex = -1;
-        heading.focus({ preventScroll: true });
-      }
-      const feedback = mainEl.querySelector(".feedback");
-      if (feedback) {
-        feedback.scrollIntoView?.({ block: "nearest" });
+      const arenaState = this.arenaController.getState();
+      const trainingState = this.trainingController.getState();
+
+      if (arenaState.subview === "training") {
+        const hadInputFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "training-answer";
+
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        attachArenaEventListeners(
+          this.rootElement,
+          this.arenaController,
+          this.trainingController,
+        );
+
+        if (hadInputFocus && trainingState.status !== "loading") {
+          mainEl
+            .querySelector<HTMLInputElement>("#training-answer")
+            ?.focus({ preventScroll: true });
+        }
+
+        if (trainingState.data?.feedback) {
+          mainEl
+            .querySelector(".feedback")
+            ?.scrollIntoView?.({ block: "nearest" });
+        }
+      } else {
+        const hadAnswerFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "arena-answer";
+        const hadSearchFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "opponent-search";
+        const searchCursorPos =
+          hadSearchFocus && typeof document !== "undefined"
+            ? (document.activeElement as HTMLInputElement).selectionStart
+            : null;
+
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        attachArenaEventListeners(
+          this.rootElement,
+          this.arenaController,
+          this.trainingController,
+        );
+
+        if (hadAnswerFocus && arenaState.status !== "submitting") {
+          mainEl
+            .querySelector<HTMLInputElement>("#arena-answer")
+            ?.focus({ preventScroll: true });
+        } else if (hadSearchFocus) {
+          const searchInput =
+            mainEl.querySelector<HTMLInputElement>("#opponent-search");
+          if (searchInput) {
+            searchInput.focus({ preventScroll: true });
+            if (searchCursorPos !== null) {
+              searchInput.setSelectionRange(searchCursorPos, searchCursorPos);
+            }
+          }
+        }
+
+        if (arenaState.data?.feedback) {
+          mainEl
+            .querySelector(".feedback")
+            ?.scrollIntoView?.({ block: "nearest" });
+        }
       }
     }
   }
