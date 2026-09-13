@@ -18,7 +18,7 @@ def test_public_profile_only_exposes_statistics_and_equipped_cosmetics(monkeypat
     }
     monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", lambda uid: data)
     result = webapp_api.build_public_profile(42, "en")
-    assert set(result) == {"user", "cosmetics", "wearing", "trophies"}
+    assert set(result) == {"user", "cosmetics", "wearing", "trophies", "wardrobe"}
     assert result["user"]["name"] == "Anna"
     assert result["cosmetics"]["theme"] == shop.get_item("neon")["style"]
     assert result["cosmetics"]["title"]["label"] == "Supporter"
@@ -29,8 +29,9 @@ def test_public_profile_only_exposes_statistics_and_equipped_cosmetics(monkeypat
                                                            "3_PRIVATEEVENT_20251201"]
     encoded = json.dumps(result)
     assert "PRIVATE_" not in encoded
-    assert "ghiaccio" not in encoded  # owned, but not worn
-    assert "owned" not in encoded and "looks" not in encoded
+    assert "ghiaccio" in {item["id"] for item in result["wardrobe"]}
+    assert all(set(item) == {"id", "kind", "name"} for item in result["wardrobe"])
+    assert "looks" not in encoded
     assert len(result["wearing"]) == len(shop.KINDS)
 
 
@@ -63,7 +64,9 @@ def test_refunded_cosmetics_do_not_remain_in_public_profile(monkeypatch):
     monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", lambda uid: {
         "cosmetics": {"owned": [], "equipped": {"theme": "neon"}},
     })
-    assert webapp_api.build_public_profile(42)["cosmetics"]["equipped"]["theme"] == "notturno"
+    profile = webapp_api.build_public_profile(42)
+    assert profile["cosmetics"]["equipped"]["theme"] == "notturno"
+    assert "neon" not in {item["id"] for item in profile["wardrobe"]}
 
 
 def test_leaderboard_links_use_real_user_ids_and_equipped_badges(monkeypatch):

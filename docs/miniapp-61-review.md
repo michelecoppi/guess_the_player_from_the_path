@@ -1,4 +1,4 @@
-# Issue #61 — first visual review
+# Issue #61 — visual review and PR #78 follow-up
 
 Base: `114df2227d5792ece9234246343475c8288ba9bb`.
 Branch: `feat/61-final-v2-ux`, dedicated worktree `.worktrees/issue-61`.
@@ -81,14 +81,36 @@ and theme isolation. 324 tests pass; typecheck/build pass.
 Browser checks: themed profile and Arena have no horizontal overflow at 320px.
 Screenshot: review-evidence/profile-themed-mobile.png.
 
-## Follow-up requested for the next agent
+## Follow-up requested by the reviewer — implemented 2026-09-14
 
-This PR intentionally leaves the following items open for the next visual pass:
+The five requested changes are implemented in PR #78 and ready for visual review:
 
-- Il profilo è ancora graficamente grezzo: controllare bene armadio, stili equipaggiabili e stati correlati.
-- L’anteprima dello Shop è ancora buggata e può sovrapporsi: rifare il layout e la gerarchia dell’anteprima.
-- Il profilo degli altri utenti è troppo vuoto: mostrare gli stili posseduti e la mini tabella degli stili equipaggiati presente in V1.
-- Eliminare il quadrato verde che compare al passaggio sulla riga cliccabile della classifica; resta solo un feedback coerente con il sistema editoriale.
-- Portare la classifica da Top 8 a Top 10 e aggiungere la ricerca giocatori, avviata dai primi due caratteri.
+- [x] Il profilo è ancora graficamente grezzo: controllare bene armadio, stili equipaggiabili e stati correlati.
+- [x] L’anteprima dello Shop è ancora buggata e può sovrapporsi: rifare il layout e la gerarchia dell’anteprima.
+- [x] Il profilo degli altri utenti è troppo vuoto: mostrare gli stili posseduti e la mini tabella degli stili equipaggiati presente in V1.
+- [x] Eliminare il quadrato verde che compare al passaggio sulla riga cliccabile della classifica; resta solo un feedback coerente con il sistema editoriale.
+- [x] Portare la classifica da Top 8 a Top 10 e aggiungere la ricerca giocatori, avviata dai primi due caratteri.
 
-The current review harness demonstrates the intended interaction paths with local fixtures; these follow-ups require the final product data and responsive polish.
+### Implementation and review links
+
+- Own/public profiles and the wardrobe share an eight-slot outfit sheet. Public profiles also show the owned collection, grouped by category. The additive `wardrobe` field contains only item ID, kind and localized name, resolved from valid ownership; saved looks and payment data stay private. The existing `wearing` response stays compatible. Own inventory refreshes on the next profile visit after leaving Shop.
+- Shop try-on separates player identity from product artwork, description and equip action. Its theme stays inside its bounds instead of inheriting the full-page profile bleed. Preview triggers now take their own space below artwork. Non-equippable owned items never expose an equip action; equip is disabled during an appearance mutation.
+- Leaderboard names use an underline and neutral row hover, retaining a keyboard focus outline. Top 10 uses the existing ten-row backend result. Independent name-prefix search calls `/profile/search` after two characters with a 250 ms debounce, stale-response guards, loading/error/empty states, retry and caret preservation.
+- The review demo supports search (including Valentina outside the Top 10), public profiles, cumulative equip and local saved-look save/wear/delete. Refresh resets the demo. Production controllers use authenticated APIs; demo actions make no network calls.
+
+Start the local Vite server as above, then open:
+
+- [Shop try-on](http://127.0.0.1:5176/app/v2/?design-review&view=Shop&try=review-frame)
+- [Own profile](http://127.0.0.1:5176/app/v2/?design-review&view=Profilo)
+- [Wardrobe](http://127.0.0.1:5176/app/v2/?design-review&view=Guardaroba)
+- [Top 10 and profile search](http://127.0.0.1:5176/app/v2/?design-review&view=Classifica)
+
+### Verification
+
+- Typecheck, 329 frontend tests, production build and diff whitespace checks pass.
+- 53 targeted backend tests pass (public profiles, webapp API, performance and V2 serving); Ruff passes for touched Python files.
+- Security check passes using the repository's existing documented dependency/baseline exceptions.
+- Browser: all 18 review views fit 320 px (305 px content with Windows scrollbar); the four modified views also fit in EN and ES. Shop try-on and profile/ranking checks cover mobile and desktop.
+- Local screenshots: `review-evidence/followup/`, including Daily ready/wrong/correct/loading/error at 390 × 844 and 1280 × 800, plus the modified views. Dark structure under Telegram/system light is covered by the existing theme regression test; physical Telegram validation remains pending.
+
+Human visual approval and the remaining global #61 gates above are still pending. This PR remains `Refs #61`, with no merge or production rollout.

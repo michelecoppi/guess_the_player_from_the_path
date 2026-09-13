@@ -35,7 +35,15 @@ export interface PublicProfileState {
   error?: string | null;
 }
 
+export interface ProfileSearchResult {
+  profile_id: number;
+  name: string;
+  badge?: string;
+  points: number;
+}
+
 export interface LeaderboardState {
+  search?: { query: string; status: 'idle' | 'loading' | 'ready' | 'error'; results: ProfileSearchResult[] };
   status: "idle" | "loading" | "ready" | "error";
   error: string | null;
   activeTab: LeaderboardTab;

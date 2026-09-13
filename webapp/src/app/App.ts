@@ -255,7 +255,9 @@ export class App {
     if (this.activeTab !== tab) {
       if (this.activeTab === "shop" && tab !== "shop") {
         this.shopController.stopPreview();
+        this.profileController.invalidateInventory();
       }
+      if (this.activeTab === "leaderboard") this.leaderboardController.cancelSearch();
       this.activeTab = tab;
 
       if (tab === "arena") {
@@ -395,6 +397,9 @@ export class App {
   private renderLeaderboardContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.activeTab === "leaderboard") {
+      const search = mainEl.querySelector<HTMLInputElement>('#leaderboard-search');
+      const focused = search === document.activeElement;
+      const cursor = search?.selectionStart ?? null;
       mainEl.innerHTML = renderLeaderboardPage(
         this.leaderboardController.getState(),
       );
@@ -402,6 +407,11 @@ export class App {
         this.rootElement,
         this.leaderboardController,
       );
+      if (focused) {
+        const next = mainEl.querySelector<HTMLInputElement>('#leaderboard-search');
+        next?.focus({ preventScroll: true });
+        if (cursor !== null) next?.setSelectionRange(cursor, cursor);
+      }
       const heading = mainEl.querySelector<HTMLElement>(
         "#public-profile-heading",
       );

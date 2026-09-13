@@ -1,3 +1,5 @@
+import { renderStyleInventory } from "@/components/StyleInventory";
+import { v } from "@/i18n/visual";
 import { identityAppearance } from "@/appearance";
 import { escapeHtml } from "@/utils/format";
 import { renderAvatar } from "@/components/Avatar";
@@ -91,17 +93,6 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
   const shirt = number ? `<span class="shirt">${escapeHtml(number)}</span>` : "";
   const trophiesCount = u.trophies ?? 0;
 
-  const wearingHtml =
-    p.wearing && p.wearing.length > 0
-      ? `
-        <div class="card">
-          <h3 class="section-heading">${escapeHtml(t("leaderboard.wearing"))}</h3>
-          <div class="pack-contents">
-            ${p.wearing.map((item) => `<span class="wearing-chip">${escapeHtml(item.name)}</span>`).join("")}
-          </div>
-        </div>
-      `
-      : "";
 
   return `
     <section class="public-profile-view" ${profileSurfaceAttributes(p.cosmetics)} aria-label="${escapeHtml(t("leaderboard.publicProfileTitle"))}">
@@ -128,7 +119,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
           ${renderStatTile({ value: u.archive_solved ?? 0, label: t("leaderboard.recovered") })}
         </div>
       </div>
-      ${wearingHtml}
+      ${renderStyleInventory(p.wearing, p.wardrobe)}
     </section>
   `.trim();
 }
@@ -136,28 +127,37 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
 /**
  * Renders the global ranking tab.
  */
-function renderGlobalTab(state: LeaderboardState): string {
-  if (state.globalLeaderboard.length === 0) {
-    return renderEmptyState({
-      icon: icon("ranking"),
-      title: t("leaderboard.emptyGlobalTitle"),
-      description: t("leaderboard.emptyGlobal"),
-    });
-  }
+function renderPlayerSearch(state: LeaderboardState): string {
+  const search = state.search;
+  const result = search?.status === 'loading' ? `<p role="status">${escapeHtml(t('common.loading'))}</p>`
+    : search?.status === 'error' ? `<p role="alert">${escapeHtml(v('searchError'))}</p><button class="btn ghost" id="leaderboard-search-retry">${escapeHtml(t('common.retry'))}</button>`
+    : search?.status === 'ready' ? (search.results.length ? `<ul class="player-search-results" aria-label="${escapeHtml(v('results'))}">${search.results.map(user => `<li><button type="button" class="player-search-result" data-profile-id="${user.profile_id}"><span>${escapeHtml(user.name)} ${escapeHtml(user.badge || '')}</span><small>${user.points} ${escapeHtml(t('common.points'))}</small>${icon('arrow')}</button></li>`).join('')}</ul>` : `<p role="status">${escapeHtml(v('noPlayers'))}</p>`)
+    : '';
+  return `<section class="player-search" aria-label="${escapeHtml(v('findPlayer'))}">
+    <label for="leaderboard-search">${escapeHtml(v('findPlayer'))}</label>
+    <input id="leaderboard-search" type="text" inputmode="search" autocomplete="off" maxlength="80" value="${escapeHtml(search?.query || '')}" aria-describedby="leaderboard-search-hint">
+    <p id="leaderboard-search-hint" class="muted">${escapeHtml(v('searchHint'))}</p>
+    <div aria-live="polite">${result}</div>
+  </section>`;
+}
 
-  const rowsHtml = state.globalLeaderboard
+function renderGlobalTab(state: LeaderboardState): string {
+
+  const rowsHtml = state.globalLeaderboard.slice(0, 10)
     .map((entry) => renderLeaderboardRow(entry, entry.badge))
     .join("");
 
   return `
     <div class="leaderboard-tab-content" id="leaderboard-panel-global" role="tabpanel" aria-labelledby="leaderboard-tab-global">
+      ${renderPlayerSearch(state)}
+      <div class="ranking-caption"><h3 class="section-heading">${escapeHtml(v('topTen'))}</h3></div>
       <p class="leaderboard-hint muted text-xs">${escapeHtml(t("leaderboard.tapProfileHint"))}</p>
       <div class="leaderboard-columns" aria-hidden="true">
         <span>${escapeHtml(t("leaderboard.colPosPlayer"))}</span>
         <span>${escapeHtml(t("leaderboard.colPoints"))}</span>
       </div>
       <div class="leaderboard-list" role="list" aria-label="${escapeHtml(t("leaderboard.tabGlobal"))}">
-        ${rowsHtml}
+        ${rowsHtml || renderEmptyState({ icon: icon('ranking'), title: t('leaderboard.emptyGlobalTitle'), description: t('leaderboard.emptyGlobal') })}
       </div>
     </div>
   `.trim();

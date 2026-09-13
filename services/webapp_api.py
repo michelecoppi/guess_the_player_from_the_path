@@ -51,6 +51,7 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
         # Stanno nel profilo e non dietro la scheda del negozio perche' la pagina si deve
         # disegnare gia' giusta alla prima apertura (services/shop.py, `appearance`).
         "cosmetics": shop.appearance(user, lang),
+        "wardrobe": _public_wardrobe(user, lang),
         # I trofei vinti, scelti da chi li ha vinti (services/trophies.py). Viaggiano col
         # profilo e non dietro una scheda loro per la stessa ragione dei cosmetici: la
         # prima schermata deve gia' essere quella giusta.
@@ -80,6 +81,15 @@ def _user_summary(user):
     }
 
 
+def _public_wardrobe(user, lang):
+    """Localized owned styles only; no purchase, payment or saved-look data."""
+    return [
+        {"id": item_id, "kind": item["kind"], "name": shop.localize(item, lang)[0]}
+        for item_id in sorted(shop.owned_ids(user))
+        if (item := shop.get_item(item_id)) and item.get("kind") in shop.KINDS
+    ]
+
+
 def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
     """An explicit public projection, never the private /me response."""
     if type(target_id) is not int or target_id <= 0 or target_id > 2**52:
@@ -91,6 +101,7 @@ def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
     return {
         "user": _user_summary(user),
         "cosmetics": appearance,
+        "wardrobe": _public_wardrobe(user, lang),
         # Solo quelli appesi: la bacheca intera e' roba di chi la possiede, il profilo
         # pubblico mostra quello che ha scelto di far vedere.
         "trophies": trophies.showcase(user, lang),

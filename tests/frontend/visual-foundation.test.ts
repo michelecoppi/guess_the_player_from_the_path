@@ -149,6 +149,20 @@ test("review navigation and fixture interactions never call an API", () => {
     assert.equal(container.querySelector('.preview-bar'),null);
     go("profile");
     assert.match(container.querySelector('#profile-heading')!.textContent!,/10/);
+    go("shop");
+    container.querySelector<HTMLButtonElement>('[data-shop-view="wardrobe"]')!.click();
+    const lookName=container.querySelector<HTMLInputElement>('#look-name')!;
+    lookName.value='Matchday';
+    container.querySelector<HTMLButtonElement>('#shop-save-look')!.click();
+    container.querySelector<HTMLButtonElement>('[data-use-look="La domenica"]')!.click();
+    go("profile");
+    assert.doesNotMatch(container.querySelector('#profile-heading')!.textContent!, /10/);
+    go("shop");
+    container.querySelector<HTMLButtonElement>('[data-shop-view="wardrobe"]')!.click();
+    container.querySelector<HTMLButtonElement>('[data-use-look="Matchday"]')!.click();
+    go("profile");
+    assert.match(container.querySelector('#profile-heading')!.textContent!, /10/);
+    assert.match(container.querySelector('.outfit-sheet')!.textContent!, /Regista/);
     assert.equal(requests, 0);
   } finally {
     globalThis.fetch = previous;

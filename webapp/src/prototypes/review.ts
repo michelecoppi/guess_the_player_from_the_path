@@ -18,11 +18,15 @@ import { createPreviewAppearance } from '@/features/shop/preview';
 import { watchReferralMotion, disconnectReferralMotion } from '@/features/referral/views';
 import type { PublicProfileState } from '@/features/leaderboard/types';
 import { setLanguage } from '@/i18n';
+import { createMockTelegramWebApp } from '@/telegram/mock';
 import { renderPrototype, type PrototypeId } from './screens';
 
 export const REVIEW_PAGES=['Daily','Arena','Duelli','Cerca utenti','Duello','Allenamento','Profilo','Trofei','Classifica','Archivio','Sfida archivio','Shop','Guardaroba','Traguardi','Acquisti','Referral','Eventi','Dettaglio evento'] as const;
 export function startReview(root:HTMLElement):void {
+  window.Telegram={WebApp:createMockTelegramWebApp()};
   let page:string='Daily', state:ReviewState='ready', outfit:AppearanceFixtureName='default', language:'it'|'en'|'es'='it', eventIndex=0;
+  const requestedPage=new URLSearchParams(window.location.search).get('view');
+  if(REVIEW_PAGES.some(candidate=>candidate===requestedPage))page=requestedPage!;
   const eventController=new EventsController();
   const shop=fixtures.shopFixture();
   let worn:ResolvedAppearance=appearanceFixtures.default;
@@ -30,19 +34,25 @@ export function startReview(root:HTMLElement):void {
   let leaderboardTab:'global'|'leagues'='global';
   let leagueCode:string|null=null;
   let searchQuery='';
+  let rankingQuery='';
   let opponentName='Luca';
   let rewardTarget:number|null=null;
   let referralNotice:string|null=null;
   const items=shop.catalogue!.sections.flatMap(section=>section.items);
+  const reviewPlayers=[...fixtures.leaderboardFixture().globalLeaderboard,{profile_id:11,position:11,name:'Valentina',points:620,me:false}];
   const equip=(id:string)=>{
     const item=items.find(item=>item.id===id);
     if(!item?.owned)return;
     worn=createPreviewAppearance(worn,item,language);
     items.filter(other=>other.kind===item.kind).forEach(other=>other.equipped=other.id===id);
     if(item.kind!=='bundle')shop.catalogue!.equipped[item.kind]=id;
+    worn.equipped={...shop.catalogue!.equipped};
     shop.preview=null;
     shop.toast='Indossato nella demo. Apri Profilo per vedere il risultato.';
   };
+  const requestedTryOn=new URLSearchParams(window.location.search).get('try');
+  const initialItem=items.find(item=>item.id===requestedTryOn);
+  if(initialItem&&page==='Shop')shop.preview={item:initialItem,appearance:createPreviewAppearance(worn,initialItem,language)};
   function render() {
     const controlsOpen=root.querySelector<HTMLDetailsElement>('.product-review')?.open ?? false;
     setLanguage(language);document.documentElement.lang=language;document.documentElement.dataset.theme='dark';
@@ -64,12 +74,13 @@ export function startReview(root:HTMLElement):void {
       if(state==='completed'){arena.data!.session!.finished=true;training.data!.session!.finished=true;}
       html=renderArenaPage(arena,training);
     } else if(['Profilo','Trofei'].includes(page)) {
-      active='profile';profile.view=page==='Trofei'?'cabinet':'profile';profile.profile!.cosmetics=appearance;
+      active='profile';profile.view=page==='Trofei'?'cabinet':'profile';profile.profile!.cosmetics={...appearance,equipped:shop.catalogue!.equipped};profile.profile!.wardrobe=items.filter(item=>item.owned);
       if(state==='loading'||state==='error'){profile.status=state;profile.profile=null;}
       html=renderProfilePage(profile);
     } else if(page==='Classifica') {
       active='leaderboard';leaderboard.activeTab=leaderboardTab;leaderboard.selectedLeagueCode=leagueCode;leaderboard.publicProfile=publicProfile;if(state==='unavailable')leaderboard.globalLeaderboard=[];
       if(state==='loading'||state==='error')leaderboard.status=state;
+      leaderboard.search={query:rankingQuery,status:rankingQuery.trim().length<2?'idle':state==='error'?'error':state==='loading'?'loading':'ready',results:reviewPlayers.filter(user=>user.name.toLowerCase().startsWith(rankingQuery.trim().toLowerCase())).map(user=>({...user,profile_id:user.profile_id!}))};
       html=renderLeaderboardPage(leaderboard);
     } else if(page.includes('archivio')||page==='Archivio') {
       active='arena';if(page==='Sfida archivio'){archive.view='challenge';archive.status='challenge_ready';archive.selectedDay=archive.challenge!.day;}
@@ -97,7 +108,7 @@ export function startReview(root:HTMLElement):void {
     change('#review-page',v=>{page=v;state='ready';publicProfile=null;shop.preview=null;});change('#review-state',v=>state=v as ReviewState);change('#review-appearance',v=>{outfit=v as AppearanceFixtureName;worn=appearanceFixtures[outfit];shop.preview=null;items.forEach(item=>item.equipped=false);});change('#review-language',v=>language=v as typeof language);
     root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(b=>b.onclick=()=>{page=({play:'Daily',arena:'Arena',profile:'Profilo',leaderboard:'Classifica',shop:'Shop',archive:'Archivio',events:'Eventi',referral:'Referral',duels:'Duello',challenge:'Cerca utenti'} as Record<string,string>)[b.dataset.tab!]||b.dataset.tab!;state='ready';publicProfile=null;shop.preview=null;render();window.scrollTo(0,0);});
     const bind=(selector:string,fn:()=>void)=>root.querySelectorAll<HTMLElement>(selector).forEach(el=>el.onclick=e=>{e.preventDefault();fn();render();});
-    bind('#submit',()=>state=root.querySelector<HTMLInputElement>('#answer')?.value.toLowerCase().includes('pirlo')?'correct':'wrong');bind('#hint',()=>state='hint');bind('#daily-retry',()=>state='ready');bind('#open-cabinet',()=>page='Trofei');
+    bind('#submit',()=>state=root.querySelector<HTMLInputElement>('#answer')?.value.toLowerCase().includes('pirlo')?'correct':'wrong');bind('#hint',()=>state='hint');bind('#daily-retry',()=>state='ready');bind('#open-cabinet',()=>page='Trofei');bind('#close-cabinet',()=>page='Profilo');
     bind('[data-arena-nav="challenge"]',()=>page='Cerca utenti');
     const search=root.querySelector<HTMLInputElement>('#opponent-search');
     if(search)search.oninput=()=>{
@@ -109,11 +120,19 @@ export function startReview(root:HTMLElement):void {
       opponentName=arena.searchResults.find(user=>user.profile_id===Number(button.dataset.arenaChallengeUser))!.name;
       page='Duello';render();
     });
+    const rankingSearch=root.querySelector<HTMLInputElement>('#leaderboard-search');
+    if(rankingSearch)rankingSearch.oninput=()=>{
+      rankingQuery=rankingSearch.value;const cursor=rankingSearch.selectionStart;render();
+      const next=root.querySelector<HTMLInputElement>('#leaderboard-search');next?.focus({preventScroll:true});
+      if(cursor!==null)next?.setSelectionRange(cursor,cursor);
+    };
     root.querySelectorAll<HTMLElement>('[data-profile-id]').forEach(button=>button.onclick=()=>{
-      const user=leaderboard.globalLeaderboard.find(user=>user.profile_id===Number(button.dataset.profileId));
+      const user=reviewPlayers.find(user=>user.profile_id===Number(button.dataset.profileId));
       if(!user)return;
       const sample=fixtures.profileFixture().profile!;
-      publicProfile={profileId:user.profile_id!,status:'ready',data:{user:{...sample.user,name:user.name,points:user.points},cosmetics:user.me?worn:appearanceFixtures.identity,trophies:sample.trophies.all,wearing:[]}};
+      const publicWearing=items.filter(item=>user.me?item.equipped:(['review-frame','review-title','review-number'].includes(item.id)||item.free&&!['frame','title','number'].includes(item.kind)));
+      const publicAppearance=user.me?worn:publicWearing.reduce<ResolvedAppearance>((appearance,item)=>createPreviewAppearance(appearance,item,language),appearanceFixtures.default);
+      publicProfile={profileId:user.profile_id!,status:'ready',data:{user:{...sample.user,name:user.name,points:user.points},cosmetics:publicAppearance,trophies:sample.trophies.pinned,wearing:publicWearing,wardrobe:items.filter(item=>user.me?item.owned:true)}};
       render();root.querySelector<HTMLElement>('#public-profile-heading')?.focus();
     });
     root.querySelectorAll<HTMLElement>('[data-leaderboard-tab]').forEach(button=>button.onclick=()=>{leaderboardTab=button.dataset.leaderboardTab as typeof leaderboardTab;publicProfile=null;render();});
@@ -122,7 +141,7 @@ export function startReview(root:HTMLElement):void {
     bind('[data-action="close-profile"]',()=>publicProfile=null);
     root.querySelectorAll<HTMLElement>('[data-try]').forEach(button=>button.onclick=()=>{
       const item=items.find(item=>item.id===button.dataset.try);if(!item)return;
-      shop.preview={item,appearance:createPreviewAppearance(worn,item,language)};render();root.querySelector('.preview-bar')?.scrollIntoView?.({block:'nearest'});
+      shop.preview={item,appearance:createPreviewAppearance(worn,item,language)};render();root.querySelector<HTMLElement>('.preview-bar')?.focus({preventScroll:true});window.scrollTo(0,0);
     });
     root.querySelectorAll<HTMLElement>('[data-equip]').forEach(button=>button.onclick=()=>{equip(button.dataset.equip!);render();});
     root.querySelectorAll<HTMLElement>('[data-buy]').forEach(button=>button.onclick=()=>{
@@ -135,6 +154,23 @@ export function startReview(root:HTMLElement):void {
     const price=root.querySelector<HTMLSelectElement>('#shop-price');if(price)price.onchange=()=>{shop.priceFilter=price.value as typeof shop.priceFilter;render();};
     const hideOwned=root.querySelector<HTMLInputElement>('#shop-hide-owned');if(hideOwned)hideOwned.onchange=()=>{shop.hideOwned=hideOwned.checked;render();};
     bind('#shop-stop-preview',()=>shop.preview=null);
+    bind('#shop-save-look',()=>{
+      const name=root.querySelector<HTMLInputElement>('#look-name')?.value.trim().slice(0,32);
+      if(!name)return;
+      const looks=shop.catalogue!.looks;
+      const existing=looks.find(look=>look.name===name);
+      if(existing)existing.equipped={...shop.catalogue!.equipped};
+      else looks.push({name,equipped:{...shop.catalogue!.equipped}});
+      shop.toast='Tenuta salvata nella demo.';
+    });
+    root.querySelectorAll<HTMLElement>('[data-use-look]').forEach(button=>button.onclick=()=>{
+      const look=shop.catalogue!.looks.find(look=>look.name===button.dataset.useLook);
+      if(!look)return;
+      Object.values(look.equipped).forEach(id=>{if(id)equip(id);});render();
+    });
+    root.querySelectorAll<HTMLElement>('[data-delete-look]').forEach(button=>button.onclick=()=>{
+      shop.catalogue!.looks=shop.catalogue!.looks.filter(look=>look.name!==button.dataset.deleteLook);render();
+    });
     root.querySelectorAll<HTMLElement>('[data-rf-preview]').forEach(button=>button.onclick=()=>{rewardTarget=Number(button.dataset.rfPreview);render();});
     bind('#rf-close-preview',()=>rewardTarget=null);
     bind('#rf-invite, #rf-copy',()=>referralNotice='Invito dimostrativo: nessun messaggio inviato e nessun link reale copiato.');

@@ -32,7 +32,7 @@ export function profileFixture(): ProfileState {
 }
 export function leaderboardFixture(): LeaderboardState {
   return {status:'ready',error:null,activeTab:'global',selectedLeagueCode:null,leagues:['Amici del calcetto','Curva Nord'].map((name,i)=>({code:`DEMO${i+1}`,name,members:3,position:2,points:1284,standings:[{position:1,profile_id:i+1,name:i?'Luca':'Giulia',points:1450,me:false},{position:2,profile_id:3,name:'Marco',points:1284,me:true},{position:3,profile_id:4,name:'Andrea',points:1201,me:false}]})),publicProfile:null,
-    globalLeaderboard:['Giulia','Luca','Marco','Andrea','Sara','Alessandro','Francesca','Davide'].map((name,i)=>({position:i+1,profile_id:i+1,name,points:1450-i*83,me:i===2}))};
+    globalLeaderboard:['Giulia','Luca','Marco','Andrea','Sara','Alessandro','Francesca','Davide','Elena','Matteo'].map((name,i)=>({position:i+1,profile_id:i+1,name,points:1450-i*83,me:i===2}))};
 }
 export function archiveFixture(): ArchiveState {
   return {view:'calendar',status:'ready',error:null,selectedDay:null,feedback:null,draftAnswer:'',challengeFinished:false,
@@ -44,9 +44,13 @@ function item(kind:ShopCosmeticItem['kind'],name:string,style:Record<string,unkn
 }
 export function shopFixture(): ShopState {
   const items=[item('frame','Fascia da capitano',appearanceFixtures.identity.frame,true),item('number','Il numero dieci',{number:'10'},true),item('card','La figurina',appearanceFixtures.card.card),item('theme','Notte d’inverno',appearanceFixtures.collection.theme),item('title','Regista',{label:'Regista',color:'#d8ba78'},true),item('badge','Stella del club',{emoji:'★'}),item('squares','Tabellino',{correct:'●',wrong:'×',unused:'○'}),item('celebration','Il traguardo',{effect:'none'})];
+  const defaults = Object.entries(appearanceFixtures.default.equipped!).map(([kind,id]) => ({
+    ...item(kind as ShopCosmeticItem['kind'], ({theme:'Notturno',frame:'Senza cornice',title:'Senza titolo',badge:'Senza distintivo',squares:'Classici',number:'Senza numero',celebration:'Nessun effetto',card:'Figurina classica'} as Record<string,string>)[kind]!, {}, true),
+    id:id!, price:0, full_price:0, free:true, featured:false, equipped:true,
+  }));
   return {view:'catalog',status:'ready',kindFilter:'all',priceFilter:'all',hideOwned:false,preview:null,buying:false,deliveryStatus:'idle',buyingItemId:null,equippingItemId:null,lookMutation:null,historyStatus:'ready',
     history:{purchases:[{name:'Fascia da capitano',day:'10/09/2026',stars:25,refunded:false,charge_id:'review-example'}],support_url:''},
-    catalogue:{sections:items.map(i=>({kind:i.kind as 'frame',items:[i]})),bundles:[],showcase:{week:'2026-W37',items:items.slice(0,3)},equipped:{},owned:items.filter(i=>i.owned).map(i=>i.id),looks:[{name:'La domenica',equipped:{}}]}};
+    catalogue:{sections:items.map(i=>({kind:i.kind as 'frame',items:[defaults.find(d=>d.kind===i.kind)!,i]})),bundles:[],showcase:{week:'2026-W37',items:items.slice(0,3)},equipped:{...appearanceFixtures.default.equipped},owned:[...defaults,...items.filter(i=>i.owned)].map(i=>i.id),looks:[{name:'La domenica',equipped:{...appearanceFixtures.default.equipped}}]}};
 }
 export function referralFixture(): ReferralState {
   return {status:'ready',loadingMore:false,refreshing:false,selectedRewardTarget:null,equippingItemId:null,toast:null,errorNotice:null,

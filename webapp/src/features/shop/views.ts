@@ -1,3 +1,4 @@
+import { renderStyleInventory } from "@/components/StyleInventory";
 import { escapeHtml, weekNumber } from "@/utils/format";
 import { t, getLanguage } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
@@ -264,8 +265,10 @@ export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string
           : ""
       }
     `;
-  } else if (item.owned) {
+  } else if (item.owned && item.equippable) {
     actionHtml = `<button type="button" class="btn ghost small" data-equip="${escapeHtml(item.id)}" ${equipDisabled}>${escapeHtml(t("shop.wear"))}</button>`;
+  } else if (item.owned) {
+    actionHtml = `<span class="tag owned-tag">${escapeHtml(t("shop.owned"))}</span>`;
   } else if (item.achievement) {
     actionHtml = `
       <div class="shop-note">${escapeHtml(t("shop.earn"))} · ${item.progress}/${item.achievement.target}</div>
@@ -306,7 +309,7 @@ export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string
         ${previewTrigger}
       </div>
       <div class="shop-product-head">
-        <span class="shop-product-kind">${escapeHtml(kindLabel)}${item.featured ? " / 05" : ""}</span>
+        <span class="shop-product-kind">${escapeHtml(kindLabel)}</span>
         <h3 class="nm">${escapeHtml(item.name)}</h3>
       </div>
       <div class="ds">
@@ -449,11 +452,12 @@ export function renderPreviewBar(state: ShopState): string {
   const squaresStr = (worn.squares?.wrong || "🟥") + (worn.squares?.correct || "🟩") + (worn.squares?.unused || "⬜");
 
   return `
-    <aside class="preview-bar" aria-label="${escapeHtml(t("shop.previewTrying"))}">
+    <aside class="preview-bar" tabindex="-1" aria-label="${escapeHtml(t("shop.previewTrying"))}">
       <div class="preview-bar-head">
         <b>${escapeHtml(t("shop.previewTrying"))} · ${escapeHtml(item.name)}</b>
         <button type="button" class="btn ghost small" id="shop-stop-preview">${escapeHtml(t("shop.stopPreview"))}</button>
       </div>
+      <div class="preview-layout">
       <div class="preview-profile" ${profileSurfaceAttributes(worn)}>
       <p class="eyebrow">${escapeHtml(t('profile.title'))}</p>
       <div class="preview-person">
@@ -467,11 +471,14 @@ export function renderPreviewBar(state: ShopState): string {
           <div class="preview-squares">${escapeHtml(squaresStr)}</div>
         </div>
       </div>
-      <div class="preview-item-detail">${shopArtwork(item)}</div>
       </div>
-      ${item.owned && item.equippable ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${item.equipped || state.equippingItemId ? 'disabled' : ''}>${escapeHtml(t(item.equipped ? 'shop.worn' : 'shop.wear'))}</button>` : ''}
+      <div class="preview-product">
+      <div class="preview-item-detail">${shopArtwork(item)}</div>
+      <h3 class="section-heading">${escapeHtml(item.name)}</h3>
+      ${item.owned && item.equippable ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${item.equipped || state.equippingItemId || state.lookMutation ? 'disabled' : ''}>${escapeHtml(t(item.equipped ? 'shop.worn' : 'shop.wear'))}</button>` : ''}
       <p class="preview-description">${escapeHtml(item.description)}</p>
       <p class="shop-note">${escapeHtml(t("shop.previewHint"))}</p>
+      </div></div>
     </aside>
   `;
 }
@@ -709,6 +716,7 @@ export function renderShopPage(state: ShopState): string {
       ${deliveryBanner}
       ${introHtml}
       ${tabsHtml}
+      ${state.view === 'wardrobe' ? renderStyleInventory([], state.catalogue!.sections.flatMap(section => section.items).filter(item => item.owned), state.catalogue!.equipped) : ''}
       ${savedLooksHtml}
       ${showcaseHtml}
       ${filtersHtml}

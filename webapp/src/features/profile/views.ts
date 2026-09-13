@@ -1,3 +1,4 @@
+import { renderStyleInventory } from "@/components/StyleInventory";
 import { renderAvatar } from "@/components/Avatar";
 import { renderStatTile } from "@/components/StatTile";
 import { renderLoadingState } from "@/components/LoadingState";
@@ -422,6 +423,8 @@ export function renderProfileView(state: ProfileState): string {
         </div>
         ${cabinetOpenAction}
       </div>
+
+      ${renderStyleInventory([], profile.wardrobe, profile.cosmetics.equipped)}
 
       <!-- Mode Handoffs: Shop & Referral -->
       <div class="profile-actions mt-3">

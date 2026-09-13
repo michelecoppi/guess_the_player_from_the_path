@@ -89,6 +89,7 @@ export interface ApiLeague {
 }
 
 export interface ApiPublicProfileItem {
+  id?: string;
   kind: string;
   name: string;
 }
@@ -98,6 +99,7 @@ export interface ApiPublicProfileResponse {
   cosmetics: ApiCosmetics;
   trophies: unknown[];
   wearing: ApiPublicProfileItem[];
+  wardrobe?: ApiPublicProfileItem[];
   [key: string]: unknown;
 }
 

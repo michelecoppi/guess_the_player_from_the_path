@@ -40,6 +40,7 @@ export interface ProfileTrophies {
 }
 
 export interface ProfileData {
+  wardrobe?: import("@/api/types").ApiPublicProfileItem[];
   language: string;
   user: ProfileUserSummary;
   cosmetics: ResolvedAppearance;

@@ -60,6 +60,7 @@ export function attachShopEventListeners(
       const id = btn.dataset.try;
       if (id) {
         controller.startPreview(id);
+        root.querySelector<HTMLElement>(".preview-bar")?.focus({ preventScroll: true });
         window.scrollTo?.({ top: 0, behavior: "instant" as ScrollBehavior });
       }
     });
