@@ -1410,6 +1410,12 @@ def test_source_wrong_retry_with_explicit_source_uses_real_adapter(temp_env, mon
     assert called_with == ["Q9999"], "WikidataAdapter.fetch_player must be called with the explicit source_id"
 
     after_retry = repo.get_by_id("cand_sw_e2e")
+    # Active source identity updated to successful retry source
+    assert after_retry.source == "wikidata"
+    assert after_retry.source_id == "Q9999"
+    assert res_retry.projection.source == "wikidata"
+    assert res_retry.projection.source_id == "Q9999"
+    assert res_retry.projection.has_source_conflicts is False
     # Wikidata player name applied
     assert after_retry.full_name == "Wikidata Correct Name"
     # Both observations still present in provenance (auditable)
@@ -1566,4 +1572,244 @@ def test_trusted_sources_conflict_remains_blocking_after_source_wrong(temp_env):
     assert res_approve.success is False
     assert res_approve.status == ReviewStatus.UNRESOLVED_CONFLICT
     assert "full_name" in res_approve.conflicts
+
+
+def test_review_projection_conflict_status_uses_review_aware_policy():
+    """Projection conflict status uses review-aware conflict policy, excluding SOURCE_WRONG.
+
+    - Wikipedia X + Wikidata Y with neither rejected:
+      projection.has_source_conflicts == True
+    - Wikipedia X + Wikidata Y with Wikipedia entity marked SOURCE_WRONG:
+      projection.has_source_conflicts == False
+      Both observations remain visible in field_observations.
+    """
+    from services.candidate_review import build_review_projection
+
+    cand = create_sample_candidate("cand_proj_test", "Entity X", state=CandidateState.READY)
+    cand.source = "wikipedia"
+    cand.source_id = "Entity_X"
+    cand.record_observation(
+        field_path="full_name",
+        source="wikipedia",
+        source_id="Entity_X",
+        raw_value="Entity X",
+    )
+    cand.record_observation(
+        field_path="full_name",
+        source="wikidata",
+        source_id="Q9999",
+        raw_value="Entity Y",
+    )
+
+    # 1. Neither rejected → projection.has_source_conflicts == True
+    proj_unfiltered = build_review_projection(cand, [])
+    assert proj_unfiltered.has_source_conflicts is True
+    assert len(proj_unfiltered.field_observations["full_name"]) == 2
+
+    # 2. Wikipedia entity marked SOURCE_WRONG → projection.has_source_conflicts == False
+    cand.metadata.setdefault("unreliable_sources", []).append({
+        "source": "wikipedia",
+        "source_id": "Entity_X",
+        "reason": "Wrong entity matched",
+        "marked_at": "2026-01-01T00:00:00Z",
+        "marked_by": 100,
+    })
+    proj_filtered = build_review_projection(cand, [])
+    assert proj_filtered.has_source_conflicts is False
+
+    # Both observations must still remain visible in field_observations
+    obs_list = proj_filtered.field_observations["full_name"]
+    assert len(obs_list) == 2
+    sources = {obs["source"] for obs in obs_list}
+    assert sources == {"wikipedia", "wikidata"}
+    values = {obs["raw_value"] for obs in obs_list}
+    assert values == {"Entity X", "Entity Y"}
+
+
+def test_successful_alternative_source_retry_updates_active_source_identity(temp_env, monkeypatch):
+    """Wikipedia source marked wrong → explicit Wikidata retry succeeds:
+
+    - Candidate.source == "wikidata"
+    - Candidate.source_id == "Q9999"
+    - projection.source and projection.source_id match
+    - Old Wikipedia provenance still exists
+    - SOURCE_WRONG history still exists
+    """
+    from services.adapters.base import AdapterResult, CareerEntry
+    from services.adapters.wikidata import WikidataAdapter
+
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    cand = create_sample_candidate(
+        "cand_active_src",
+        "Wrong Wiki Name",
+        state=CandidateState.READY,
+        source="wikipedia",
+    )
+    cand.source_id = "Wrong_Wikipedia_Page"
+    cand.record_observation(
+        field_path="full_name",
+        source="wikipedia",
+        source_id="Wrong_Wikipedia_Page",
+        raw_value="Wrong Wiki Name",
+    )
+    repo.save(cand)
+    rev1 = repo.get_by_id("cand_active_src").revision
+
+    # Mark wikipedia source wrong
+    res_sw = service.mark_source_wrong(
+        admin,
+        "cand_active_src",
+        expected_revision=rev1,
+        source="wikipedia",
+        source_id="Wrong_Wikipedia_Page",
+        reason="Vandalized page",
+    )
+    assert res_sw.success is True
+    rev2 = repo.get_by_id("cand_active_src").revision
+
+    # Monkeypatch WikidataAdapter
+    def mock_fetch(self: Any, identifier: str) -> AdapterResult:
+        return AdapterResult(
+            source_name="wikidata",
+            source_id=identifier,
+            success=True,
+            player_name="Recovered Wikidata Name",
+            nationality="Italia",
+            birth_year=1990,
+            position="Difensore",
+            career=[
+                CareerEntry(team="Milan", country="Italia", league="Serie A", start_year=2010, end_year=2020),
+            ],
+        )
+
+    monkeypatch.setattr(WikidataAdapter, "fetch_player", mock_fetch)
+
+    # Explicit Wikidata retry
+    res_retry = service.retry_ingestion(
+        admin,
+        "cand_active_src",
+        expected_revision=rev2,
+        retry_source="wikidata",
+        retry_source_id="Q9999",
+    )
+    assert res_retry.success is True
+
+    candidate_after = repo.get_by_id("cand_active_src")
+    assert candidate_after.source == "wikidata"
+    assert candidate_after.source_id == "Q9999"
+    assert res_retry.projection.source == "wikidata"
+    assert res_retry.projection.source_id == "Q9999"
+    assert res_retry.projection.has_source_conflicts is False
+
+    # Old Wikipedia provenance still exists
+    fp = candidate_after.provenance.get_provenance_for_path("full_name")
+    assert fp is not None
+    assert fp.get_observation("wikipedia") is not None
+    assert fp.get_observation("wikidata") is not None
+    assert fp.get_observation("wikipedia").raw_value == "Wrong Wiki Name"
+    assert fp.get_observation("wikidata").raw_value == "Recovered Wikidata Name"
+
+    # SOURCE_WRONG history still exists
+    history = candidate_after.metadata.get("review_events", [])
+    actions = [h["action"] for h in history]
+    assert ReviewAction.SOURCE_WRONG.value in actions
+    assert ReviewAction.RETRY.value in actions
+    unreliable = candidate_after.metadata.get("unreliable_sources", [])
+    assert any(u.get("source") == "wikipedia" and u.get("source_id") == "Wrong_Wikipedia_Page" for u in unreliable)
+
+
+def test_retry_without_override_after_recovery_resolves_updated_source(temp_env, monkeypatch):
+    """After successful Wikidata recovery, retry_ingestion() with no override resolves Wikidata, NOT rejected Wikipedia."""
+    from services.adapters.base import AdapterResult, CareerEntry
+    from services.adapters.wikidata import WikidataAdapter
+    from services.adapters.wikipedia import WikipediaAdapter
+
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    cand = create_sample_candidate(
+        "cand_no_override",
+        "Wrong Wiki Name",
+        state=CandidateState.READY,
+        source="wikipedia",
+    )
+    cand.source_id = "Wrong_Wiki_Page"
+    cand.record_observation(
+        field_path="full_name",
+        source="wikipedia",
+        source_id="Wrong_Wiki_Page",
+        raw_value="Wrong Wiki Name",
+    )
+    repo.save(cand)
+    rev1 = repo.get_by_id("cand_no_override").revision
+
+    # Mark wikipedia wrong
+    res_sw = service.mark_source_wrong(
+        admin,
+        "cand_no_override",
+        expected_revision=rev1,
+        source="wikipedia",
+        source_id="Wrong_Wiki_Page",
+        reason="Vandalized",
+    )
+    assert res_sw.success is True
+
+    # Track adapter calls
+    wiki_calls: list[str] = []
+    wikidata_calls: list[str] = []
+
+    def mock_wiki(self: Any, identifier: str) -> AdapterResult:
+        wiki_calls.append(identifier)
+        return AdapterResult(source_name="wikipedia", source_id=identifier, success=True, player_name="Should Not Call Wiki")
+
+    def mock_wikidata(self: Any, identifier: str) -> AdapterResult:
+        wikidata_calls.append(identifier)
+        return AdapterResult(
+            source_name="wikidata",
+            source_id=identifier,
+            success=True,
+            player_name="Legitimate Wikidata Name",
+            nationality="Italia",
+            birth_year=1991,
+            position="Attaccante",
+            career=[
+                CareerEntry(team="Inter", country="Italia", league="Serie A", start_year=2011, end_year=2021),
+            ],
+        )
+
+    monkeypatch.setattr(WikipediaAdapter, "fetch_player", mock_wiki)
+    monkeypatch.setattr(WikidataAdapter, "fetch_player", mock_wikidata)
+
+    # 1. Recovery with explicit retry_source="wikidata", retry_source_id="Q9999"
+    rev2 = repo.get_by_id("cand_no_override").revision
+    res1 = service.retry_ingestion(
+        admin,
+        "cand_no_override",
+        expected_revision=rev2,
+        retry_source="wikidata",
+        retry_source_id="Q9999",
+    )
+    assert res1.success is True
+    assert wikidata_calls == ["Q9999"]
+    assert wiki_calls == []
+
+    # 2. Subsequent retry with NO override (retry_source=None)
+    rev3 = repo.get_by_id("cand_no_override").revision
+    res2 = service.retry_ingestion(
+        admin,
+        "cand_no_override",
+        expected_revision=rev3,
+        # retry_source and retry_source_id deliberately omitted
+    )
+    assert res2.success is True
+    # Proves it resolved Wikidata (now the active source), NOT the rejected Wikipedia source
+    assert wikidata_calls == ["Q9999", "Q9999"]
+    assert wiki_calls == [], "Rejected Wikipedia adapter must never be invoked"
+    assert res2.projection.source == "wikidata"
+    assert res2.projection.source_id == "Q9999"
+
 

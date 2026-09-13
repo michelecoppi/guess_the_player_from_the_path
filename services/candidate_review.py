@@ -487,7 +487,6 @@ def build_review_projection(
 ) -> ReviewCandidateProjection:
     """Costruisce una vista strutturata, sicura e priva di dati grezzi non sanitizzati."""
     field_observations: dict[str, list[dict[str, Any]]] = {}
-    has_conflicts = False
 
     if candidate.provenance:
         fields_dict = getattr(candidate.provenance, "fields", {}) if not isinstance(candidate.provenance, dict) else candidate.provenance
@@ -504,8 +503,9 @@ def build_review_projection(
                 }
                 obs_list.append(obs_dict)
             field_observations[path] = obs_list
-            if hasattr(fp, "has_conflict") and fp.has_conflict():
-                has_conflicts = True
+
+    # Review-aware conflict policy: only unresolved BLOCKING conflicts among trusted sources
+    has_conflicts = bool(get_candidate_provenance_conflicts(candidate))
 
     raw_findings = candidate.metadata.get("validation_findings", [])
     findings_list: list[dict[str, Any]] = copy.deepcopy(raw_findings) if isinstance(raw_findings, list) else []
@@ -1615,19 +1615,25 @@ class CandidateReviewService:
             actor=f"admin:{admin.user_id}:retry",
         )
 
+        # Update active source identity to the successful source (#15 consistency fix)
+        res_source = getattr(adapter_result, "source_name", None) or effective_source
+        res_source_id = getattr(adapter_result, "source_id", None) or effective_source_id
+        candidate.source = str(res_source).strip().lower()
+        candidate.source_id = str(res_source_id).strip()
+
         audit_event: dict[str, Any] = {
             "action": ReviewAction.RETRY.value,
             "actor": admin.user_id,
             "timestamp": _now_utc_iso(),
-            "retry_source": effective_source,
-            "retry_source_id": effective_source_id,
+            "retry_source": candidate.source,
+            "retry_source_id": candidate.source_id,
             "resulting_state": candidate.status.value,
             "revision": candidate.revision,
         }
         candidate.metadata.setdefault("review_events", []).append(audit_event)
         # Track which source was used for the latest retry for easy inspection
-        candidate.metadata["last_retry_source"] = effective_source
-        candidate.metadata["last_retry_source_id"] = effective_source_id
+        candidate.metadata["last_retry_source"] = candidate.source
+        candidate.metadata["last_retry_source_id"] = candidate.source_id
 
         saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
         if not saved:
