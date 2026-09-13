@@ -247,6 +247,7 @@ class CandidatePlayer:
     source: str
     source_id: str
     _status: CandidateState
+    _revision: int
     created_at: str
     updated_at: str
     last_transition_at: Optional[str]
@@ -284,6 +285,7 @@ class CandidatePlayer:
         source_id: str,
         *,
         _status: CandidateState = CandidateState.DISCOVERED,
+        revision: int = 1,
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
         last_transition_at: Optional[str] = None,
@@ -318,6 +320,7 @@ class CandidatePlayer:
         if isinstance(_status, str):
             _status = CandidateState(_status)
         self._status = _status
+        self._revision = max(1, int(revision))
 
         now = _now_utc_iso()
         self.created_at = created_at or now
@@ -352,11 +355,26 @@ class CandidatePlayer:
         """Stato corrente del candidato nel ciclo di vita (in sola lettura)."""
         return self._status
 
+    @property
+    def revision(self) -> int:
+        """Versione / token di revisione per optimistic concurrency (in sola lettura)."""
+        return self._revision
+
+    def bump_revision(self) -> int:
+        """Incrementa la revisione di concorrenza del candidato."""
+        self._revision += 1
+        self.updated_at = _now_utc_iso()
+        return self._revision
+
     def __setattr__(self, name: str, value: Any) -> None:
         if name == "status":
             raise AttributeError(
                 "Lo stato del candidato non puo' essere modificato direttamente: "
                 "utilizzare candidate.transition_to() per eseguire una transizione validata."
+            )
+        if name == "revision":
+            raise AttributeError(
+                "La revisione del candidato non puo' essere modificata direttamente."
             )
         super().__setattr__(name, value)
 
@@ -377,7 +395,7 @@ class CandidatePlayer:
         actor: Optional[str] = None,
         metadata: Optional[dict[str, Any]] = None,
     ) -> StateTransitionRecord:
-        """Esegue la transizione verso il nuovo stato, aggiornando timestamp e cronologia.
+        """Esegue la transizione verso il nuovo stato, aggiornando timestamp, cronologia e revisione.
 
         Solleva InvalidStateTransitionError se la transizione non e' consentita dal grafo.
         """
@@ -404,6 +422,7 @@ class CandidatePlayer:
 
         self.state_history.append(record)
         self._status = target_state
+        self._revision += 1
         self.last_transition_at = now
         self.updated_at = now
         return record
@@ -430,18 +449,21 @@ class CandidatePlayer:
         self.last_error = err
         if retryable and increment_retry_count:
             self.retry_count += 1
+        self._revision += 1
         self.updated_at = now
         return err
 
     def increment_retry(self) -> int:
         """Incrementa il conteggio dei tentativi e aggiorna updated_at."""
         self.retry_count += 1
+        self._revision += 1
         self.updated_at = _now_utc_iso()
         return self.retry_count
 
     def reset_retries(self) -> None:
         """Azzera il contatore dei tentativi."""
         self.retry_count = 0
+        self._revision += 1
         self.updated_at = _now_utc_iso()
 
     def can_retry(self) -> bool:
@@ -455,6 +477,7 @@ class CandidatePlayer:
             "source": self.source,
             "source_id": self.source_id,
             "status": self._status.value,
+            "revision": self._revision,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "last_transition_at": self.last_transition_at,
@@ -489,6 +512,7 @@ class CandidatePlayer:
             source=str(data["source"]),
             source_id=str(data["source_id"]),
             _status=CandidateState(data.get("status", CandidateState.DISCOVERED.value)),
+            revision=int(data.get("revision", 1)),
             created_at=str(data.get("created_at") or _now_utc_iso()),
             updated_at=str(data.get("updated_at") or _now_utc_iso()),
             last_transition_at=data.get("last_transition_at"),
