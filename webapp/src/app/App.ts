@@ -43,6 +43,8 @@ import { ArchiveController } from "@/features/archive/controller";
 import { ProfileController } from "@/features/profile/controller";
 import { ShopController } from "@/features/shop/controller";
 import { ReferralController } from "@/features/referral/controller";
+import { EventsController } from "@/features/events/controller";
+import { renderEventsPage, attachEventsEventListeners } from "@/pages/EventsPage";
 
 export class App {
   private rootElement: HTMLElement;
@@ -55,6 +57,7 @@ export class App {
   private profileController: ProfileController;
   private shopController: ShopController;
   private referralController: ReferralController;
+  private eventsController: EventsController;
   private lastArenaSubview: ArenaSubview;
 
   constructor(
@@ -67,6 +70,7 @@ export class App {
     profileController?: ProfileController,
     shopController?: ShopController,
     referralController?: ReferralController,
+    eventsController?: EventsController,
   ) {
     this.rootElement = rootElement;
     this.dailyController = dailyController || new DailyController();
@@ -78,6 +82,7 @@ export class App {
     this.profileController = profileController || new ProfileController();
     this.shopController = shopController || new ShopController();
     this.referralController = referralController || new ReferralController();
+    this.eventsController = eventsController || new EventsController();
     this.referralController.setEquipHandler((itemId: string) => {
       return this.shopController.equip(itemId);
     });
@@ -162,6 +167,12 @@ export class App {
         this.renderReferralContent();
       }
     });
+
+    this.eventsController.subscribe(() => {
+      if (this.activeTab === "events") {
+        this.renderEventsContent();
+      }
+    });
   }
 
   public getDailyController(): DailyController {
@@ -194,6 +205,10 @@ export class App {
 
   public getReferralController(): ReferralController {
     return this.referralController;
+  }
+
+  public getEventsController(): EventsController {
+    return this.eventsController;
   }
 
   public isArenaTab(tab: NavTabId): boolean {
@@ -231,6 +246,9 @@ export class App {
     if (this.activeTab === "referral") {
       void this.referralController.init();
     }
+    if (this.activeTab === "events") {
+      void this.eventsController.load();
+    }
   }
 
   public setTab(tab: NavTabId): void {
@@ -256,6 +274,8 @@ export class App {
         void this.shopController.init();
       } else if (tab === "referral") {
         void this.referralController.init();
+      } else if (tab === "events") {
+        void this.eventsController.load();
       }
 
       this.render();
@@ -267,6 +287,10 @@ export class App {
       }
       window.scrollTo?.({ top: 0 });
     }
+  }
+
+  public getActiveTab(): NavTabId {
+    return this.activeTab;
   }
 
   public setArenaSubview(subview: ArenaSubview): void {
@@ -445,6 +469,52 @@ export class App {
     }
   }
 
+  private renderEventsContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "events") {
+      const hadInputFocus =
+        typeof document !== "undefined" &&
+        document.activeElement?.id === "events-answer";
+      mainEl.innerHTML = renderEventsPage(this.eventsController);
+      attachEventsEventListeners(
+        this.rootElement,
+        this.eventsController,
+        {
+          onOpenTraining: () => {
+            this.activeTab = "arena";
+            this.arenaController.setSubview("training");
+            if (
+              !this.trainingController.getState().data &&
+              this.trainingController.getState().status === "idle"
+            ) {
+              void this.trainingController.init();
+            }
+            this.render();
+          },
+        },
+      );
+      const state = this.eventsController.getState();
+      const event = this.eventsController.selected();
+      if (
+        hadInputFocus &&
+        state.status !== "submitting" &&
+        state.status !== "loading" &&
+        event &&
+        !event.progress.finished
+      ) {
+        mainEl
+          .querySelector<HTMLInputElement>("#events-answer")
+          ?.focus({ preventScroll: true });
+      }
+      const terminalOrFeedback = this.rootElement.querySelector(
+        ".event-terminal, .feedback",
+      );
+      if (terminalOrFeedback && event?.progress.finished) {
+        terminalOrFeedback.scrollIntoView?.({ block: "nearest" });
+      }
+    }
+  }
+
   private renderReferralContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.activeTab === "referral") {
@@ -496,6 +566,9 @@ export class App {
           this.referralController.getState(),
           this.referralController.getSelectedMilestone(),
         );
+        break;
+      case "events":
+        pageHtml = renderEventsPage(this.eventsController);
         break;
       default:
         pageHtml = renderPrototype(this.activeTab);
@@ -573,6 +646,24 @@ export class App {
         this.rootElement,
         this.referralController,
         (tab) => this.setTab(tab),
+      );
+    } else if (this.activeTab === "events") {
+      attachEventsEventListeners(
+        this.rootElement,
+        this.eventsController,
+        {
+          onOpenTraining: () => {
+            this.activeTab = "arena";
+            this.arenaController.setSubview("training");
+            if (
+              !this.trainingController.getState().data &&
+              this.trainingController.getState().status === "idle"
+            ) {
+              void this.trainingController.init();
+            }
+            this.render();
+          },
+        },
       );
     }
   }
