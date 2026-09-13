@@ -171,6 +171,7 @@ export interface TranslationSchema {
     featureDesc: string;
     featureAction: string;
   };
+  events: { title:string; empty:string; emptyDesc:string; play:string; completed:string; refresh:string; back:string; points:string; bonus:string; attempts:string; score:string; leaderboard:string; leaderboardEmpty:string; unavailable:string; guess:string; submit:string; careerHint:string; fatherSonHint:string; stale:string; expired:string; finished:string; maxAnswers:string; loadError:string; synced:string; invalid:string; invalidAnswer:string; genericError:string; imageAlt:string; listLabel:string; formLabel:string; };
   training: {
     title: string;
     tag: string;
