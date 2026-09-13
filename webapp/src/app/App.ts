@@ -21,6 +21,11 @@ import {
   attachArchiveEventListeners,
 } from "@/pages/ArchivePage";
 import {
+  renderShopPage,
+  attachShopEventListeners,
+} from "@/pages/ShopPage";
+import { applyResolvedAppearance } from "@/appearance";
+import {
   initTelegram,
   getTelegramUser,
   isMockTelegramEnvironment,
@@ -33,6 +38,7 @@ import { TrainingController } from "@/features/training/controller";
 import { LeaderboardController } from "@/features/leaderboard/controller";
 import { ArchiveController } from "@/features/archive/controller";
 import { ProfileController } from "@/features/profile/controller";
+import { ShopController } from "@/features/shop/controller";
 
 export class App {
   private rootElement: HTMLElement;
@@ -43,6 +49,7 @@ export class App {
   private leaderboardController: LeaderboardController;
   private archiveController: ArchiveController;
   private profileController: ProfileController;
+  private shopController: ShopController;
   private lastArenaSubview: ArenaSubview;
 
   constructor(
@@ -53,6 +60,7 @@ export class App {
     leaderboardController?: LeaderboardController,
     archiveController?: ArchiveController,
     profileController?: ProfileController,
+    shopController?: ShopController,
   ) {
     this.rootElement = rootElement;
     this.dailyController = dailyController || new DailyController();
@@ -62,8 +70,15 @@ export class App {
       leaderboardController || new LeaderboardController();
     this.archiveController = archiveController || new ArchiveController();
     this.profileController = profileController || new ProfileController();
+    this.shopController = shopController || new ShopController();
     this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
+
+    this.shopController.onAppearanceChanged = (appearance) => {
+      applyResolvedAppearance(appearance);
+      this.profileController.syncAppearance(appearance);
+      this.dailyController.syncAppearance(appearance);
+    };
 
     this.dailyController.subscribe(() => {
       if (this.activeTab === "play") {
@@ -120,6 +135,12 @@ export class App {
         this.renderProfileContent();
       }
     });
+
+    this.shopController.subscribe(() => {
+      if (this.activeTab === "shop") {
+        this.renderShopContent();
+      }
+    });
   }
 
   public getDailyController(): DailyController {
@@ -144,6 +165,10 @@ export class App {
 
   public getProfileController(): ProfileController {
     return this.profileController;
+  }
+
+  public getShopController(): ShopController {
+    return this.shopController;
   }
 
   public isArenaTab(tab: NavTabId): boolean {
@@ -175,10 +200,16 @@ export class App {
     if (this.activeTab === "profile") {
       void this.profileController.init();
     }
+    if (this.activeTab === "shop") {
+      void this.shopController.init();
+    }
   }
 
   public setTab(tab: NavTabId): void {
     if (this.activeTab !== tab) {
+      if (this.activeTab === "shop" && tab !== "shop") {
+        this.shopController.stopPreview();
+      }
       this.activeTab = tab;
 
       if (tab === "arena") {
@@ -193,6 +224,8 @@ export class App {
         void this.archiveController.init();
       } else if (tab === "profile") {
         void this.profileController.init();
+      } else if (tab === "shop") {
+        void this.shopController.init();
       }
 
       this.render();
@@ -363,6 +396,14 @@ export class App {
     }
   }
 
+  private renderShopContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "shop") {
+      mainEl.innerHTML = renderShopPage(this.shopController.getState());
+      attachShopEventListeners(this.rootElement, this.shopController);
+    }
+  }
+
   private render(): void {
     const user = getTelegramUser();
     const isMock = isMockTelegramEnvironment();
@@ -390,6 +431,9 @@ export class App {
         break;
       case "archive":
         pageHtml = renderArchivePage(this.archiveController.getState());
+        break;
+      case "shop":
+        pageHtml = renderShopPage(this.shopController.getState());
         break;
       default:
         pageHtml = renderPrototype(this.activeTab);
@@ -456,6 +500,11 @@ export class App {
       attachProfileEventListeners(
         this.rootElement,
         this.profileController,
+      );
+    } else if (this.activeTab === "shop") {
+      attachShopEventListeners(
+        this.rootElement,
+        this.shopController,
       );
     }
   }

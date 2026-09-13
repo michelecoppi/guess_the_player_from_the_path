@@ -9,7 +9,7 @@ import {
 } from "./api";
 import { celebrate } from "./celebrate";
 import type { DailyState, DailyGuessResult, DailyCardPayload } from "./types";
-import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
+import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS, type ResolvedAppearance } from "@/appearance";
 export { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
 
 export class DailyController {
@@ -248,6 +248,12 @@ export class DailyController {
 
   public retry(): void {
     this.loadDailyData();
+  }
+
+  public syncAppearance(appearance: ResolvedAppearance): void {
+    this.state.squaresSymbols = appearanceSquares(appearance);
+    this.state.cardImage = null;
+    this.notify();
   }
 
   /** Call before logout/user replacement; also invalidates pending responses. */

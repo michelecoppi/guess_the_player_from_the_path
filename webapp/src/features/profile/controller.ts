@@ -1,6 +1,6 @@
 import { api, type ApiClient } from "@/api/client";
 import { getTelegramWebApp } from "@/telegram/webapp";
-import { applyResolvedAppearance } from "@/appearance";
+import { applyResolvedAppearance, type ResolvedAppearance } from "@/appearance";
 import { t } from "@/i18n";
 import { fetchOwnProfile, pinTrophies } from "./api";
 import type {
@@ -77,6 +77,19 @@ export class ProfileController {
    */
   public async refresh(): Promise<void> {
     return this._loadProfile(true);
+  }
+
+  /**
+   * Synchronizes newly equipped appearance directly into profile state without full reload.
+   */
+  public syncAppearance(appearance: ResolvedAppearance): void {
+    if (this.state.profile) {
+      this.state.profile = {
+        ...this.state.profile,
+        cosmetics: appearance,
+      };
+      this.notify();
+    }
   }
 
   private async _loadProfile(force = false): Promise<void> {
