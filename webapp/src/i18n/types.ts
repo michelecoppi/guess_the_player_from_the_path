@@ -268,6 +268,55 @@ export interface TranslationSchema {
     dayUnavailable: string;
     share: string;
   };
+  profile: {
+    title: string;
+    kicker: string;
+    yourNumbers: string;
+    totalPoints: string;
+    monthlyPoints: string;
+    streak: string;
+    bestStreak: string;
+    guessed: string;
+    bonusFirstGuesser: string;
+    recovered: string;
+    trophies: string;
+    distribution: string;
+    noGames: string;
+    distributionAttemptLabel: string;
+    noPinnedTrophies: string;
+    cabinet: string;
+    cabinetOpen: string;
+    cabinetTitle: string;
+    cabinetBack: string;
+    cabinetHint: string;
+    cabinetGold: string;
+    cabinetSilver: string;
+    cabinetBronze: string;
+    cabinetAll: string;
+    cabinetEvents: string;
+    cabinetMonthly: string;
+    cabinetNone: string;
+    cabinetPin: string;
+    cabinetPinned: string;
+    cabinetFilters: string;
+    filterFirstPlace: string;
+    filterSecondPlace: string;
+    filterThirdPlace: string;
+    placementFirst: string;
+    placementSecond: string;
+    placementThird: string;
+    placementOther: string;
+    noTrophies: string;
+    pinSaved: string;
+    pinFull: string;
+    errorTooMany: string;
+    errorInvalidChoice: string;
+    errorNotOwned: string;
+    errorGeneric: string;
+    customizeStyle: string;
+    inviteFriends: string;
+    inviteFriendsSub: string;
+  };
   migration: {
     badge: string;
     dailyNotice: string;
@@ -276,3 +325,4 @@ export interface TranslationSchema {
     leaderboardNotice: string;
   };
 }
+

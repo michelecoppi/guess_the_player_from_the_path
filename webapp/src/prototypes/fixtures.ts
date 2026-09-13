@@ -1,7 +1,16 @@
 import { appearanceFixtures } from "./appearance-fixtures";
 /** Design fixtures only. Never interpreted as authenticated user data. */
+export interface UserProfileData {
+  id: number;
+  name: string;
+  points: number;
+  current_streak: number;
+  best_streak: number;
+  trophies: Array<{ id: string; name: string; position: number; date: string }>;
+  cosmetics?: any;
+}
+
 import type { ArenaDuel } from "@/features/arena";
-import type { UserProfileData } from "@/features/profile";
 import type { LeaderboardRank } from "@/features/leaderboard";
 import type { ShopCosmeticItem } from "@/features/shop";
 import type { ReferralProgress } from "@/features/referral";
