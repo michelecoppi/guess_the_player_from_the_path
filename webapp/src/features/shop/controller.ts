@@ -28,6 +28,25 @@ import type {
   LookAction,
 } from "./types";
 
+export const SHOP_ERROR_KEYS: Record<string, string> = {
+  not_owned: "shop.errNotOwned",
+  already_owned: "shop.errAlreadyOwned",
+  unknown_item: "shop.errUnknownItem",
+  not_for_sale: "shop.errNotForSale",
+  not_equippable: "shop.errNotEquippable",
+  welcome_only: "shop.errWelcomeOnly",
+  price_changed: "shop.errPriceChanged",
+  look_limit: "shop.errLookLimit",
+  invalid_name: "shop.errInvalidName",
+  payment_failed: "shop.errPaymentFailed",
+  invoice_unavailable: "shop.errInvoiceUnavailable",
+} as const;
+
+export function mapShopError(status?: string | null): string {
+  const key = status ? SHOP_ERROR_KEYS[status] : undefined;
+  return t((key || "shop.errGeneric") as any);
+}
+
 export class ShopController {
   private client: ApiClient;
   private state: ShopState;
@@ -133,7 +152,8 @@ export class ShopController {
     const seq = ++this.catalogueSeq;
     this.updateState({ status: "loading", errorMessage: undefined });
 
-    const promise = (async () => {
+    let promise: Promise<void> | null = null;
+    promise = (async () => {
       try {
         const catalogue = await fetchShopCatalogue(this.client);
         if (seq !== this.catalogueSeq) return;
@@ -152,7 +172,9 @@ export class ShopController {
           errorMessage: err?.message || t("shop.loadError"),
         });
       } finally {
-        this.catalogueInFlight = null;
+        if (this.catalogueInFlight === promise) {
+          this.catalogueInFlight = null;
+        }
       }
     })();
 
@@ -249,8 +271,7 @@ export class ShopController {
 
       if (res.status !== "ok") {
         this.updateState({ equippingItemId: null });
-        const errKey = `err${res.status.charAt(0).toUpperCase() + res.status.slice(1)}`;
-        this.setToast(t(`shop.${errKey}` as any) || t("shop.errGeneric"));
+        this.setToast(mapShopError(res.status));
         return false;
       }
 
@@ -301,15 +322,7 @@ export class ShopController {
 
       if (res.status !== "ok") {
         this.updateState({ lookMutation: null });
-        if (res.status === "look_limit") {
-          this.setToast(t("shop.errLookLimit"));
-        } else if (res.status === "invalid_name") {
-          this.setToast(t("shop.errInvalidName"));
-        } else if (res.status === "not_owned") {
-          this.setToast(t("shop.errNotOwned"));
-        } else {
-          this.setToast(t("shop.errGeneric"));
-        }
+        this.setToast(mapShopError(res.status));
         return false;
       }
 
@@ -364,8 +377,7 @@ export class ShopController {
 
       if (res.status !== "ok" || !res.link) {
         this.updateState({ buying: false, buyingItemId: null });
-        const errKey = `err${(res.status || "").charAt(0).toUpperCase() + (res.status || "").slice(1)}`;
-        this.setToast(t(`shop.${errKey}` as any) || t("shop.errGeneric"));
+        this.setToast(mapShopError(res.status));
         await this._loadCatalogue(true);
         return;
       }
@@ -373,7 +385,7 @@ export class ShopController {
       const tg = getTelegramWebApp();
       if (!tg || typeof tg.openInvoice !== "function") {
         this.updateState({ buying: false, buyingItemId: null });
-        this.setToast(t("shop.errInvoiceUnavailable"));
+        this.setToast(mapShopError("invoice_unavailable"));
         return;
       }
 
@@ -382,7 +394,7 @@ export class ShopController {
 
         if (invoiceStatus !== "paid") {
           if (invoiceStatus === "failed") {
-            this.setToast(t("shop.errPaymentFailed"));
+            this.setToast(mapShopError("payment_failed"));
           }
           return;
         }
@@ -426,7 +438,8 @@ export class ShopController {
     const seq = ++this.historySeq;
     this.updateState({ historyStatus: "loading", historyError: undefined });
 
-    const promise = (async () => {
+    let promise: Promise<void> | null = null;
+    promise = (async () => {
       try {
         const history = await fetchShopHistory(this.client);
         if (seq !== this.historySeq) return;
@@ -443,7 +456,9 @@ export class ShopController {
           historyError: err?.message || t("shop.loadError"),
         });
       } finally {
-        this.historyInFlight = null;
+        if (this.historyInFlight === promise) {
+          this.historyInFlight = null;
+        }
       }
     })();
 

@@ -24,7 +24,6 @@ import {
   renderShopPage,
   attachShopEventListeners,
 } from "@/pages/ShopPage";
-import { applyResolvedAppearance } from "@/appearance";
 import {
   initTelegram,
   getTelegramUser,
@@ -75,7 +74,6 @@ export class App {
     exposeLegacyBridge();
 
     this.shopController.onAppearanceChanged = (appearance) => {
-      applyResolvedAppearance(appearance);
       this.profileController.syncAppearance(appearance);
       this.dailyController.syncAppearance(appearance);
     };

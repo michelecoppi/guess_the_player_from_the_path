@@ -2,6 +2,7 @@ import { escapeHtml, weekNumber } from "@/utils/format";
 import { t, getLanguage } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
 import { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
+import { getTelegramUser } from "@/telegram/webapp";
 import type {
   ShopState,
   ShopCosmeticItem,
@@ -30,10 +31,15 @@ const CELEBRATION_GLYPH: Record<string, string> = {
 };
 
 const SHOT_STOPS = [
-  ["2011", "Santos"],
-  ["2013", "Barcellona"],
-  ["2017", "Paris SG"],
+  ["2018", "Club A"],
+  ["2021", "Club B"],
+  ["2024", "Club C"],
 ];
+
+function previewDisplayName(): string {
+  const user = getTelegramUser();
+  return user?.first_name || t("common.anonymous");
+}
 
 export function itemMatches(
   item: ShopCosmeticItem,
@@ -80,7 +86,7 @@ function themeShot(style: Record<string, unknown>): string {
   return `
     <div class="theme-shot" aria-hidden="true" style="--shot-edge:${escapeHtml(edge)};background:${escapeHtml(bg)}">
       <div class="bar" style="color:${escapeHtml(muted)}">
-        <span>Guess the Player</span>
+        <span>${escapeHtml(t("common.appName"))}</span>
         <span style="color:${escapeHtml(accent)}">2/3</span>
       </div>
       ${SHOT_STOPS.map(
@@ -92,9 +98,9 @@ function themeShot(style: Record<string, unknown>): string {
         </div>
       `,
       ).join("")}
-      <div class="box" style="color:${escapeHtml(muted)};text-align:center">Neymar Jr</div>
+      <div class="box" style="color:${escapeHtml(muted)};text-align:center">${escapeHtml(previewDisplayName())}</div>
       <div class="cta" style="background:${escapeHtml(accent)};color:${escapeHtml(accentText)}">
-        Indovina
+        ${escapeHtml(t("daily.guessBtn"))}
       </div>
     </div>
   `;
@@ -121,8 +127,8 @@ function shopArtwork(item: ShopCosmeticItem): string {
     const ring = typeof style.ring === "string" ? `background:${style.ring}` : undefined;
     return `
       <div class="shop-stage">
-        ${renderAvatar({ name: "Player", ringStyle: ring, spinRing: false })}
-        <div class="preview-name">Player</div>
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+        <div class="preview-name">${escapeHtml(previewDisplayName())}</div>
         ${caption}
       </div>
     `;
@@ -132,7 +138,7 @@ function shopArtwork(item: ShopCosmeticItem): string {
     return `
       <div class="shop-stage">
         <div class="emoji-preview">${escapeHtml((style.emoji as string) || "—")}</div>
-        <div class="preview-name">Player ${escapeHtml((style.emoji as string) || "")}</div>
+        <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml((style.emoji as string) || "")}</div>
         ${caption}
       </div>
     `;
@@ -145,7 +151,7 @@ function shopArtwork(item: ShopCosmeticItem): string {
     return `
       <div class="shop-stage">
         ${caption}
-        <div class="preview-name">Guess the Player · 2/3</div>
+        <div class="preview-name">${escapeHtml(t("common.appName"))} · 2/3</div>
         <div class="emoji-preview">${escapeHtml(wrong + correct + unused)}</div>
       </div>
     `;
@@ -156,7 +162,7 @@ function shopArtwork(item: ShopCosmeticItem): string {
     const color = (style.color as string) || "var(--muted)";
     return `
       <div class="shop-stage">
-        <div class="preview-name">Player</div>
+        <div class="preview-name">${escapeHtml(previewDisplayName())}</div>
         <div class="title-tag" style="color:${escapeHtml(color)}">${escapeHtml(label)}</div>
         ${caption}
       </div>
@@ -171,7 +177,7 @@ function shopArtwork(item: ShopCosmeticItem): string {
         <div class="emoji-preview number-glyph">${escapeHtml(num)}</div>
         <div class="preview-name">
           <span class="shirt">${escapeHtml(num)}</span>
-          Player
+          ${escapeHtml(previewDisplayName())}
         </div>
       </div>
     `;
@@ -228,8 +234,8 @@ function shopArtwork(item: ShopCosmeticItem): string {
     return `
       <div class="shop-stage" style="background-color:${escapeHtml(bg)};background-image:${escapeHtml(pattern)};color:${escapeHtml(text)}">
         ${caption}
-        ${renderAvatar({ name: "Player", ringStyle: ring, spinRing: false })}
-        <div class="preview-name">Player ${escapeHtml(badgeEmoji)}</div>
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+        <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml(badgeEmoji)}</div>
         ${titleLabel ? `<div class="title-tag" style="color:${escapeHtml(titleColor)}">${escapeHtml(titleLabel)}</div>` : ""}
         ${correct ? `<div class="emoji-preview">${escapeHtml(wrong + correct + unused)}</div>` : ""}
       </div>
@@ -364,7 +370,7 @@ export function renderSavedLooks(state: ShopState): string {
       <div class="saved-looks-list">
         ${
           looks.length === 0
-            ? `<p class="muted looks-empty">${escapeHtml(t("common.anonymous"))}</p>`
+            ? `<p class="muted looks-empty">${escapeHtml(t("shop.noSavedLooks"))}</p>`
             : looks
                 .map(
                   (look) => `
@@ -444,11 +450,11 @@ export function renderPreviewBar(state: ShopState): string {
         <button type="button" class="btn ghost small" id="shop-stop-preview">${escapeHtml(t("shop.stopPreview"))}</button>
       </div>
       <div class="preview-person">
-        ${renderAvatar({ name: "Player", ringStyle: ring, spinRing: false, size: "small" })}
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, size: "small" })}
         <div class="preview-meta">
           <div class="preview-identity">
             ${worn.number ? `<span class="shirt">${escapeHtml(worn.number)}</span>` : ""}
-            <span>Player ${escapeHtml(worn.badge || "")}</span>
+            <span>${escapeHtml(previewDisplayName())} ${escapeHtml(worn.badge || "")}</span>
           </div>
           ${titleTag}
           <div class="preview-squares">${escapeHtml(squaresStr)}</div>
@@ -668,7 +674,7 @@ export function renderShopPage(state: ShopState): string {
   const shortcutsHtml =
     featuredCollections.length > 0 || shortcutKinds.length > 0
       ? `
-    <div class="shop-shortcuts" aria-label="Navigazione rapida sezioni">
+    <div class="shop-shortcuts" aria-label="${escapeHtml(t("shop.shortcutsNav"))}">
       ${featuredCollections.length > 0 ? `<a href="#shelf-collections">${escapeHtml(t("shop.sectionCollectionsNav"))}</a>` : ""}
       ${shortcutKinds
         .map((k) => {

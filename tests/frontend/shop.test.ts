@@ -2,25 +2,28 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { ShopController } from "../../webapp/src/features/shop/controller";
+import { ShopController, mapShopError, SHOP_ERROR_KEYS } from "../../webapp/src/features/shop/controller";
 import {
   renderShopPage,
   attachShopEventListeners,
 } from "../../webapp/src/pages/ShopPage";
+import { renderProfilePage } from "../../webapp/src/pages/ProfilePage";
 import {
   setupGlobalDom,
   setupTestTelegram,
   captureFetchRequests,
   createTestFullProfile,
+  createTestDailyChallenge,
 } from "./helpers";
 import {
   applyResolvedAppearance,
   getResolvedAppearance,
   clearResolvedAppearance,
+  resultAppearance,
   type ResolvedAppearance,
 } from "../../webapp/src/appearance";
 import { App } from "../../webapp/src/app/App";
-import { setLanguage } from "../../webapp/src/i18n";
+import { setLanguage, t } from "../../webapp/src/i18n";
 import type {
   ShopCatalogueResponse,
   ShopCosmeticItem,
@@ -1030,3 +1033,561 @@ test("87 to 95. Legacy /app untouched, no shop prototype in runtime", async () =
     restoreTg();
   }
 });
+
+// ---------------------------------------------------------------------------
+// 96 to 103. Final Race Conditions, Deduplication & Localization Regressions
+// ---------------------------------------------------------------------------
+
+test("96. Race condition: pending Daily /me -> Shop equip -> stale Daily response keeps new appearance and valid challenge", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  clearResolvedAppearance();
+
+  let resolveDailyMe: ((data: any) => void) | null = null;
+  const dailyMePromise = new Promise((resolve) => {
+    resolveDailyMe = resolve;
+  });
+
+  const oldCosmetics = {
+    theme: { accent: "#111111" },
+    badge: "⚽",
+    squares: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+  };
+
+  const newCosmetics = {
+    theme: { accent: "#38bd82" },
+    badge: "🔥",
+    squares: { correct: "⭐", wrong: "❌", unused: "⚪" },
+    celebration: "confetti",
+    frame: { ring: "gold", spin: false },
+    title: { label: "Champ", color: "#ffd700" },
+    number: "10",
+  };
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+
+    if (url.includes("/app/api/me")) {
+      return dailyMePromise.then((data) => new Response(JSON.stringify(data)));
+    }
+    if (url.includes("/app/api/shop/equip")) {
+      return new Response(JSON.stringify({ status: "ok", cosmetics: newCosmetics }));
+    }
+    if (url.includes("/app/api/shop")) {
+      return new Response(JSON.stringify(createMockShopCatalogue()));
+    }
+    return new Response(JSON.stringify({}));
+  }) as typeof fetch;
+
+  try {
+    const app = new App(container);
+    const dailyController = app.getDailyController();
+    const shopController = app.getShopController();
+
+    // 1. Daily /me starts and is pending
+    const dailyInitPromise = dailyController.init();
+
+    // 2. User opens shop and equips new item
+    const equipSuccess = await shopController.equip("badge_fire");
+    assert.equal(equipSuccess, true);
+
+    // Verify global appearance is already new
+    assert.equal(getResolvedAppearance().badge, "🔥");
+    assert.equal(dailyController.getState().squaresSymbols.correct, "⭐");
+
+    // 3. Stale Daily /me resolves with old cosmetics
+    resolveDailyMe!({
+      user: { name: "Champion", streak: 7 },
+      today: createTestDailyChallenge({ attempts_left: 3, attempts_used: 1 }),
+      cosmetics: oldCosmetics,
+    });
+    await dailyInitPromise;
+
+    // 4. Assert: Final global appearance = NEW
+    assert.equal(getResolvedAppearance().badge, "🔥");
+    assert.equal(getResolvedAppearance().title?.label, "Champ");
+    assert.equal(getResolvedAppearance().number, "10");
+
+    // 5. Daily squares = NEW, celebration = NEW, card = invalidated
+    assert.equal(dailyController.getState().squaresSymbols.correct, "⭐");
+    assert.equal(dailyController.getState().squaresSymbols.wrong, "❌");
+    assert.equal(dailyController.getState().cardImage, null);
+    assert.equal(resultAppearance(getResolvedAppearance()).celebration, "confetti");
+
+    // 6. Daily challenge remains valid
+    assert.equal(dailyController.getState().status, "ready");
+    assert.equal(dailyController.getState().challenge?.attempts_left, 3);
+    assert.equal(dailyController.getState().user?.name, "Champion");
+  } finally {
+    globalThis.fetch = originalFetch;
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("97. Race condition: pending Profile /me -> Shop equip -> stale Profile response keeps new appearance", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  clearResolvedAppearance();
+
+  let resolveProfileMe: ((data: any) => void) | null = null;
+  const profileMePromise = new Promise((resolve) => {
+    resolveProfileMe = resolve;
+  });
+
+  const oldCosmetics = {
+    badge: "⚽",
+    number: "1",
+    title: { label: "Rookie", color: "#888888" },
+    frame: { ring: "bronze", spin: false },
+  };
+
+  const newCosmetics = {
+    badge: "🏆",
+    number: "9",
+    title: { label: "Legend", color: "#ffd700" },
+    frame: { ring: "gold", spin: true },
+  };
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+
+    if (url.includes("/app/api/me")) {
+      return profileMePromise.then((data) => new Response(JSON.stringify(data)));
+    }
+    if (url.includes("/app/api/shop/equip")) {
+      return new Response(JSON.stringify({ status: "ok", cosmetics: newCosmetics }));
+    }
+    if (url.includes("/app/api/shop")) {
+      return new Response(JSON.stringify(createMockShopCatalogue()));
+    }
+    return new Response(JSON.stringify({}));
+  }) as typeof fetch;
+
+  try {
+    const app = new App(container);
+    const profileController = app.getProfileController();
+    const shopController = app.getShopController();
+
+    // 1. Profile /me starts and is pending
+    const profileInitPromise = profileController.init();
+
+    // 2. User equips B in shop
+    const equipSuccess = await shopController.equip("badge_trophy");
+    assert.equal(equipSuccess, true);
+
+    // 3. Stale Profile /me resolves with old cosmetics
+    const fullProfile = createTestFullProfile({
+      user: { name: "ProPlayer", username: "pro" } as any,
+      cosmetics: oldCosmetics as any,
+    });
+    resolveProfileMe!(fullProfile);
+    await profileInitPromise;
+
+    // 4. Assert: Profile state retains NEW cosmetics
+    const state = profileController.getState();
+    assert.equal(state.status, "ready");
+    assert.equal(state.profile?.cosmetics?.badge, "🏆");
+    assert.equal(state.profile?.cosmetics?.number, "9");
+    assert.equal(state.profile?.cosmetics?.title?.label, "Legend");
+    assert.equal(getResolvedAppearance().badge, "🏆");
+
+    // 5. Rendered profile displays new frame/title/badge/number
+    container.innerHTML = renderProfilePage(state);
+    assert.ok(container.textContent?.includes("Legend"));
+    assert.ok(container.innerHTML.includes('<span class="shirt">9</span>'));
+    assert.ok(container.textContent?.includes("🏆"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("98. Race condition: pending Daily /me -> saved Look wear -> stale Daily response keeps new look appearance", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  clearResolvedAppearance();
+
+  let resolveDailyMe: ((data: any) => void) | null = null;
+  const dailyMePromise = new Promise((resolve) => {
+    resolveDailyMe = resolve;
+  });
+
+  const oldCosmetics = {
+    badge: "⚽",
+    squares: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+  };
+
+  const wornLookCosmetics = {
+    badge: "⚡",
+    squares: { correct: "🎯", wrong: "💥", unused: "🔘" },
+    celebration: "fireworks",
+  };
+
+  let dailyMeCallCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+
+    if (url.includes("/app/api/me")) {
+      dailyMeCallCount++;
+      if (dailyMeCallCount === 1) {
+        return dailyMePromise.then((data) => new Response(JSON.stringify(data)));
+      }
+      return new Response(
+        JSON.stringify(
+          createTestFullProfile({
+            cosmetics: wornLookCosmetics as any,
+          }),
+        ),
+      );
+    }
+    if (url.includes("/app/api/shop/look")) {
+      return new Response(JSON.stringify({ status: "ok" }));
+    }
+    if (url.includes("/app/api/shop")) {
+      return new Response(JSON.stringify(createMockShopCatalogue()));
+    }
+    return new Response(JSON.stringify({}));
+  }) as typeof fetch;
+
+  try {
+    const app = new App(container);
+    const dailyController = app.getDailyController();
+    const shopController = app.getShopController();
+
+    // 1. Daily /me starts and is pending
+    const dailyInitPromise = dailyController.init();
+
+    // 2. User wears saved look in shop
+    const wearSuccess = await shopController.lookAction("wear", "Neon Blitz");
+    assert.equal(wearSuccess, true);
+    assert.equal(getResolvedAppearance().badge, "⚡");
+
+    // 3. Stale Daily /me resolves
+    resolveDailyMe!({
+      user: { name: "LookWearer", streak: 3 },
+      today: createTestDailyChallenge({ attempts_left: 2 }),
+      cosmetics: oldCosmetics,
+    });
+    await dailyInitPromise;
+
+    // 4. Assert: Final appearance and squares = worn look
+    assert.equal(getResolvedAppearance().badge, "⚡");
+    assert.equal(dailyController.getState().squaresSymbols.correct, "🎯");
+    assert.equal(dailyController.getState().squaresSymbols.wrong, "💥");
+    assert.equal(dailyController.getState().status, "ready");
+    assert.equal(dailyController.getState().challenge?.attempts_left, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("99. Race condition: pending Profile /me -> saved Look wear -> stale Profile response keeps new look appearance", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  clearResolvedAppearance();
+
+  let resolveInitialProfileMe: ((data: any) => void) | null = null;
+  const initialProfileMePromise = new Promise((resolve) => {
+    resolveInitialProfileMe = resolve;
+  });
+
+  const oldCosmetics = {
+    badge: "⚽",
+    number: "5",
+    title: { label: "Beginner", color: "#888888" },
+    frame: { ring: "plain", spin: false },
+  };
+
+  const wornLookCosmetics = {
+    badge: "🌟",
+    number: "77",
+    title: { label: "Elite", color: "#ffd700" },
+    frame: { ring: "gold", spin: true },
+  };
+
+  let profileMeCallCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+
+    if (url.includes("/app/api/me")) {
+      profileMeCallCount++;
+      if (profileMeCallCount === 1) {
+        return initialProfileMePromise.then((data) => new Response(JSON.stringify(data)));
+      }
+      return new Response(
+        JSON.stringify(
+          createTestFullProfile({
+            cosmetics: wornLookCosmetics as any,
+          }),
+        ),
+      );
+    }
+    if (url.includes("/app/api/shop/look")) {
+      return new Response(JSON.stringify({ status: "ok" }));
+    }
+    if (url.includes("/app/api/shop")) {
+      return new Response(JSON.stringify(createMockShopCatalogue()));
+    }
+    return new Response(JSON.stringify({}));
+  }) as typeof fetch;
+
+  try {
+    const app = new App(container);
+    const profileController = app.getProfileController();
+    const shopController = app.getShopController();
+
+    // 1. Profile /me starts and is pending
+    const profileInitPromise = profileController.init();
+
+    // 2. User wears saved look in shop
+    const wearSuccess = await shopController.lookAction("wear", "Golden Set");
+    assert.equal(wearSuccess, true);
+    assert.equal(getResolvedAppearance().badge, "🌟");
+
+    // 3. Stale initial Profile /me resolves
+    resolveInitialProfileMe!(
+      createTestFullProfile({
+        user: { name: "StarPlayer", username: "star" } as any,
+        cosmetics: oldCosmetics as any,
+      }),
+    );
+    await profileInitPromise;
+
+    // 4. Assert: Profile state and global appearance remain worn look
+    const state = profileController.getState();
+    assert.equal(state.profile?.cosmetics?.badge, "🌟");
+    assert.equal(state.profile?.cosmetics?.number, "77");
+    assert.equal(state.profile?.cosmetics?.title?.label, "Elite");
+    assert.equal(getResolvedAppearance().badge, "🌟");
+
+    container.innerHTML = renderProfilePage(state);
+    assert.ok(container.textContent?.includes("Elite"));
+    assert.ok(container.innerHTML.includes('<span class="shirt">77</span>'));
+    assert.ok(container.textContent?.includes("🌟"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("100. Explicit typed error mapping prevents raw strings such as shop.errNot_owned in UI across IT, EN, ES", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { cleanup: cleanupDom } = setupGlobalDom();
+
+  const statuses = Object.keys(SHOP_ERROR_KEYS);
+
+  try {
+    for (const lang of ["it", "en", "es"] as const) {
+      setLanguage(lang);
+
+      for (const status of statuses) {
+        const mapped = mapShopError(status);
+        // Verify key exists and translated properly
+        assert.ok(mapped && mapped.length > 0);
+        // Assert raw string pattern never leaks to UI
+        assert.ok(!mapped.startsWith("shop.err"));
+        assert.ok(!mapped.includes("_"));
+      }
+
+      // Test unknown future status safely falls back to shop.errGeneric
+      const genericFallback = mapShopError("future_unseen_status_xyz");
+      assert.equal(genericFallback, t("shop.errGeneric"));
+      assert.ok(!genericFallback.includes("xyz"));
+    }
+
+    // Test controller equip flow with not_owned status
+    setLanguage("it");
+    let currentStatus = "not_owned";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      return new Response(JSON.stringify({ status: currentStatus }));
+    }) as typeof fetch;
+
+    const controller = new ShopController();
+    await controller.equip("some_item");
+    assert.equal(controller.getState().toast, "Devi prima comprarlo.");
+    assert.ok(!controller.getState().toast?.includes("shop.errNot_owned"));
+
+    currentStatus = "already_owned";
+    await controller.equip("some_item");
+    assert.equal(controller.getState().toast, "Ce l'hai già.");
+    assert.ok(!controller.getState().toast?.includes("shop.errAlready_owned"));
+
+    globalThis.fetch = originalFetch;
+  } finally {
+    setLanguage("it");
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("101. Saved Looks empty state renders shop.noSavedLooks in IT, EN, ES and never common.anonymous", () => {
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+
+  const state = {
+    view: "wardrobe" as const,
+    status: "ready" as const,
+    catalogue: {
+      ...createMockShopCatalogue(),
+      looks: [],
+    },
+    kindFilter: "all" as const,
+    priceFilter: "all" as const,
+    hideOwned: false,
+    preview: null,
+    buying: false,
+    deliveryStatus: "idle" as const,
+    buyingItemId: null,
+    equippingItemId: null,
+    lookMutation: null,
+    history: null,
+    historyStatus: "idle" as const,
+    toast: null,
+  };
+
+  try {
+    // IT
+    setLanguage("it");
+    container.innerHTML = renderShopPage(state);
+    const emptyIt = container.querySelector(".looks-empty");
+    assert.equal(emptyIt?.textContent, "Non hai ancora salvato nessun look.");
+    assert.notEqual(emptyIt?.textContent, "Calciatore");
+
+    // EN
+    setLanguage("en");
+    container.innerHTML = renderShopPage(state);
+    const emptyEn = container.querySelector(".looks-empty");
+    assert.equal(emptyEn?.textContent, "You haven't saved any looks yet.");
+    assert.notEqual(emptyEn?.textContent, "Player");
+
+    // ES
+    setLanguage("es");
+    container.innerHTML = renderShopPage(state);
+    const emptyEs = container.querySelector(".looks-empty");
+    assert.equal(emptyEs?.textContent, "Aún no has guardado ningún look.");
+    assert.notEqual(emptyEs?.textContent, "Jugador");
+  } finally {
+    setLanguage("it");
+    cleanupDom();
+  }
+});
+
+test("102. Audit Shop runtime in EN and ES: no Italian-only copy, fake player data or hardcoded copy remains", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const catalogue = createMockShopCatalogue();
+  const { restore: restoreFetch } = captureFetchRequests(catalogue);
+
+  try {
+    const controller = new ShopController();
+    await controller.init();
+
+    for (const lang of ["en", "es"] as const) {
+      setLanguage(lang);
+      container.innerHTML = renderShopPage(controller.getState());
+      const html = container.innerHTML;
+
+      // 1. Aria label for shortcuts is localized
+      if (lang === "en") {
+        assert.ok(html.includes('aria-label="Quick section navigation"'));
+      } else {
+        assert.ok(html.includes('aria-label="Navegación rápida de secciones"'));
+      }
+      assert.ok(!html.includes('aria-label="Navigazione rapida sezioni"'));
+
+      // 2. No Italian words or fake real-player data in theme preview
+      assert.ok(!html.includes("Indovina"));
+      assert.ok(!html.includes("Barcellona"));
+      assert.ok(!html.includes("Santos"));
+      assert.ok(!html.includes("Paris SG"));
+      assert.ok(!html.includes("Neymar Jr"));
+
+      // 3. CTA button in theme shot uses localized guessBtn
+      if (lang === "en") {
+        assert.ok(html.includes("Guess"));
+      } else {
+        assert.ok(html.includes("Adivinar"));
+      }
+
+      // 4. Neutral stops rendered
+      assert.ok(html.includes("Club A"));
+      assert.ok(html.includes("Club B"));
+      assert.ok(html.includes("Club C"));
+    }
+  } finally {
+    setLanguage("it");
+    restoreFetch();
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("103. Catalogue in-flight deduplication: older request cannot clear newer in-flight reference", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { cleanup: cleanupDom } = setupGlobalDom();
+
+  let resolveA: ((val: any) => void) | null = null;
+  let resolveB: ((val: any) => void) | null = null;
+  let fetchCallCount = 0;
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    fetchCallCount++;
+    const count = fetchCallCount;
+    if (count === 1) {
+      return new Promise((resolve) => {
+        resolveA = resolve;
+      }).then(() => new Response(JSON.stringify({ ...createMockShopCatalogue(), season: "Catalogue A" })));
+    }
+    if (count === 2) {
+      return new Promise((resolve) => {
+        resolveB = resolve;
+      }).then(() => new Response(JSON.stringify({ ...createMockShopCatalogue(), season: "Catalogue B" })));
+    }
+    return new Response(JSON.stringify({ ...createMockShopCatalogue(), season: "Catalogue C (unexpected)" }));
+  }) as typeof fetch;
+
+  try {
+    const controller = new ShopController();
+
+    // 1. Catalogue A starts
+    const promiseA = controller.refresh();
+    assert.equal(fetchCallCount, 1);
+
+    // 2. Catalogue B starts later (forced refresh)
+    const promiseB = controller.refresh();
+    assert.equal(fetchCallCount, 2);
+
+    // 3. A finishes first
+    resolveA!(null);
+    await promiseA;
+
+    // 4. Third normal init occurs while B is still in flight
+    // It must NOT bypass B deduplication and must NOT trigger a 3rd fetch
+    const promiseC = controller.init();
+    assert.equal(fetchCallCount, 2, "Call C must reuse in-flight request B");
+
+    // 5. B finishes
+    resolveB!(null);
+    await promiseB;
+    await promiseC;
+
+    // 6. State reflects B as authoritative
+    assert.equal(controller.getState().status, "ready");
+    assert.equal((controller.getState().catalogue as any)?.season, "Catalogue B");
+  } finally {
+    globalThis.fetch = originalFetch;
+    cleanupDom();
+    restoreTg();
+  }
+});
+

@@ -351,6 +351,7 @@ export interface TranslationSchema {
     sectionBundle: string;
     sectionCollections: string;
     sectionCollectionsNav: string;
+    shortcutsNav: string;
     showcaseTitle: string;
     showcaseWeek: string;
     buy: string;
@@ -375,6 +376,7 @@ export interface TranslationSchema {
     partial: string;
     missing: string;
     looksTitle: string;
+    noSavedLooks: string;
     lookNamePlaceholder: string;
     saveLook: string;
     lookSaved: string;
