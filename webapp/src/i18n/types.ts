@@ -298,6 +298,14 @@ export interface TranslationSchema {
     cabinetNone: string;
     cabinetPin: string;
     cabinetPinned: string;
+    cabinetFilters: string;
+    filterFirstPlace: string;
+    filterSecondPlace: string;
+    filterThirdPlace: string;
+    placementFirst: string;
+    placementSecond: string;
+    placementThird: string;
+    placementOther: string;
     noTrophies: string;
     pinSaved: string;
     pinFull: string;

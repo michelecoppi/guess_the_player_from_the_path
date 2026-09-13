@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { ProfileController } from "../../webapp/src/features/profile/controller";
+import { getTrophyPlacementLabel } from "../../webapp/src/features/profile";
+import { setLanguage, getLanguage } from "../../webapp/src/i18n";
 import {
   renderProfilePage,
   attachProfileEventListeners,
@@ -801,3 +803,296 @@ test("64. Profile runtime does not render Astra fixture data", async () => {
     restoreTg();
   }
 });
+
+test("65. Cabinet accessibility & localization in Italian (IT)", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const prevLang = getLanguage();
+  setLanguage("it");
+
+  const testProfile = createTestFullProfile({
+    trophies: {
+      pinned: [
+        { code: "T1", kind: "monthly", position: 1, medal: "🥇", color: "#e8b647", label: "Oro 2026", detail: "1° posto", year: "2026" },
+        { code: "T2", kind: "event", position: 2, medal: "🥈", color: "#c3ccd6", label: "Argento 2026", detail: "2° posto", year: "2026" },
+        { code: "T3", kind: "event", position: 3, medal: "🥉", color: "#c98652", label: "Bronzo 2026", detail: "3° posto", year: "2026" },
+      ],
+      all: [
+        { code: "T1", kind: "monthly", position: 1, medal: "🥇", color: "#e8b647", label: "Oro 2026", detail: "1° posto", year: "2026" },
+        { code: "T2", kind: "event", position: 2, medal: "🥈", color: "#c3ccd6", label: "Argento 2026", detail: "2° posto", year: "2026" },
+        { code: "T3", kind: "event", position: 3, medal: "🥉", color: "#c98652", label: "Bronzo 2026", detail: "3° posto", year: "2026" },
+      ],
+      max: 3,
+    },
+  });
+
+  try {
+    const controller = new ProfileController();
+    (controller as any).updateState({ status: "ready", profile: testProfile });
+
+    // 1. Verify showcase trophy placement in IT
+    container.innerHTML = renderProfilePage(controller.getState());
+    const showcasePlates = container.querySelectorAll(".trophy-tag");
+    assert.equal(showcasePlates.length, 3);
+    assert.equal(showcasePlates[0].querySelector(".sr-only")?.textContent, "1° posto");
+    assert.equal(showcasePlates[1].querySelector(".sr-only")?.textContent, "2° posto");
+    assert.equal(showcasePlates[2].querySelector(".sr-only")?.textContent, "3° posto");
+
+    // 2. Open Cabinet and verify IT filter group and podium buttons
+    controller.openCabinet();
+    container.innerHTML = renderProfilePage(controller.getState());
+
+    const filterGroup = container.querySelector(".cabinet-filters[role='group']");
+    assert.ok(filterGroup, "Cabinet filters role='group' must exist");
+    assert.equal(filterGroup.getAttribute("aria-label"), "Filtri bacheca");
+
+    const btn1 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='1']");
+    assert.ok(btn1);
+    assert.equal(btn1.getAttribute("aria-label"), "Primo posto");
+    assert.equal(btn1.querySelector("[aria-hidden='true']")?.textContent, "🥇");
+
+    const btn2 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='2']");
+    assert.ok(btn2);
+    assert.equal(btn2.getAttribute("aria-label"), "Secondo posto");
+    assert.equal(btn2.querySelector("[aria-hidden='true']")?.textContent, "🥈");
+
+    const btn3 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='3']");
+    assert.ok(btn3);
+    assert.equal(btn3.getAttribute("aria-label"), "Terzo posto");
+    assert.equal(btn3.querySelector("[aria-hidden='true']")?.textContent, "🥉");
+
+    // 3. Verify cabinet rows expose placement in IT
+    const cabinetRows = container.querySelectorAll(".cabinet-row");
+    assert.equal(cabinetRows.length, 3);
+    assert.equal(cabinetRows[0].querySelector(".sr-only")?.textContent, "1° posto");
+    assert.equal(cabinetRows[1].querySelector(".sr-only")?.textContent, "2° posto");
+    assert.equal(cabinetRows[2].querySelector(".sr-only")?.textContent, "3° posto");
+  } finally {
+    setLanguage(prevLang);
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("66. Cabinet accessibility & localization in English (EN)", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const prevLang = getLanguage();
+  setLanguage("en");
+
+  const testProfile = createTestFullProfile({
+    trophies: {
+      pinned: [
+        { code: "T1", kind: "monthly", position: 1, medal: "🥇", color: "#e8b647", label: "Gold 2026", detail: "1st place", year: "2026" },
+        { code: "T2", kind: "event", position: 2, medal: "🥈", color: "#c3ccd6", label: "Silver 2026", detail: "2nd place", year: "2026" },
+        { code: "T3", kind: "event", position: 3, medal: "🥉", color: "#c98652", label: "Bronze 2026", detail: "3rd place", year: "2026" },
+      ],
+      all: [
+        { code: "T1", kind: "monthly", position: 1, medal: "🥇", color: "#e8b647", label: "Gold 2026", detail: "1st place", year: "2026" },
+        { code: "T2", kind: "event", position: 2, medal: "🥈", color: "#c3ccd6", label: "Silver 2026", detail: "2nd place", year: "2026" },
+        { code: "T3", kind: "event", position: 3, medal: "🥉", color: "#c98652", label: "Bronze 2026", detail: "3rd place", year: "2026" },
+      ],
+      max: 3,
+    },
+  });
+
+  try {
+    const controller = new ProfileController();
+    (controller as any).updateState({ status: "ready", profile: testProfile });
+
+    // 1. Verify showcase trophy placement in EN
+    container.innerHTML = renderProfilePage(controller.getState());
+    const showcasePlates = container.querySelectorAll(".trophy-tag");
+    assert.equal(showcasePlates.length, 3);
+    assert.equal(showcasePlates[0].querySelector(".sr-only")?.textContent, "1st place");
+    assert.equal(showcasePlates[1].querySelector(".sr-only")?.textContent, "2nd place");
+    assert.equal(showcasePlates[2].querySelector(".sr-only")?.textContent, "3rd place");
+
+    // 2. Open Cabinet and verify EN filter group and podium buttons
+    controller.openCabinet();
+    container.innerHTML = renderProfilePage(controller.getState());
+
+    // Proving NO hardcoded Italian "Filtri bacheca"
+    assert.ok(!container.innerHTML.includes("Filtri bacheca"), "Must NOT contain hardcoded Italian 'Filtri bacheca'");
+
+    const filterGroup = container.querySelector(".cabinet-filters[role='group']");
+    assert.ok(filterGroup, "Cabinet filters role='group' must exist");
+    assert.equal(filterGroup.getAttribute("aria-label"), "Cabinet filters");
+
+    const btn1 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='1']");
+    assert.ok(btn1);
+    assert.equal(btn1.getAttribute("aria-label"), "First place");
+    assert.equal(btn1.querySelector("[aria-hidden='true']")?.textContent, "🥇");
+
+    const btn2 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='2']");
+    assert.ok(btn2);
+    assert.equal(btn2.getAttribute("aria-label"), "Second place");
+    assert.equal(btn2.querySelector("[aria-hidden='true']")?.textContent, "🥈");
+
+    const btn3 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='3']");
+    assert.ok(btn3);
+    assert.equal(btn3.getAttribute("aria-label"), "Third place");
+    assert.equal(btn3.querySelector("[aria-hidden='true']")?.textContent, "🥉");
+
+    // 3. Verify cabinet rows expose placement in EN
+    const cabinetRows = container.querySelectorAll(".cabinet-row");
+    assert.equal(cabinetRows.length, 3);
+    assert.equal(cabinetRows[0].querySelector(".sr-only")?.textContent, "1st place");
+    assert.equal(cabinetRows[1].querySelector(".sr-only")?.textContent, "2nd place");
+    assert.equal(cabinetRows[2].querySelector(".sr-only")?.textContent, "3rd place");
+  } finally {
+    setLanguage(prevLang);
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("67. Cabinet accessibility & localization in Spanish (ES)", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const prevLang = getLanguage();
+  setLanguage("es");
+
+  const testProfile = createTestFullProfile({
+    trophies: {
+      pinned: [
+        { code: "T1", kind: "monthly", position: 1, medal: "🥇", color: "#e8b647", label: "Oro 2026", detail: "1.er puesto", year: "2026" },
+        { code: "T2", kind: "event", position: 2, medal: "🥈", color: "#c3ccd6", label: "Plata 2026", detail: "2.º puesto", year: "2026" },
+        { code: "T3", kind: "event", position: 3, medal: "🥉", color: "#c98652", label: "Bronce 2026", detail: "3.er puesto", year: "2026" },
+      ],
+      all: [
+        { code: "T1", kind: "monthly", position: 1, medal: "🥇", color: "#e8b647", label: "Oro 2026", detail: "1.er puesto", year: "2026" },
+        { code: "T2", kind: "event", position: 2, medal: "🥈", color: "#c3ccd6", label: "Plata 2026", detail: "2.º puesto", year: "2026" },
+        { code: "T3", kind: "event", position: 3, medal: "🥉", color: "#c98652", label: "Bronce 2026", detail: "3.er puesto", year: "2026" },
+      ],
+      max: 3,
+    },
+  });
+
+  try {
+    const controller = new ProfileController();
+    (controller as any).updateState({ status: "ready", profile: testProfile });
+
+    // 1. Verify showcase trophy placement in ES
+    container.innerHTML = renderProfilePage(controller.getState());
+    const showcasePlates = container.querySelectorAll(".trophy-tag");
+    assert.equal(showcasePlates.length, 3);
+    assert.equal(showcasePlates[0].querySelector(".sr-only")?.textContent, "1.er puesto");
+    assert.equal(showcasePlates[1].querySelector(".sr-only")?.textContent, "2.º puesto");
+    assert.equal(showcasePlates[2].querySelector(".sr-only")?.textContent, "3.er puesto");
+
+    // 2. Open Cabinet and verify ES filter group and podium buttons
+    controller.openCabinet();
+    container.innerHTML = renderProfilePage(controller.getState());
+
+    // Proving NO hardcoded Italian "Filtri bacheca"
+    assert.ok(!container.innerHTML.includes("Filtri bacheca"), "Must NOT contain hardcoded Italian 'Filtri bacheca'");
+
+    const filterGroup = container.querySelector(".cabinet-filters[role='group']");
+    assert.ok(filterGroup, "Cabinet filters role='group' must exist");
+    assert.equal(filterGroup.getAttribute("aria-label"), "Filtros de la vitrina");
+
+    const btn1 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='1']");
+    assert.ok(btn1);
+    assert.equal(btn1.getAttribute("aria-label"), "Primer puesto");
+    assert.equal(btn1.querySelector("[aria-hidden='true']")?.textContent, "🥇");
+
+    const btn2 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='2']");
+    assert.ok(btn2);
+    assert.equal(btn2.getAttribute("aria-label"), "Segundo puesto");
+    assert.equal(btn2.querySelector("[aria-hidden='true']")?.textContent, "🥈");
+
+    const btn3 = container.querySelector<HTMLButtonElement>("button[data-cabinet-filter='3']");
+    assert.ok(btn3);
+    assert.equal(btn3.getAttribute("aria-label"), "Tercer puesto");
+    assert.equal(btn3.querySelector("[aria-hidden='true']")?.textContent, "🥉");
+
+    // 3. Verify cabinet rows expose placement in ES
+    const cabinetRows = container.querySelectorAll(".cabinet-row");
+    assert.equal(cabinetRows.length, 3);
+    assert.equal(cabinetRows[0].querySelector(".sr-only")?.textContent, "1.er puesto");
+    assert.equal(cabinetRows[1].querySelector(".sr-only")?.textContent, "2.º puesto");
+    assert.equal(cabinetRows[2].querySelector(".sr-only")?.textContent, "3.er puesto");
+  } finally {
+    setLanguage(prevLang);
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("68. Safe degradation for unknown/future numeric positions and preservation of backend label/detail", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const prevLang = getLanguage();
+
+  try {
+    // 1. Position degradation across languages
+    setLanguage("it");
+    assert.equal(getTrophyPlacementLabel(4), "Posizione 4");
+    assert.equal(getTrophyPlacementLabel(10), "Posizione 10");
+    assert.equal(getTrophyPlacementLabel(undefined), "");
+    assert.equal(getTrophyPlacementLabel(0), "");
+    assert.equal(getTrophyPlacementLabel(-1), "");
+    assert.equal(getTrophyPlacementLabel(NaN), "");
+
+    setLanguage("en");
+    assert.equal(getTrophyPlacementLabel(4), "Position 4");
+    assert.equal(getTrophyPlacementLabel(12), "Position 12");
+    assert.equal(getTrophyPlacementLabel(undefined), "");
+
+    setLanguage("es");
+    assert.equal(getTrophyPlacementLabel(4), "Posición 4");
+    assert.equal(getTrophyPlacementLabel(15), "Posición 15");
+    assert.equal(getTrophyPlacementLabel(undefined), "");
+
+    // 2. Render showcase with unknown position 4 and undefined position
+    setLanguage("en");
+    const serverLabel = "Server Trophy 2026";
+    const serverDetail = "Official backend detail untouched";
+
+    const customProfile = createTestFullProfile({
+      trophies: {
+        pinned: [
+          { code: "T_POS4", kind: "event", position: 4, medal: "🎖️", color: "#888888", label: serverLabel, detail: serverDetail, year: "2026" },
+          { code: "T_NOPOS", kind: "event", medal: "⭐", color: "#666666", label: "No Pos Trophy", detail: "Participation", year: "2026" },
+        ],
+        all: [
+          { code: "T_POS4", kind: "event", position: 4, medal: "🎖️", color: "#888888", label: serverLabel, detail: serverDetail, year: "2026" },
+        ],
+        max: 3,
+      },
+    });
+
+    const controller = new ProfileController();
+    (controller as any).updateState({ status: "ready", profile: customProfile });
+
+    container.innerHTML = renderProfilePage(controller.getState());
+    const plates = container.querySelectorAll(".trophy-tag");
+    assert.equal(plates.length, 2);
+
+    // Position 4 plate renders "Position 4"
+    assert.equal(plates[0].querySelector(".sr-only")?.textContent, "Position 4");
+    // Verify server-provided label & detail are preserved exactly without alteration
+    assert.equal(plates[0].querySelector(".plate-name")?.textContent, serverLabel);
+    assert.equal(plates[0].querySelector(".plate-detail")?.textContent, serverDetail);
+
+    // No position plate has no .sr-only element and renders name & detail cleanly
+    assert.equal(plates[1].querySelector(".sr-only"), null);
+    assert.equal(plates[1].querySelector(".plate-name")?.textContent, "No Pos Trophy");
+    assert.equal(plates[1].querySelector(".plate-detail")?.textContent, "Participation");
+
+    // In cabinet view, verify cabinet row preservation
+    controller.openCabinet();
+    container.innerHTML = renderProfilePage(controller.getState());
+    const row = container.querySelector(".cabinet-row");
+    assert.ok(row);
+    assert.equal(row.querySelector(".sr-only")?.textContent, "Position 4");
+    assert.equal(row.querySelector(".nm")?.textContent, serverLabel);
+    assert.equal(row.querySelector(".ds")?.textContent, serverDetail);
+  } finally {
+    setLanguage(prevLang);
+    cleanupDom();
+    restoreTg();
+  }
+});
+

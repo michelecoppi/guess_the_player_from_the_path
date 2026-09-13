@@ -14,12 +14,31 @@ import type {
 } from "./types";
 
 /**
+ * Resolves a localized accessible placement label for assistive technology.
+ * Relies strictly on the authoritative backend `position` number.
+ */
+export function getTrophyPlacementLabel(position?: number): string {
+  if (typeof position !== "number" || isNaN(position) || position <= 0) {
+    return "";
+  }
+  if (position === 1) return t("profile.placementFirst");
+  if (position === 2) return t("profile.placementSecond");
+  if (position === 3) return t("profile.placementThird");
+  return t("profile.placementOther").replace("{n}", String(position));
+}
+
+/**
  * Renders a single trophy plate badge (used in profile showcase and pinned preview).
  */
 export function renderTrophyPlate(tag: TrophyPlate): string {
+  const placementLabel = getTrophyPlacementLabel(tag.position);
+  const placementHtml = placementLabel
+    ? `<span class="sr-only">${escapeHtml(placementLabel)}</span>`
+    : "";
   return `
     <span class="trophy-tag" style="--plate: ${escapeHtml(tag.color)}">
       <span class="medal" aria-hidden="true">${escapeHtml(tag.medal)}</span>
+      ${placementHtml}
       <span class="plate-name">${escapeHtml(tag.label)}</span>
       <span class="plate-detail">${escapeHtml(tag.detail)}</span>
     </span>
@@ -49,6 +68,10 @@ function renderCabinetRow(
   isPinning: boolean,
 ): string {
   const pinLabel = chosen ? t("profile.cabinetPinned") : t("profile.cabinetPin");
+  const placementLabel = getTrophyPlacementLabel(tag.position);
+  const placementHtml = placementLabel
+    ? `<span class="sr-only">${escapeHtml(placementLabel)}</span>`
+    : "";
   return `
     <button
       type="button"
@@ -59,6 +82,7 @@ function renderCabinetRow(
       style="--plate: ${escapeHtml(tag.color)}"
     >
       <span class="medal" aria-hidden="true">${escapeHtml(tag.medal)}</span>
+      ${placementHtml}
       <span class="cabinet-row-info">
         <span class="nm">${escapeHtml(tag.label)}</span>
         <span class="ds">${escapeHtml(tag.detail)}</span>
@@ -117,11 +141,11 @@ export function renderCabinetView(state: ProfileState): string {
     { color: "#c98652", count: counts[2], label: t("profile.cabinetBronze") },
   ];
 
-  const filterKeys: Array<{ key: CabinetFilter; label: string }> = [
+  const filterKeys: Array<{ key: CabinetFilter; label: string; ariaLabel?: string }> = [
     { key: "all", label: t("profile.cabinetAll") },
-    { key: "1", label: "🥇" },
-    { key: "2", label: "🥈" },
-    { key: "3", label: "🥉" },
+    { key: "1", label: "🥇", ariaLabel: t("profile.filterFirstPlace") },
+    { key: "2", label: "🥈", ariaLabel: t("profile.filterSecondPlace") },
+    { key: "3", label: "🥉", ariaLabel: t("profile.filterThirdPlace") },
     { key: "event", label: t("profile.cabinetEvents") },
     { key: "monthly", label: t("profile.cabinetMonthly") },
   ];
@@ -217,7 +241,7 @@ export function renderCabinetView(state: ProfileState): string {
           ${escapeHtml(t("profile.cabinetHint").replace("{n}", String(max)))}
         </p>
 
-        <div class="cabinet-filters" role="group" aria-label="Filtri bacheca">
+        <div class="cabinet-filters" role="group" aria-label="${escapeHtml(t("profile.cabinetFilters"))}">
           ${filterKeys
             .map(
               (f) => `
@@ -226,8 +250,9 @@ export function renderCabinetView(state: ProfileState): string {
               class="cabinet-filter-btn${activeFilter === f.key ? " active" : ""}"
               data-cabinet-filter="${escapeHtml(f.key)}"
               aria-pressed="${activeFilter === f.key}"
+              ${f.ariaLabel ? `aria-label="${escapeHtml(f.ariaLabel)}"` : ""}
             >
-              ${escapeHtml(f.label)}
+              ${f.ariaLabel ? `<span aria-hidden="true">${escapeHtml(f.label)}</span>` : escapeHtml(f.label)}
             </button>
           `,
             )
