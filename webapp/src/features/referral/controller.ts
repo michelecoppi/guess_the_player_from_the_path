@@ -13,6 +13,11 @@ import type {
 } from "./types";
 
 export type ReferralSubscriber = (state: ReferralState) => void;
+export type ReferralEquipHandler = (itemId: string) => Promise<boolean>;
+
+export interface ReferralControllerOptions {
+  equipHandler?: ReferralEquipHandler;
+}
 
 export class ReferralController {
   private state: ReferralState = {
@@ -28,6 +33,8 @@ export class ReferralController {
 
   private subscribers: Set<ReferralSubscriber> = new Set();
   private client: ApiClient;
+  private equipHandler?: ReferralEquipHandler;
+  private cacheStale = false;
 
   // Concurrency & sequence guards
   private loadSeq = 0;
@@ -40,8 +47,13 @@ export class ReferralController {
   /** Cross-feature coordination hook to update Profile & Daily appearances */
   public onAppearanceChanged?: (appearance: ResolvedAppearance) => void;
 
-  constructor(client: ApiClient = api) {
+  constructor(client: ApiClient = api, options?: ReferralControllerOptions) {
     this.client = client;
+    this.equipHandler = options?.equipHandler;
+  }
+
+  public setEquipHandler(handler: ReferralEquipHandler): void {
+    this.equipHandler = handler;
   }
 
   public getState(): ReferralState {
@@ -86,7 +98,7 @@ export class ReferralController {
    * and guards against stale out-of-order responses.
    */
   public async init(force = false): Promise<void> {
-    if (!force && this.state.status === "ready" && this.state.data) {
+    if (!force && !this.cacheStale && this.state.status === "ready" && this.state.data) {
       return;
     }
 
@@ -100,6 +112,9 @@ export class ReferralController {
     }
 
     const seq = ++this.loadSeq;
+    this.moreSeq++;
+    this.inFlightMore = null;
+    this.state.loadingMore = false;
     this.state.status = "loading";
     this.state.errorNotice = null;
     this.notify();
@@ -111,6 +126,7 @@ export class ReferralController {
       const res = await loadPromise;
       if (seq !== this.loadSeq) return;
 
+      this.cacheStale = false;
       this.state.data = res;
       this.state.status = "ready";
       this.state.errorNotice = null;
@@ -136,6 +152,11 @@ export class ReferralController {
     if (this.state.refreshing) return;
 
     const seq = ++this.loadSeq;
+    // Invalidate pending pagination requests immediately
+    this.moreSeq++;
+    this.inFlightMore = null;
+    this.state.loadingMore = false;
+
     this.state.refreshing = true;
     this.state.errorNotice = null;
     this.notify();
@@ -144,9 +165,11 @@ export class ReferralController {
       const res = await fetchReferrals(null, this.client);
       if (seq !== this.loadSeq) return;
 
+      this.cacheStale = false;
       this.state.data = res;
       this.state.status = "ready";
       this.state.refreshing = false;
+      this.state.loadingMore = false;
       this.state.errorNotice = null;
 
       // If viewing a reward preview that is no longer returned, close preview
@@ -228,8 +251,9 @@ export class ReferralController {
       this.setToast(t("referral.unavailable"));
       this.notify();
     } finally {
-      if (seq === this.moreSeq) {
+      if (seq === this.moreSeq && loadSeqSnapshot === this.loadSeq) {
         this.inFlightMore = null;
+        this.state.loadingMore = false;
       }
     }
   }
@@ -251,7 +275,7 @@ export class ReferralController {
   }
 
   /**
-   * Equips an earned referral cosmetic item via POST /app/api/shop/equip.
+   * Equips an earned referral cosmetic item. Reuses Shop equip pipeline when wired.
    * Sends only the catalogue item ID. Synchronizes global appearance on success.
    */
   public async equipItem(itemId: string): Promise<boolean> {
@@ -269,25 +293,30 @@ export class ReferralController {
     this.notify();
 
     try {
-      const res = await equipReferralItem(itemId, this.client);
+      let ok = false;
+      if (this.equipHandler) {
+        ok = await this.equipHandler(itemId);
+      } else {
+        const res = await equipReferralItem(itemId, this.client);
+        if (res.status === "ok" && res.cosmetics) {
+          const resolved = applyResolvedAppearance(res.cosmetics);
+          this.syncAppearance(resolved);
+          this.onAppearanceChanged?.(resolved);
+          const tg = getTelegramWebApp();
+          tg?.HapticFeedback?.notificationOccurred("success");
+          ok = true;
+        }
+      }
+
       if (seq !== this.equipSeq) return false;
 
-      if (res.status !== "ok" || !res.cosmetics) {
+      if (!ok) {
         this.state.equippingItemId = null;
         this.setToast(t("referral.unavailable"));
         this.notify();
         return false;
       }
 
-      // Apply authoritative appearance globally
-      const resolved = applyResolvedAppearance(res.cosmetics);
-      this.onAppearanceChanged?.(resolved);
-
-      const tg = getTelegramWebApp();
-      tg?.HapticFeedback?.notificationOccurred("success");
-
-      // Silently refresh referral state to update equipped indicators
-      await this.refresh();
       this.state.equippingItemId = null;
       this.notify();
       return true;
@@ -376,8 +405,24 @@ export class ReferralController {
     );
   }
 
-  public syncAppearance(_appearance: ResolvedAppearance): void {
-    // Allows external appearance changes (e.g. Shop equip) to update equipped status
+  public syncAppearance(appearance: ResolvedAppearance): void {
+    // Reconcile reward items from authoritative ResolvedAppearance.equipped IDs
+    if (this.state.data?.rewards && appearance.equipped) {
+      const equippedIds = new Set(
+        Object.values(appearance.equipped).filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        ),
+      );
+      for (const tier of this.state.data.rewards) {
+        if (!tier.items) continue;
+        for (const item of tier.items) {
+          item.equipped = equippedIds.has(item.id);
+        }
+      }
+    } else if (this.state.data) {
+      // If appearance does not contain equipped IDs, invalidate cached freshness so next open refreshes
+      this.cacheStale = true;
+    }
     this.notify();
   }
 
@@ -385,6 +430,7 @@ export class ReferralController {
     this.loadSeq++;
     this.moreSeq++;
     this.equipSeq++;
+    this.cacheStale = false;
     this.inFlightLoad = null;
     this.inFlightMore = null;
     if (this.toastTimeout) {

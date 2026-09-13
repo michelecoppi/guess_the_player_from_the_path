@@ -961,4 +961,653 @@ test("Referral Feature Test Suite (#46 Parity & Hardening)", async (t) => {
       assert.ok(fs.existsSync(referralsJsPath));
     },
   );
+
+  await t.test(
+    "50. Pagination race: loadMore A pending -> refresh B -> B resolves -> A resolves -> B remains authoritative & loadingMore false & next loadMore works",
+    async () => {
+      let resolveMoreA: (val: any) => void = () => {};
+      let resolveRefreshB: (val: any) => void = () => {};
+      let resolveMoreC: (val: any) => void = () => {};
+
+      let callCount = 0;
+      const restore = mockFetchResponse((_url, init) => {
+        callCount++;
+        const body = (init as any)?.body ? JSON.parse(String((init as any).body)) : {};
+        if (callCount === 1) {
+          return createTestReferralDashboardResponse({
+            friends: [{ name: "FriendPage1", days: 1, status: "pending" }],
+            next_cursor: "cursor_1",
+          });
+        }
+        if (body.cursor === "cursor_1") {
+          return new Promise((r) => {
+            resolveMoreA = r;
+          });
+        }
+        if (callCount === 3 && !body.cursor) {
+          return new Promise((r) => {
+            resolveRefreshB = r;
+          });
+        }
+        if (body.cursor === "cursor_2") {
+          return new Promise((r) => {
+            resolveMoreC = r;
+          });
+        }
+        return createTestReferralDashboardResponse();
+      });
+
+      try {
+        const controller = new ReferralController();
+        await controller.init();
+        assert.equal(controller.getState().data?.friends.length, 1);
+        assert.equal(controller.getState().data?.friends[0].name, "FriendPage1");
+        assert.equal(controller.getState().data?.next_cursor, "cursor_1");
+
+        // 1. loadMore A starts
+        const promiseA = controller.loadMore();
+        assert.equal(controller.getState().loadingMore, true);
+
+        // 2. refresh B starts
+        const promiseB = controller.refresh();
+        assert.equal(controller.getState().refreshing, true);
+        assert.equal(controller.getState().loadingMore, false);
+
+        // 3. B resolves
+        resolveRefreshB(
+          createTestReferralDashboardResponse({
+            friends: [{ name: "RefreshedFriendB", days: 3, status: "qualified" }],
+            next_cursor: "cursor_2",
+          }),
+        );
+        await promiseB;
+        assert.equal(controller.getState().refreshing, false);
+        assert.equal(controller.getState().loadingMore, false);
+        assert.equal(controller.getState().data?.friends.length, 1);
+        assert.equal(controller.getState().data?.friends[0].name, "RefreshedFriendB");
+
+        // 4. old loadMore A resolves later
+        resolveMoreA(
+          createTestReferralDashboardResponse({
+            friends: [{ name: "StaleFriendA", days: 1, status: "pending" }],
+            next_cursor: "cursor_stale",
+          }),
+        );
+        await promiseA;
+
+        // B remains authoritative!
+        assert.equal(controller.getState().loadingMore, false);
+        assert.equal(controller.getState().data?.friends.length, 1);
+        assert.equal(controller.getState().data?.friends[0].name, "RefreshedFriendB");
+        assert.equal(controller.getState().data?.next_cursor, "cursor_2");
+
+        // 5. Subsequent loadMore works using cursor_2
+        const promiseC = controller.loadMore();
+        assert.equal(controller.getState().loadingMore, true);
+        resolveMoreC(
+          createTestReferralDashboardResponse({
+            friends: [{ name: "Page2FriendC", days: 4, status: "pending" }],
+            next_cursor: null,
+          }),
+        );
+        await promiseC;
+        assert.equal(controller.getState().loadingMore, false);
+        assert.equal(controller.getState().data?.friends.length, 2);
+        assert.equal(controller.getState().data?.friends[1].name, "Page2FriendC");
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  await t.test(
+    "51. Pagination race inverse ordering: loadMore A pending -> refresh B pending -> A resolves -> B resolves -> B remains authoritative & loadingMore false & next loadMore works",
+    async () => {
+      let resolveMoreA: (val: any) => void = () => {};
+      let resolveRefreshB: (val: any) => void = () => {};
+      let resolveMoreC: (val: any) => void = () => {};
+
+      let callCount = 0;
+      const restore = mockFetchResponse((_url, init) => {
+        callCount++;
+        const body = (init as any)?.body ? JSON.parse(String((init as any).body)) : {};
+        if (callCount === 1) {
+          return createTestReferralDashboardResponse({
+            friends: [{ name: "FriendPage1", days: 1, status: "pending" }],
+            next_cursor: "cursor_1",
+          });
+        }
+        if (body.cursor === "cursor_1") {
+          return new Promise((r) => {
+            resolveMoreA = r;
+          });
+        }
+        if (callCount === 3 && !body.cursor) {
+          return new Promise((r) => {
+            resolveRefreshB = r;
+          });
+        }
+        if (body.cursor === "cursor_2") {
+          return new Promise((r) => {
+            resolveMoreC = r;
+          });
+        }
+        return createTestReferralDashboardResponse();
+      });
+
+      try {
+        const controller = new ReferralController();
+        await controller.init();
+
+        // 1. loadMore A starts
+        const promiseA = controller.loadMore();
+        assert.equal(controller.getState().loadingMore, true);
+
+        // 2. refresh B starts
+        const promiseB = controller.refresh();
+        assert.equal(controller.getState().refreshing, true);
+        assert.equal(controller.getState().loadingMore, false);
+
+        // 3. A resolves while B is still pending
+        resolveMoreA(
+          createTestReferralDashboardResponse({
+            friends: [{ name: "StaleFriendA", days: 1, status: "pending" }],
+            next_cursor: "cursor_stale",
+          }),
+        );
+        await promiseA;
+
+        // Old response discarded, data not corrupted
+        assert.equal(controller.getState().loadingMore, false);
+        assert.equal(controller.getState().data?.friends[0].name, "FriendPage1");
+
+        // 4. B resolves
+        resolveRefreshB(
+          createTestReferralDashboardResponse({
+            friends: [{ name: "RefreshedFriendB", days: 3, status: "qualified" }],
+            next_cursor: "cursor_2",
+          }),
+        );
+        await promiseB;
+
+        assert.equal(controller.getState().refreshing, false);
+        assert.equal(controller.getState().loadingMore, false);
+        assert.equal(controller.getState().data?.friends.length, 1);
+        assert.equal(controller.getState().data?.friends[0].name, "RefreshedFriendB");
+        assert.equal(controller.getState().data?.next_cursor, "cursor_2");
+
+        // 5. Subsequent loadMore works
+        const promiseC = controller.loadMore();
+        assert.equal(controller.getState().loadingMore, true);
+        resolveMoreC(
+          createTestReferralDashboardResponse({
+            friends: [{ name: "Page2FriendC", days: 4, status: "pending" }],
+            next_cursor: null,
+          }),
+        );
+        await promiseC;
+        assert.equal(controller.getState().loadingMore, false);
+        assert.equal(controller.getState().data?.friends.length, 2);
+        assert.equal(controller.getState().data?.friends[1].name, "Page2FriendC");
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  await t.test(
+    "52. Referral reward equip leaves Shop coherent (Integration Test)",
+    async () => {
+      let shopCatalogueEquipped: any = {};
+      const restore = mockFetchResponse((url) => {
+        if (url === "/app/api/shop/equip") {
+          shopCatalogueEquipped = { frame: "referral_intesa" };
+          return {
+            status: "ok",
+            cosmetics: {
+              theme: null,
+              frame: { ring: "conic-gradient(#b8892f, #f7e39c, #d9b45b, #fff3c4, #b8892f)" },
+              title: null,
+              badge: null,
+              squares: { correct: "⭐", wrong: "❌", unused: "⬜" },
+              number: null,
+              celebration: null,
+              card: null,
+              equipped: { frame: "referral_intesa" },
+            },
+          };
+        }
+        if (url === "/app/api/shop") {
+          return {
+            sections: [
+              {
+                kind: "frame",
+                items: [
+                  {
+                    id: "referral_intesa",
+                    kind: "frame",
+                    name: "L'Intesa",
+                    description: "Desc",
+                    price: 0,
+                    full_price: 0,
+                    missing: [],
+                    achievement: null,
+                    progress: 0,
+                    style: { tactics: 3 },
+                    grants: [],
+                    owned: true,
+                    equipped: Boolean(shopCatalogueEquipped.frame === "referral_intesa"),
+                    free: false,
+                    featured: false,
+                    equippable: true,
+                    rarity: "earned",
+                    completes: [],
+                    trophy: null,
+                    welcome: false,
+                  },
+                ],
+              },
+            ],
+            bundles: [],
+            showcase: { week: "2026-W37", items: [] },
+            equipped: shopCatalogueEquipped,
+            owned: ["referral_intesa"],
+            looks: [],
+          };
+        }
+        if (url === "/app/api/me") {
+          return createTestFullProfile();
+        }
+        return createTestReferralDashboardResponse({
+          qualified: 3,
+          rewards: [
+            {
+              target: 3,
+              items: [
+                {
+                  id: "referral_intesa",
+                  kind: "frame",
+                  name: "L'Intesa",
+                  description: "Desc",
+                  price: 0,
+                  full_price: 0,
+                  missing: [],
+                  achievement: null,
+                  progress: 0,
+                  style: { tactics: 3 },
+                  grants: [],
+                  owned: true,
+                  equipped: false,
+                  free: false,
+                  featured: false,
+                  equippable: true,
+                  rarity: "earned",
+                  completes: [],
+                  trophy: null,
+                  welcome: false,
+                },
+              ],
+            },
+          ],
+        });
+      });
+
+      try {
+        const root = document.createElement("div");
+        document.body.appendChild(root);
+        const app = new App(root);
+        app.init();
+
+        await app.getProfileController().init();
+        await app.getReferralController().init();
+        app.setTab("referral");
+
+        // Referral equips reward
+        const ok = await app.getReferralController().equipItem("referral_intesa");
+        assert.equal(ok, true);
+
+        // Navigate to Shop
+        app.setTab("shop");
+
+        // 1. Shop catalogue reflects the newly equipped item
+        assert.equal(
+          app.getShopController().getState().catalogue?.equipped.frame,
+          "referral_intesa",
+        );
+        const shopItem = app
+          .getShopController()
+          .allItems()
+          .find((i) => i.id === "referral_intesa");
+        assert.equal(shopItem?.equipped, true);
+
+        // 2. Profile appearance matches
+        const profileCosmetics = app
+          .getProfileController()
+          .getState().profile?.cosmetics;
+        assert.ok(profileCosmetics?.frame);
+        assert.equal(profileCosmetics?.equipped?.frame, "referral_intesa");
+
+        // 3. Daily appearance matches
+        const dailyState = app.getDailyController().getState();
+        assert.equal(dailyState.squaresSymbols.correct, "⭐");
+        assert.equal(dailyState.cardImage, null);
+
+        // 4. Referral appearance state matches
+        const refItem = app
+          .getReferralController()
+          .findRewardItem("referral_intesa");
+        assert.equal(refItem?.equipped, true);
+
+        // 5. Global #66 appearance matches
+        const globalApp = getResolvedAppearance();
+        assert.ok(globalApp.frame?.ring);
+        assert.equal(globalApp.equipped?.frame, "referral_intesa");
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  await t.test(
+    "53. Cross-feature race: Shop equip pending -> Referral equip attempted is blocked",
+    async () => {
+      let resolveShopEquip: (val: any) => void = () => {};
+      const restore = mockFetchResponse((url, init) => {
+        if (url === "/app/api/shop/equip") {
+          const body = JSON.parse(String((init as any).body));
+          if (body.item === "shop_item_1") {
+            return new Promise((r) => {
+              resolveShopEquip = r;
+            });
+          }
+          return { status: "ok", cosmetics: { frame: body.item, equipped: { frame: body.item } } };
+        }
+        if (url === "/app/api/shop") {
+          return {
+            sections: [],
+            bundles: [],
+            showcase: { week: "2026-W37", items: [] },
+            equipped: {},
+            owned: ["shop_item_1", "referral_intesa"],
+            looks: [],
+          };
+        }
+        return createTestReferralDashboardResponse({
+          qualified: 3,
+          rewards: [
+            {
+              target: 3,
+              items: [
+                {
+                  id: "referral_intesa",
+                  kind: "frame",
+                  name: "L'Intesa",
+                  description: "Desc",
+                  price: 0,
+                  full_price: 0,
+                  missing: [],
+                  achievement: null,
+                  progress: 0,
+                  style: { tactics: 3 },
+                  grants: [],
+                  owned: true,
+                  equipped: false,
+                  free: false,
+                  featured: false,
+                  equippable: true,
+                  rarity: "earned",
+                  completes: [],
+                  trophy: null,
+                  welcome: false,
+                },
+              ],
+            },
+          ],
+        });
+      });
+
+      try {
+        const root = document.createElement("div");
+        document.body.appendChild(root);
+        const app = new App(root);
+        app.init();
+        await app.getReferralController().init();
+
+        // 1. Shop equip starts and stays pending
+        const pShop = app.getShopController().equip("shop_item_1");
+
+        // 2. Referral equip is attempted concurrently
+        const pRef = app.getReferralController().equipItem("referral_intesa");
+        const refResult = await pRef;
+
+        // Referral equip must be safely blocked and return false
+        assert.equal(refResult, false);
+        assert.equal(app.getReferralController().getState().equippingItemId, null);
+
+        // 3. Resolve Shop equip
+        resolveShopEquip({
+          status: "ok",
+          cosmetics: {
+            theme: null,
+            frame: "shop_item_1",
+            title: null,
+            badge: null,
+            squares: "classic",
+            number: null,
+            celebration: null,
+            card: null,
+            equipped: { frame: "shop_item_1" },
+          },
+        });
+        const shopResult = await pShop;
+        assert.equal(shopResult, true);
+        assert.equal(getResolvedAppearance().equipped?.frame, "shop_item_1");
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  await t.test(
+    "54. Cross-feature race: Referral equip pending -> saved Look wear attempted is blocked",
+    async () => {
+      let resolveRefEquip: (val: any) => void = () => {};
+      const restore = mockFetchResponse((url) => {
+        if (url === "/app/api/shop/equip") {
+          return new Promise((r) => {
+            resolveRefEquip = r;
+          });
+        }
+        if (url === "/app/api/shop/look") {
+          return { status: "ok" };
+        }
+        if (url === "/app/api/shop") {
+          return {
+            sections: [],
+            bundles: [],
+            showcase: { week: "2026-W37", items: [] },
+            equipped: {},
+            owned: ["referral_intesa"],
+            looks: [{ name: "MyLook", equipped: { frame: "look_frame" } }],
+          };
+        }
+        return createTestReferralDashboardResponse({
+          qualified: 3,
+          rewards: [
+            {
+              target: 3,
+              items: [
+                {
+                  id: "referral_intesa",
+                  kind: "frame",
+                  name: "L'Intesa",
+                  description: "Desc",
+                  price: 0,
+                  full_price: 0,
+                  missing: [],
+                  achievement: null,
+                  progress: 0,
+                  style: { tactics: 3 },
+                  grants: [],
+                  owned: true,
+                  equipped: false,
+                  free: false,
+                  featured: false,
+                  equippable: true,
+                  rarity: "earned",
+                  completes: [],
+                  trophy: null,
+                  welcome: false,
+                },
+              ],
+            },
+          ],
+        });
+      });
+
+      try {
+        const root = document.createElement("div");
+        document.body.appendChild(root);
+        const app = new App(root);
+        app.init();
+        await app.getReferralController().init();
+
+        // 1. Referral equip starts and is pending in ShopController
+        const pRef = app.getReferralController().equipItem("referral_intesa");
+
+        // 2. Saved Look wear is attempted while Referral equip owns appearanceMutation
+        const pWear = app.getShopController().lookAction("wear", "MyLook");
+        const wearResult = await pWear;
+
+        // Look wear must be safely blocked and return false
+        assert.equal(wearResult, false);
+
+        // 3. Resolve Referral equip
+        resolveRefEquip({
+          status: "ok",
+          cosmetics: {
+            theme: null,
+            frame: "referral_intesa",
+            title: null,
+            badge: null,
+            squares: "classic",
+            number: null,
+            celebration: null,
+            card: null,
+            equipped: { frame: "referral_intesa" },
+          },
+        });
+        const refResult = await pRef;
+        assert.equal(refResult, true);
+        assert.equal(getResolvedAppearance().equipped?.frame, "referral_intesa");
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  await t.test(
+    "55. Shop equip -> return to already-cached Referral -> equipped indicators are correct",
+    async () => {
+      let currentEquippedFrame = "other_frame";
+      const restore = mockFetchResponse((url) => {
+        if (url === "/app/api/shop/equip") {
+          currentEquippedFrame = "referral_intesa";
+          return {
+            status: "ok",
+            cosmetics: {
+              theme: null,
+              frame: "referral_intesa",
+              title: null,
+              badge: null,
+              squares: "classic",
+              number: null,
+              celebration: null,
+              card: null,
+              equipped: { frame: "referral_intesa" },
+            },
+          };
+        }
+        if (url === "/app/api/shop") {
+          return {
+            sections: [],
+            bundles: [],
+            showcase: { week: "2026-W37", items: [] },
+            equipped: { frame: currentEquippedFrame },
+            owned: ["referral_intesa", "other_frame"],
+            looks: [],
+          };
+        }
+        return createTestReferralDashboardResponse({
+          qualified: 3,
+          rewards: [
+            {
+              target: 3,
+              items: [
+                {
+                  id: "referral_intesa",
+                  kind: "frame",
+                  name: "L'Intesa",
+                  description: "Desc",
+                  price: 0,
+                  full_price: 0,
+                  missing: [],
+                  achievement: null,
+                  progress: 0,
+                  style: { tactics: 3 },
+                  grants: [],
+                  owned: true,
+                  equipped: false,
+                  free: false,
+                  featured: false,
+                  equippable: true,
+                  rarity: "earned",
+                  completes: [],
+                  trophy: null,
+                  welcome: false,
+                },
+              ],
+            },
+          ],
+        });
+      });
+
+      try {
+        const root = document.createElement("div");
+        document.body.appendChild(root);
+        const app = new App(root);
+        app.init();
+
+        // 1. Referral loaded and cached
+        app.setTab("referral");
+        await app.getReferralController().init();
+        assert.equal(
+          app.getReferralController().findRewardItem("referral_intesa")?.equipped,
+          false,
+        );
+
+        // 2. User navigates to Shop and equips referral_intesa
+        app.setTab("shop");
+        await app.getShopController().init();
+        const ok = await app.getShopController().equip("referral_intesa");
+        assert.equal(ok, true);
+
+        // 3. Return to Referral (cached, init does not re-fetch from network)
+        app.setTab("referral");
+        await app.getReferralController().init();
+
+        // Reconciled without network reload
+        const item = app.getReferralController().findRewardItem("referral_intesa");
+        assert.equal(item?.equipped, true);
+
+        // Rendered view must show Equipaggiato (disabled)
+        app.getReferralController().openRewardPreview(3);
+        const previewHtml = root.innerHTML;
+        assert.ok(previewHtml.includes("disabled"));
+        assert.ok(previewHtml.includes("Equipaggiato"));
+      } finally {
+        restore();
+      }
+    },
+  );
 });

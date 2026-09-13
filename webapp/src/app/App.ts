@@ -78,6 +78,9 @@ export class App {
     this.profileController = profileController || new ProfileController();
     this.shopController = shopController || new ShopController();
     this.referralController = referralController || new ReferralController();
+    this.referralController.setEquipHandler((itemId: string) => {
+      return this.shopController.equip(itemId);
+    });
     this.lastArenaSubview = this.arenaController.getState().subview;
     exposeLegacyBridge();
 
