@@ -1,5 +1,11 @@
 # Mini App V2 — match programme
 
+> **Historical design record for #64.** Kept as evidence of the visual direction. It
+> predates the dark-only contract (#66), the functional migrations and the #61 redesign,
+> so statements about preview notices, sample data outside Daily or light/dark review are
+> no longer current. Current references: [miniapp.md](miniapp.md) and
+> [miniapp-appearance.md](miniapp-appearance.md).
+
 Issue #64. Frontend foundation; #41–#47 remain functional migrations.
 
 ## Audit and direction

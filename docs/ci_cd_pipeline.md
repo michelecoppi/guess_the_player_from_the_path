@@ -32,17 +32,25 @@ produzione, senza bisogno di un job "test" duplicato dentro deploy.yml.
 
 ## 1. CI — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 
-Gira su ogni push e ogni pull request. Passi, in ordine (si ferma al primo che fallisce):
+Gira su ogni pull request e su ogni push su `main`. Passi, in ordine (si ferma al primo che
+fallisce); il file del workflow resta la fonte esatta:
 
 | Step | Cosa controlla | Comando |
 |---|---|---|
-| Controllo sintassi | i file .py sono almeno sintatticamente validi | `python -m py_compile ...` |
-| Lint | stile, import disordinati, except troppo larghi, ecc. (regole `E`, `F`, `W`, `I` di ruff, `E501` disattivato perché molti messaggi in italiano superano i 110 caratteri) | `ruff check .` |
-| Type check | annotazioni coerenti in `services/` (il resto del progetto non è tipizzato) | `mypy services/` |
-| Validazione dataset | i JSON in `data/` sono JSON validi | script inline in `ci.yml` |
-| Salute del dataset | niente id duplicati, alias ambigui, cronologie incoerenti (vedi `scripts/dataset_report.py`) | `python scripts/dataset_report.py --strict` |
-| Test client | le funzioni pure della mini app (`webapp/client.js`), senza browser e senza bundler | `node --test tests/client.test.cjs` |
-| Test + coverage | l'intera suite pytest, con soglia minima di copertura | `pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70` |
+| Frontend: dipendenze e type check | la Mini App V2 compila senza errori di tipo | `npm ci`, `npm run typecheck` |
+| Frontend: build | il bundle Vite di `/app/v2` si costruisce | `npm run build` |
+| Test client legacy | le funzioni pure della mini app `/app` (`webapp/client.js`) e l'allineamento delle stringhe | `node --test tests/client.test.cjs` |
+| Test frontend V2 | test unitari TypeScript | `npm run test:frontend` |
+| Audit dipendenze frontend | vulnerabilità npm di livello alto | `npm audit --audit-level=high` |
+| Controllo sintassi | i moduli Python compilano | `python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py tools` |
+| Lint | regole `E`, `F`, `W`, `I` di ruff (`E501` disattivato) | `ruff check .` |
+| Type check | annotazioni coerenti in `services/` | `mypy services/` |
+| Sicurezza | pip-audit con eccezioni a scadenza, detect-secrets, npm audit (vedi [security.md](security.md)) | `python -m tools.security` |
+| Validazione dataset | i JSON in `data/` sono validi | script inline in `ci.yml` |
+| Salute del dataset | id duplicati, alias ambigui, cronologie incoerenti | `python scripts/dataset_report.py --strict` |
+| Regressione dataset | metriche di qualità non peggiorano rispetto a `data/dataset_baseline.json` | `python -m scripts.dataset_regression --check` |
+| Emulatore Firestore | Java 21 + `gcloud` avviano l'emulatore; se non parte la CI fallisce | `gcloud emulators firestore start` |
+| Test + coverage | l'intera suite pytest, transazioni reali sull'emulatore comprese, con soglia minima | `pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70` |
 
 Configurazione di ruff/mypy in [`pyproject.toml`](../pyproject.toml): niente `__init__.py` nei
 package (`services/`, `handlers/`), quindi mypy ha bisogno di `explicit_package_bases = true` e
@@ -72,7 +80,8 @@ jobs:
 Passi: checkout dello stesso commit testato (`ref: ${{ github.event.workflow_run.head_sha }}`),
 autenticazione GCP via `google-github-actions/auth@v2` (Workload Identity Federation), poi
 `gcloud run deploy guess-the-player --source . --project guess-the-player-from-path-bot --region
-europe-west1 --quiet`.
+europe-west1 --max-instances 10 --quiet`. La build dell'immagine ([`Dockerfile`](../Dockerfile))
+compila anche il bundle Vite della Mini App V2 in uno stage Node separato.
 
 **Perché WIF e non una chiave di service account**: una chiave scaricata è un segreto di lunga
 durata che, se trapela, resta valido finché non lo revochi a mano. WIF fa scambiare a GitHub
@@ -155,15 +164,15 @@ Fatta nella stessa sessione di lavoro, perché toccava gli stessi file:
 
 ## Cosa resta aperto
 
-- **Coverage al 50%**: soglia di partenza, da alzare quando si aggiungono test mirati su
-  `firebase_service.py` (25% di copertura diretta) e sugli handler Telegram meno testati
-  (`help_handler.py`, `notify_handler.py`, `show_daily_path_handler.py`,
-  `show_stats_handler.py`, `start_handler.py`: 0% di copertura diretta, sono testati solo
-  indirettamente).
-- **Nessun rollback automatico**: se un deploy va in produzione con un bug non catturato dai
-  test, il fallback è il deploy manuale di una revisione precedente (`gcloud run services
-  update-traffic` o un nuovo `gcloud run deploy` da un commit precedente) — non c'è ancora un
-  meccanismo di rollback con un solo comando.
+- **Coverage**: la soglia è 70% (vedi sopra); va alzata man mano che crescono i test,
+  mantenendo il margine sotto il valore reale.
+- **Nessun rollback automatico né versioning**: se un deploy va in produzione con un bug non
+  catturato dai test, il fallback è il deploy manuale di una revisione precedente (`gcloud run
+  services update-traffic` o un nuovo `gcloud run deploy` da un commit precedente). Versioni,
+  changelog e checklist di deploy sono pianificati in
+  [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49); restore
+  testato dei backup in
+  [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50).
 - **`data/incoming/`**: i batch di calciatori in staging (in attesa di
   `scripts/import_players.py`) sono in `.gitignore`, quindi solo locali: se la macchina si
   rompe si perdono. Nessun backup automatico, per scelta (non fanno parte del dataset

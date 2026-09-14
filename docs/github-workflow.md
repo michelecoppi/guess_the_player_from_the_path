@@ -4,7 +4,9 @@ This is the repository-side mechanics companion to
 [`evolutive-tracking.md`](evolutive-tracking.md), which owns the roadmap index,
 the Project field taxonomy and the protocol for creating/classifying issues.
 This file owns the git/GitHub mechanics: how an issue becomes a branch, a PR,
-and eventually a merge. It does not duplicate Project-field definitions.
+and eventually a merge. It does not duplicate Project-field definitions. The
+reasoning discipline around this workflow (stale-state checks, parallel agents,
+documentation policy) is in [`agent-protocol.md`](agent-protocol.md).
 
 ## 1. Pick up an issue
 

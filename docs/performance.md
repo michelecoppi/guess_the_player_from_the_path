@@ -1,5 +1,10 @@
 # Prestazioni della mini app
 
+Stato attuale delle scelte di prestazione. La misura sistematica e l'ottimizzazione guidata da
+dati sono pianificate in [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32)
+(con telemetria da [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)); oggi esistono solo
+l'header `Server-Timing` e i log `[WEBAPP]` descritti sotto.
+
 Gli handler Telegram spostano le operazioni Firestore sincrone e i servizi che le
 incapsulano in `asyncio.to_thread`, inclusa la generazione delle immagini. Il webhook
 autenticato accoda su Cloud Tasks e conferma 200 dopo la scrittura durabile; il worker

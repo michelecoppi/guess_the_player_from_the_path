@@ -1,5 +1,11 @@
 # Issue #61 — visual review and PR #78 follow-up
 
+> **Historical review log.** #61 and PR #78 are merged; the “still required” and
+> “Refs #61” notes below describe the state during review, not today. Test counts are
+> point-in-time. Current references: [miniapp.md](miniapp.md) and
+> [miniapp-appearance.md](miniapp-appearance.md); the remaining pre-rollout review is
+> [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81).
+
 Base: `114df2227d5792ece9234246343475c8288ba9bb`.
 Branch: `feat/61-final-v2-ux`, dedicated worktree `.worktrees/issue-61`.
 

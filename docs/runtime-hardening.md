@@ -106,7 +106,7 @@ Non distribuire contemporaneamente revisioni con segreti diversi.
 e amministrazione. `firebase_service` mantiene client, schema e re-export: gli import
 esistenti e i punti di sostituzione usati dai test restano validi. I repository risolvono
 la facciata dentro le funzioni per consentire anche import diretti senza cicli all'avvio.
-`admin_pages/` separa le otto pagine e i widget condivisi; `admin_ui.py` mantiene avvio
+`admin_pages/` separa le pagine e i widget condivisi; `admin_ui.py` mantiene avvio
 e navigazione.
 
 `webapp/client.js` raccoglie le funzioni della mini app che non toccano ne' il DOM ne' la

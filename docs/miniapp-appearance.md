@@ -1,5 +1,8 @@
 # V2 appearance policy (#66)
 
+Primary document for the V2 appearance contract. For the overall Mini App architecture
+and rollout status see [miniapp.md](miniapp.md).
+
 V2 is structurally dark before JavaScript loads. Telegram light/dark and system
 preferences cannot choose its colors. `connectTheme` retains theme, viewport and
 both safe-area event subscriptions; CSS still combines device and Telegram insets.
@@ -81,13 +84,16 @@ future previews. Frame spinning stays off to avoid perpetual decoration.
 
 ## Fixtures and review
 
-`prototypes/appearance-fixtures.json` contains backend-generated snapshots checked
+`webapp/src/prototypes/appearance-fixtures.json` contains backend-generated snapshots checked
 by `tests/test_appearance_contract.py`: default, captain frame + scout title + football
 badge, full Neve collection plus number 10/night card/earned snow celebration,
 football squares, Ghiaccio theme, number 7, confetti, and foil card. Fixtures have no
 ownership logic. The dev-only `?design-review` appearance selector demonstrates them
-with an identity sample and Daily symbols. This does not implement Profile or Shop.
+with an identity sample and Daily symbols.
 
-Deferred: #42/#45 functional identity/catalog/equip/purchase flows, other migration
-consumers, #61 final visual polish and human device review. Legacy `/app` remains
-untouched and no production route rollout is part of this work.
+Status after #66: the functional consumers (#42 Profile, #45 Shop and the other
+migrations) and the #61 redesign have since been merged on top of this contract, and
+`webapp/src/prototypes/theme-fixtures.json` covers all real themes. The final review of
+every real cosmetic on every surface is
+[#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81); legacy
+`/app` remains the production default until a separate rollout issue.
