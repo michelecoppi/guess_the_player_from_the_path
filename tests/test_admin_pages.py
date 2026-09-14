@@ -5,7 +5,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-@pytest.mark.parametrize("page", ["overview", "challenges", "events", "users", "leagues", "dataset", "blocked", "father_son"])
+@pytest.mark.parametrize("page", ["overview", "challenges", "events", "users", "leagues", "dataset", "player_review", "blocked", "father_son"])
 def test_admin_page_renders_with_unavailable_database(page):
     module = importlib.import_module(f"admin_pages.{page}")
     assert callable(module.render)
