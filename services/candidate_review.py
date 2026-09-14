@@ -772,6 +772,27 @@ class CandidateReviewService:
         prod_players = self._load_production_players()
         return build_review_projection(candidate, prod_players)
 
+    def list_merge_targets(self, admin: AdminIdentity) -> list[dict[str, Any]]:
+        """Elenco minimale e di sola lettura dei giocatori di produzione utilizzabile come
+        target di merge dalla UI di revisione: solo i campi utili al reviewer per scegliere
+        (id, nome, anno di nascita, nazionalità), mai il record di produzione completo né il
+        dataset grezzo. Il merge vero e proprio passa sempre e solo da ``merge_candidate``.
+        """
+        self._verify_auth(admin)
+        prod_players = self._load_production_players()
+        targets = [
+            {
+                "player_id": p.get("id"),
+                "full_name": p.get("full_name"),
+                "birth_year": p.get("birth_year"),
+                "nationality": p.get("nationality"),
+            }
+            for p in prod_players
+            if p.get("id")
+        ]
+        targets.sort(key=lambda t: (t["full_name"] or "", t["player_id"]))
+        return targets
+
     # -----------------------------------------------------------------------
     # Mutazioni: approve, edit, reject, merge, mark_source_wrong, retry
     # -----------------------------------------------------------------------

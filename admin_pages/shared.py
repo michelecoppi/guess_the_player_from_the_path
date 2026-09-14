@@ -10,6 +10,12 @@ from config import BOT_TOKEN as BOT_TOKEN
 from services import content_admin as content_admin
 from services import dataset_editor as dataset_editor
 from services import firebase_service as firebase_service
+from services.candidate_player import CandidateState as CandidateState
+from services.candidate_review import AdminIdentity as AdminIdentity
+from services.candidate_review import CandidateReviewService as CandidateReviewService
+from services.candidate_review import ReviewAuthError as ReviewAuthError
+from services.candidate_review import ReviewForbiddenError as ReviewForbiddenError
+from services.candidate_review import ReviewStatus as ReviewStatus
 from services.content_admin import ContentAdminError as ContentAdminError
 from services.daily_challenge import MAX_ATTEMPTS as MAX_ATTEMPTS
 from services.daily_generator import ensure_daily_buffer as ensure_daily_buffer
@@ -39,6 +45,7 @@ from services.player_pool import (
 from services.player_pool import get_incomplete_or_unverified_players as get_incomplete_or_unverified_players
 from services.player_pool import get_player_by_id as get_player_by_id
 from services.player_pool import load_config as load_config
+from services.repos.candidates import FileCandidatePlayerRepository as FileCandidatePlayerRepository
 
 CACHE_TTL_SECONDS = 45
 
@@ -281,5 +288,34 @@ def player_picker(key, label="Giocatore dal dataset"):
         return None
     choice = st.selectbox(label, list(options), key=key, index=None, placeholder="Cerca per nome o id…")
     return options.get(choice) if choice else None
+
+
+# ---------------------------------------------------------------------------
+# Candidate review queue (#15 / #35): la Admin riusa CandidateReviewService
+# così com'è — nessuna logica di dominio (FSM, validazione, conflitti di
+# provenienza, CAS) viene duplicata qui. Repository, dataset e config sono
+# esattamente quelli della pipeline di ingestion, mai percorsi o ID inventati.
+# ---------------------------------------------------------------------------
+
+@st.cache_resource(show_spinner=False)
+def get_review_service() -> CandidateReviewService:
+    """Istanza condivisa del servizio di review, sul repository file-backed reale
+    (`data/candidates/`, lo stesso usato dalla pipeline di ingestion) e sul dataset
+    di produzione e sulla directory di backup di default del servizio stesso."""
+    return CandidateReviewService(candidate_repo=FileCandidatePlayerRepository())
+
+
+def get_admin_identity() -> AdminIdentity | None:
+    """AdminIdentity per chi opera da questa dashboard locale.
+
+    Riusa la stessa fonte di configurazione del bot Telegram (ADMIN_TELEGRAM_IDS,
+    da `config.py`/`.env`): non esiste un login separato per la dashboard, quindi
+    chi la lancia in locale (con le credenziali del progetto già in mano) opera
+    come il primo amministratore configurato. Nessun ID è mai inventato: se la
+    configurazione manca, ritorna None e il chiamante deve bloccare le mutazioni.
+    """
+    if not ADMIN_TELEGRAM_IDS:
+        return None
+    return AdminIdentity(user_id=ADMIN_TELEGRAM_IDS[0], username="admin_ui")
 
 
