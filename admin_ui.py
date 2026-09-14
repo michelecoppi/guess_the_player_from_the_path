@@ -52,7 +52,17 @@ if not credentials_path.exists():
 # qui lo normalizziamo ad assoluto cosi' funziona indipendentemente dalla cwd da cui parte streamlit.
 os.environ["FIREBASE_CREDENTIALS_PATH"] = str(credentials_path)
 
-from admin_pages import blocked, challenges, dataset, events, father_son, leagues, overview, player_review, users
+from admin_pages import (
+    blocked,
+    challenges,
+    dataset,
+    events,
+    father_son,
+    leagues,
+    overview,
+    player_review,
+    users,
+)
 from admin_pages.shared import CACHE_TTL_SECONDS, ITALY_TZ, firebase_service, render_flash, today_iso
 
 # ---------------------------------------------------------------------------

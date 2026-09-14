@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -21,7 +22,7 @@ import admin_pages.player_review as player_review
 import admin_pages.shared as shared
 from services.adapters.base import AdapterResult
 from services.candidate_player import CandidatePlayer, CandidateState
-from services.candidate_review import AdminIdentity, CandidateReviewService, ReviewStatus
+from services.candidate_review import AdminIdentity, CandidateReviewService
 from services.repos.candidates import FileCandidatePlayerRepository
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -487,3 +488,331 @@ def test_edit_only_sends_allow_listed_fields(env, monkeypatch):
 
     edited = repo.get_by_id("cand_edit")
     assert edited.nationality == "Spagna"
+
+
+# ---------------------------------------------------------------------------
+# 13. No combined Edit+Approve path: the reviewer can never pre-acknowledge
+#     warnings before the edit itself has produced its real validation result.
+# ---------------------------------------------------------------------------
+
+def test_no_combined_edit_and_approve_path_in_ui(env, monkeypatch):
+    service, admin = env["service"], env["admin"]
+    repo = env["repo"]
+    repo.save(make_candidate("cand_combo", name="Combo Player", state=CandidateState.READY))
+
+    real_edit_and_approve = service.edit_and_approve
+    calls = []
+    monkeypatch.setattr(
+        service, "edit_and_approve", lambda *a, **kw: (calls.append((a, kw)), real_edit_and_approve(*a, **kw))[1]
+    )
+    patch_wiring(monkeypatch, service, admin)
+
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    at.button(key="open_cand_combo").click().run()
+    assert not at.exception
+
+    # No "combined" checkbox/widget is reachable anywhere on the rendered detail page.
+    checkbox_keys = [c.key for c in at.checkbox]
+    assert not any("combined" in (k or "") for k in checkbox_keys)
+    labels = [c.label for c in at.checkbox]
+    assert not any("approva subito" in (lbl or "").lower() for lbl in labels)
+
+    # Saving an edit alone never calls the combined service method.
+    at.text_input(key="edit_nationality_cand_combo_1").set_value("Portogallo").run()
+    save_buttons = [b for b in at.button if "Salva modifiche" in (b.label or "")]
+    assert save_buttons
+    save_buttons[0].click().run()
+    assert not at.exception
+
+    assert calls == []  # edit_and_approve was never invoked by the Admin UI
+    edited = repo.get_by_id("cand_combo")
+    assert edited.status != CandidateState.APPROVED
+    assert edited.nationality == "Portogallo"
+
+
+def test_admin_source_never_calls_edit_and_approve():
+    src = inspect.getsource(player_review)
+    assert "edit_and_approve" not in src
+
+
+# ---------------------------------------------------------------------------
+# 14. Edit that introduces a NEW warning: not auto-approved; refreshed detail
+#     shows it; approving requires a fresh explicit ack tied to the new revision.
+# ---------------------------------------------------------------------------
+
+def test_edit_introducing_warning_requires_fresh_ack_on_new_revision(env, monkeypatch):
+    service, admin = env["service"], env["admin"]
+    repo, players_file = env["repo"], env["players_file"]
+    repo.save(make_candidate("cand_newwarn", name="New Warning Player", state=CandidateState.READY))
+    before = players_file.read_text(encoding="utf-8")
+
+    patch_wiring(monkeypatch, service, admin)
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    at.button(key="open_cand_newwarn").click().run()
+    assert not at.exception
+
+    # Clearing the role triggers a real PLAYER_POSITION_MISSING warning only once the
+    # edit actually runs — never pre-acknowledged beforehand.
+    at.text_input(key="edit_position_cand_newwarn_1").set_value("").run()
+    save_buttons = [b for b in at.button if "Salva modifiche" in (b.label or "")]
+    save_buttons[0].click().run()
+    assert not at.exception
+
+    edited = repo.get_by_id("cand_newwarn")
+    assert edited.revision == 2
+    assert edited.status != CandidateState.APPROVED  # never a side-effect of Edit
+    assert any("ruolo" in w.lower() for w in edited.validation_warnings)
+    assert players_file.read_text(encoding="utf-8") == before  # Edit never touches production
+
+    # The freshly reloaded projection (new revision) shows the warning to the reviewer.
+    assert any("warning" in w.value.lower() for w in at.warning)
+    assert any("ruolo" in m.value.lower() for m in at.markdown)
+
+    # Approve form is now keyed on the new revision; the old revision's key is gone.
+    assert at.checkbox(key="approve_ack_warnings_cand_newwarn_2") is not None
+    with pytest.raises(KeyError):
+        at.checkbox(key="approve_ack_warnings_cand_newwarn_1")
+
+    # Approving without a fresh ack on the new revision is refused.
+    at.checkbox(key="approve_confirm_cand_newwarn_2").check().run()
+    at.button(key="approve_submit_cand_newwarn_2").click().run()
+    assert not at.exception
+    assert repo.get_by_id("cand_newwarn").status != CandidateState.APPROVED
+
+    # Explicit ack on the new revision -> approval succeeds.
+    at.checkbox(key="approve_ack_warnings_cand_newwarn_2").check().run()
+    at.button(key="approve_submit_cand_newwarn_2").click().run()
+    assert not at.exception
+    assert repo.get_by_id("cand_newwarn").status == CandidateState.APPROVED
+
+
+# ---------------------------------------------------------------------------
+# 15. Edit that introduces a blocking error: candidate stays reviewable, Approve
+#     is blocked, production dataset is unchanged.
+# ---------------------------------------------------------------------------
+
+def test_edit_introducing_blocking_error_blocks_approve_and_leaves_dataset_untouched(env, monkeypatch):
+    service, admin = env["service"], env["admin"]
+    repo, players_file = env["repo"], env["players_file"]
+    repo.save(make_candidate("cand_newerr", name="New Error Player", state=CandidateState.READY))
+    before = players_file.read_text(encoding="utf-8")
+
+    patch_wiring(monkeypatch, service, admin)
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    at.button(key="open_cand_newerr").click().run()
+
+    # Clearing nationality triggers a blocking PLAYER_NATIONALITY_MISSING error.
+    at.text_input(key="edit_nationality_cand_newerr_1").set_value("").run()
+    save_buttons = [b for b in at.button if "Salva modifiche" in (b.label or "")]
+    save_buttons[0].click().run()
+    assert not at.exception
+
+    edited = repo.get_by_id("cand_newerr")
+    # edit() bumps once, and the resulting READY -> REVIEW_REQUIRED transition bumps again.
+    assert edited.revision == 3
+    assert edited.status == CandidateState.REVIEW_REQUIRED
+    assert any("nazionalità" in e.lower() for e in edited.validation_errors)
+    assert players_file.read_text(encoding="utf-8") == before
+
+    # The Approve confirmation checkbox and submit button for the new revision are both
+    # disabled while blocking: a browser user cannot even attempt to approve.
+    approve_confirm = at.checkbox(key="approve_confirm_cand_newerr_3")
+    assert approve_confirm.disabled is True
+    approve_submit = at.button(key="approve_submit_cand_newerr_3")
+    assert approve_submit.disabled is True
+
+    # Nothing was approved and production remains untouched.
+    assert repo.get_by_id("cand_newerr").status == CandidateState.REVIEW_REQUIRED
+    assert players_file.read_text(encoding="utf-8") == before
+
+
+# ---------------------------------------------------------------------------
+# 16. After Edit, the displayed revision is the updated one, not the pre-edit one.
+# ---------------------------------------------------------------------------
+
+def test_edit_reload_shows_updated_revision_not_pre_edit(env, monkeypatch):
+    service, admin = env["service"], env["admin"]
+    repo = env["repo"]
+    repo.save(make_candidate("cand_rev", name="Revision Player", state=CandidateState.READY))
+
+    patch_wiring(monkeypatch, service, admin)
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    at.button(key="open_cand_rev").click().run()
+    assert at.checkbox(key="approve_confirm_cand_rev_1") is not None
+
+    at.text_input(key="edit_nationality_cand_rev_1").set_value("Francia").run()
+    save_buttons = [b for b in at.button if "Salva modifiche" in (b.label or "")]
+    save_buttons[0].click().run()
+    assert not at.exception
+
+    # Service-side confirmation: the persisted, freshly loaded projection is at revision 2.
+    fresh = service.get_candidate_detail(admin, "cand_rev")
+    assert fresh.revision == 2
+    assert fresh.nationality == "Francia"
+
+    # UI-side confirmation: widgets are now keyed on revision 2, not the stale revision 1.
+    assert at.checkbox(key="approve_confirm_cand_rev_2") is not None
+    with pytest.raises(KeyError):
+        at.checkbox(key="approve_confirm_cand_rev_1")
+    assert any("revisione 2" in c.value.lower() for c in at.caption)
+
+
+# ---------------------------------------------------------------------------
+# 17. A stale warning acknowledgement from a previous revision cannot be reused
+#     to approve a later revision without re-acknowledging.
+# ---------------------------------------------------------------------------
+
+def test_stale_warning_ack_does_not_carry_over_to_new_revision(env, monkeypatch):
+    service, admin = env["service"], env["admin"]
+    repo = env["repo"]
+    cand = make_candidate("cand_stale_ack", name="Stale Ack Player", state=CandidateState.READY)
+    cand.position = ""
+    cand.validation_warnings = ["Ruolo del giocatore mancante"]
+    repo.save(cand)
+
+    patch_wiring(monkeypatch, service, admin)
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    at.button(key="open_cand_stale_ack").click().run()
+
+    # Reviewer ticks the warning ack at revision 1 but never submits Approve.
+    at.checkbox(key="approve_ack_warnings_cand_stale_ack_1").check().run()
+    assert at.checkbox(key="approve_ack_warnings_cand_stale_ack_1").value is True
+
+    # An edit (position still missing -> the same real warning recurs) bumps the revision.
+    at.text_input(key="edit_nationality_cand_stale_ack_1").set_value("Belgio").run()
+    save_buttons = [b for b in at.button if "Salva modifiche" in (b.label or "")]
+    save_buttons[0].click().run()
+    assert not at.exception
+
+    edited = repo.get_by_id("cand_stale_ack")
+    assert edited.revision == 2
+    assert any("ruolo" in w.lower() for w in edited.validation_warnings)
+
+    # The new revision's ack checkbox starts unchecked: the old tick never carries over.
+    assert at.checkbox(key="approve_ack_warnings_cand_stale_ack_2").value is False
+
+    # Approving without re-ticking is refused.
+    at.checkbox(key="approve_confirm_cand_stale_ack_2").check().run()
+    at.button(key="approve_submit_cand_stale_ack_2").click().run()
+    assert not at.exception
+    assert repo.get_by_id("cand_stale_ack").status != CandidateState.APPROVED
+
+    # Re-ticking on the new revision succeeds.
+    at.checkbox(key="approve_ack_warnings_cand_stale_ack_2").check().run()
+    at.button(key="approve_submit_cand_stale_ack_2").click().run()
+    assert not at.exception
+    assert repo.get_by_id("cand_stale_ack").status == CandidateState.APPROVED
+
+
+# ---------------------------------------------------------------------------
+# 18. Merge target listing uses the new public service method, never a private one.
+# ---------------------------------------------------------------------------
+
+def test_merge_target_listing_uses_public_service_method(env, monkeypatch):
+    service, admin = env["service"], env["admin"]
+    repo, players_file = env["repo"], env["players_file"]
+    players_file.write_text(
+        json.dumps(
+            {
+                "_comment": "t",
+                "players": [
+                    {
+                        "id": "prod_1",
+                        "full_name": "Production Player",
+                        "aliases": [],
+                        "nationality": "Italia",
+                        "position": "P",
+                        "birth_year": 1985,
+                        "popularity": 3,
+                        "verified": True,
+                        "career": [{"team": "X", "start_year": 2000, "end_year": 2010}],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    repo.save(make_candidate("cand_merge2", name="Merge Player Two", state=CandidateState.READY))
+
+    calls = []
+    real_list_merge_targets = service.list_merge_targets
+    monkeypatch.setattr(
+        service, "list_merge_targets", lambda *a, **kw: (calls.append((a, kw)), real_list_merge_targets(*a, **kw))[1]
+    )
+    patch_wiring(monkeypatch, service, admin)
+
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    at.button(key="open_cand_merge2").click().run()
+    assert not at.exception
+
+    assert calls  # the merge tab called the new public method
+    options = at.selectbox(key="merge_target_cand_merge2_1").options
+    assert any("Production Player" in o for o in options)
+
+    # The public method itself never leaks the full raw production record.
+    targets = service.list_merge_targets(admin)
+    assert targets == [
+        {
+            "player_id": "prod_1",
+            "full_name": "Production Player",
+            "birth_year": 1985,
+            "nationality": "Italia",
+        }
+    ]
+
+
+# ---------------------------------------------------------------------------
+# 19. Structural: the Admin page source never reaches into underscore-prefixed
+#     (private) members of CandidateReviewService.
+# ---------------------------------------------------------------------------
+
+def test_admin_page_never_accesses_private_service_members():
+    src = inspect.getsource(player_review)
+    # Matches e.g. `service._load_production_players(` or `service_for_options._foo` but
+    # deliberately scoped to identifiers ending in "service"/"service_for_options" so it
+    # doesn't false-positive on unrelated local underscore-prefixed variables/params.
+    pattern = re.compile(r"\bservice(?:_for_options)?\._[a-zA-Z_][a-zA-Z0-9_]*")
+    matches = pattern.findall(src)
+    assert matches == [], f"Private CandidateReviewService member(s) accessed from the Admin UI: {matches}"
+
+
+# ---------------------------------------------------------------------------
+# 20. Production dataset does not change during Edit; it changes exactly once,
+#     only on the later explicit Approve.
+# ---------------------------------------------------------------------------
+
+def test_dataset_unchanged_by_edit_changes_exactly_once_on_later_approve(env, monkeypatch):
+    service, admin = env["service"], env["admin"]
+    repo, players_file = env["repo"], env["players_file"]
+    repo.save(make_candidate("cand_dataset", name="Dataset Player", state=CandidateState.READY))
+
+    write_calls = []
+    real_write = service._atomic_write_production_dataset
+
+    def spy_write(players):
+        write_calls.append(list(players))
+        return real_write(players)
+
+    monkeypatch.setattr(service, "_atomic_write_production_dataset", spy_write)
+    patch_wiring(monkeypatch, service, admin)
+
+    initial = players_file.read_text(encoding="utf-8")
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    at.button(key="open_cand_dataset").click().run()
+
+    at.text_input(key="edit_nationality_cand_dataset_1").set_value("Germania").run()
+    save_buttons = [b for b in at.button if "Salva modifiche" in (b.label or "")]
+    save_buttons[0].click().run()
+    assert not at.exception
+
+    assert write_calls == []  # Edit alone never writes production
+    assert players_file.read_text(encoding="utf-8") == initial
+
+    at.checkbox(key="approve_confirm_cand_dataset_2").check().run()
+    at.button(key="approve_submit_cand_dataset_2").click().run()
+    assert not at.exception
+
+    assert len(write_calls) == 1  # exactly one write, triggered only by the explicit Approve
+    assert players_file.read_text(encoding="utf-8") != initial
+    approved = repo.get_by_id("cand_dataset")
+    assert approved.status == CandidateState.APPROVED

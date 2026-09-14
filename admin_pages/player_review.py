@@ -12,9 +12,9 @@ from typing import Any, Optional
 
 from admin_pages.shared import (
     CandidateState,
-    ReviewStatus,
     ReviewAuthError,
     ReviewForbiddenError,
+    ReviewStatus,
     flash,
     get_admin_identity,
     get_review_service,
@@ -506,15 +506,6 @@ def _render_edit(admin, candidate_id, projection):
 
         reason = st.text_input("Motivo della modifica (opzionale)", key=f"edit_reason_{candidate_id}_{rev}")
 
-        st.divider()
-        combined_approve = st.checkbox(
-            "Salva e approva subito (azione combinata)", key=f"edit_combined_{candidate_id}_{rev}"
-        )
-        combined_ack_warnings = st.checkbox(
-            "Ho rivisto i warning risultanti e voglio approvare comunque",
-            key=f"edit_combined_ack_{candidate_id}_{rev}",
-            disabled=not combined_approve,
-        )
         submitted = st.form_submit_button("💾 Salva modifiche")
 
     if not submitted:
@@ -557,23 +548,10 @@ def _render_edit(admin, candidate_id, projection):
         return
 
     service = get_review_service()
-    if combined_approve:
-        _run_action(
-            lambda: service.edit_and_approve(
-                admin,
-                candidate_id,
-                expected_revision=rev,
-                updates=updates,
-                allow_warnings=combined_ack_warnings,
-                reason=reason or None,
-            ),
-            success_message="Modifiche salvate e candidato approvato.",
-        )
-    else:
-        _run_action(
-            lambda: service.edit(admin, candidate_id, expected_revision=rev, updates=updates, reason=reason or None),
-            success_message="Modifiche salvate.",
-        )
+    _run_action(
+        lambda: service.edit(admin, candidate_id, expected_revision=rev, updates=updates, reason=reason or None),
+        success_message="Modifiche salvate.",
+    )
 
 
 def _render_approve(admin, candidate_id, projection):
@@ -657,10 +635,12 @@ def _render_merge(admin, candidate_id, projection):
 
     # Usa lo stesso dataset di produzione configurato sul servizio (non un lettore diverso):
     # deve coincidere esattamente con l'elenco su cui merge_candidate() valida il target.
+    # Passa sempre dal metodo pubblico e di sola lettura del servizio, mai da un accesso
+    # diretto a membri privati di CandidateReviewService dalla pagina Streamlit.
     service_for_options = get_review_service()
-    for p in sorted(service_for_options._load_production_players(), key=lambda p: p.get("full_name", "")):
-        label = f"{p.get('full_name', p.get('id'))} — {p['id']}"
-        options.setdefault(label, p["id"])
+    for target in service_for_options.list_merge_targets(admin):
+        label = f"{target.get('full_name') or target['player_id']} — {target['player_id']}"
+        options.setdefault(label, target["player_id"])
 
     with st.form(key=f"form_merge_{candidate_id}_{rev}"):
         choice = st.selectbox(
