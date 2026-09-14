@@ -123,7 +123,7 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
         await message.reply_text(t(lang, "training.gone"))
         return
 
-    logging.info(f"[TRAINING] {user_id} su {challenge['key']}: {user_answer}")
+    logging.info(f"[TRAINING] {user_id} su {challenge['key']}: tentativo di {len(user_answer)} caratteri")
     attempts = user_data.get("training_attempts", 0) + 1
 
     if find_match(user_answer, challenge.get("correct_answers", [])):

@@ -691,6 +691,45 @@ class EnvironmentValidator:
                     remediation="Per anteprima isolata usa 'make webapp' (porta 8888). Per avviare bot.py imposta PUBLIC_BASE_URL=https://...",
                 )
 
+    def check_observability(self) -> None:
+        """SENTRY_DSN e LOG_FORMAT sono opzionali: senza, i log restano su stdout e Sentry e' spento.
+
+        Il valore del DSN non viene mai stampato: e' una credenziale di invio."""
+        dsn = os.getenv("SENTRY_DSN", "").strip()
+        if not dsn:
+            self.add_result(
+                category="Observability",
+                name="SENTRY_DSN",
+                status=CheckStatus.INFO,
+                message="SENTRY_DSN non impostato: error tracking disattivato, nessuna chiamata a Sentry "
+                        "(opzionale; vedi docs/observability.md).",
+            )
+        elif re.fullmatch(r"https://[^\s@/]+@[^\s/]+(?:/[^\s/]+)*/\d+", dsn):
+            self.add_result(
+                category="Observability",
+                name="SENTRY_DSN",
+                status=CheckStatus.PASS,
+                message="SENTRY_DSN configurato: gli errori vengono inviati a Sentry.",
+            )
+        else:
+            self.add_result(
+                category="Observability",
+                name="SENTRY_DSN",
+                status=CheckStatus.WARN,
+                message="SENTRY_DSN non ha il formato https://<chiave>@<host>/<progetto>: Sentry restera' spento "
+                        "(il bot parte comunque).",
+                remediation="Copia il DSN dalle impostazioni del progetto Sentry (Client Keys).",
+            )
+        log_format = os.getenv("LOG_FORMAT", "").strip().lower()
+        if log_format and log_format not in ("json", "text"):
+            self.add_result(
+                category="Observability",
+                name="LOG_FORMAT",
+                status=CheckStatus.WARN,
+                message=f"LOG_FORMAT='{log_format}' non valido: si usa il default (json su Cloud Run, text in locale).",
+                remediation="Usa LOG_FORMAT=json oppure LOG_FORMAT=text, o lascialo vuoto.",
+            )
+
     def check_developer_tooling(self) -> None:
         """Verifica la presenza di strumenti e librerie di sviluppo utili (pytest, ruff, mypy, node, gcloud)."""
         # Dipendenze Python
@@ -760,6 +799,7 @@ class EnvironmentValidator:
         self.check_firebase_configuration()
         self.check_cloud_tasks_and_hardening()
         self.check_miniapp_and_urls()
+        self.check_observability()
         self.check_developer_tooling()
         return self.results
 

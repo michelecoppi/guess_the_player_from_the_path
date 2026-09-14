@@ -25,6 +25,11 @@ _PROJECT_ROOT = Path(__file__).resolve().parent
 _ENV_PATH = _PROJECT_ROOT / ".env"
 load_dotenv(_ENV_PATH)
 
+from services import observability
+
+# Idempotente: Streamlit riesegue lo script a ogni interazione, l'inizializzazione resta una.
+observability.init("admin")
+
 st.set_page_config(page_title="Guess the Player — Admin", layout="wide")
 
 if not os.getenv("FIREBASE_CREDENTIALS_PATH") or not os.getenv("BOT_TOKEN"):

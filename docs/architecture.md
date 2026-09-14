@@ -147,7 +147,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Admin | `admin_ui.py`, `admin_pages/`, `handlers/admin_handler.py` | [admin.md](admin.md) |
 | Firestore | `services/firebase_service.py`, `services/repos/` | [firestore.md](firestore.md) |
 | Security | cross-cutting | [security.md](security.md) |
-| Operations, observability, analytics | cross-cutting | [operations.md](operations.md) |
+| Operations, observability, analytics | cross-cutting | [operations.md](operations.md), [observability.md](observability.md) |
 
 ## 7. Deployment topology (summary)
 
@@ -171,7 +171,6 @@ A weekly backup export exists today; restore has not been verified.
 
 | Issue | Topic | Status of the capability today |
 | --- | --- | --- |
-| [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18) | Sentry + structured logging | Not implemented; plain `logging` only |
 | [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20) / [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49) / [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50) | Release management, backup recovery | Automated deploy + weekly export exist; no versioning, no tested restore |
 | [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Rule-based difficulty from popularity + career path |
 | [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Not implemented; behavior toggles are env vars (`PUBLIC_BASE_URL`, `BOT_USERNAME`) and Firestore admin overrides |
@@ -180,7 +179,7 @@ A weekly backup export exists today; restore has not been verified.
 | [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Not implemented |
 | [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) | Automatic Daily planner | Rolling buffer of `buffer_days_ahead` days only |
 | [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31) | Data-driven, automatable events | Template rotation + manual creation |
-| [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | `Server-Timing` header and `[WEBAPP]` duration logs only |
+| [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | `Server-Timing` header and `api.request.completed` duration logs only ([observability.md](observability.md)) |
 | [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) sub-issues #33, #34, #36–#39 | Admin expansion | See [admin.md](admin.md) |
 | [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) | Final V2 review before switch | `/app` is still the default; see [miniapp.md](miniapp.md) |
 

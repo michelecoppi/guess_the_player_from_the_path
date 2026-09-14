@@ -1,5 +1,6 @@
 """Shared widgets, queries and dataset editor helpers."""
 import asyncio as asyncio
+import logging
 import os as os
 from datetime import datetime
 
@@ -10,6 +11,7 @@ from config import BOT_TOKEN as BOT_TOKEN
 from services import content_admin as content_admin
 from services import dataset_editor as dataset_editor
 from services import firebase_service as firebase_service
+from services import observability
 from services.candidate_player import CandidateState as CandidateState
 from services.candidate_review import AdminIdentity as AdminIdentity
 from services.candidate_review import CandidateReviewService as CandidateReviewService
@@ -97,6 +99,9 @@ def guarded(action, success_message):
     except DatasetEditError as e:
         st.error(str(e))
     except Exception as e:  # noqa: BLE001 - in dashboard l'errore va mostrato, non nascosto
+        # Gli errori di dominio sopra sono rifiuti attesi; questo e' un guasto da guardare.
+        observability.log_event("admin.action.failed", logging.ERROR, exc_info=e, component="admin",
+                                surface="streamlit", error_type=type(e).__name__)
         st.error(f"Errore: {type(e).__name__}: {e}")
     else:
         after_write(success_message(result) if callable(success_message) else success_message)

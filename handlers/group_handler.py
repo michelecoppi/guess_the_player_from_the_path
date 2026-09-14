@@ -133,7 +133,7 @@ async def process_group_answer(update: Update, context: ContextTypes.DEFAULT_TYP
         await message.reply_text(t(lang, "group.no_attempts", name=_safe(name)), parse_mode="HTML")
         return
 
-    logging.info(f"[GROUP] {chat_id} round {number}: {user.id} tenta '{user_answer}'")
+    logging.info(f"[GROUP] {chat_id} round {number}: tentativo di {user.id} ({len(user_answer)} caratteri)")
 
     if not find_match(user_answer, round_doc.get("correct_answers", [])):
         comparison = comparison_text(lang, build_comparison(user_answer, round_doc.get("player_id")))
