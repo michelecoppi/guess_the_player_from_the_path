@@ -39,6 +39,7 @@ English. Both are equally authoritative when listed as primary below.
 | Deployment | [deploy.md](deploy.md) | Cloud Run, Workload Identity Federation, service env vars, Cloud Scheduler, backup workflow setup, manual deploy/rollback |
 | Webhook, queues and retries | [runtime-hardening.md](runtime-hardening.md) | Required secrets, Cloud Tasks queues, receipts/locks, recovery rules, secret rotation |
 | CI/CD | [ci_cd_pipeline.md](ci_cd_pipeline.md) | CI steps, deploy trigger, IAM roles, Dependabot |
+| Release management | [release-checklist.md](release-checklist.md) | Versioning policy, canonical version source, CHANGELOG, release checklist, tag convention, exact-commit requirement, rollback, post-deploy smoke matrix |
 | Security | [security.md](security.md) | Trust boundaries, payments, secrets, automated security checks, known limits |
 | Operations | [operations.md](operations.md) | Scheduled/background work, manual responsibilities, backup and release state |
 | Observability | [operations.md § Observability](operations.md#observability) | Current logging/alerts vs planned #18 |

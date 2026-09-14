@@ -135,6 +135,16 @@ Deploy riuscito: revisione `guess-the-player-00006-rp6`, servizio raggiungibile 
 Resta disponibile per un rollback rapido o per testare una build locale senza aspettare la CI:
 vedi [`docs/deploy.md`](deploy.md#deploy-manuale-fallbackdebug).
 
+## 2bis. Release check — [`.github/workflows/release-check.yml`](../.github/workflows/release-check.yml)
+
+Terzo workflow, separato da CI e Deploy: parte solo su push di un tag `v*.*.*` e valida che
+`VERSION` e `CHANGELOG.md` corrispondano a quel tag (`python -m tools.release check --tag
+...`), permessi `contents: read` soltanto. Non riesegue test/lint/build — per policy un tag
+si crea solo su un commit la cui CI è già verde (vedi
+[release-checklist.md § Exact-commit requirement](release-checklist.md#8-exact-commit-requirement)),
+quindi rifarli qui duplicherebbe la CI senza aggiungere informazione. Dettagli completi in
+[release-checklist.md § CI release gate](release-checklist.md#9-ci-release-gate--release-checkyml).
+
 ## 3. Dependabot — [`.github/dependabot.yml`](../.github/dependabot.yml)
 
 Apre PR automatiche settimanali per aggiornamenti di:
@@ -166,12 +176,13 @@ Fatta nella stessa sessione di lavoro, perché toccava gli stessi file:
 
 - **Coverage**: la soglia è 70% (vedi sopra); va alzata man mano che crescono i test,
   mantenendo il margine sotto il valore reale.
-- **Nessun rollback automatico né versioning**: se un deploy va in produzione con un bug non
-  catturato dai test, il fallback è il deploy manuale di una revisione precedente (`gcloud run
-  services update-traffic` o un nuovo `gcloud run deploy` da un commit precedente). Versioni,
-  changelog e checklist di deploy sono pianificati in
-  [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49); restore
-  testato dei backup in
+- **Nessun rollback automatico**: se un deploy va in produzione con un bug non catturato dai
+  test, il fallback è il deploy manuale di una revisione precedente (`gcloud run services
+  update-traffic` o un nuovo `gcloud run deploy` da un commit precedente) — procedura e
+  distinzione code-only/con migrazione in
+  [release-checklist.md § Rollback](release-checklist.md#10-rollback). Versioning,
+  changelog e checklist di rilascio sono in
+  [release-checklist.md](release-checklist.md); restore testato dei backup resta
   [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50).
 - **`data/incoming/`**: i batch di calciatori in staging (in attesa di
   `scripts/import_players.py`) sono in `.gitignore`, quindi solo locali: se la macchina si

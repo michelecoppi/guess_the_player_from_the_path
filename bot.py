@@ -97,6 +97,7 @@ from services import (
     shop,
     task_queue,
     trophies,
+    version,
     work_receipts,
 )
 from services import leagues as league_rules
@@ -255,7 +256,7 @@ async def measure_webapp_request(request: Request, call_next):
 
 @app.get("/")
 async def root():
-    return {"message": "Bot attivo!"}
+    return {"message": "Bot attivo!", "version": version.get_version()}
 
 @app.head("/ping")
 async def ping():
