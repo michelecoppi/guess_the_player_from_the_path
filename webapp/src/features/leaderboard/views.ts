@@ -119,7 +119,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
           ${renderStatTile({ value: u.archive_solved ?? 0, label: t("leaderboard.recovered") })}
         </div>
       </div>
-      ${renderStyleInventory(p.wearing, p.wardrobe)}
+      ${renderStyleInventory(p.wearing, p.wardrobe, p.cosmetics?.equipped)}
     </section>
   `.trim();
 }
@@ -135,7 +135,7 @@ function renderPlayerSearch(state: LeaderboardState): string {
     : '';
   return `<section class="player-search" aria-label="${escapeHtml(v('findPlayer'))}">
     <label for="leaderboard-search">${escapeHtml(v('findPlayer'))}</label>
-    <input id="leaderboard-search" type="text" inputmode="search" autocomplete="off" maxlength="80" value="${escapeHtml(search?.query || '')}" aria-describedby="leaderboard-search-hint">
+    <input id="leaderboard-search" type="text" inputmode="search" autocomplete="off" maxlength="80" placeholder="${escapeHtml(v('searchPlaceholder'))}" value="${escapeHtml(search?.query || '')}" aria-describedby="leaderboard-search-hint">
     <p id="leaderboard-search-hint" class="muted">${escapeHtml(v('searchHint'))}</p>
     <div aria-live="polite">${result}</div>
   </section>`;

@@ -131,7 +131,7 @@ export function startReview(root:HTMLElement):void {
       if(!user)return;
       const sample=fixtures.profileFixture().profile!;
       const publicWearing=items.filter(item=>user.me?item.equipped:(['review-frame','review-title','review-number'].includes(item.id)||item.free&&!['frame','title','number'].includes(item.kind)));
-      const publicAppearance=user.me?worn:publicWearing.reduce<ResolvedAppearance>((appearance,item)=>createPreviewAppearance(appearance,item,language),appearanceFixtures.default);
+      const publicAppearance:ResolvedAppearance={...(user.me?worn:publicWearing.reduce<ResolvedAppearance>((appearance,item)=>createPreviewAppearance(appearance,item,language),appearanceFixtures.default)),equipped:user.me?{...shop.catalogue!.equipped}:Object.fromEntries(publicWearing.map(item=>[item.kind,item.id]))};
       publicProfile={profileId:user.profile_id!,status:'ready',data:{user:{...sample.user,name:user.name,points:user.points},cosmetics:publicAppearance,trophies:sample.trophies.pinned,wearing:publicWearing,wardrobe:items.filter(item=>user.me?item.owned:true)}};
       render();root.querySelector<HTMLElement>('#public-profile-heading')?.focus();
     });

@@ -474,9 +474,9 @@ export function renderPreviewBar(state: ShopState): string {
       </div>
       <div class="preview-product">
       <div class="preview-item-detail">${shopArtwork(item)}</div>
-      <h3 class="section-heading">${escapeHtml(item.name)}</h3>
-      ${item.owned && item.equippable ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${item.equipped || state.equippingItemId || state.lookMutation ? 'disabled' : ''}>${escapeHtml(t(item.equipped ? 'shop.worn' : 'shop.wear'))}</button>` : ''}
+      <h3 class="preview-product-name">${escapeHtml(item.name)}</h3>
       <p class="preview-description">${escapeHtml(item.description)}</p>
+      ${item.owned && item.equippable ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${item.equipped || state.equippingItemId || state.lookMutation ? 'disabled' : ''}>${escapeHtml(t(item.equipped ? 'shop.worn' : 'shop.wear'))}</button>` : ''}
       <p class="shop-note">${escapeHtml(t("shop.previewHint"))}</p>
       </div></div>
     </aside>

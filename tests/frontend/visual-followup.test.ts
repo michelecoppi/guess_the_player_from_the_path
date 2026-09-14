@@ -71,6 +71,22 @@ test('public outfit lists all eight categories and owned styles without equip ac
   assert.ok(renderStyleInventory([], [], {}).includes('Nessuno stile'));
 });
 
+test('outfit marks customised slots and the collection omits free starter styles', () => {
+  setLanguage('it');
+  const wardrobe = [
+    {id: 'basic-frame', kind: 'frame', name: 'Senza cornice', free: true},
+    {id: 'captain', kind: 'frame', name: 'Capitano', free: false},
+    {id: 'regista', kind: 'title', name: 'Regista', free: false},
+  ];
+  const html = renderStyleInventory([], wardrobe, {frame: 'captain', title: 'basic-title'});
+  assert.ok(html.includes('1 su 8 personalizzati'));
+  assert.equal((html.match(/class="outfit-slot is-basic"/g) || []).length, 7);
+  const collection = html.slice(html.indexOf('<details'));
+  assert.ok(!collection.includes('Senza cornice'));
+  assert.match(collection, /class="style-chip is-worn">Capitano/);
+  assert.match(collection, /class="style-chip">Regista/);
+});
+
 test('wardrobe honors non-equippable ownership and preview keeps identity and product separate', () => {
   const state = shopFixture();
   const frame = state.catalogue!.sections[0]!.items[1]!;

@@ -84,7 +84,8 @@ def _user_summary(user):
 def _public_wardrobe(user, lang):
     """Localized owned styles only; no purchase, payment or saved-look data."""
     return [
-        {"id": item_id, "kind": item["kind"], "name": shop.localize(item, lang)[0]}
+        {"id": item_id, "kind": item["kind"], "name": shop.localize(item, lang)[0],
+         "free": shop.is_free(item)}
         for item_id in sorted(shop.owned_ids(user))
         if (item := shop.get_item(item_id)) and item.get("kind") in shop.KINDS
     ]

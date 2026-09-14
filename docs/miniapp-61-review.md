@@ -114,3 +114,15 @@ Start the local Vite server as above, then open:
 - Local screenshots: `review-evidence/followup/`, including Daily ready/wrong/correct/loading/error at 390 × 844 and 1280 × 800, plus the modified views. Dark structure under Telegram/system light is covered by the existing theme regression test; physical Telegram validation remains pending.
 
 Human visual approval and the remaining global #61 gates above are still pending. This PR remains `Refs #61`, with no merge or production rollout.
+
+### Second pass on the follow-up — 2026-09-14
+
+A browser review of the first pass found the remaining gaps below; all are fixed.
+
+- Ranking search: the input rendered without any style (transparent, borderless), so only its label was visible. It now has a field surface, placeholder and focus ring.
+- Outfit sheet: customised slots carry an accent marker and strong weight; starter styles are muted. The heading counts customised slots (`3 su 8 personalizzati`) instead of repeating "Indossato".
+- Owned collection: free starter styles are no longer listed (the public `wardrobe` projection adds a boolean `free`); styles are chips grouped by category, with the worn ones highlighted. The native disclosure marker is replaced by a count pill and chevron.
+- Public profile: the outfit resolves from `cosmetics.equipped` + `wardrobe`, falling back to `wearing`; stat tiles and shirt number match the own profile.
+- Shop try-on: product name, description, equip action, then a muted disclaimer.
+
+Verification: typecheck, 330 frontend tests, production build, 43 public-profile/webapp API tests and Ruff pass. Browser: the four modified views have no horizontal overflow at 320 px; Shop try-on checked at 390 px and 1280 px; equip from Shop is reflected in Profile; search `Va` opens Valentina with 3/8 customised slots.

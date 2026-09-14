@@ -30,7 +30,7 @@ def test_public_profile_only_exposes_statistics_and_equipped_cosmetics(monkeypat
     encoded = json.dumps(result)
     assert "PRIVATE_" not in encoded
     assert "ghiaccio" in {item["id"] for item in result["wardrobe"]}
-    assert all(set(item) == {"id", "kind", "name"} for item in result["wardrobe"])
+    assert all(set(item) == {"id", "kind", "name", "free"} for item in result["wardrobe"])
     assert "looks" not in encoded
     assert len(result["wearing"]) == len(shop.KINDS)
 

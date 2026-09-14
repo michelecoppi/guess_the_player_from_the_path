@@ -92,6 +92,7 @@ export interface ApiPublicProfileItem {
   id?: string;
   kind: string;
   name: string;
+  free?: boolean;
 }
 
 export interface ApiPublicProfileResponse {
