@@ -1,0 +1,38 @@
+name: "\U0001F4CA Data task"
+description: Dataset, ingestion, normalization, validation or provenance work.
+title: "[Data] "
+labels: []
+body:
+  - type: textarea
+    id: obiettivo
+    attributes:
+      label: Obiettivo / Goal
+      description: What dataset/field/pipeline stage does this affect, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: fonte
+    attributes:
+      label: Fonte dati / Data source
+      description: Where the data comes from (adapter, manual, external API) and its trust level.
+    validations:
+      required: true
+  - type: textarea
+    id: validazione
+    attributes:
+      label: Validazione / Validation
+      description: How correctness is checked (schema, review queue, spot checks) before the data reaches production.
+    validations:
+      required: true
+  - type: textarea
+    id: rischio
+    attributes:
+      label: Rischio dati / Data risk
+      description: Could this corrupt or mislead existing data if done wrong? Apply the `data-risk` label if so.
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        Set Area = `Data` and Work Type = `Data` on the Project unless a more
+        specific Area genuinely applies.
