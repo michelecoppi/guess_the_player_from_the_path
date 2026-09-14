@@ -4,7 +4,7 @@ import { t, getLanguage } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
 import { icon } from "@/components/Icon";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
-import { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
+import { DEFAULT_SQUARE_SYMBOLS, parseResolvedAppearance, skinTokens } from "@/appearance";
 import { getTelegramUser } from "@/telegram/webapp";
 import type {
   ShopState,
@@ -79,11 +79,13 @@ function rarityTag(item: ShopCosmeticItem): string {
   return `<span class="rarity" style="--rare-edge:${escapeHtml(color)}">${escapeHtml(label)}</span>`;
 }
 
-function themeShot(_style: Record<string, unknown>): string {
-  const edge = "var(--edge)";
+function themeShot(style: Record<string, unknown>): string {
+  // Decorative theme colours only: text and the primary action stay product-owned.
+  const skin = skinTokens(parseResolvedAppearance({ theme: style }));
+  const edge = skin["--skin-accent-secondary"] || "var(--edge)";
   const muted = "var(--muted)";
-  const bg = "var(--card)";
-  const accent = "var(--accent)";
+  const bg = "color-mix(in srgb, var(--card) 55%, transparent)";
+  const accent = skin["--skin-accent"] || "var(--accent)";
   const accentText = "var(--accent-text)";
 
   return `
@@ -102,7 +104,7 @@ function themeShot(_style: Record<string, unknown>): string {
       `,
       ).join("")}
       <div class="box" style="color:${escapeHtml(muted)};text-align:center">${escapeHtml(previewDisplayName())}</div>
-      <div class="cta" style="background:${escapeHtml(accent)};color:${escapeHtml(accentText)}">
+      <div class="cta" style="background:var(--accent);color:${escapeHtml(accentText)}">
         ${escapeHtml(t("daily.guessBtn"))}
       </div>
     </div>
@@ -115,11 +117,9 @@ function shopArtwork(item: ShopCosmeticItem): string {
   const caption = `<div class="preview-caption">${escapeHtml(t("shop.tryOn"))}</div>`;
 
   if (kind === "theme") {
-    const bg = (style.bg as string) || "var(--bg)";
-    const pattern = (style.pattern as string) || "none";
-    const text = (style.text as string) || "var(--text)";
+    // The stage shows the same surface the owner's profile will get.
     return `
-      <div class="shop-stage" style="background-color:${escapeHtml(bg)};background-image:${escapeHtml(pattern)};color:${escapeHtml(text)}">
+      <div class="shop-stage theme-stage" ${profileSurfaceAttributes({ theme: style }).replace("data-cosmetic-profile ", "")}>
         ${caption}
         ${themeShot(style)}
       </div>

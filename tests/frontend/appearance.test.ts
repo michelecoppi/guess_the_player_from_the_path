@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { setupGlobalDom, mockFetchResponse, createTestDailyChallenge } from "./helpers";
-import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, parseResolvedAppearance, identityAppearance, resultAppearance, SKIN_TOKENS } from "../../webapp/src/appearance";
+import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, parseResolvedAppearance, identityAppearance, resultAppearance, skinTokens, SKIN_TOKENS } from "../../webapp/src/appearance";
+import themeFixtures from "../../webapp/src/prototypes/theme-fixtures.json";
 import { renderAppearanceIdentity, resultCardAttributes, profileSurfaceAttributes } from "../../webapp/src/appearance/surfaces";
 import { appearanceFixtures as fixtures } from "../../webapp/src/prototypes/appearance-fixtures";
 import { applyTelegramTheme } from "../../webapp/src/telegram/theme";
@@ -65,7 +66,8 @@ test("cosmetic accent is decorative; forbidden/semantic/focus/disabled tokens st
     assert.equal(document.documentElement.style.getPropertyValue("--skin-accent"), "#ff3ea5");
     assert.deepEqual(names.map(n => window.getComputedStyle(document.documentElement).getPropertyValue(n)), before);
     assert.equal(document.documentElement.style.getPropertyValue("position"), "");
-    assert.match(document.documentElement.style.getPropertyValue("--skin-profile-surface"), /12%, #1a2734/);
+    assert.match(document.documentElement.style.getPropertyValue("--skin-profile-surface"), /#ff3ea5 30%, #0b121b/);
+    assert.match(document.documentElement.style.getPropertyValue("--skin-profile-glow"), /#ff3ea5 16%/);
   } finally { cleanup(); }
 });
 test("frame, title, badge and number map only to escaped identity surfaces", () => {
@@ -210,4 +212,19 @@ test("profile themes are scoped and never change the viewer's structural colors"
     assert.equal(document.documentElement.getAttribute('style'),before);
     assert.equal(container.querySelector('img'),null);
   } finally {cleanup();}
+});
+test("every real purchasable theme gives a profile surface distinct from the default and legible", () => {
+  const { cleanup } = dom();
+  try {
+    const surfaces = new Set<string>();
+    for (const [id, theme] of Object.entries(themeFixtures)) {
+      const tokens = skinTokens(parseResolvedAppearance(theme.appearance));
+      assert.ok(tokens["--skin-profile-surface"], id);
+      assert.ok(tokens["--skin-profile-glow"], id);
+      surfaces.add(tokens["--skin-profile-surface"]!);
+    }
+    assert.equal(surfaces.size, Object.keys(themeFixtures).length);
+    // Light cards (Ghiaccio) must never paint a light surface under product-owned light text.
+    assert.match(skinTokens(parseResolvedAppearance(themeFixtures.ghiaccio.appearance))["--skin-profile-surface"]!, /#1f7ae0 30%, #0b121b/);
+  } finally { cleanup(); }
 });

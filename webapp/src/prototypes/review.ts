@@ -20,12 +20,39 @@ import type { PublicProfileState } from '@/features/leaderboard/types';
 import { setLanguage } from '@/i18n';
 import { createMockTelegramWebApp } from '@/telegram/mock';
 import { renderPrototype, type PrototypeId } from './screens';
+import { renderPublicProfileView } from '@/features/leaderboard/views';
+import { escapeHtml } from '@/utils/format';
+import themeFixtures from './theme-fixtures.json';
 
-export const REVIEW_PAGES=['Daily','Arena','Duelli','Cerca utenti','Duello','Allenamento','Profilo','Trofei','Classifica','Archivio','Sfida archivio','Shop','Guardaroba','Traguardi','Acquisti','Referral','Eventi','Dettaglio evento'] as const;
+type ThemeId = keyof typeof themeFixtures;
+const THEME_IDS = Object.keys(themeFixtures) as ThemeId[];
+/** Real backend theme snapshots, worn with every other slot at its default. */
+function themeProfile(id: ThemeId, name = 'Marco') {
+  const theme = themeFixtures[id];
+  const profile = fixtures.profileFixture().profile!;
+  const wardrobe = [{ id, kind: 'theme', name: theme.name, free: theme.price === 0 && theme.rarity === 'free' }];
+  return { user: { ...profile.user, name }, cosmetics: theme.appearance as ResolvedAppearance, trophies: [], wardrobe,
+    wearing: [{ kind: 'theme', name: theme.name }] };
+}
+function renderThemeGallery(): string {
+  return `<section class="theme-proof-list" aria-label="Temi profilo reali">
+    <header class="page-heading"><div><span class="eyebrow">Prova temi · dati reali</span><h2>Temi profilo</h2></div></header>
+    <p class="muted">Ogni riquadro è il profilo pubblico reale con l’aspetto calcolato dal backend per chi possiede e indossa quel tema (${THEME_IDS.length} temi da data/shop.json).</p>
+    ${THEME_IDS.map(id => { const theme = themeFixtures[id]; return `<article class="theme-proof">
+      <div class="theme-proof-head"><div><b>${escapeHtml(theme.name)}</b><small>${theme.price ? `${theme.price} Stars` : theme.rarity === 'earned' ? 'Guadagnato' : 'Gratuito'} · ${escapeHtml(id)}</small></div>
+      <button type="button" class="btn ghost small" data-theme-open="${escapeHtml(id)}">Profilo completo</button></div>
+      <div class="theme-proof-frame">${renderPublicProfileView({ profileId: 1, status: 'ready', data: themeProfile(id) })}</div>
+    </article>`; }).join('')}
+  </section>`;
+}
+
+export const REVIEW_PAGES=['Temi profilo','Daily','Arena','Duelli','Cerca utenti','Duello','Allenamento','Profilo','Trofei','Classifica','Archivio','Sfida archivio','Shop','Guardaroba','Traguardi','Acquisti','Referral','Eventi','Dettaglio evento'] as const;
 export function startReview(root:HTMLElement):void {
   window.Telegram={WebApp:createMockTelegramWebApp()};
   let page:string='Daily', state:ReviewState='ready', outfit:AppearanceFixtureName='default', language:'it'|'en'|'es'='it', eventIndex=0;
   const requestedPage=new URLSearchParams(window.location.search).get('view');
+  const requestedTheme=new URLSearchParams(window.location.search).get('theme');
+  let realTheme:ThemeId|''=THEME_IDS.includes(requestedTheme as ThemeId)?requestedTheme as ThemeId:'';
   if(REVIEW_PAGES.some(candidate=>candidate===requestedPage))page=requestedPage!;
   const eventController=new EventsController();
   const shop=fixtures.shopFixture();
@@ -57,11 +84,13 @@ export function startReview(root:HTMLElement):void {
     const controlsOpen=root.querySelector<HTMLDetailsElement>('.product-review')?.open ?? false;
     setLanguage(language);document.documentElement.lang=language;document.documentElement.dataset.theme='dark';
     disconnectReferralMotion();
-    const appearance=applyResolvedAppearance(shop.preview?.appearance ?? worn);
+    const themed:ResolvedAppearance=realTheme?{...worn,theme:themeFixtures[realTheme].appearance.theme}:worn;
+    const appearance=applyResolvedAppearance(shop.preview?.appearance ?? themed);
     const daily=dailyFixture(state);daily.squaresSymbols=appearanceSquares(appearance);
     const arena=fixtures.arenaFixture(),training=fixtures.trainingFixture(),profile=fixtures.profileFixture(),leaderboard=fixtures.leaderboardFixture(),archive=fixtures.archiveFixture(),referral=fixtures.referralFixture();
     let active:NavTabId='play',html='';
-    if(['reports','refunds','privacy'].includes(page))html=renderPrototype(page as PrototypeId);
+    if(page==='Temi profilo'){active='profile';html=renderThemeGallery();}
+    else if(['reports','refunds','privacy'].includes(page))html=renderPrototype(page as PrototypeId);
     else if(page==='Daily')html=renderDailyPage(daily);
     else if(['Arena','Duelli','Cerca utenti','Duello','Allenamento'].includes(page)) {
       active='arena';arena.subview=page==='Duelli'?'duels':page==='Cerca utenti'?'challenge':page==='Duello'?'duel':page==='Allenamento'?'training':'hub';
@@ -74,7 +103,7 @@ export function startReview(root:HTMLElement):void {
       if(state==='completed'){arena.data!.session!.finished=true;training.data!.session!.finished=true;}
       html=renderArenaPage(arena,training);
     } else if(['Profilo','Trofei'].includes(page)) {
-      active='profile';profile.view=page==='Trofei'?'cabinet':'profile';profile.profile!.cosmetics={...appearance,equipped:shop.catalogue!.equipped};profile.profile!.wardrobe=items.filter(item=>item.owned);
+      active='profile';profile.view=page==='Trofei'?'cabinet':'profile';profile.profile!.cosmetics={...appearance,equipped:{...shop.catalogue!.equipped,...(realTheme?{theme:realTheme}:{})}};profile.profile!.wardrobe=[...items.filter(item=>item.owned),...(realTheme?themeProfile(realTheme).wardrobe:[])];
       if(state==='loading'||state==='error'){profile.status=state;profile.profile=null;}
       html=renderProfilePage(profile);
     } else if(page==='Classifica') {
@@ -102,10 +131,12 @@ export function startReview(root:HTMLElement):void {
       <label>Schermata<select id="review-page">${REVIEW_PAGES.map(p=>`<option ${p===page?'selected':''}>${p}</option>`).join('')}</select></label>
       <label>Stato<select id="review-state">${REVIEW_STATES.map(s=>`<option ${s===state?'selected':''}>${s}</option>`).join('')}</select></label>
       <label>Cosmetici<select id="review-appearance">${Object.keys(appearanceFixtures).map(s=>`<option ${s===outfit?'selected':''}>${s}</option>`).join('')}</select></label>
+      <label>Tema reale<select id="review-theme"><option value="">Dai cosmetici</option>${THEME_IDS.map(id=>`<option value="${id}" ${id===realTheme?'selected':''}>${escapeHtml(themeFixtures[id].name)}</option>`).join('')}</select></label>
       <label>Lingua<select id="review-language">${['it','en','es'].map(s=>`<option ${s===language?'selected':''}>${s}</option>`).join('')}</select></label>
       </div><p>Demo interattiva con dati locali: acquisti e inviti simulati, nessuna spesa o invio reale. Gli oggetti indossati restano fino al ricaricamento. Gli stati si applicano alle schermate che li supportano.</p></details>`;
     const change=(id:string,fn:(value:string)=>void)=>{root.querySelector<HTMLSelectElement>(id)!.onchange=e=>{fn((e.target as HTMLSelectElement).value);render();};};
-    change('#review-page',v=>{page=v;state='ready';publicProfile=null;shop.preview=null;});change('#review-state',v=>state=v as ReviewState);change('#review-appearance',v=>{outfit=v as AppearanceFixtureName;worn=appearanceFixtures[outfit];shop.preview=null;items.forEach(item=>item.equipped=false);});change('#review-language',v=>language=v as typeof language);
+    change('#review-page',v=>{page=v;state='ready';publicProfile=null;shop.preview=null;});change('#review-state',v=>state=v as ReviewState);change('#review-appearance',v=>{outfit=v as AppearanceFixtureName;worn=appearanceFixtures[outfit];shop.preview=null;items.forEach(item=>item.equipped=false);});change('#review-language',v=>language=v as typeof language);change('#review-theme',v=>realTheme=v as ThemeId|'');
+    root.querySelectorAll<HTMLElement>('[data-theme-open]').forEach(button=>button.onclick=()=>{realTheme=button.dataset.themeOpen as ThemeId;page='Profilo';render();window.scrollTo(0,0);});
     root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(b=>b.onclick=()=>{page=({play:'Daily',arena:'Arena',profile:'Profilo',leaderboard:'Classifica',shop:'Shop',archive:'Archivio',events:'Eventi',referral:'Referral',duels:'Duello',challenge:'Cerca utenti'} as Record<string,string>)[b.dataset.tab!]||b.dataset.tab!;state='ready';publicProfile=null;shop.preview=null;render();window.scrollTo(0,0);});
     const bind=(selector:string,fn:()=>void)=>root.querySelectorAll<HTMLElement>(selector).forEach(el=>el.onclick=e=>{e.preventDefault();fn();render();});
     bind('#submit',()=>state=root.querySelector<HTMLInputElement>('#answer')?.value.toLowerCase().includes('pirlo')?'correct':'wrong');bind('#hint',()=>state='hint');bind('#daily-retry',()=>state='ready');bind('#open-cabinet',()=>page='Trofei');bind('#close-cabinet',()=>page='Profilo');

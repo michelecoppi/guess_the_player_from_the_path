@@ -20,3 +20,20 @@ def test_v2_snapshot_matches_resolved_backend_appearance(name):
     user = {"cosmetics": {"owned": owned, "equipped": worn}}
     assert expected == shop.appearance(user, "it")
     assert set(expected["equipped"]) == set(shop.KINDS)
+
+
+THEMES = json.loads((Path(__file__).resolve().parents[1] /
+                     "webapp/src/prototypes/theme-fixtures.json").read_text(encoding="utf-8"))
+
+
+def test_theme_review_covers_every_real_theme():
+    assert set(THEMES) == {item["id"] for item in shop.all_items() if item["kind"] == "theme"}
+
+
+@pytest.mark.parametrize("theme_id", THEMES)
+def test_theme_review_snapshot_matches_backend(theme_id):
+    worn = {**shop.default_equipped(), "theme": theme_id}
+    user = {"cosmetics": {"owned": list(worn.values()), "equipped": worn}}
+    item = shop.get_item(theme_id)
+    assert THEMES[theme_id]["appearance"] == shop.appearance(user, "it")
+    assert THEMES[theme_id]["name"] == shop.localize(item, "it")[0]

@@ -1,12 +1,24 @@
 /* #61 editorial system: restrained match programme and aligned competition sheets. */
 [data-cosmetic-profile] {
   position:relative; isolation:isolate; background-color:var(--skin-profile-surface);
-  background-image:var(--skin-pattern); border-top:3px solid var(--skin-accent);
+  border-top:3px solid var(--skin-accent);
   border-bottom:1px solid var(--skin-accent-secondary); padding:20px;
   /* #root owns the safe-area gutter; the themed surface must continue behind it. */
   box-shadow:0 0 0 100vmax var(--skin-profile-surface);
   clip-path:inset(0 -100vmax);
 }
+/* Glow and pattern span the viewport width too, not only the content column. */
+[data-cosmetic-profile]::before {
+  content:""; position:absolute; z-index:-1; inset:0 calc(50% - 50vw); pointer-events:none;
+  background-image:var(--skin-profile-glow), var(--skin-pattern);
+}
+/* Inside a themed profile, structure lines and the avatar disc follow the purchased surface. */
+[data-cosmetic-profile] { --edge:color-mix(in srgb, var(--text) 13%, transparent); }
+[data-cosmetic-profile] .trophy-tag,[data-cosmetic-profile] .distribution-bar-track,[data-cosmetic-profile] .mode-entry { background:color-mix(in srgb, #000 22%, transparent); }
+[data-cosmetic-profile] .distribution-bar-fill:not(.best) { background:color-mix(in srgb, var(--text) 16%, transparent); }
+[data-cosmetic-profile] .avatar { background:color-mix(in srgb, var(--skin-accent) 24%, var(--skin-profile-surface)); }
+html { overflow-x:hidden; }
+@supports (overflow:clip) { html { overflow-x:clip; } }
 [data-cosmetic-profile] .profile-hero { background:transparent; border-left:0; }
 [data-cosmetic-profile] .tile { background:transparent; }
 /* The try-on is a contained surface; it must never inherit the page-wide bleed. */
@@ -14,7 +26,8 @@
 .preview-bar-head { flex-wrap:wrap; padding-bottom:12px; border-bottom:1px solid var(--edge); }
 .preview-bar-head b { flex:1 1 160px; overflow-wrap:anywhere; }
 .preview-layout { display:grid; gap:20px; min-width:0; }
-.preview-profile[data-cosmetic-profile] { box-shadow:none; clip-path:none; padding:20px 16px; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:20px; }
+.preview-profile[data-cosmetic-profile]::before { inset:0; }
+.preview-profile[data-cosmetic-profile] { box-shadow:none; clip-path:inset(0); padding:20px 16px; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:20px; }
 .preview-profile .preview-identity { font-family:var(--font-display); font-size:24px; flex-wrap:wrap; overflow-wrap:anywhere; }
 .preview-person { align-items:center; }
 .preview-person .avatar { flex-shrink:0; }
@@ -138,6 +151,7 @@ input,select,textarea { max-width:100%; }
 .shop-preview-trigger { position:static; margin:4px 8px 8px; border-radius:4px; background:transparent; border-color:var(--edge); }
 .shop-artwork { display:flex; flex-direction:column; }
 .shop-artwork .shop-stage { flex:1; }
+.shop-stage.theme-stage { background-color:var(--skin-profile-surface); background-image:var(--skin-profile-glow), var(--skin-pattern); }
 .player-search { padding:20px 0; border-bottom:1px solid var(--edge); margin-bottom:24px; }
 .player-search label { display:block; font-weight:650; font-size:14px; margin-bottom:10px; }
 .player-search input { width:100%; min-height:48px; font-size:16px; padding:12px 14px; color:var(--text); background:var(--card); border:1px solid var(--edge); border-radius:var(--radius-structure, 4px); }

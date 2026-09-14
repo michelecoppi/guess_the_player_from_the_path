@@ -5,7 +5,7 @@ import { escapeHtml as e } from "@/utils/format";
 export function profileSurfaceAttributes(value: unknown): string {
   const tokens = {
     '--skin-accent': '#46cc91', '--skin-accent-secondary': '#314253',
-    '--skin-pitch': '#2a3c4b', '--skin-profile-surface': '#1a2734', '--skin-pattern': 'none',
+    '--skin-pitch': '#2a3c4b', '--skin-profile-surface': '#1a2734', '--skin-profile-glow': 'none', '--skin-pattern': 'none',
     ...skinTokens(parseResolvedAppearance(value)),
   };
   return `data-cosmetic-profile style="${e(Object.entries(tokens).map(([key,value])=>`${key}:${value}`).join(';'))}"`;

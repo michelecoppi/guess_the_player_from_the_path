@@ -4,7 +4,7 @@ import type { SquareSymbols } from "@/utils/game";
 export type * from "./types";
 
 export const DEFAULT_SQUARE_SYMBOLS: SquareSymbols = { correct: "🟩", wrong: "🟥", unused: "⬜" };
-export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-secondary", "--skin-pitch", "--skin-profile-surface", "--skin-pattern"] as const;
+export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-secondary", "--skin-pitch", "--skin-profile-surface", "--skin-profile-glow", "--skin-pattern"] as const;
 export type SkinTokens = Partial<Record<typeof SKIN_TOKENS[number], string>>;
 const SLOTS: CosmeticSlot[] = ["theme", "frame", "title", "badge", "squares", "number", "celebration", "card"];
 const EFFECTS = new Set(["spotlight", "confetti", "dust", "flash", "paper", "snow", "mud", "fireworks"]);
@@ -12,6 +12,15 @@ const FINISHES = new Set(["plain", "night", "foil", "grain"]);
 const record = (v: unknown): Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (v: unknown, max = 160): string => typeof v === "string" && v.length <= max ? v : "";
 const color = (v: unknown): string => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : "";
+const SURFACE_INK = "#0b121b";
+/** WCAG relative luminance of a validated #rrggbb colour. */
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map(i => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
 
 /** Shape validation only: never resolves IDs, ownership, defaults or collections. */
 export function parseResolvedAppearance(value: unknown): ResolvedAppearance {
@@ -52,8 +61,15 @@ export function skinTokens(appearance: ResolvedAppearance): SkinTokens {
   if (color(theme.accent)) tokens["--skin-accent"] = theme.accent!;
   if (color(theme.edge)) tokens["--skin-accent-secondary"] = theme.edge!;
   if (color(theme.track)) tokens["--skin-pitch"] = theme.track!;
-  // Even a legacy white card becomes a dark decorative tint. Text stays product-owned.
-  if (color(theme.card)) tokens["--skin-profile-surface"] = `color-mix(in srgb, ${theme.card} 12%, #1a2734)`;
+  // The purchased surface must read as that theme, while product text stays legible:
+  // dark cards keep most of their own colour; light cards become a deep tint of their accent.
+  if (color(theme.card)) {
+    const light = luminance(theme.card!) > 0.35;
+    tokens["--skin-profile-surface"] = light
+      ? `color-mix(in srgb, ${color(theme.accent) || theme.card} 30%, ${SURFACE_INK})`
+      : `color-mix(in srgb, ${theme.card} 70%, ${SURFACE_INK})`;
+  }
+  if (color(theme.accent)) tokens["--skin-profile-glow"] = `radial-gradient(ellipse 680px 320px at 50% 0, color-mix(in srgb, ${theme.accent} 16%, transparent), transparent)`;
   if (theme.pattern && [...THEME_PATTERNS.values()].includes(theme.pattern)) tokens["--skin-pattern"] = theme.pattern;
   return tokens;
 }

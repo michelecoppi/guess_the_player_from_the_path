@@ -126,3 +126,20 @@ A browser review of the first pass found the remaining gaps below; all are fixed
 - Shop try-on: product name, description, equip action, then a muted disclaimer.
 
 Verification: typecheck, 330 frontend tests, production build, 43 public-profile/webapp API tests and Ruff pass. Browser: the four modified views have no horizontal overflow at 320 px; Shop try-on checked at 390 px and 1280 px; equip from Shop is reflected in Profile; search `Va` opens Valentina with 3/8 customised slots.
+
+### Profile theme backgrounds — 2026-09-14
+
+Reviewer feedback: a purchased theme was not visible behind the profile.
+
+- Cause: the profile surface mixed only 12% of the theme card into the default navy, so Terra rossa, Neon or Oro di notte looked like the free profile; light themes (Ghiaccio, Carta ingiallita, Domenica '90) turned into flat grey. The Shop theme artwork also ignored the theme colours.
+- Surface: dark themes now keep 70% of their own card colour; light themes become a deep tint (30%) of their accent, so product-owned light text stays legible. A new decorative `--skin-profile-glow` adds a soft accent glow at the top. Glow and pattern span the full viewport width (`::before`, horizontal overflow clipped on `html`).
+- Inside a themed profile, divider lines, avatar disc, trophy chip, attempt bars and the Shop/Referral entries follow the surface instead of painting default navy. Primary actions and the best-attempt bar stay product green.
+- Shop theme cards show the same surface the owner's profile will get.
+- Contrast: muted text is ≥ 4.78:1 and body text ≥ 9:1 on every real theme, including the glow (worst case Calcio di strada / Il tuo undici).
+
+Real-data proof: `webapp/src/prototypes/theme-fixtures.json` is generated from `services/shop.py::appearance` for all 16 themes in `data/shop.json`, and `tests/test_appearance_contract.py` fails if a theme is added or the resolver changes without refreshing it.
+
+- [Theme gallery, all 16 real themes](http://127.0.0.1:5176/app/v2/?design-review&view=Temi%20profilo) — each tile is the real public-profile renderer; "Profilo completo" opens the own profile with that theme.
+- Own profile with one theme: `&view=Profilo&theme=<id>`, e.g. [Neon](http://127.0.0.1:5176/app/v2/?design-review&view=Profilo&theme=neon). The review controls also offer a "Tema reale" selector.
+
+Local screenshots in `review-evidence/themes/`: `00-galleria-prima-1280.png` (previous formula reconstructed on the same page), `01-galleria-dopo-1280.png`, and full own profiles at 390 px for Terra rossa, Ghiaccio, Neon, Notti europee, Calcio di strada and Oro del podio. No horizontal overflow at 320, 390 or 1280 px. 331 frontend tests, 68 backend tests, typecheck and build pass. Review fixtures are not in the production bundle.
