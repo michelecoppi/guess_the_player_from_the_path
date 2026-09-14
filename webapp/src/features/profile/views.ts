@@ -1,3 +1,4 @@
+import { renderStyleInventory } from "@/components/StyleInventory";
 import { renderAvatar } from "@/components/Avatar";
 import { renderStatTile } from "@/components/StatTile";
 import { renderLoadingState } from "@/components/LoadingState";
@@ -6,6 +7,7 @@ import { icon } from "@/components/Icon";
 import { escapeHtml } from "@/utils/format";
 import { histogram, cabinetCounts } from "@/utils/game";
 import { identityAppearance } from "@/appearance";
+import { profileSurfaceAttributes } from "@/appearance/surfaces";
 import { t } from "@/i18n";
 import type {
   CabinetFilter,
@@ -364,7 +366,7 @@ export function renderProfileView(state: ProfileState): string {
       : `<p class="muted text-xs mt-2">${escapeHtml(t("profile.noTrophies"))}</p>`;
 
   return `
-    <section class="profile-page" aria-label="${escapeHtml(t("profile.title"))}">
+    <section class="profile-page" ${profileSurfaceAttributes(state.profile?.cosmetics)} aria-label="${escapeHtml(t("profile.title"))}">
       <div class="profile-header">
         <span class="eyebrow">${escapeHtml(t("profile.kicker"))}</span>
         <h2 class="page-title">${escapeHtml(t("profile.title"))}</h2>
@@ -378,9 +380,9 @@ export function renderProfileView(state: ProfileState): string {
           size: "large",
         })}
         <div class="hero-info">
-          <h1 id="profile-heading" tabindex="-1" class="profile-player-name">
+          <h3 id="profile-heading" tabindex="-1" class="profile-player-name">
             ${number}${escapeHtml(u.name)}${badge}
-          </h1>
+          </h3>
           ${titleTag}
           <div class="profile-hero-meta muted text-xs mt-1">
             ${u.points} ${escapeHtml(t("common.points"))} · ${u.trophies} ${escapeHtml(t("profile.trophies"))}
@@ -421,6 +423,8 @@ export function renderProfileView(state: ProfileState): string {
         </div>
         ${cabinetOpenAction}
       </div>
+
+      ${renderStyleInventory([], profile.wardrobe, profile.cosmetics.equipped)}
 
       <!-- Mode Handoffs: Shop & Referral -->
       <div class="profile-actions mt-3">

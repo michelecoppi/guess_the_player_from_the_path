@@ -1,7 +1,10 @@
+import { renderStyleInventory } from "@/components/StyleInventory";
 import { escapeHtml, weekNumber } from "@/utils/format";
 import { t, getLanguage } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
-import { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
+import { icon } from "@/components/Icon";
+import { profileSurfaceAttributes } from "@/appearance/surfaces";
+import { DEFAULT_SQUARE_SYMBOLS, parseResolvedAppearance, skinTokens } from "@/appearance";
 import { getTelegramUser } from "@/telegram/webapp";
 import type {
   ShopState,
@@ -77,11 +80,13 @@ function rarityTag(item: ShopCosmeticItem): string {
 }
 
 function themeShot(style: Record<string, unknown>): string {
-  const edge = (style.edge as string) || "var(--edge)";
-  const muted = (style.muted as string) || (style.text as string) || "var(--muted)";
-  const bg = (style.card as string) || (style.bg as string) || "var(--card)";
-  const accent = (style.accent as string) || "var(--accent)";
-  const accentText = (style.accentText as string) || (style.bg as string) || "var(--accent-text)";
+  // Decorative theme colours only: text and the primary action stay product-owned.
+  const skin = skinTokens(parseResolvedAppearance({ theme: style }));
+  const edge = skin["--skin-accent-secondary"] || "var(--edge)";
+  const muted = "var(--muted)";
+  const bg = "color-mix(in srgb, var(--card) 55%, transparent)";
+  const accent = skin["--skin-accent"] || "var(--accent)";
+  const accentText = "var(--accent-text)";
 
   return `
     <div class="theme-shot" aria-hidden="true" style="--shot-edge:${escapeHtml(edge)};background:${escapeHtml(bg)}">
@@ -99,7 +104,7 @@ function themeShot(style: Record<string, unknown>): string {
       `,
       ).join("")}
       <div class="box" style="color:${escapeHtml(muted)};text-align:center">${escapeHtml(previewDisplayName())}</div>
-      <div class="cta" style="background:${escapeHtml(accent)};color:${escapeHtml(accentText)}">
+      <div class="cta" style="background:var(--accent);color:${escapeHtml(accentText)}">
         ${escapeHtml(t("daily.guessBtn"))}
       </div>
     </div>
@@ -112,11 +117,9 @@ function shopArtwork(item: ShopCosmeticItem): string {
   const caption = `<div class="preview-caption">${escapeHtml(t("shop.tryOn"))}</div>`;
 
   if (kind === "theme") {
-    const bg = (style.bg as string) || "var(--bg)";
-    const pattern = (style.pattern as string) || "none";
-    const text = (style.text as string) || "var(--text)";
+    // The stage shows the same surface the owner's profile will get.
     return `
-      <div class="shop-stage" style="background-color:${escapeHtml(bg)};background-image:${escapeHtml(pattern)};color:${escapeHtml(text)}">
+      <div class="shop-stage theme-stage" ${profileSurfaceAttributes({ theme: style }).replace("data-cosmetic-profile ", "")}>
         ${caption}
         ${themeShot(style)}
       </div>
@@ -262,8 +265,10 @@ export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string
           : ""
       }
     `;
-  } else if (item.owned) {
+  } else if (item.owned && item.equippable) {
     actionHtml = `<button type="button" class="btn ghost small" data-equip="${escapeHtml(item.id)}" ${equipDisabled}>${escapeHtml(t("shop.wear"))}</button>`;
+  } else if (item.owned) {
+    actionHtml = `<span class="tag owned-tag">${escapeHtml(t("shop.owned"))}</span>`;
   } else if (item.achievement) {
     actionHtml = `
       <div class="shop-note">${escapeHtml(t("shop.earn"))} · ${item.progress}/${item.achievement.target}</div>
@@ -304,7 +309,7 @@ export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string
         ${previewTrigger}
       </div>
       <div class="shop-product-head">
-        <span class="shop-product-kind">${escapeHtml(kindLabel)}${item.featured ? " / 05" : ""}</span>
+        <span class="shop-product-kind">${escapeHtml(kindLabel)}</span>
         <h3 class="nm">${escapeHtml(item.name)}</h3>
       </div>
       <div class="ds">
@@ -447,13 +452,16 @@ export function renderPreviewBar(state: ShopState): string {
   const squaresStr = (worn.squares?.wrong || "🟥") + (worn.squares?.correct || "🟩") + (worn.squares?.unused || "⬜");
 
   return `
-    <aside class="preview-bar" aria-label="${escapeHtml(t("shop.previewTrying"))}">
+    <aside class="preview-bar" tabindex="-1" aria-label="${escapeHtml(t("shop.previewTrying"))}">
       <div class="preview-bar-head">
         <b>${escapeHtml(t("shop.previewTrying"))} · ${escapeHtml(item.name)}</b>
         <button type="button" class="btn ghost small" id="shop-stop-preview">${escapeHtml(t("shop.stopPreview"))}</button>
       </div>
+      <div class="preview-layout">
+      <div class="preview-profile" ${profileSurfaceAttributes(worn)}>
+      <p class="eyebrow">${escapeHtml(t('profile.title'))}</p>
       <div class="preview-person">
-        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, size: "small" })}
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, size: "large" })}
         <div class="preview-meta">
           <div class="preview-identity">
             ${worn.number ? `<span class="shirt">${escapeHtml(worn.number)}</span>` : ""}
@@ -463,7 +471,14 @@ export function renderPreviewBar(state: ShopState): string {
           <div class="preview-squares">${escapeHtml(squaresStr)}</div>
         </div>
       </div>
+      </div>
+      <div class="preview-product">
+      <div class="preview-item-detail">${shopArtwork(item)}</div>
+      <h3 class="preview-product-name">${escapeHtml(item.name)}</h3>
+      <p class="preview-description">${escapeHtml(item.description)}</p>
+      ${item.owned && item.equippable ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${item.equipped || state.equippingItemId || state.lookMutation ? 'disabled' : ''}>${escapeHtml(t(item.equipped ? 'shop.worn' : 'shop.wear'))}</button>` : ''}
       <p class="shop-note">${escapeHtml(t("shop.previewHint"))}</p>
+      </div></div>
     </aside>
   `;
 }
@@ -537,10 +552,10 @@ export function renderShopPage(state: ShopState): string {
 
   const views: ShopSubview[] = ["catalog", "wardrobe", "achievements", "history"];
   const viewIcons: Record<ShopSubview, string> = {
-    catalog: "◇",
-    wardrobe: "▣",
-    achievements: "✧",
-    history: "≡",
+    catalog: icon('shop'),
+    wardrobe: icon('profile'),
+    achievements: icon('ranking'),
+    history: icon('archive'),
   };
 
   const tabsHtml = `
@@ -701,6 +716,7 @@ export function renderShopPage(state: ShopState): string {
       ${deliveryBanner}
       ${introHtml}
       ${tabsHtml}
+      ${state.view === 'wardrobe' ? renderStyleInventory([], state.catalogue!.sections.flatMap(section => section.items).filter(item => item.owned), state.catalogue!.equipped) : ''}
       ${savedLooksHtml}
       ${showcaseHtml}
       ${filtersHtml}

@@ -1,6 +1,15 @@
-import { identityAppearance, resultAppearance } from "./index";
+import { identityAppearance, resultAppearance, parseResolvedAppearance, skinTokens } from "./index";
 import { renderAvatar } from "@/components/Avatar";
 import { escapeHtml as e } from "@/utils/format";
+/** Scope a person's decorative theme to their profile; never inherit another user's skin. */
+export function profileSurfaceAttributes(value: unknown): string {
+  const tokens = {
+    '--skin-accent': '#46cc91', '--skin-accent-secondary': '#314253',
+    '--skin-pitch': '#2a3c4b', '--skin-profile-surface': '#1a2734', '--skin-profile-glow': 'none', '--skin-pattern': 'none',
+    ...skinTokens(parseResolvedAppearance(value)),
+  };
+  return `data-cosmetic-profile style="${e(Object.entries(tokens).map(([key,value])=>`${key}:${value}`).join(';'))}"`;
+}
 /** Identity-only rendering. Caller chooses whose resolved payload to display. */
 export function renderAppearanceIdentity(name: string, value: unknown): string {
   const a = identityAppearance(value);

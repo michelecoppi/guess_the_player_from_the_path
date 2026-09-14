@@ -1,0 +1,813 @@
+{
+  "notturno": {
+    "name": "Campo notturno",
+    "description": "Il blu di sempre, quello con cui hai imparato a giocare.",
+    "price": 0,
+    "rarity": "free",
+    "appearance": {
+      "equipped": {
+        "theme": "notturno",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#0a131e",
+        "bg2": "#132437",
+        "card": "#1a2c40",
+        "edge": "#273e56",
+        "text": "#ecf2f8",
+        "muted": "#8ea2b6",
+        "accent": "#38bd82",
+        "accentText": "#0a1a12",
+        "track": "#2c445c"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "terra_rossa": {
+    "name": "Terra rossa",
+    "description": "Argilla e tramonto, come un campo di periferia alle sette di sera.",
+    "price": 15,
+    "rarity": "common",
+    "appearance": {
+      "equipped": {
+        "theme": "terra_rossa",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#1b0f0c",
+        "bg2": "#2a1813",
+        "card": "#33201a",
+        "edge": "#4a2f25",
+        "text": "#f7ece6",
+        "muted": "#c0a294",
+        "accent": "#e2653c",
+        "accentText": "#24100a",
+        "track": "#55362a"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "ghiaccio": {
+    "name": "Ghiaccio",
+    "description": "Chiarissimo. Per chi gioca alla luce del sole e odia gli schermi neri.",
+    "price": 15,
+    "rarity": "common",
+    "appearance": {
+      "equipped": {
+        "theme": "ghiaccio",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#eef4fa",
+        "bg2": "#e0eaf4",
+        "card": "#ffffff",
+        "edge": "#cbdbe9",
+        "text": "#16283a",
+        "muted": "#61798f",
+        "accent": "#1f7ae0",
+        "accentText": "#ffffff",
+        "track": "#d3e2ef"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "carta_ingiallita": {
+    "name": "Carta ingiallita",
+    "description": "Il colore di un almanacco tenuto in cantina per trent'anni.",
+    "price": 20,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "carta_ingiallita",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#f5eddb",
+        "bg2": "#ece0c6",
+        "card": "#fdf8ec",
+        "edge": "#d9c9a5",
+        "text": "#3a2f1c",
+        "muted": "#857349",
+        "accent": "#96602a",
+        "accentText": "#fdf8ec",
+        "track": "#e0d0ad"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "neon": {
+    "name": "Neon",
+    "description": "Nero e fucsia. Si vede da lontano che non stai giocando alla versione base.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "neon",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#07060f",
+        "bg2": "#120e22",
+        "card": "#171130",
+        "edge": "#2e2158",
+        "text": "#f2ecff",
+        "muted": "#9d8fc7",
+        "accent": "#ff3ea5",
+        "accentText": "#0b0616",
+        "track": "#3a2a6b"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "oro_notte": {
+    "name": "Oro di notte",
+    "description": "Nero e oro, senza esagerare. Il più sobrio fra i temi vistosi.",
+    "price": 30,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "oro_notte",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#0d0c08",
+        "bg2": "#171410",
+        "card": "#1f1a12",
+        "edge": "#3a3020",
+        "text": "#f6f0e2",
+        "muted": "#b0a184",
+        "accent": "#d9b45b",
+        "accentText": "#1a1509",
+        "track": "#453a24"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "notti_europee": {
+    "name": "Notti europee",
+    "description": "Blu profondo, argento e fasci di luce. L’atmosfera di uno stadio quando parte la partita più attesa.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "notti_europee",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#080f25",
+        "bg2": "#101d3b",
+        "card": "#17294b",
+        "edge": "#354d70",
+        "text": "#f1f5ff",
+        "muted": "#a6b9d5",
+        "accent": "#bcdcff",
+        "accentText": "#10213d",
+        "track": "#294366",
+        "pattern": "linear-gradient(115deg, transparent 20%, rgba(188,220,255,.08) 21%, transparent 38%), linear-gradient(245deg, transparent 20%, rgba(188,220,255,.08) 21%, transparent 38%)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "domenica_90": {
+    "name": "Domenica ’90",
+    "description": "Carta crema, verde bottiglia e righe leggere. Il calcio delle figurine sul tavolo e della radio accesa.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "domenica_90",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#f2ecdc",
+        "bg2": "#e8dfc9",
+        "card": "#fffaf0",
+        "edge": "#c9bca0",
+        "text": "#24382f",
+        "muted": "#526247",
+        "accent": "#285b40",
+        "accentText": "#ffffff",
+        "track": "#d7cfb7",
+        "pattern": "repeating-linear-gradient(0deg, transparent 0 5px, rgba(60,78,46,.035) 5px 6px)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "calcio_strada": {
+    "name": "Calcio di strada",
+    "description": "Asfalto scuro, lime e una rete sottile sullo sfondo. Bastano due zaini per fare una porta.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "calcio_strada",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#141815",
+        "bg2": "#1d251e",
+        "card": "#273129",
+        "edge": "#485a48",
+        "text": "#f2f6ec",
+        "muted": "#b1bfa8",
+        "accent": "#c3ed68",
+        "accentText": "#1a2510",
+        "track": "#394b34",
+        "pattern": "repeating-linear-gradient(45deg, transparent 0 23px, rgba(195,237,104,.045) 23px 24px), repeating-linear-gradient(-45deg, transparent 0 23px, rgba(195,237,104,.045) 23px 24px)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "cinegiornale": {
+    "name": "Cinegiornale 1966",
+    "description": "Niente colore: solo grigi caldi e la grana della pellicola. In mezzo a un negozio di temi accesi, e' quello che si nota.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "cinegiornale",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#171614",
+        "bg2": "#201e1b",
+        "card": "#262320",
+        "edge": "#3b3733",
+        "text": "#f2efe9",
+        "muted": "#b3aca1",
+        "accent": "#ded5c4",
+        "accentText": "#171614",
+        "track": "#2f2b27",
+        "pattern": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E\")"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "giorno_di_mercato": {
+    "name": "Giorno di mercato",
+    "description": "Giallo su nero e il ticker che scorre sul fondo. Il gioco parla di trasferimenti: questo tema lo dice.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "giorno_di_mercato",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#131007",
+        "bg2": "#1d1809",
+        "card": "#26200c",
+        "edge": "#3f3614",
+        "text": "#fdf6e3",
+        "muted": "#c8b986",
+        "accent": "#ffd028",
+        "accentText": "#131007",
+        "track": "#2f2810",
+        "pattern": "repeating-linear-gradient(0deg, rgba(255,208,40,.05) 0 1px, transparent 1px 7px)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "notte_di_neve": {
+    "name": "Notte di neve",
+    "description": "Blu di gennaio e fiocchi nel fascio dei riflettori. Il fondo non sta fermo: e' l'unico tema che si muove.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "notte_di_neve",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#070d1a",
+        "bg2": "#0d1729",
+        "card": "#12203a",
+        "edge": "#24365a",
+        "text": "#eaf2ff",
+        "muted": "#a4bade",
+        "accent": "#7fc4ff",
+        "accentText": "#05101f",
+        "track": "#1a2a48",
+        "pattern": "repeating-radial-gradient(circle at 22% 10%, rgba(255,255,255,.14) 0 1.6px, transparent 2px 52px), repeating-radial-gradient(circle at 70% 40%, rgba(255,255,255,.1) 0 1.3px, transparent 2px 39px)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "novembre_in_provincia": {
+    "name": "Novembre in provincia",
+    "description": "Verde spento, terra smossa, luce bassa. Chi lo indossa sta dicendo che tipo di tifoso e'.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "novembre_in_provincia",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#14170f",
+        "bg2": "#1c2015",
+        "card": "#242a1b",
+        "edge": "#3c452c",
+        "text": "#eef0e4",
+        "muted": "#aab392",
+        "accent": "#a9b86c",
+        "accentText": "#14170f",
+        "track": "#2c331f",
+        "pattern": "repeating-linear-gradient(100deg, rgba(107,90,58,.14) 0 3px, transparent 3px 16px)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "notte_sudamericana": {
+    "name": "Notte sudamericana",
+    "description": "Blu profondo e oro, con il fumo dei fumogeni che sale dal bordo basso della pagina.",
+    "price": 25,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "notte_sudamericana",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#061020",
+        "bg2": "#0b1b33",
+        "card": "#102544",
+        "edge": "#1d3d68",
+        "text": "#f2f7ff",
+        "muted": "#a8c0de",
+        "accent": "#f2c74c",
+        "accentText": "#061020",
+        "track": "#17304f",
+        "pattern": "radial-gradient(ellipse 90% 40% at 50% 108%, rgba(242,199,76,.22), transparent 70%)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "oro_del_podio": {
+    "name": "Oro del podio",
+    "description": "Non si compra a nessun prezzo: arriva vincendo un evento o la classifica del mese. E' l'unico tema che non sta in vetrina.",
+    "price": 0,
+    "rarity": "earned",
+    "appearance": {
+      "equipped": {
+        "theme": "oro_del_podio",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#100d05",
+        "bg2": "#1b1608",
+        "card": "#241d0b",
+        "edge": "#463916",
+        "text": "#fdf6e0",
+        "muted": "#cbb884",
+        "accent": "#f0c74e",
+        "accentText": "#100d05",
+        "track": "#2e2610",
+        "pattern": "repeating-conic-gradient(from 0deg at 50% 0%, rgba(240,199,78,.05) 0deg 6deg, transparent 6deg 18deg)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "referral_undici": {
+    "name": "Il tuo undici",
+    "description": "Dieci amici qualificati: tu e la tua formazione. Tema esclusivo con campo e undici giocatori che prendono posizione nel profilo.",
+    "price": 0,
+    "rarity": "earned",
+    "appearance": {
+      "equipped": {
+        "theme": "referral_undici",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#0a1a18",
+        "bg2": "#102925",
+        "card": "#16332e",
+        "edge": "#35584f",
+        "text": "#edfff6",
+        "muted": "#b1ccc2",
+        "accent": "#c8f48b",
+        "accentText": "#142214",
+        "track": "#294b42",
+        "pattern": "linear-gradient(90deg,rgba(159,255,208,.025) 1px,transparent 1px),linear-gradient(rgba(159,255,208,.025) 1px,transparent 1px)",
+        "formation": true
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  }
+}

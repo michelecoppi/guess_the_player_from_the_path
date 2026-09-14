@@ -16,6 +16,9 @@ export class ProfileController {
 
   /** Stale-response guard for profile loads */
   private loadSeq = 0;
+  private inventoryStale = false;
+
+  public invalidateInventory(): void { this.inventoryStale = true; }
   /** Stale-response guard for trophy pin mutations */
   private pinSeq = 0;
   /** Appearance synchronization sequence and cached appearance */
@@ -69,6 +72,7 @@ export class ProfileController {
    * Idempotent: if already ready or loading, returns existing in-flight promise.
    */
   public async init(): Promise<void> {
+    if (this.inventoryStale) return this._loadProfile();
     if (this.state.status === "ready" || this.state.status === "loading") {
       return this.loadInFlight ?? undefined;
     }
@@ -115,6 +119,7 @@ export class ProfileController {
           return;
         }
 
+        this.inventoryStale = false;
         const hasNewerAppearance = this.appearanceSeq !== loadAppearanceSeq;
         if (hasNewerAppearance && this.syncedAppearance) {
           data.cosmetics = this.syncedAppearance;

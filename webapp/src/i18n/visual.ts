@@ -1,5 +1,17 @@
 import { getLanguage } from "./index";
 const copy = {
+  equippedStyle: ["Indossato", "Equipped", "Equipado"],
+  outfit: ["La tenuta", "The outfit", "La equipación"],
+  ownedStyles: ["Stili posseduti", "Owned styles", "Estilos en propiedad"],
+  noStyles: ["Nessuno stile oltre a quelli di base.", "No styles beyond the starter set.", "Ningún estilo aparte de los básicos."],
+  customised: ["{n} su 8 personalizzati", "{n} of 8 customised", "{n} de 8 personalizados"],
+  searchPlaceholder: ["Es. Giulia", "e.g. Giulia", "Ej. Giulia"],
+  findPlayer: ["Cerca un giocatore", "Find a player", "Busca un jugador"],
+  searchHint: ["Scrivi almeno 2 caratteri del nome.", "Enter at least 2 characters of the name.", "Escribe al menos 2 caracteres del nombre."],
+  noPlayers: ["Nessun giocatore trovato.", "No players found.", "No se encontraron jugadores."],
+  searchError: ["Ricerca non disponibile. Riprova.", "Search unavailable. Try again.", "Búsqueda no disponible. Inténtalo de nuevo."],
+  results: ["Risultati", "Results", "Resultados"],
+  topTen: ["Top 10", "Top 10", "Top 10"],
   career: ["La carriera", "The career", "La carrera"],
   season: ["Stagioni", "Seasons", "Temporadas"],
   club: ["Club / campionato", "Club / competition", "Club / competición"],

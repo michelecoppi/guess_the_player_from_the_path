@@ -12,6 +12,35 @@ export class LeaderboardController {
   private loadInFlight: Promise<void> | null = null;
   private requestSeq = 0;
   private publicSeq = 0;
+  private searchSeq = 0;
+  private searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+  public setSearchQuery(query: string): void {
+    clearTimeout(this.searchTimer);
+    const seq = ++this.searchSeq;
+    const prefix = query.trim();
+    this.updateState({ search: { query, status: prefix.length < 2 ? 'idle' : 'loading', results: [] } });
+    if (prefix.length >= 2) this.searchTimer = setTimeout(() => { void this.searchProfiles(prefix, seq); }, 250);
+  }
+
+  private async searchProfiles(query: string, seq: number): Promise<void> {
+    try {
+      const data = await this.client.post<{ profiles: import('./types').ProfileSearchResult[] }>('/profile/search', { query });
+      if (seq !== this.searchSeq) return;
+      this.updateState({ search: { query: this.state.search!.query, status: 'ready', results: data.profiles } });
+    } catch {
+      if (seq !== this.searchSeq) return;
+      this.updateState({ search: { query: this.state.search!.query, status: 'error', results: [] } });
+    }
+  }
+
+  public cancelSearch(): void {
+    clearTimeout(this.searchTimer);
+    ++this.searchSeq;
+    if (this.state.search?.status === 'loading') {
+      this.updateState({ search: { ...this.state.search, status: 'idle', results: [] } });
+    }
+  }
 
   constructor(client: ApiClient = api) {
     this.client = client;
@@ -122,6 +151,7 @@ export class LeaderboardController {
       return;
     }
 
+    this.cancelSearch();
     const currentPublicSeq = ++this.publicSeq;
     this.updateState({
       publicProfile: {

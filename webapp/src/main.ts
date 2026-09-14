@@ -1,5 +1,6 @@
 import "./styles/vars.css";
 import "./styles/app.css";
+import "./styles/editorial.css";
 import { bootstrap } from "./app/bootstrap";
 
 if (typeof document !== "undefined") {
@@ -17,6 +18,7 @@ function start(): void {
     import.meta.env.DEV &&
     new URLSearchParams(location.search).has("design-review")
   ) {
+    void import('./prototypes/review.css');
     void import("./prototypes/review").then(({ startReview }) =>
       startReview(document.getElementById("root")!),
     );

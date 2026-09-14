@@ -615,11 +615,14 @@ test("31. public profile renders resolved cosmetic presentation values and never
   assert.ok(html.includes('<span class="shirt">10</span>'));
 
   // Verify heading does NOT contain raw cosmetic item IDs
-  const headingMatch = html.match(/<h1 id="public-profile-heading"[^>]*>([\s\S]*?)<\/h1>/);
+  const headingMatch = html.match(/<h2 id="public-profile-heading"[^>]*>([\s\S]*?)<\/h2>/);
   assert.ok(headingMatch, "public profile heading must be rendered");
   const headingHtml = headingMatch[1];
   assert.ok(!headingHtml.includes("distintivo_stella"), "heading must not contain raw badge item ID");
   assert.ok(!headingHtml.includes("maglia_dieci"), "heading must not contain raw number item ID");
+
+  assert.ok(html.includes("Veterano del pallone"), "resolved title is visible");
+  assert.ok(html.includes("repeating-linear-gradient"), "resolved frame is visible");
 
   // Verify raw cosmetic item IDs never leak into profile presentation
   assert.ok(!html.includes("distintivo_stella"), "profile view must not contain raw badge ID");

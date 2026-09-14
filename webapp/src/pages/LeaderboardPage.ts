@@ -16,6 +16,10 @@ export function attachLeaderboardEventListeners(
   root: HTMLElement,
   controller: LeaderboardController,
 ): void {
+  const search = root.querySelector<HTMLInputElement>('#leaderboard-search');
+  if (search) search.oninput = () => controller.setSearchQuery(search.value);
+  const retrySearch = root.querySelector<HTMLButtonElement>('#leaderboard-search-retry');
+  if (retrySearch) retrySearch.onclick = () => controller.setSearchQuery(controller.getState().search?.query || '');
   // Leaderboard sub-tabs: Global vs Leagues
   const tabButtons = root.querySelectorAll<HTMLButtonElement>("button[data-leaderboard-tab]");
   tabButtons.forEach((btn) => {

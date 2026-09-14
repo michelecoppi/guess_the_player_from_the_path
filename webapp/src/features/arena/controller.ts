@@ -123,7 +123,7 @@ export class ArenaController {
       draftAnswer: "",
     });
 
-    if (subview === "hub") {
+    if (subview === "hub" || subview === "duels") {
       void this.loadDuelList();
     } else if (subview === "duel" && code) {
       void this.loadDuel(code);
