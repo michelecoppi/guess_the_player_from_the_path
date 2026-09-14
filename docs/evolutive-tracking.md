@@ -2,6 +2,10 @@
 
 This file is the repository-side index for the product and technical roadmap.
 The canonical operational board is [GitHub Project #2](https://github.com/users/michelecoppi/projects/2): **⚽ Guess the Player — Product & Development**.
+For the git/GitHub mechanics of turning an issue into a merged PR (branch
+naming, commit style, `Closes`/`Refs`, review, merge), see
+[`github-workflow.md`](github-workflow.md); issue templates live in
+[`.github/ISSUE_TEMPLATE/`](../.github/ISSUE_TEMPLATE/).
 
 The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into the following GitHub issues on 2026-09-11. The Project, not this index, is the canonical source for fields, statuses, priorities, release targets and dependencies.
 
@@ -119,4 +123,5 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 
 - 2026-09-12: #66 establishes the V2 dark-only appearance contract before #42/#45; backend cosmetic rules and legacy `/app` remain unchanged. See `miniapp-appearance.md`.
 - 2026-09-12: began #68 (Mini App V2: migrate Training / Allenamento mode). Added to Project #2 (Area: Mini App, Work Type: Feature, Priority: P1, Horizon: Now, Size: 3, Risk: Low, Status: In Progress).
+- 2026-09-14: #11 — added issue templates (feature, bug, refactor, data task) under `.github/ISSUE_TEMPLATE/`, a PR template with the `Closes`/`Refs` reminder, and [`github-workflow.md`](github-workflow.md) documenting branch naming, commit style, review and merge mechanics. Project fields (Priority, Area, Work Type, Horizon, Size, Risk, Release), the status flow and the WIP limit were already configured on Project #2 and documented in this file/`AGENTS.md`, so this pass filled the remaining gap (templates + git-mechanics doc) rather than re-defining what already existed.
 

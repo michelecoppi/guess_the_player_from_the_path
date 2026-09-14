@@ -1,0 +1,42 @@
+name: "\U0001F41B Bug"
+description: Something is broken in production or in a supported environment.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: comportamento
+    attributes:
+      label: Comportamento attuale / Current behavior
+    validations:
+      required: true
+  - type: textarea
+    id: atteso
+    attributes:
+      label: Comportamento atteso / Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: riproduzione
+    attributes:
+      label: Passi per riprodurre / Steps to reproduce
+      description: Include environment (bot, webapp V1/V2, admin), account/state if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: impatto
+    attributes:
+      label: Impatto / Impact
+      description: Who/what is affected, and how severely (blocks users, data corruption, cosmetic, ...).
+    validations:
+      required: true
+  - type: textarea
+    id: contesto
+    attributes:
+      label: Log, screenshot, contesto aggiuntivo / Additional context
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        Set Project fields (Area, Priority, Horizon, Size, Risk) once triaged.
+        Apply the `security` or `data-risk` label if applicable.
