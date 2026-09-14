@@ -172,7 +172,7 @@ test di regressione: se cambi pesi o soglie, questi devono continuare a tornare
 
 ## 4. Aggiungere un giocatore: checklist
 
-Il percorso previsto è un file in [`data/incoming/`](../data/incoming/) importato con
+Il percorso previsto è un file in `data/incoming/` (cartella locale, ignorata da Git) importato con
 `python scripts/import_players.py`, che rifiuta le schede incoerenti e tiene i nuovi arrivi a
 `verified: false` finché qualcuno non li ha controllati (vedi il README, sezione *Dataset*).
 

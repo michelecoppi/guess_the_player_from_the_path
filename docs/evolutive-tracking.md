@@ -39,6 +39,9 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#46](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/46) | ↳ Migrate Referral feature |
 | [#47](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/47) | ↳ Migrate Events feature |
 | [#48](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/48) | ↳ Shared components and frontend test infra |
+| [#64](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/64) | Mini App V2 visual foundation and design system |
+| [#61](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/61) | Mini App V2 full visual/UX redesign and finalization |
+| [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) | Mini App V2 final cosmetics/bug review before the `/app` → `/app/v2` switch (a separate rollout issue follows) |
 | [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo architecture |
 | [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18) | Sentry and structured logging |
 | [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels |
@@ -55,13 +58,12 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement and targeted optimization |
 | [#23](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/23) | Documentation and AI-agent protocol |
 
-## Protocol for future agents
+## Status flow and WIP limit
 
-1. Before starting an evolutive, read the linked GitHub issue, inspect the current implementation, and check the Project's Status, Horizon, Priority and dependencies. Do not assume the roadmap still describes the exact code state.
-2. Use `Backlog → Ready → In Progress → Review → Done`; use `Blocked` only for an active impediment. Horizon is strategic timing, not a status. Keep at most two evolutives in `In Progress` unless the issue records an explicit exception.
-3. Work incrementally. Preserve existing behavior, avoid broad rewrites, add or update tests, and run the relevant test suite.
-4. A PR that completes the whole issue must use `Closes #<issue>`; a partial PR only references it. Move the item to `Review` when implementation and tests are ready; use `Done` only after merge/verification.
-5. Keep this index lightweight: update it when creating, splitting, closing or materially redefining roadmap work, but never copy all Project-field values here.
+- Use `Backlog → Ready → In Progress → Review → Done`; use `Blocked` only for an active impediment. Horizon is strategic timing, not a status. Keep at most two evolutives in `In Progress` unless the issue records an explicit exception.
+- Move an item to `Review` when implementation and tests are ready; `Done` only after merge/verification.
+- How an agent picks up, carries out and finishes an issue (stale-state checks, worktrees, tests, documentation policy) is in [`agent-protocol.md`](agent-protocol.md); `Closes`/`Refs` and merge mechanics are in [`github-workflow.md`](github-workflow.md).
+- Keep this index lightweight: update the table when creating, splitting, closing or materially redefining roadmap work, but never copy Project-field values or statuses here.
 
 ## Creating a new issue
 
@@ -97,7 +99,9 @@ data — it's invisible to prioritization and to WIP tracking. Before moving on:
 
 ## Key delivery relationships
 
-As of 2026-09-11 these are real GitHub sub-issue / `blocked by` relations, not
+Snapshot as of 2026-09-11 — relations may have changed since; query GitHub for the
+live state (see [`agent-protocol.md`](agent-protocol.md#choosing-work-without-inventing-it)).
+These are real GitHub sub-issue / `blocked by` relations, not
 just prose — see [`project-dependency-review.md`](project-dependency-review.md)
 for the full rationale and the soft/related dependencies that were deliberately
 **not** turned into GitHub relations.
@@ -116,6 +120,8 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 
 ## Tracking log
 
+Dated, historical notes about roadmap-structure changes. They are not current status; Project #2 is.
+
 - 2026-09-11: created 22 roadmap issues (#11–#32) and added them to GitHub Project #2.
 - 2026-09-11: began governance refinement: added `Horizon` and `Size`; codified the status flow, WIP limit and PR-closing convention.
 - 2026-09-11: dependency/sub-issue review. Split #12, #17, #20, #22 into 20 skeleton sub-issues (#33–#52); formalized hard dependencies as GitHub sub-issue/`blocked by` relations for #13→(#14,#26,#15,#27), #26→#15, #15→#35, #16→#17 and its sub-issues, #29→#52; reconciled #14→#15 as soft; documented soft/related dependencies as issue comments instead of GitHub relations; created and applied `data-risk`/`security` labels. Full rationale in [`project-dependency-review.md`](project-dependency-review.md).
@@ -124,4 +130,4 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 - 2026-09-12: #66 establishes the V2 dark-only appearance contract before #42/#45; backend cosmetic rules and legacy `/app` remain unchanged. See `miniapp-appearance.md`.
 - 2026-09-12: began #68 (Mini App V2: migrate Training / Allenamento mode). Added to Project #2 (Area: Mini App, Work Type: Feature, Priority: P1, Horizon: Now, Size: 3, Risk: Low, Status: In Progress).
 - 2026-09-14: #11 — added issue templates (feature, bug, refactor, data task) under `.github/ISSUE_TEMPLATE/`, a PR template with the `Closes`/`Refs` reminder, and [`github-workflow.md`](github-workflow.md) documenting branch naming, commit style, review and merge mechanics. Project fields (Priority, Area, Work Type, Horizon, Size, Risk, Release), the status flow and the WIP limit were already configured on Project #2 and documented in this file/`AGENTS.md`, so this pass filled the remaining gap (templates + git-mechanics doc) rather than re-defining what already existed.
-
+- 2026-09-14: #23 — added the documentation index ([`README.md`](README.md)), [`architecture.md`](architecture.md), focused docs for game modes, player-data pipeline, Mini App, Admin, Firestore, security and operations, and [`agent-protocol.md`](agent-protocol.md); `AGENTS.md` now links to them. The former “Protocol for future agents” list here was reduced to the status/WIP rules this file owns.

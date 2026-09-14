@@ -97,7 +97,10 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | `make typecheck` | `python -m tools.dev typecheck`<br>`.\dev.ps1 typecheck` | Controllo tipi statici con `mypy services/` |
 | `make syntax` | `python -m tools.dev syntax`<br>`.\dev.ps1 syntax` | Verifica sintassi con `compileall` su tutti i moduli |
 | `make dataset-check` | `python -m tools.dev dataset-check`<br>`.\dev.ps1 dataset-check` | Controlla integrità e salute del dataset calciatori (`scripts/dataset_report.py --strict`) |
-| `make check` | `python -m tools.dev check`<br>`.\dev.ps1 check` | Esegue la **suite standard di validazione locale** (ambiente, sintassi, lint, mypy, dataset, client test, pytest) |
+| — | `python -m tools.dev dataset-regression-check` | Verifica che le metriche del dataset non peggiorino rispetto a `data/dataset_baseline.json` |
+| — | `python -m tools.dev dataset-baseline-update` | Aggiorna la baseline: modifica da committare esplicitamente e motivare nella PR |
+| — | `python -m tools.dev security-check` | Audit di sicurezza come in CI: pip-audit, detect-secrets, npm audit (vedi [security.md](security.md)) |
+| `make check` | `python -m tools.dev check`<br>`.\dev.ps1 check` | Esegue la **suite standard di validazione locale**: ambiente, sintassi, ruff, mypy, typecheck/build/test frontend, test client legacy, integrità e regressione dataset, pytest |
 | `make emulator` | `python -m tools.dev emulator`<br>`.\dev.ps1 emulator` | Avvia l'emulatore Firestore locale su porta 8571 |
 | `make api` | `python -m tools.dev api`<br>`.\dev.ps1 api` | Avvia il server FastAPI (`bot.py`) con `--reload` su porta 8000 |
 | `make admin` | `python -m tools.dev admin`<br>`.\dev.ps1 admin` | Avvia la dashboard Streamlit su `admin_ui.py` |
@@ -108,7 +111,7 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | `make frontend-test` | `python -m tools.dev frontend-test`<br>`npm run test:frontend` | Esegue i test unitari TypeScript della foundation frontend |
 
 > [!NOTE]
-> `make check` (o `python -m tools.dev check`) è la **suite di validazione locale standard** concepita per un ciclo di feedback immediato prima del commit. A differenza di `check`, la pipeline GitHub Actions (`.github/workflows/ci.yml`) avvia in aggiunta un'istanza dell'emulatore Firestore su JVM per verificare le transazioni concorrenti reali ed applica la soglia di copertura minima del 70% (`--cov-fail-under=70`). In locale puoi eseguire i test con copertura usando `make test-cov`.
+> `make check` (o `python -m tools.dev check`) è la **suite di validazione locale standard** concepita per un ciclo di feedback immediato prima del commit. A differenza di `check`, la pipeline GitHub Actions (`.github/workflows/ci.yml`) esegue in aggiunta gli audit di sicurezza (`python -m tools.security`, `npm audit`), avvia l'emulatore Firestore su JVM per verificare le transazioni concorrenti reali ed applica la soglia di copertura minima del 70% (`--cov-fail-under=70`). In locale puoi eseguire i test con copertura usando `make test-cov` e gli audit con `python -m tools.dev security-check`.
 
 ---
 
@@ -150,10 +153,11 @@ Apri il browser su:
 ```
 http://localhost:8888/app
 ```
-oppure per testare la nuova shell Vite + TypeScript:
+oppure per la Mini App V2 (Vite + TypeScript; richiede prima `npm run build`):
 ```
 http://localhost:8888/app/v2
 ```
+In produzione il default resta `/app`: vedi [miniapp.md](miniapp.md) per l'architettura delle due Mini App e il gate di rollout.
 Questo avvia un server FastAPI leggero (`scripts/preview_webapp.py`) che inietta un finto utente con tutti i cosmetici già sbloccati, conservando tutto in memoria.
 
 ---
@@ -168,8 +172,11 @@ make admin
 ```
 
 Verrà aperta l'interfaccia Streamlit (solitamente su `http://localhost:8501`).
-- Se è configurato `FIRESTORE_EMULATOR_HOST`, leggerà e scriverà sull'emulatore locale.
-- Se è configurato `FIREBASE_CREDENTIALS_PATH=firebase-key.json`, scriverà sul progetto Firebase puntato dalla chiave.
+- `admin_ui.py` si avvia solo se `BOT_TOKEN` è impostato e `FIREBASE_CREDENTIALS_PATH` punta a un file esistente.
+- Se è configurato anche `FIRESTORE_EMULATOR_HOST`, il client Firestore usa l'emulatore locale; altrimenti **scrive sul progetto Firebase puntato dalla chiave** (di norma la produzione).
+- La pagina “🔎 Review giocatori” richiede `ADMIN_TELEGRAM_IDS`; approvazioni e modifiche al dataset scrivono i file locali in `data/` (con backup in `backup/`), che arrivano in produzione solo tramite PR.
+
+Architettura, confini e funzionalità della Admin: [admin.md](admin.md).
 
 ---
 
