@@ -4,7 +4,7 @@ import { identityAppearance } from "@/appearance";
 import { escapeHtml } from "@/utils/format";
 import { renderAvatar } from "@/components/Avatar";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
-import { t } from "@/i18n";
+import { t, tCount } from "@/i18n";
 import { icon } from "@/components/Icon";
 import { renderStatTile } from "@/components/StatTile";
 import { renderLoadingState } from "@/components/LoadingState";
@@ -105,7 +105,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
             ${shirt}${escapeHtml(u.name)}${badge ? ` ${escapeHtml(badge)}` : ""}
           </h2>
           ${cosmetics.title.label ? `<p class="cosmetic-title"${cosmetics.title.color ? ` style="border-color:${escapeHtml(cosmetics.title.color)}"` : ''}>${escapeHtml(cosmetics.title.label)}</p>` : ''}
-          <p class="muted text-xs">${trophiesCount} ${escapeHtml(t("leaderboard.trophies"))}</p>
+          <p class="muted text-xs">${escapeHtml(tCount("common.trophiesCount", trophiesCount))}</p>
         </div>
       </div>
       <div class="card">

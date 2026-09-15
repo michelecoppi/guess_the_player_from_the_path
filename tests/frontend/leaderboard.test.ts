@@ -629,6 +629,43 @@ test("31. public profile renders resolved cosmetic presentation values and never
   assert.ok(!html.includes("maglia_dieci"), "profile view must not contain raw number ID");
 });
 
+test("public profile trophy count uses the singular form for exactly 1 trophy (#89)", () => {
+  const withTrophies = (n: number) => ({
+    status: "ready" as const,
+    error: null,
+    activeTab: "global" as const,
+    selectedLeagueCode: null,
+    globalLeaderboard: [],
+    leagues: [],
+    publicProfile: {
+      profileId: 101,
+      status: "ready" as const,
+      data: createTestPublicProfile({
+        user: { ...createTestPublicProfile().user, trophies: n },
+      }),
+      error: null,
+    },
+  });
+
+  for (const [lang, one, other] of [
+    ["it", "1 trofeo", "trofei"],
+    ["en", "1 trophy", "trophies"],
+    ["es", "1 trofeo", "trofeos"],
+  ] as const) {
+    setLanguage(lang);
+
+    const oneHtml = renderLeaderboardPage(withTrophies(1));
+    assert.ok(oneHtml.includes(one), `[${lang}] expected singular "${one}" for 1 trophy`);
+    assert.ok(!oneHtml.includes(`1 ${other}`), `[${lang}] must not use plural "${other}" for 1 trophy`);
+
+    const zeroHtml = renderLeaderboardPage(withTrophies(0));
+    assert.ok(zeroHtml.includes(`0 ${other}`), `[${lang}] 0 trophies must stay plural`);
+
+    const manyHtml = renderLeaderboardPage(withTrophies(5));
+    assert.ok(manyHtml.includes(`5 ${other}`), `[${lang}] 5 trophies must stay plural`);
+  }
+});
+
 test("32. row accessibility labels (position, points, open profile, current user) are localized across IT, EN, and ES", () => {
   const rowData = {
     position: 1,

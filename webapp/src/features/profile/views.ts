@@ -8,7 +8,7 @@ import { escapeHtml } from "@/utils/format";
 import { histogram, cabinetCounts } from "@/utils/game";
 import { identityAppearance } from "@/appearance";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
-import { t } from "@/i18n";
+import { t, tCount } from "@/i18n";
 import type {
   CabinetFilter,
   ProfileState,
@@ -220,7 +220,7 @@ export function renderCabinetView(state: ProfileState): string {
       <div class="card mt-3">
         <div class="cabinet-head">
           <h2 class="section-heading">${escapeHtml(t("profile.cabinetTitle"))}</h2>
-          <span class="muted text-xs">${all.length} ${escapeHtml(t("profile.trophies"))}</span>
+          <span class="muted text-xs">${escapeHtml(tCount("common.trophiesCount", all.length))}</span>
         </div>
         <div class="cabinet-medals mt-3">
           ${medalsConfig
@@ -385,7 +385,7 @@ export function renderProfileView(state: ProfileState): string {
           </h3>
           ${titleTag}
           <div class="profile-hero-meta muted text-xs mt-1">
-            ${u.points} ${escapeHtml(t("common.points"))} · ${u.trophies} ${escapeHtml(t("profile.trophies"))}
+            ${u.points} ${escapeHtml(t("common.points"))} · ${escapeHtml(tCount("common.trophiesCount", u.trophies))}
           </div>
         </div>
         <div class="profile-showcase-container mt-3">
@@ -419,7 +419,7 @@ export function renderProfileView(state: ProfileState): string {
       <div class="card mt-3">
         <div class="cabinet-head">
           <h3 class="section-heading">${escapeHtml(t("profile.cabinet"))}</h3>
-          <span class="muted text-xs">${u.trophies} ${escapeHtml(t("profile.trophies"))}</span>
+          <span class="muted text-xs">${escapeHtml(tCount("common.trophiesCount", u.trophies))}</span>
         </div>
         ${cabinetOpenAction}
       </div>

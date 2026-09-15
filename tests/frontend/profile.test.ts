@@ -267,6 +267,59 @@ test("8 to 16. Real user statistics are rendered accurately, including zero-valu
   }
 });
 
+test("Trophy count uses the singular form for exactly 1 trophy, in the hero and Trophy Cabinet card (#89)", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const savedLang = getLanguage();
+
+  try {
+    for (const [lang, one, other] of [
+      ["it", "1 trofeo", "trofei"],
+      ["en", "1 trophy", "trophies"],
+      ["es", "1 trofeo", "trofeos"],
+    ] as const) {
+      setLanguage(lang);
+
+      const oneData = createTestFullProfile({
+        user: { name: "Solo", points: 10, trophies: 1 },
+      });
+      const oneController = new ProfileController();
+      (oneController as any).updateState({ status: "ready", profile: oneData });
+      container.innerHTML = renderProfilePage(oneController.getState());
+
+      const text = container.textContent || "";
+      assert.ok(text.includes(one), `[${lang}] expected singular "${one}" for 1 trophy, got: ${text}`);
+      assert.ok(!text.includes(`1 ${other}`), `[${lang}] must not use the plural form "${other}" for 1 trophy`);
+
+      // Same fix applies to the standalone Trophy Cabinet page (state.view === "cabinet"),
+      // which reuses the same count/label — this is a #89 requirement, not a Cabinet redesign.
+      const cabinetController = new ProfileController();
+      (cabinetController as any).updateState({
+        status: "ready",
+        profile: createTestFullProfile({
+          trophies: {
+            pinned: [],
+            all: [{ id: "t1", name: "Settembre", position: 1, date: "2026-09" }],
+            max: 3,
+          },
+        }),
+        view: "cabinet",
+      });
+      container.innerHTML = renderProfilePage(cabinetController.getState());
+      const cabinetText = container.textContent || "";
+      assert.ok(
+        cabinetText.includes(one),
+        `[${lang}] Trophy Cabinet header expected singular "${one}", got: ${cabinetText}`
+      );
+      assert.ok(!cabinetText.includes(`1 ${other}`));
+    }
+  } finally {
+    setLanguage(savedLang);
+    cleanupDom();
+    restoreTg();
+  }
+});
+
 test("17 to 21. Attempt distribution renders accurately with scaling, zero buckets, and empty state", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();
