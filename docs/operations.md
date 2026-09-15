@@ -79,7 +79,8 @@ repository.
 
 - Structured logs (JSON on Cloud Run, readable text locally) with stable event names and
   `component`/`route`/`request_id`/`task_name` fields, and optional Sentry error tracking
-  enabled by `SENTRY_DSN` (#18). No log-based metrics are defined in this repository.
+  enabled by `SENTRY_DSN` (#18). Records carry the formal `release` (`VERSION`) and, on
+  Cloud Run, the exact build `revision`. No log-based metrics are defined in this repository.
 - `/app/api/*` requests also return a `Server-Timing: app;dur=<ms>` header. See
   [performance.md](performance.md).
 - Telegram messages to admins (`ADMIN_TELEGRAM_IDS`) for: unhandled handler errors

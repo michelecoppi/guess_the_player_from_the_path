@@ -17,6 +17,9 @@ How the pieces fit:
   sanitises the whole event. There is exactly one path to Sentry, so the same failure is
   not reported twice: a failure logged at ERROR is marked as reported, and outer layers
   (the HTTP middleware, the Telegram error handler) downgrade their own record.
+- **Release and build** follow `services/version.py` (#49): `release` is the formal version
+  from `VERSION` (overridable with `SENTRY_RELEASE`), `revision` is the Cloud Run revision
+  (`K_REVISION`) and is simply absent elsewhere. The two are never substituted for each other.
 - **Redaction** (`sanitize`, `scrub_text`) works on copies: application payloads are never
   mutated. If sanitising a Sentry event fails the event is dropped, never sent raw.
 
@@ -41,6 +44,8 @@ from datetime import date, datetime, timezone
 from time import perf_counter
 from typing import Any, Optional
 
+from services import version
+
 REDACTED = "[REDACTED]"
 
 # Fields promoted to Sentry tags (short, low-cardinality, safe). Everything else that is
@@ -59,7 +64,7 @@ RETRY_ESCALATION = 5
 # Normalised key fragments (lowercase, only a-z0-9) whose values are always redacted.
 _SENSITIVE_KEY_PARTS = (
     "token", "secret", "password", "passwd", "authorization", "cookie", "initdata",
-    "dsn", "credential", "apikey", "privatekey", "signature", "invoicepayload", "sessionid",
+    "dsn", "credential", "apikey", "privatekey", "signature", "invoicepayload", "sessionid", "salt",
 )
 _SENSITIVE_EXACT_KEYS = frozenset({"hash", "auth"})
 # Environment variables whose literal values are scrubbed from any observability text.
@@ -94,6 +99,7 @@ class Settings:
     dsn: str = ""
     environment: str = "development"
     release: Optional[str] = None
+    revision: Optional[str] = None
     log_format: str = "text"
     log_level: str = "INFO"
     user_salt: str = ""
@@ -110,11 +116,14 @@ class Settings:
             dsn=(env.get("SENTRY_DSN") or "").strip(),
             environment=(env.get("SENTRY_ENVIRONMENT") or "").strip()
             or ("production" if on_cloud_run else "development"),
-            # SENTRY_RELEASE is the explicit hook; Cloud Run always provides its revision.
-            release=(env.get("SENTRY_RELEASE") or "").strip() or (env.get("K_REVISION") or "").strip() or None,
+            # Formal release = VERSION (#49), unless explicitly overridden. The exact build is a
+            # separate field: K_REVISION is never used as a release, and nothing is invented
+            # outside Cloud Run.
+            release=(env.get("SENTRY_RELEASE") or "").strip() or version.get_version(),
+            revision=version.get_build_revision() if environ is None else ((env.get("K_REVISION") or "").strip() or None),
             log_format=log_format,
             log_level=(env.get("LOG_LEVEL") or "INFO").strip().upper(),
-            user_salt=env.get("OBSERVABILITY_USER_SALT") or "",
+            user_salt=(env.get("OBSERVABILITY_USER_SALT") or "").strip(),
         )
 
 
@@ -193,12 +202,13 @@ def sanitize(value: Any, *, _depth: int = 0, _seen: Optional[set[int]] = None) -
 def user_ref(user_id: Any) -> Optional[str]:
     """Stable pseudonymous reference for a Telegram user id, for correlating log lines.
 
-    Keyed with OBSERVABILITY_USER_SALT when configured. Without a salt the reference is only
-    pseudonymous (Telegram ids are guessable), which is why it is never a Sentry user."""
-    if user_id is None or user_id == "":
+    Only with a secret OBSERVABILITY_USER_SALT: Telegram ids are small and guessable, so a
+    public or missing key would make the reference trivially reversible. Without a salt this
+    returns None and records simply carry no user correlation. Never a Sentry user."""
+    salt = (_state.settings.user_salt or "").strip()
+    if not salt or user_id is None or user_id == "":
         return None
-    key = (_state.settings.user_salt or "gtp-observability").encode()
-    return hmac.new(key, str(user_id).encode(), hashlib.sha256).hexdigest()[:16]
+    return hmac.new(salt.encode(), str(user_id).encode(), hashlib.sha256).hexdigest()[:16]
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +337,8 @@ def _record_fields(record: logging.LogRecord) -> dict[str, Any]:
     fields: dict[str, Any] = {"service": settings.service, "environment": settings.environment}
     if settings.release:
         fields["release"] = settings.release
+    if settings.revision:
+        fields["revision"] = settings.revision
     context = getattr(record, "_gtp_context", None)
     if context is None:
         context = _context.get()
@@ -415,6 +427,9 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> Optional[dict[s
                 tags[key] = str(context[key])[:200]
         settings = _state.settings
         tags.setdefault("service", settings.service)
+        # `release` is the event's own field (formal version); the build is a separate tag.
+        if settings.revision:
+            tags["revision"] = settings.revision
         event["tags"] = tags
         if context:
             event.setdefault("contexts", {})["observability"] = context
@@ -468,7 +483,9 @@ def init(service: str = "bot", *, settings: Optional[Settings] = None, web: bool
         if _state.initialized:
             return _state.settings
         _state.settings = settings or Settings.from_env(service)
-        _state.secret_values = _known_secret_values()
+        salt = _state.settings.user_salt
+        _state.secret_values = tuple(sorted(
+            set(_known_secret_values()) | ({salt} if len(salt) >= 8 else set()), key=len, reverse=True))
         try:
             configure_logging(_state.settings)
         except Exception:  # noqa: BLE001

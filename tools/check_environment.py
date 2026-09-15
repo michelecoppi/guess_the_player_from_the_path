@@ -720,6 +720,32 @@ class EnvironmentValidator:
                         "(il bot parte comunque).",
                 remediation="Copia il DSN dalle impostazioni del progetto Sentry (Client Keys).",
             )
+        salt = os.getenv("OBSERVABILITY_USER_SALT", "").strip()
+        if not salt:
+            self.add_result(
+                category="Observability",
+                name="OBSERVABILITY_USER_SALT",
+                status=CheckStatus.INFO,
+                message="OBSERVABILITY_USER_SALT non impostato: i log non portano user_ref (correlazione per "
+                        "utente disattivata). Opzionale.",
+            )
+        elif len(salt) < 32:
+            self.add_result(
+                category="Observability",
+                name="OBSERVABILITY_USER_SALT",
+                status=CheckStatus.WARN,
+                message=f"OBSERVABILITY_USER_SALT troppo corto ({len(salt)} caratteri): con id Telegram "
+                        "indovinabili la pseudonimizzazione e' debole.",
+                remediation="Usa un valore casuale di almeno 32 caratteri, es. "
+                            "python -c \"import secrets; print(secrets.token_urlsafe(32))\".",
+            )
+        else:
+            self.add_result(
+                category="Observability",
+                name="OBSERVABILITY_USER_SALT",
+                status=CheckStatus.PASS,
+                message="OBSERVABILITY_USER_SALT configurato: user_ref pseudonimo attivo.",
+            )
         log_format = os.getenv("LOG_FORMAT", "").strip().lower()
         if log_format and log_format not in ("json", "text"):
             self.add_result(

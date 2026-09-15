@@ -7,8 +7,23 @@ Cloud Tasks workers, payments, broadcasts, Admin and the Candidate pipeline). In
 Out of scope here: product analytics ([#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)),
 performance work ([#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32)),
 the Admin system-health view ([#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38)),
-release versioning ([#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49))
-and frontend/Mini App error tracking (no browser SDK, no Session Replay).
+the release process itself ([release-checklist.md](release-checklist.md), #49) and
+frontend/Mini App error tracking (no browser SDK, no Session Replay).
+
+## Release and build identity
+
+Observability consumes the release model of [`services/version.py`](../services/version.py)
+without redefining it (the policy lives in
+[release-checklist.md § Canonical version source](release-checklist.md#2-canonical-version-source)):
+
+| Field | Source | Where it appears |
+| --- | --- | --- |
+| `release` | `SENTRY_RELEASE` if set, otherwise the formal version `services.version.get_version()` (`VERSION`) | Sentry event `release`; `release` in every log record |
+| `revision` | `services.version.get_build_revision()` (Cloud Run `K_REVISION`); absent outside Cloud Run | Sentry tag `revision`; `revision` in every log record on Cloud Run |
+
+The two are never substituted for each other: `K_REVISION` is not used as a release, and
+no revision is invented locally. Because continuous deployment ships untagged builds between
+releases, several revisions can share one `release`; `revision` identifies the exact build.
 
 ## Architecture
 
@@ -22,7 +37,7 @@ never configure Sentry or log formatters themselves.
 | `log_event(event, level, exc_info=..., **fields)` | One structured record whose message is a stable event name. |
 | `operation(name, component=..., retryable=...)` | Times a meaningful operation (monotonic clock) and emits `<name>.completed`, `<name>.retry` or `<name>.failed`. Exceptions are always re-raised unchanged. |
 | `sanitize()` / `scrub_text()` | Redaction on copies (see [Redaction policy](#redaction-policy)). |
-| `user_ref(user_id)` | Stable pseudonymous user reference (HMAC, 16 hex chars). |
+| `user_ref(user_id)` | Pseudonymous user reference (HMAC-SHA256 keyed with `OBSERVABILITY_USER_SALT`, 16 hex chars), or `None` when no salt is configured. |
 
 **One path to Sentry.** Sentry's logging integration turns records at `ERROR` or above into
 Sentry events; `WARNING`/`INFO` records become breadcrumbs only. `before_send` adds the
@@ -44,13 +59,15 @@ All variables are optional. Local development and tests need none of them.
 | --- | --- | --- |
 | `SENTRY_DSN` | empty | Enables Sentry. Without it the SDK is never initialised and no network call is made. Treat it as a secret (store it in Secret Manager on Cloud Run). |
 | `SENTRY_ENVIRONMENT` | `production` when `K_SERVICE` is set (Cloud Run), otherwise `development` | Sentry environment and the `environment` log field. |
-| `SENTRY_RELEASE` | `K_REVISION` (the Cloud Run revision), otherwise unset | Sentry release and the `release` log field. A release/version scheme is owned by #49; setting this variable is the only integration point. |
+| `SENTRY_RELEASE` | the formal version from `VERSION` | Explicit override of the Sentry `release` and the `release` log field. Normally leave it unset (see [Release and build identity](#release-and-build-identity)). |
 | `LOG_FORMAT` | `json` on Cloud Run, `text` elsewhere | `json` or `text`. |
 | `LOG_LEVEL` | `INFO` | Root log level. |
-| `OBSERVABILITY_USER_SALT` | empty | Key for `user_ref`. Without it references are only pseudonymous (Telegram ids are guessable), so set a random value in production. |
+| `OBSERVABILITY_USER_SALT` | empty | Optional secret key for `user_ref`. Absent or blank: observability works normally but records carry **no** `user_ref` (per-user correlation disabled); there is no built-in fallback key and raw ids are never used instead. If set: a strong random value (≥ 32 characters, e.g. `python -c "import secrets; print(secrets.token_urlsafe(32))"`), stored as a Cloud Run secret/env value, never committed or logged. Rotating it breaks correlation with older records. |
 
 `python -m tools.check_environment` reports `SENTRY_DSN` as INFO when absent, PASS when it
-looks like a DSN and WARN when malformed; the value is never printed.
+looks like a DSN and WARN when malformed, and `OBSERVABILITY_USER_SALT` as INFO when absent,
+WARN when shorter than 32 characters and PASS otherwise. Values are never printed, and a
+missing value never fails the check.
 
 To enable Sentry on the Cloud Run service (one-time, outside the repository), store the DSN
 in Secret Manager (the runtime service account needs `roles/secretmanager.secretAccessor`
@@ -58,7 +75,7 @@ on it) and add it without touching the other variables, which survive deploys
 ([deploy.md](deploy.md)):
 
 ```bash
-gcloud run services update guess-the-player --project guess-the-player-from-path-bot --region europe-west1 --update-secrets SENTRY_DSN=sentry-dsn:latest --update-env-vars OBSERVABILITY_USER_SALT=<random-value>
+gcloud run services update guess-the-player --project guess-the-player-from-path-bot --region europe-west1 --update-secrets SENTRY_DSN=sentry-dsn:latest,OBSERVABILITY_USER_SALT=observability-user-salt:latest
 ```
 
 ## Local and production behaviour
@@ -78,7 +95,8 @@ JSON record example:
 
 ```json
 {"severity": "ERROR", "message": "payment.delivery.failed", "time": "2026-09-14T20:49:56+00:00",
- "logger": "gtp.payment", "service": "bot", "environment": "production", "release": "bot-00042-abc",
+ "logger": "gtp.payment", "service": "bot", "environment": "production", "release": "0.1.0",
+ "revision": "guess-the-player-00042-abc",
  "component": "payment", "request_id": "5f0c…", "task_name": "projects/…/tasks/…",
  "update_id": 812345, "update_type": "successful_payment", "event": "payment.delivery.failed",
  "status": "failed", "item_id": "neon", "charge_id": "…", "amount": 25, "duration_ms": 41.7,
@@ -92,7 +110,8 @@ also attached to the Sentry event as the sanitised `observability` context.
 
 | Field | Meaning |
 | --- | --- |
-| `service`, `environment`, `release` | Process identity (always present). |
+| `service`, `environment`, `release` | Process identity (always present); `release` is the formal version. |
+| **`revision`** | Exact Cloud Run build (`K_REVISION`); only on Cloud Run. |
 | **`event`** | Stable event name (see [Event catalogue](#event-catalogue)). |
 | **`component`** | Subsystem: `telegram`, `api`, `job`, `admin`, `ingestion`, `payment`, `broadcast`. |
 | **`route`**, **`method`**, `status_code` | FastAPI route template (`/app/api/shop`, never the raw path with ids), HTTP method and status. |
@@ -102,7 +121,7 @@ also attached to the Sentry event as the sanitised `observability` context.
 | **`update_type`**, **`command`**, **`handler`**, `update_id`, `chat_type` | Telegram context: update kind, command name or callback prefix (never message text or arguments), handler name. |
 | **`job`**, **`operation`**, **`status`**, `duration_ms` | Job name, operation name, final status (`completed`, `retry`, `failed`, …) and monotonic duration. |
 | **`source`**, `candidate_id`, `actor_ref` | Candidate pipeline: source name (`wikipedia`, `wikidata`), candidate id, pseudonymous admin reference. |
-| `user_ref` | Pseudonymous user reference; never a Sentry user. |
+| `user_ref` | Pseudonymous user reference, only when `OBSERVABILITY_USER_SALT` is set; never a Sentry user. |
 | `item_id`, `amount`, `charge_id`, `reason`, `outcome` | Payment context: internal product id, Stars amount, Telegram charge id (already the operational reference for `/admin_refund` and purchase history), refusal reason, delivery outcome. |
 | `error_type` | Exception class name. |
 
@@ -161,7 +180,7 @@ breadcrumb. It works on copies; application payloads are never mutated.
 - **Sensitive keys** (case-insensitive, `-`/`_` ignored) are replaced by `[REDACTED]` at any
   depth: anything containing `token`, `secret`, `password`, `passwd`, `authorization`,
   `cookie`, `initdata`, `dsn`, `credential`, `apikey`, `privatekey`, `signature`,
-  `invoicepayload`, `sessionid`, and the exact keys `hash` and `auth`. This covers
+  `invoicepayload`, `sessionid`, `salt`, and the exact keys `hash` and `auth`. This covers
   `initData`/`init_data`, `X-Task-Secret`, `x-cron-secret`,
   `X-Telegram-Bot-Api-Secret-Token`, `telegram_bot_token`, `webhook_secret`,
   `task_secret`, `generation_secret` and `sentry_dsn`.
@@ -174,6 +193,8 @@ breadcrumb. It works on copies; application payloads are never mutated.
   answers typed by players (guess logs record only the length), invoice payloads (they carry
   a signature), Cloud Task payloads, full Candidate objects or provider payloads, dataset
   contents.
+- **User references** exist only with a secret salt; without one there is no per-user field at
+  all (no public default key, no unkeyed hash, no raw id).
 - Values are truncated at 2000 characters and nesting at 12 levels.
 
 ## Sentry privacy configuration
@@ -200,8 +221,8 @@ jsonPayload.event="broadcast.batch.retry" AND jsonPayload.day="2026-09-14"
 jsonPayload.event="api.request.completed" AND jsonPayload.duration_ms>1000
 ```
 
-Sentry: filter issues by the tags `component`, `event`, `route`, `job`, `command` and by
-environment/release; the `observability` context holds the remaining sanitised fields, and
+Sentry: filter issues by the tags `component`, `event`, `route`, `job`, `command`,
+`revision` (exact build) and by environment/release (formal version); the `observability` context holds the remaining sanitised fields, and
 `request_id` links an issue back to Cloud Logging.
 
 The alerts recommended in [runtime-hardening.md](runtime-hardening.md) can be written as
@@ -215,7 +236,9 @@ this repository.
   redaction (nested keys, `initData`, Authorization/cookies, tokens in text), no-DSN
   behaviour, idempotent init, privacy options, Sentry tags/context through the real SDK with
   an in-memory transport (no network), API 500 vs expected 4xx/503, Telegram, jobs and retry
-  escalation, Cloud Tasks, Candidate, payments and Admin.
+  escalation, Cloud Tasks, Candidate, payments and Admin; release (`VERSION`, `SENTRY_RELEASE`
+  override) vs `revision` in logs and Sentry; `GET /` keeping `version`/`revision` next to
+  the request middleware; `user_ref` only with a salt, and the salt never in logs or events.
 - [`tests/test_internal_daily_job.py`](../tests/test_internal_daily_job.py): the
   `x-cron-secret` boundary of `POST /internal/daily-job` (missing, wrong, correct, fail
   closed without `GENERATION_SECRET`).
@@ -228,7 +251,7 @@ this repository.
   user ids and are not event-named; they are formatted, context-enriched and scrubbed, but
   were not rewritten wholesale.
 - Sentry stack frames include source-code context lines of the application code.
-- `release` is the Cloud Run revision until a release scheme exists (#49).
+- Without `OBSERVABILITY_USER_SALT` there is no per-user correlation in logs or Sentry.
 - The Streamlit Admin runs on an operator's machine: its events only reach Sentry if that
   machine's `.env` has a DSN, and it reports `environment=development` unless
   `SENTRY_ENVIRONMENT` is set.

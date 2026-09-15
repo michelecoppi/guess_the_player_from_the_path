@@ -348,3 +348,17 @@ def test_invalid_log_format_warns(temp_project, monkeypatch):
     validator = EnvironmentValidator(project_root=temp_project)
     validator.check_observability()
     assert any(r.name == "LOG_FORMAT" and r.status == CheckStatus.WARN for r in validator.results)
+
+
+def test_user_salt_is_optional_and_weak_values_warn_without_being_printed(temp_project, monkeypatch):
+    strong = "S" * 40
+    for value, expected in [("", CheckStatus.INFO), ("   ", CheckStatus.INFO), ("short-salt", CheckStatus.WARN),
+                            (strong, CheckStatus.PASS)]:
+        monkeypatch.setenv("OBSERVABILITY_USER_SALT", value)
+        validator = EnvironmentValidator(project_root=temp_project, mode="prod")
+        validator.check_observability()
+        [item] = [r for r in validator.results if r.name == "OBSERVABILITY_USER_SALT"]
+        assert item.status == expected
+        report = json.dumps([r.to_dict() for r in validator.results])
+        assert "short-salt" not in report and strong not in report
+        assert not validator.has_failures

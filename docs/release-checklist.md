@@ -39,9 +39,10 @@ application's release version:
 
 - `services/version.py` reads it at runtime (`get_version()`), used today by the `/`
   health endpoint (`bot.py`) so a running revision can report its own version without
-  redeploying. This is the boundary [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)
-  (Sentry/error tracking) can later read the same identifier from for its `release` tag —
-  no runtime redesign needed, just importing `services.version.get_version()`.
+  redeploying. [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)
+  observability reads the same identifier for the Sentry/log `release`, and
+  `get_build_revision()` for a separate `revision` field (see
+  [observability.md](observability.md#release-and-build-identity)).
 - `package.json`'s `version` field is a **mirror**, kept in sync by the bump tool (§7),
   required to be present and valid. It exists only because npm expects one; it is not read
   anywhere in the app and is not a second source of truth. `python -m tools.release check`

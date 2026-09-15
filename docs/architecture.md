@@ -147,7 +147,8 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Admin | `admin_ui.py`, `admin_pages/`, `handlers/admin_handler.py` | [admin.md](admin.md) |
 | Firestore | `services/firebase_service.py`, `services/repos/` | [firestore.md](firestore.md) |
 | Security | cross-cutting | [security.md](security.md) |
-| Operations, observability, analytics | cross-cutting | [operations.md](operations.md), [observability.md](observability.md) |
+| Operations, analytics | cross-cutting | [operations.md](operations.md) |
+| Observability (implemented, #18) | `services/observability.py`: structured JSON logs, optional Sentry, request/task correlation, redaction; `release` from `VERSION`, `revision` from Cloud Run | [observability.md](observability.md) |
 
 ## 7. Deployment topology (summary)
 

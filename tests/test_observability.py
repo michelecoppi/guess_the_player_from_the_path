@@ -20,12 +20,15 @@ from sentry_sdk.transport import Transport
 
 import config
 from handlers import daily_job, error_handler, shop_handler
-from services import observability, shop, task_queue
+from services import observability, shop, task_queue, version
 from services.observability import REDACTED, Settings
 
 FAKE_DSN = "https://publickey@o0.ingest.example.invalid/1"
 BOT_TOKEN_LIKE = "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw1"
 INIT_DATA = "query_id=AAH&user=%7B%22id%22%3A42%7D&auth_date=1700000000&hash=" + "ab" * 32
+REVISION = "guess-the-player-00042-abc"
+SALT = "obs-salt-" + "Zq7" * 12
+FORMAL_VERSION = (Path(__file__).resolve().parents[1] / "VERSION").read_text(encoding="utf-8").strip()
 
 
 class MemoryTransport(Transport):
@@ -51,7 +54,7 @@ def sentry():
     transport = MemoryTransport()
     observability.init(
         "bot", web=True, transport=transport,
-        settings=Settings(service="bot", dsn=FAKE_DSN, environment="test", release="rev-42"),
+        settings=Settings(service="bot", dsn=FAKE_DSN, environment="test", release="9.9.9", revision=REVISION),
     )
     assert observability.sentry_enabled()
     return transport
@@ -68,7 +71,7 @@ def records():
     previous_level = root.level
     root.addHandler(handler)
     root.setLevel(logging.INFO)
-    observability._state.settings = Settings(service="bot", environment="test", release="rev-42")
+    observability._state.settings = Settings(service="bot", environment="test", release="9.9.9", revision=REVISION)
 
     def read():
         return [json.loads(line) for line in stream.getvalue().splitlines() if line.strip()]
@@ -104,7 +107,8 @@ def test_structured_record_has_stable_queryable_fields(records):
     assert line["severity"] == "INFO"
     assert line["message"] == "daily.job.completed"
     assert line["component"] == "job" and line["job"] == "daily_job"
-    assert line["environment"] == "test" and line["release"] == "rev-42" and line["service"] == "bot"
+    assert line["environment"] == "test" and line["service"] == "bot"
+    assert line["release"] == "9.9.9" and line["revision"] == REVISION
     assert line["request_id"] == "req-1" and line["duration_ms"] == 12.5 and line["status"] == "completed"
     assert line["logger"] == "gtp.job" and line["time"]
 
@@ -141,13 +145,78 @@ def test_operation_records_duration_and_final_status(records):
 
 
 def test_settings_default_to_json_on_cloud_run_and_text_locally():
-    cloud = Settings.from_env(environ={"K_SERVICE": "bot", "K_REVISION": "bot-00042-abc"})
-    assert (cloud.log_format, cloud.environment, cloud.release, cloud.dsn) == ("json", "production", "bot-00042-abc", "")
+    cloud = Settings.from_env(environ={"K_SERVICE": "bot", "K_REVISION": REVISION})
+    assert (cloud.log_format, cloud.environment, cloud.dsn) == ("json", "production", "")
     local = Settings.from_env(environ={})
-    assert (local.log_format, local.environment, local.release) == ("text", "development", None)
-    explicit = Settings.from_env(environ={"K_REVISION": "r", "SENTRY_RELEASE": "1.2.3", "SENTRY_ENVIRONMENT": "staging",
-                                          "LOG_FORMAT": "TEXT"})
-    assert (explicit.release, explicit.environment, explicit.log_format) == ("1.2.3", "staging", "text")
+    assert (local.log_format, local.environment) == ("text", "development")
+    explicit = Settings.from_env(environ={"SENTRY_ENVIRONMENT": "staging", "LOG_FORMAT": "TEXT"})
+    assert (explicit.environment, explicit.log_format) == ("staging", "text")
+
+
+# ---------------------------------------------------------------------------
+# Release (formal VERSION) vs revision (exact Cloud Run build), as in services/version.py
+# ---------------------------------------------------------------------------
+
+def test_formal_version_is_the_default_release():
+    assert FORMAL_VERSION and version.get_version() == FORMAL_VERSION
+    assert Settings.from_env(environ={}).release == FORMAL_VERSION
+    assert Settings.from_env(environ={"K_SERVICE": "bot", "K_REVISION": REVISION}).release == FORMAL_VERSION
+
+
+def test_explicit_sentry_release_overrides_version_but_not_revision():
+    settings = Settings.from_env(environ={"SENTRY_RELEASE": "1.2.3-hotfix", "K_REVISION": REVISION})
+    assert settings.release == "1.2.3-hotfix" and settings.revision == REVISION
+    assert Settings.from_env(environ={"SENTRY_RELEASE": "   "}).release == FORMAL_VERSION
+
+
+def test_cloud_run_revision_is_a_separate_field_never_the_release(monkeypatch):
+    monkeypatch.setenv("K_REVISION", REVISION)
+    monkeypatch.delenv("SENTRY_RELEASE", raising=False)
+    settings = Settings.from_env()
+    assert settings.revision == REVISION == version.get_build_revision()
+    assert settings.release == FORMAL_VERSION != REVISION
+
+
+def test_outside_cloud_run_there_is_no_revision(monkeypatch, records):
+    monkeypatch.delenv("K_REVISION", raising=False)
+    assert Settings.from_env().revision is None
+    assert Settings.from_env(environ={}).revision is None
+    observability._state.settings = Settings.from_env(environ={})
+    observability.log_event("daily.job.completed", component="job")
+    [line] = by_event(records(), "daily.job.completed")
+    assert line["release"] == FORMAL_VERSION and "revision" not in line
+
+
+def test_structured_logs_carry_release_and_revision_separately(records):
+    observability._state.settings = Settings.from_env(environ={"K_SERVICE": "bot", "K_REVISION": REVISION})
+    observability.log_event("broadcast.completed", component="broadcast")
+    [line] = by_event(records(), "broadcast.completed")
+    assert line["release"] == FORMAL_VERSION and line["revision"] == REVISION
+
+    record = logging.LogRecord("gtp.job", logging.INFO, __file__, 1, "daily.job.completed", None, None)
+    record._gtp_context = {}
+    text = observability.TextFormatter().format(record)
+    assert f"release={FORMAL_VERSION}" in text and f"revision={REVISION}" in text
+
+
+def test_sentry_events_distinguish_release_from_revision():
+    transport = MemoryTransport()
+    observability.init("bot", transport=transport, settings=Settings.from_env(
+        environ={"SENTRY_DSN": FAKE_DSN, "K_SERVICE": "bot", "K_REVISION": REVISION}))
+    observability.log_event("daily.job.failed", logging.ERROR, exc_info=RuntimeError("x"), component="job")
+
+    [event] = transport.events
+    assert event["release"] == FORMAL_VERSION
+    assert event["tags"]["revision"] == REVISION
+    assert event["tags"].get("release") in (None, FORMAL_VERSION)
+
+
+def test_local_sentry_events_have_no_revision_tag():
+    transport = MemoryTransport()
+    observability.init("bot", transport=transport, settings=Settings.from_env(environ={"SENTRY_DSN": FAKE_DSN}))
+    observability.log_event("daily.job.failed", logging.ERROR, exc_info=RuntimeError("x"), component="job")
+    [event] = transport.events
+    assert event["release"] == FORMAL_VERSION and "revision" not in event["tags"]
 
 
 # ---------------------------------------------------------------------------
@@ -203,10 +272,65 @@ def test_structured_logs_never_contain_secrets(records):
         assert secret not in raw
 
 
-def test_user_ref_is_stable_and_not_the_raw_id():
-    ref = observability.user_ref(42)
-    assert ref == observability.user_ref("42") and "42" != ref and len(ref) == 16
+# ---------------------------------------------------------------------------
+# user_ref: only with a secret salt
+# ---------------------------------------------------------------------------
+
+def test_without_salt_there_is_no_user_ref():
+    observability._state.settings = Settings()
+    assert observability.user_ref(123456789) is None
+    observability._state.settings = Settings.from_env(environ={})
+    assert observability.user_ref(123456789) is None
+
+
+def test_blank_salt_means_no_user_ref():
+    for blank in ("", "   ", "\t\n"):
+        observability._state.settings = Settings.from_env(environ={"OBSERVABILITY_USER_SALT": blank})
+        assert observability.user_ref(123456789) is None
+        observability._state.settings = Settings(user_salt=blank)
+        assert observability.user_ref(123456789) is None
+
+
+def test_configured_salt_gives_a_stable_pseudonymous_ref():
+    observability._state.settings = Settings(user_salt=SALT)
+    ref = observability.user_ref(123456789)
+    assert ref is not None and len(ref) == 16 and all(c in "0123456789abcdef" for c in ref)
+    assert ref == observability.user_ref(123456789) == observability.user_ref("123456789")
+    assert "123456789" not in ref and "6789" not in ref
+    assert observability.user_ref(987654321) != ref
     assert observability.user_ref(None) is None
+
+
+def test_a_different_salt_gives_a_different_ref():
+    observability._state.settings = Settings(user_salt=SALT)
+    first = observability.user_ref(42)
+    observability._state.settings = Settings(user_salt=SALT + "-rotated")
+    assert observability.user_ref(42) != first
+
+
+def test_the_salt_never_reaches_logs_or_sentry(records):
+    transport = MemoryTransport()
+    observability.init("bot", transport=transport, settings=Settings(dsn=FAKE_DSN, user_salt=SALT))
+    root_handler = next(h for h in logging.getLogger().handlers if getattr(h, "_gtp_handler", False))
+    root_handler.setLevel(logging.CRITICAL + 1)  # the records fixture is the one being inspected
+
+    observability.log_event(
+        "payment.delivery.failed", logging.ERROR, exc_info=RuntimeError(f"leaked {SALT}"), component="payment",
+        user_ref=observability.user_ref(42), observability_user_salt=SALT, note=f"salt is {SALT}",
+    )
+
+    lines = by_event(records(), "payment.delivery.failed")
+    assert lines and lines[0]["user_ref"] == observability.user_ref(42)
+    assert SALT not in json.dumps(lines)
+    [event] = transport.events
+    assert SALT not in event_data(event)
+    assert event["contexts"]["observability"]["user_ref"] == observability.user_ref(42)
+
+
+def test_telegram_context_works_without_user_correlation(monkeypatch):
+    observability._state.settings = Settings()
+    fields = error_handler.describe_update(telegram_update("/shop"))
+    assert "user_ref" not in fields and fields["command"] == "shop"
 
 
 # ---------------------------------------------------------------------------
@@ -263,7 +387,7 @@ def test_captured_errors_carry_component_tags_and_sanitised_context(sentry):
     tags = event["tags"]
     assert tags["component"] == "payment" and tags["event"] == "payment.refund.failed"
     assert tags["route"] == "/app/api/shop/buy" and tags["method"] == "POST" and tags["request_id"] == "req-9"
-    assert event["environment"] == "test" and event["release"] == "rev-42"
+    assert event["environment"] == "test" and event["release"] == "9.9.9" and tags["revision"] == REVISION
     assert event["contexts"]["observability"]["charge_id"] == "ch_1"
     assert event["contexts"]["observability"]["initData"] == REDACTED
     raw = event_data(event)
@@ -338,6 +462,27 @@ def test_expected_client_errors_do_not_reach_sentry(sentry, server, monkeypatch,
     assert sentry.events == []
     statuses = {(line["route"], line["status_code"]) for line in by_event(records(), "api.request.completed")}
     assert ("/app/api/me", 401) in statuses and ("/internal/telegram-update", 503) in statuses
+
+
+def test_root_keeps_version_and_revision_alongside_request_observability(server, monkeypatch, records):
+    """#49's health response and #18's middleware must coexist: neither may overwrite the other."""
+    monkeypatch.setenv("K_REVISION", REVISION)
+    response = call(server, "/", method="GET")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Bot attivo!", "version": FORMAL_VERSION, "revision": REVISION}
+    assert len(response.headers["X-Request-ID"]) == 32
+
+    monkeypatch.delenv("K_REVISION")
+    local = call(server, "/", method="GET").json()
+    assert local == {"message": "Bot attivo!", "version": FORMAL_VERSION, "revision": None}
+
+
+def test_api_works_without_salt_and_logs_no_user_ref(server, monkeypatch, records):
+    monkeypatch.setattr(server, "_webapp_user", lambda payload, cost=1: (42, {"language": "it"}))
+    monkeypatch.setattr(server.shop, "catalogue_for", lambda user, lang: {"sections": []})
+    response = call(server, "/app/api/shop", json={})
+    assert response.status_code == 200 and response.json() == {"sections": []}
+    assert all("user_ref" not in line for line in records())
 
 
 def test_responses_carry_a_server_generated_request_id(server, records):
@@ -542,6 +687,7 @@ def test_undeliverable_payment_is_reported_without_the_signed_payload(sentry, sh
     asyncio.run(shop_handler.successful_payment_callback(payment_update(payload), None))
 
     [event] = sentry.events
+    assert "user_ref" not in event["contexts"]["observability"]  # no salt configured
     assert event["tags"]["event"] == "payment.delivery.failed" and event["tags"]["component"] == "payment"
     assert event["contexts"]["observability"]["charge_id"] == "ch_obs"
     assert payload not in event_data(event)
