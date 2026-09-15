@@ -32,7 +32,7 @@ jobs:
     env:
       GOOGLE_CLOUD_PROJECT: guess-the-player-from-path-bot
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
