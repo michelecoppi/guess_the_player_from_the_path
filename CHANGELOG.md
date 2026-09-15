@@ -1,0 +1,47 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The
+project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html); what MAJOR /
+MINOR / PATCH mean in practice for this product, the canonical version source, and the
+full release process live in
+[docs/release-checklist.md](docs/release-checklist.md).
+
+Entries accumulate under **Unreleased** as changes land on `main`. At release time,
+`python -m tools.release bump <major|minor|patch>` moves the Unreleased content into a
+new dated section below.
+
+## [Unreleased]
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Security
+
+## [0.1.0] - 2026-09-14
+
+Baseline release marker, not a reconstruction of project history. Development before
+this point was continuous deployment straight to `main` with no version numbers, tags,
+or changelog (see
+[operations.md § Release state](docs/operations.md#release-state) before this change).
+This entry gives `0.1.0` a concrete meaning — "state of the product when release
+management was formalized" — instead of being an arbitrary starting number. Individual
+historical commits are not listed here; `git log` remains authoritative for that.
+
+Notable state at this baseline (see the linked docs for detail, not repeated here):
+
+- Telegram bot and Mini App: legacy `/app` in production, `/app/v2` functionally
+  migrated and redesigned, rollout gated by
+  [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81)
+  (see [miniapp.md](docs/miniapp.md)).
+- Daily challenge, Archive, Training, Arena duels, group rounds, themed Events,
+  leaderboards, leagues, and referrals (see [game-modes.md](docs/game-modes.md)).
+- Shop and Telegram Stars payments, Admin (Telegram commands and Streamlit dashboard).
+- CI (`.github/workflows/ci.yml`), automatic Cloud Run deploy on green `main`
+  (`.github/workflows/deploy.yml`), weekly Firestore JSON backup
+  (`.github/workflows/backup.yml`) — restore is not yet proven, tracked in
+  [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50).

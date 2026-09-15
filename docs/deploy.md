@@ -6,7 +6,10 @@ e le due code Cloud Tasks come descritto in [Webhook, code e retry](runtime-hard
 
 Quadro d'insieme (build → test → deploy → runtime → rollback) in
 [architecture.md § Deployment topology](architecture.md#7-deployment-topology-summary);
-stato di release e backup in [operations.md](operations.md).
+stato di release e backup in [operations.md](operations.md). Versioning, checklist di
+rilascio, exact-commit requirement e rollback sono in
+[release-checklist.md](release-checklist.md); questo documento resta la fonte per "come"
+si deploya ciascun pezzo, non "quando" un insieme di commit diventa una release.
 
 Il bot gira su **Cloud Run** (container, deploy automatico da GitHub Actions dopo i test) e la
 generazione giornaliera dei contenuti è affidata a **Cloud Scheduler**, che chiama un endpoint
@@ -83,8 +86,8 @@ più lanciare `gcloud run deploy` a mano.
 
 Resta comunque possibile lanciarlo a mano, ad es. per un rollback rapido o per testare una
 build locale. Il rollback è sempre manuale (revisione precedente o deploy di un commit
-precedente): versioni e checklist di rilascio sono pianificate in
-[#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49). Il deploy
+precedente): procedura completa in
+[release-checklist.md § Rollback](release-checklist.md#10-rollback). Il deploy
 automatico usa anche `--max-instances 10` (vedi [`deploy.yml`](../.github/workflows/deploy.yml)):
 
 ```bash

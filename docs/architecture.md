@@ -157,13 +157,14 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Test | `ci.yml` on every PR and push to `main` | [ci_cd_pipeline.md](ci_cd_pipeline.md) |
 | Deploy | `deploy.yml` runs only after a successful CI run on `main`, via Workload Identity Federation, `--max-instances 10` | [deploy.md](deploy.md) |
 | Runtime | One Cloud Run service (`europe-west1`), Firestore, two Cloud Tasks queues, one Cloud Scheduler job; env vars/secrets set on the service, not in the workflow | [deploy.md](deploy.md), [runtime-hardening.md](runtime-hardening.md) |
-| Rollback | Manual: route traffic to a previous revision or redeploy an earlier commit. No one-command rollback, versioning or changelog | [deploy.md](deploy.md) |
+| Rollback | Manual: route traffic to a previous revision or redeploy an earlier commit. No one-command rollback | [release-checklist.md § Rollback](release-checklist.md#10-rollback) |
 
-**Planned evolution.** Formal release management (versioning, changelog, deploy
-checklist) is [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49);
-backup retention and a *tested* restore procedure are
-[#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50) (both under
-epic [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20)).
+**Planned evolution.** Versioning, CHANGELOG and a release checklist now exist
+([release-checklist.md](release-checklist.md), [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49));
+adoption is opt-in going forward, so this table's "manual, no one-command rollback"
+still describes today's default. Backup retention and a *tested* restore procedure
+remain [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)
+(both under epic [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20)).
 A weekly backup export exists today; restore has not been verified.
 
 ## 8. Roadmap items that change this picture

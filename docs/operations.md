@@ -58,14 +58,20 @@ visibility of backups/system health is
 
 ## Release state
 
-**Current state.** Continuous deployment of `main`; no version numbers, tags,
-changelog or deploy checklist. Rollback is manual (route traffic to a previous Cloud
-Run revision or redeploy an earlier commit). Cloud-side configuration (env vars,
-queues, scheduler, IAM) is set with `gcloud` as documented and is not reconciled from
-the repository.
+**Current state.** Continuous deployment of `main` (unchanged by #49 — see
+[release-checklist.md § Deploy procedure](release-checklist.md#6-deploy-procedure)).
+Versioning, CHANGELOG, a release checklist, and rollback guidance now exist in
+[release-checklist.md](release-checklist.md) ([`VERSION`](../VERSION),
+[`CHANGELOG.md`](../CHANGELOG.md), `python -m tools.release`); adoption is opt-in going
+forward (see [release-checklist.md § Adopting this process](release-checklist.md#adopting-this-process)),
+so most deploys so far still have no tag. Cloud-side configuration (env vars, queues,
+scheduler, IAM) is set with `gcloud` as documented and is not reconciled from the
+repository.
 
-**Planned evolution.** [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49)
-— versioning, changelog and deploy checklist.
+**Planned evolution.** Tested backup/restore is
+[#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)
+(release-checklist.md's backup gate depends on it, see
+[§8.2](release-checklist.md#82-backup-gate)).
 
 ## Observability
 

@@ -130,6 +130,24 @@ def cmd_security_check(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
+def cmd_release_version(extra_args: list[str]) -> int:
+    """Stampa la versione corrente (file VERSION)."""
+    cmd = [sys.executable, "-m", "tools.release", "version"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_release_check(extra_args: list[str]) -> int:
+    """Verifica la coerenza dei metadati di release (VERSION, CHANGELOG.md, file richiesti)."""
+    cmd = [sys.executable, "-m", "tools.release", "check"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_release_notes(extra_args: list[str]) -> int:
+    """Stampa le note di release da CHANGELOG.md (default: Unreleased)."""
+    cmd = [sys.executable, "-m", "tools.release", "notes"] + extra_args
+    return _run_cmd(cmd)
+
+
 def _npm_cmd() -> str:
     import shutil
     return shutil.which("npm") or "npm"
@@ -294,6 +312,9 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "dataset-regression-check": (cmd_dataset_regression_check, "Verifica regressioni del dataset rispetto alla baseline"),
     "dataset-baseline-update": (cmd_dataset_baseline_update, "Aggiorna data/dataset_baseline.json con le metriche attuali"),
     "security-check": (cmd_security_check, "Esegue audit di sicurezza (pip-audit, detect-secrets, npm-audit)"),
+    "release-version": (cmd_release_version, "Stampa la versione corrente dell'applicazione (file VERSION)"),
+    "release-check": (cmd_release_check, "Verifica coerenza VERSION/CHANGELOG.md prima di un rilascio (sola lettura)"),
+    "release-notes": (cmd_release_notes, "Stampa le note di release da CHANGELOG.md (default: Unreleased)"),
 }
 
 
