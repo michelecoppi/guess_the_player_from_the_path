@@ -148,6 +148,28 @@ def test_admin_page_never_touches_players_json_or_adapters_directly():
 
 
 # ---------------------------------------------------------------------------
+# 3b. Banner wording must not claim merge writes to players.json (#86)
+# ---------------------------------------------------------------------------
+
+def test_admin_banner_does_not_claim_merge_writes_players_json(env, monkeypatch):
+    """Only approve() persists to data/players.json; merge_candidate() never does
+    (see test_merge_never_writes_players_json_directly). The admin banner must
+    reflect that distinction instead of implying both operations write it."""
+    admin = env["admin"]
+    patch_wiring(monkeypatch, env["service"], admin)
+
+    at = AppTest.from_string(RENDER_SCRIPT).run(timeout=20)
+    assert not at.exception
+
+    captions = [c.value for c in at.caption]
+    banner = next(c for c in captions if f"amministratore `{admin.user_id}`" in c)
+
+    assert "merge scrivono" not in banner
+    assert "solo l'approvazione scrive" in banner.lower()
+    assert "senza scrivere sul dataset" in banner.lower()
+
+
+# ---------------------------------------------------------------------------
 # 4. Missing admin config blocks mutations safely
 # ---------------------------------------------------------------------------
 

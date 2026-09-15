@@ -849,7 +849,11 @@ def render(today, now_italy):
         )
         return
 
-    st.caption(f"Operi come amministratore `{admin.user_id}`. ⚠️ Approvazioni e merge scrivono su `data/players.json` di produzione.")
+    st.caption(
+        f"Operi come amministratore `{admin.user_id}`. ⚠️ Solo l'approvazione scrive su "
+        "`data/players.json` di produzione; il merge associa il candidato a un giocatore "
+        "già esistente senza scrivere sul dataset."
+    )
 
     _render_overview(admin.user_id)
     st.divider()
