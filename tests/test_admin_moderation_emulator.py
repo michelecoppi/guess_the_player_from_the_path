@@ -1,10 +1,14 @@
-"""Admin moderation on leagues and groups (#36), on a real Firestore (the emulator).
+"""Admin moderation on leagues and groups (#36), and the referral overview (#37), on a
+real Firestore (the emulator).
 
 What a fake cannot prove: that `delete_league` really removes every member subdocument
-and the league code from each member's user document in one batch, and that
-`delete_group_round` really clears both the round and its players subcollection.
+and the league code from each member's user document in one batch, that
+`delete_group_round` really clears both the round and its players subcollection, and that
+`referrals.admin_overview` counts documents by status with real `where()`/`count()`
+aggregation queries.
 """
 from services import firebase_service as fs
+from services import referrals
 
 CHAT_ID = -100777
 
@@ -53,3 +57,18 @@ def test_delete_group_round_clears_the_round_and_its_players(emulator_db):
 
 def test_delete_group_round_on_an_unknown_chat_is_a_clean_false(emulator_db):
     assert fs.delete_group_round(-999) is False
+
+
+def test_referral_admin_overview_counts_by_status(emulator_db):
+    referrals.ref(1).set({"inviter_id": 100, "invitee_id": 1, "status": "pending"})
+    referrals.ref(2).set({"inviter_id": 100, "invitee_id": 2, "status": "qualified"})
+    referrals.ref(3).set({"inviter_id": 101, "invitee_id": 3, "status": "qualified"})
+    referrals.ref(4).set({"inviter_id": 101, "invitee_id": 4, "status": "deleted"})
+
+    overview = referrals.admin_overview()
+
+    assert overview == {"total": 4, "pending": 1, "qualified": 2}
+
+
+def test_referral_admin_overview_on_an_empty_collection(emulator_db):
+    assert referrals.admin_overview() == {"total": 0, "pending": 0, "qualified": 0}

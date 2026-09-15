@@ -67,6 +67,7 @@ from admin_pages import (
     leagues,
     overview,
     player_review,
+    shop,
     system,
     users,
 )
@@ -88,6 +89,7 @@ PAGES = [
     "👤 Utenti",
     "👥 Gruppi",
     "🏆 Leghe",
+    "🛍️ Shop & Referral",
     "🩺 Salute sistema",
     "📚 Dataset",
     "🔎 Review giocatori",
@@ -124,6 +126,7 @@ RENDERERS = {
     '👤 Utenti': users.render,
     '👥 Gruppi': groups.render,
     '🏆 Leghe': leagues.render,
+    '🛍️ Shop & Referral': shop.render,
     '🩺 Salute sistema': system.render,
     '📚 Dataset': dataset.render,
     '🔎 Review giocatori': player_review.render,
