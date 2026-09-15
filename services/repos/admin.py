@@ -19,14 +19,38 @@ def _count_collection(query):
 
 
 def get_admin_overview():
-    """Numeri di riepilogo per /admin_stats, senza scaricare l'intera collection users."""
+    """Numeri di riepilogo per /admin_stats e per la dashboard #33, senza scaricare
+    l'intera collection users."""
     from services import firebase_service as fs
     users_ref = fs.db.collection(fs.USERS_COLLECTION)
+    today = today_iso()
+
+    # Chi ha giocato oggi e' un insieme limitato (non l'intera userbase): a differenza dei
+    # conteggi sopra, qui serve leggere i valori (tentativi/hint), non solo contarli, quindi
+    # si scorre in streaming invece di usare l'aggregazione lato server.
+    active_count = 0
+    attempts_total = 0
+    hints_total = 0
+    for doc in users_ref.where("last_played_day", "==", today).stream():
+        data = doc.to_dict()
+        active_count += 1
+        attempts_total += data.get("daily_attempts", 0) or 0
+        hints_total += data.get("daily_hints", 0) or 0
+
     return {
         "users_total": fs._count_collection(users_ref),
         "users_with_notifications": fs._count_collection(users_ref.where("notifications_enabled", "==", True)),
         "users_guessed_today": fs._count_collection(
-            users_ref.where("last_played_day", "==", today_iso()).where("has_guessed_today", "==", True)
+            users_ref.where("last_played_day", "==", today).where("has_guessed_today", "==", True)
+        ),
+        "active_users_today": active_count,
+        "avg_attempts_today": (attempts_total / active_count) if active_count else 0.0,
+        "avg_hints_today": (hints_total / active_count) if active_count else 0.0,
+        # work_receipts.claim() lascia lo stato "uncertain" quando la lease scade senza
+        # che finish() sia mai arrivato: e' il segnale di un job/broadcast che si e'
+        # interrotto, senza dover leggere i log strutturati (dettaglio completo in #38).
+        "failed_jobs_recent": _count_collection(
+            fs.db.collection("work_receipts").where("status", "==", "uncertain")
         ),
     }
 

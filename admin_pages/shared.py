@@ -253,6 +253,11 @@ def cached_overview():
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_daily_stats(day):
+    return firebase_service.get_daily_stats(day)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_blocked_ids():
     return firebase_service.get_blocked_player_ids()
 
