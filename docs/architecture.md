@@ -104,7 +104,8 @@ handlers or Admin pages.
 Consequence: a change to `data/players.json` (import, Admin edit, candidate approval)
 reaches production only through a commit → PR → CI → deploy, never by writing a live
 container. Firestore-backed switches such as `/admin_block`
-(`admin_settings/dataset_overrides`) take effect immediately.
+(`admin_settings/dataset_overrides`) take effect immediately; feature flags
+(`admin_settings/feature_flags`) within the cache TTL ([feature-flags.md](feature-flags.md)).
 
 ## 5. Main runtime flows
 
@@ -148,6 +149,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Firestore | `services/firebase_service.py`, `services/repos/` | [firestore.md](firestore.md) |
 | Security | cross-cutting | [security.md](security.md) |
 | Operations, analytics | cross-cutting | [operations.md](operations.md) |
+| Feature flags (implemented, #51) | `services/feature_flags.py`, `services/repos/feature_flags.py`, `handlers/feature_gate.py`, `scripts/feature_flags.py`: `admin_settings/feature_flags`, server-side evaluation with TTL cache and last-known-good | [feature-flags.md](feature-flags.md) |
 | Observability (implemented, #18) | `services/observability.py`: structured JSON logs, optional Sentry, request/task correlation, redaction; `release` from `VERSION`, `revision` from Cloud Run | [observability.md](observability.md) |
 
 ## 7. Deployment topology (summary)
@@ -175,7 +177,7 @@ code does not restore data.
 | --- | --- | --- |
 | [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20) / [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49) / [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50) | Release management, backup recovery | Versioning/checklist (#49) and validated weekly backup with emulator-verified restore (#50) exist; adoption of tagged releases is opt-in |
 | [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Rule-based difficulty from popularity + career path |
-| [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Not implemented; behavior toggles are env vars (`PUBLIC_BASE_URL`, `BOT_USERNAME`) and Firestore admin overrides |
+| [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Operational flags implemented (#51, [feature-flags.md](feature-flags.md)); experiments/variants (#52) not implemented |
 | [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25) | Dataset Health dashboard | A health report exists (`services/dataset_health.py`, `/admin_pool`, Admin “Dataset”); the dedicated dashboard does not |
 | [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Layered layout described in §3 |
 | [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Not implemented |

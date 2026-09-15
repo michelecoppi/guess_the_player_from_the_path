@@ -472,3 +472,35 @@ test("DailyPage: DOM event wiring triggers controller guess, enter key, hint, an
     restoreTg();
   }
 });
+
+test("DailyController: a FEATURE_DISABLED refusal shows a localized notice instead of the raw code", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  setLanguage("en");
+  let restoreFetch = mockFetchResponse({
+    user: { name: "Marco" },
+    today: createTestDailyChallenge(),
+    features: { daily_ui: false, hints: false },
+  });
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    restoreFetch();
+
+    restoreFetch = mockFetchResponse(
+      { detail: "feature_disabled", code: "FEATURE_DISABLED", feature: "daily_ui" },
+      403,
+    );
+    assert.equal(await controller.submitGuess("Buffon"), null);
+    assert.equal(controller.getState().errorMessage, "This feature is temporarily unavailable. Please try again later.");
+
+    controller.getState().errorMessage = undefined;
+    await controller.takeHint();
+    assert.equal(controller.getState().errorMessage, "This feature is temporarily unavailable. Please try again later.");
+    assert.ok(!renderDailyPage(controller.getState()).includes("feature_disabled"));
+  } finally {
+    restoreFetch();
+    restoreTg();
+    setLanguage("it");
+  }
+});

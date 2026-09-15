@@ -6,6 +6,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       appName: "Guess the Player",
       loading: "Caricamento in corso...",
       error: "Si è verificato un errore.",
+      featureDisabled: "Questa funzione è temporaneamente non disponibile. Riprova più tardi.",
       retry: "Riprova",
       points: "punti",
       streak: "striscia",
@@ -72,6 +73,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     arena: {
       headline: "Il prossimo fischio d’inizio.",
+      feature_disabled: "Questa funzione è temporaneamente non disponibile. Riprova più tardi.",
       intro: "Una sfida al giorno. E tutto un campo da esplorare.",
       duel: "Sfida un amico",
       duelTag: "Testa a testa",
@@ -175,6 +177,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     events: {
       title: "Eventi",
+      feature_disabled: "Questa funzione è temporaneamente non disponibile. Riprova più tardi.",
       empty: "Nessun evento attivo",
       emptyDesc: "Allenati mentre prepariamo il prossimo turno.",
       play: "Apri",
@@ -214,6 +217,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     training: {
       title: "Allenamento",
+      feature_disabled: "Questa funzione è temporaneamente non disponibile. Riprova più tardi.",
       tag: "Al tuo ritmo",
       desc: "Cinque tentativi, nessuna pressione. Affina il tuo fiuto calcistico.",
       rules: "5 tentativi per percorso. Puoi rivelare la soluzione e continuare con un altro calciatore. Nessun punto nella classifica generale.",
@@ -498,6 +502,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       appName: "Guess the Player",
       loading: "Loading...",
       error: "An error occurred.",
+      featureDisabled: "This feature is temporarily unavailable. Please try again later.",
       retry: "Retry",
       points: "points",
       streak: "streak",
@@ -564,6 +569,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     arena: {
       headline: "Your next kick-off.",
+      feature_disabled: "This feature is temporarily unavailable. Please try again later.",
       intro: "One daily challenge. A whole pitch to explore.",
       duel: "Challenge a friend",
       duelTag: "Head to head",
@@ -667,6 +673,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     events: {
       title: "Events",
+      feature_disabled: "This feature is temporarily unavailable. Please try again later.",
       empty: "No active events",
       emptyDesc: "Train while the next round is prepared.",
       play: "Open",
@@ -706,6 +713,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     training: {
       title: "Training",
+      feature_disabled: "This feature is temporarily unavailable. Please try again later.",
       tag: "At your pace",
       desc: "Five guesses, no pressure. Sharpen your football instincts.",
       rules: "5 guesses per path. Reveal the answer whenever you like and move on to another player. No overall leaderboard points.",
@@ -990,6 +998,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       appName: "Guess the Player",
       loading: "Cargando...",
       error: "Ocurrió un error.",
+      featureDisabled: "Esta función no está disponible temporalmente. Inténtalo más tarde.",
       retry: "Reintentar",
       points: "puntos",
       streak: "racha",
@@ -1056,6 +1065,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     arena: {
       headline: "Tu próximo saque inicial.",
+      feature_disabled: "Esta función no está disponible temporalmente. Inténtalo más tarde.",
       intro: "Un reto diario. Todo un campo por explorar.",
       duel: "Reta a un amigo",
       duelTag: "Cara a cara",
@@ -1159,6 +1169,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     events: {
       title: "Eventos",
+      feature_disabled: "Esta función no está disponible temporalmente. Inténtalo más tarde.",
       empty: "No hay eventos activos",
       emptyDesc: "Entrena mientras preparamos la próxima ronda.",
       play: "Abrir",
@@ -1198,6 +1209,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
     },
     training: {
       title: "Entrenamiento",
+      feature_disabled: "Esta función no está disponible temporalmente. Inténtalo más tarde.",
       tag: "A tu ritmo",
       desc: "Cinco intentos, sin presión. Afina tu instinto futbolístico.",
       rules: "5 intentos por trayectoria. Puedes revelar la respuesta y continuar con otro jugador. Sin puntos para la clasificación general.",

@@ -48,6 +48,8 @@ PARTICIPANTS_SUBCOLLECTION = "participants"
 SEASONS_COLLECTION = "seasons"
 ADMIN_SETTINGS_COLLECTION = "admin_settings"
 DATASET_OVERRIDES_DOC = "dataset_overrides"
+# Flag operativi (#51): services/feature_flags.py, docs/feature-flags.md.
+FEATURE_FLAGS_DOC = "feature_flags"
 FATHER_SON_COLLECTION = "father_son_pairs"
 ARCHIVE_SUBCOLLECTION = "archive"
 HISTORY_SUBCOLLECTION = "history"

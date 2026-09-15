@@ -31,6 +31,11 @@ new dated section below.
   `--allow-incomplete-or-lossy-backup` acknowledgement is given)
   ([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50),
   [backup-recovery.md](docs/backup-recovery.md)).
+- Firestore-backed operational feature flags (`admin_settings/feature_flags`) for arena, shop,
+  Daily UI, hints, player pipeline, Mini App events and leaderboard: server-side evaluation with
+  kill switch, deterministic percentage rollout and user/group targeting, a TTL cache with
+  last-known-good, `FEATURE_DISABLED` API responses and an operator CLI; every flag defaults to
+  the current behaviour ([#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51), [feature-flags.md](docs/feature-flags.md)).
 
 ### Changed
 

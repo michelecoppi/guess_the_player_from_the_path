@@ -27,8 +27,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, U
 from telegram.ext import ContextTypes
 
 from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
+from handlers.feature_gate import feature_gate, flag_enabled
 from handlers.keyboards import language_for, legal_buttons
 from services import firebase_service, observability, shop
+from services.feature_flags import Flag
 from services.i18n import t
 
 CALLBACK_PREFIX = "shop_"
@@ -157,6 +159,7 @@ def _item_view(lang, user, item):
     return text, InlineKeyboardMarkup(rows)
 
 
+@feature_gate(Flag.SHOP)
 async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = (await asyncio.to_thread(language_for, update))
     _, user = (await asyncio.to_thread(_user, update))
@@ -164,6 +167,7 @@ async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
 
 
+@feature_gate(Flag.SHOP)
 async def shop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Sfogliare il negozio modifica **lo stesso** messaggio invece di mandarne uno nuovo:
     sono passi dentro una vetrina, non risposte a domande diverse."""
@@ -261,6 +265,14 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         observability.log_event("payment.precheckout.rejected", logging.WARNING, component="payment",
                                 reason="invalid_payload")
         await query.answer(ok=False, error_message=t(lang, "shop.error_unknown_item"))
+        return
+
+    # Shop spento (#51): si rifiuta **prima** di incassare e prima di riservare niente, cosi'
+    # non c'e' nessuno stato da riconciliare. La consegna di un pagamento gia' avvenuto
+    # (successful_payment), i rimborsi e /paysupport non passano mai da questo flag.
+    if not await flag_enabled(Flag.SHOP, update):
+        _precheckout_rejected(item_id, "feature_disabled")
+        await query.answer(ok=False, error_message=t(lang, "feature.disabled"))
         return
 
     user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))

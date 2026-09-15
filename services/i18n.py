@@ -94,6 +94,7 @@ TRANSLATIONS = {
         "common.unexpected_error": ("⚠️ Qualcosa è andato storto. Controlla /show o /stats prima di riprovare: "
                                     "il tentativo potrebbe essere già registrato. Riferimento: {reference}."),
         "common.no_challenge": "❗ Non c'è ancora una sfida giornaliera disponibile.",
+        "feature.disabled": "⏸️ Questa funzione è temporaneamente non disponibile. Riprova più tardi.",
         "forgetme.private_only": "❗ Per sicurezza, usa /forgetme nella chat privata con il bot.",
         "forgetme.not_registered": "Non risulta alcun account da cancellare.",
         "forgetme.confirm": ("⚠️ Questa operazione è definitiva: cancellerà account, dati di gioco e partecipazioni alle leghe. "
@@ -533,6 +534,7 @@ TRANSLATIONS = {
         "common.unexpected_error": ("⚠️ Algo ha salido mal. Consulta /show o /stats antes de reintentar: "
                                     "el intento podría estar ya registrado. Referencia: {reference}."),
         "common.no_challenge": "❗ Todavía no hay un desafío diario disponible.",
+        "feature.disabled": "⏸️ Esta función no está disponible temporalmente. Inténtalo más tarde.",
         "forgetme.private_only": "❗ Por seguridad, usa /forgetme en el chat privado con el bot.",
         "forgetme.not_registered": "No hay ninguna cuenta registrada que borrar.",
         "forgetme.confirm": ("⚠️ Esta operación es definitiva: borrará tu cuenta, datos de juego y participaciones en ligas. "
@@ -970,6 +972,7 @@ TRANSLATIONS = {
         "common.unexpected_error": ("⚠️ Something went wrong. Check /show or /stats before trying again: "
                                     "the attempt may already be recorded. Reference: {reference}."),
         "common.no_challenge": "❗ There's no daily challenge available yet.",
+        "feature.disabled": "⏸️ This feature is temporarily unavailable. Please try again later.",
         "forgetme.private_only": "❗ For safety, use /forgetme in your private chat with the bot.",
         "forgetme.not_registered": "There is no registered account to delete.",
         "forgetme.confirm": ("⚠️ This is permanent: it will delete your account, game data and league memberships. "

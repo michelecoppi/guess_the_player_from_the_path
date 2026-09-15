@@ -40,6 +40,9 @@ Both frontends call the same `POST /app/api/*` endpoints implemented in
   route list in `bot.py` is authoritative.
 - Mutating moves in Training, duels and events carry a `revision`; the server answers
   409 when the state changed and the client reloads.
+- A feature switched off by a flag answers 403
+  `{"detail": "feature_disabled", "code": "FEATURE_DISABLED", "feature": "<key>"}`, and
+  `me` carries `features` (resolved booleans only). See [feature-flags.md](feature-flags.md).
 
 ## V2 structure
 

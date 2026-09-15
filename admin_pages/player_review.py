@@ -44,6 +44,7 @@ STATUS_RENDERERS = {
     ReviewStatus.PERSISTENCE_FAILURE: "error",
     ReviewStatus.FORBIDDEN_FIELD: "error",
     ReviewStatus.SOURCE_ERROR: "error",
+    ReviewStatus.FEATURE_DISABLED: "warning",
 }
 
 STATE_LABELS = {

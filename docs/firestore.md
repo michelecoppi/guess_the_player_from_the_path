@@ -13,7 +13,7 @@ Collection names below were verified against `services/firebase_service.py`,
 
 | Store | Holds | Mutated by |
 | --- | --- | --- |
-| **Firestore** | All mutable game and user state: users, daily challenges, events and participants, leagues, seasons, purchases, duels, referrals, group rounds, admin overrides, background-work state | Cloud Run service; local Admin/scripts with credentials |
+| **Firestore** | All mutable game and user state: users, daily challenges, events and participants, leagues, seasons, purchases, duels, referrals, group rounds, admin overrides, feature flags, background-work state | Cloud Run service; local Admin/scripts with credentials |
 | **Versioned JSON** (`data/`) | Curated players, game tuning, event templates, shop catalogue, dataset baseline | Git (PRs) only; see [player-data-pipeline.md](player-data-pipeline.md) |
 | **Local, gitignored files** | Candidate pipeline (`data/candidates/`), import batches (`data/incoming/`), backups (`backup/`) | Local tools only |
 
@@ -38,6 +38,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `app_duels/{code}` | random code | Arena duels (two seats, five puzzles, `expires_at`) |
 | `referrals/{key}` | SHA-256 of a user id (`services/referrals.py::referral_key`) | Referral attribution (`inviter_id`) and qualification |
 | `admin_settings/dataset_overrides` | fixed | Players blocked with `/admin_block` |
+| `admin_settings/feature_flags` | fixed | Operational feature flags: schema version, revision, per-flag master switch, rollout and user/group targeting ([feature-flags.md](feature-flags.md)) |
 | `father_son_pairs/{auto}` | auto | Manual father/son event content (Telegram `file_id`) |
 | `work_receipts/{key}` | e.g. `telegram-{update_id}`, `notify-{day}-{user}` | Deduplication/outcome of background work (`delete_after` for optional TTL) |
 | `update_locks/{user_id}` | user id | Per-user serialization of updates across replicas |
