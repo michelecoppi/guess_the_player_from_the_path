@@ -1,5 +1,11 @@
 export type SupportedLanguage = "it" | "es" | "en";
 
+/** A pair of forms for a countable noun: "one" for exactly 1, "other" for 0/2/3/... */
+export interface PluralForms {
+  one: string;
+  other: string;
+}
+
 export interface TranslationSchema {
   common: {
     appName: string;
@@ -9,6 +15,7 @@ export interface TranslationSchema {
     points: string;
     streak: string;
     anonymous: string;
+    trophiesCount: PluralForms;
   };
   nav: {
     play: string;

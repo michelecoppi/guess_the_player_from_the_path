@@ -10,6 +10,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       points: "punti",
       streak: "striscia",
       anonymous: "Calciatore",
+      trophiesCount: { one: "{n} trofeo", other: "{n} trofei" },
     },
     nav: {
       play: "Gioca",
@@ -501,6 +502,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       points: "points",
       streak: "streak",
       anonymous: "Player",
+      trophiesCount: { one: "{n} trophy", other: "{n} trophies" },
     },
     nav: {
       play: "Play",
@@ -992,6 +994,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       points: "puntos",
       streak: "racha",
       anonymous: "Jugador",
+      trophiesCount: { one: "{n} trofeo", other: "{n} trofeos" },
     },
     nav: {
       play: "Jugar",

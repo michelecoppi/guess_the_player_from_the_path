@@ -27,6 +27,28 @@ export function getLanguage(): SupportedLanguage {
   return currentLanguage;
 }
 
+function resolvePath(path: string, lang?: SupportedLanguage): unknown {
+  const activeLang = lang || currentLanguage;
+  const dict = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
+
+  const parts = path.split(".");
+  let current: unknown = dict;
+  for (const part of parts) {
+    if (current && typeof current === "object" && part in current) {
+      current = (current as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+  return current;
+}
+
+function interpolate(template: string, params: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    return key in params ? String(params[key]) : `{${key}}`;
+  });
+}
+
 /**
  * Retrieves a translated string by dot notation path (e.g. "common.appName", "shell.activeTab")
  * and replaces placeholders like {name}, {tab}, {issue}.
@@ -36,19 +58,7 @@ export function t(
   params?: Record<string, string | number>,
   lang?: SupportedLanguage
 ): string {
-  const activeLang = lang || currentLanguage;
-  const dict = TRANSLATIONS[activeLang] || TRANSLATIONS.en;
-
-  const parts = path.split(".");
-  let current: any = dict;
-  for (const part of parts) {
-    if (current && typeof current === "object" && part in current) {
-      current = current[part];
-    } else {
-      current = undefined;
-      break;
-    }
-  }
+  const current = resolvePath(path, lang);
 
   if (typeof current !== "string") {
     return path;
@@ -56,7 +66,29 @@ export function t(
 
   if (!params) return current;
 
-  return current.replace(/\{(\w+)\}/g, (_, key) => {
-    return key in params ? String(params[key]) : `{${key}}`;
-  });
+  return interpolate(current, params);
+}
+
+/**
+ * Retrieves a pluralized, count-aware translated string. `path` must point to a
+ * `{ one, other }` pair (see `PluralForms`): the CLDR-style rule used here — "one"
+ * exactly for a count of 1, "other" for everything else, including 0 — matches how
+ * Italian, English and Spanish singularize/pluralize countable nouns. `{n}` in the
+ * chosen form is replaced with `count`.
+ */
+export function tCount(path: string, count: number, lang?: SupportedLanguage): string {
+  const current = resolvePath(path, lang);
+
+  if (!current || typeof current !== "object") {
+    return path;
+  }
+
+  const forms = current as Partial<Record<"one" | "other", string>>;
+  const form = count === 1 ? forms.one : forms.other;
+
+  if (typeof form !== "string") {
+    return path;
+  }
+
+  return interpolate(form, { n: count });
 }
