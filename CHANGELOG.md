@@ -27,6 +27,8 @@ new dated section below.
 - Verified Firestore restore: `scripts/restore_firestore.py` (`validate`, `restore`, `verify`,
   `upgrade-v1`), emulator-by-default with explicit production guards and no deletes, a real
   emulator backup→restore→compare test, and the weekly `restore-verification.yml` workflow
+  (a real target also requires a complete native v2 backup unless the separate
+  `--allow-incomplete-or-lossy-backup` acknowledgement is given)
   ([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50),
   [backup-recovery.md](docs/backup-recovery.md)).
 

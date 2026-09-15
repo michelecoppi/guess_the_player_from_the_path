@@ -157,7 +157,18 @@ checks JSON syntax (NaN/Infinity refused), format name and version, required and
 metadata keys, timestamps, source project, the collection list against `data`, the
 `complete` flag, inventory exclusions (an excluded collection in a file is an error), every
 document id and node shape, subcollection structure, decoding of **every** value, document
-counts, total and the integrity digest. Output: metadata, file SHA-256, warnings, errors.
+counts, total and the integrity digest. Output: metadata, file SHA-256, warnings, errors, and
+the **restore quality** line.
+
+Three levels are kept distinct:
+
+| Level | Meaning | Emulator restore | Real (production) restore |
+| --- | --- | --- | --- |
+| invalid | validation errors | refused | refused |
+| `exceptional` | structurally valid, but `complete` is not true, or converted from legacy v1 (lossy), or missing a collection the current inventory marks recovery-critical, or carrying any validation warning | allowed | refused unless `--allow-incomplete-or-lossy-backup` is added to all other guards (§7.1) |
+| `disaster-recovery` | complete, native v2 backup with every recovery-critical collection and no warning | allowed | allowed with the normal guards |
+
+A converted v1 archive is not equivalent to a native v2 backup: it is always `exceptional`.
 
 Exit codes: `0` valid; `1` invalid (or, with `--strict`, valid with warnings). Warnings:
 unclassified collection, subcollection not declared in the inventory, collections the current
@@ -179,8 +190,17 @@ final name; restore re-validates before connecting to any target.
   counts as permission and the project is never inferred.
 - A backup taken from an emulator is never restored into a real project, and the production
   project only accepts backups whose `source_project` is production.
-- The target guard runs before the file is read and before any connection; the client's
-  resolved project must equal `--project`.
+- **Backup quality for a real target.** A normal production restore requires a complete,
+  native v2 backup (quality `disaster-recovery`, §6). A partial, legacy-converted (lossy) or
+  otherwise `exceptional` backup is refused, dry-run included. The exceptional recovery path
+  needs a second, separate acknowledgement, `--allow-incomplete-or-lossy-backup`, which only
+  lifts this refusal: `--allow-production`, the exact `--confirm-project` and the source checks
+  still apply. With it the tool prints the issues (metadata only) and logs
+  `backup.restore.quality_override`. The flag is rejected for emulator targets, which already
+  accept any structurally valid backup.
+- The target guard runs before the file is read and before any connection; the quality and
+  source checks run after validation and also before any connection, so a refusal can never
+  follow a write. The client's resolved project must equal `--project`.
 - Credentials for a real target: Application Default Credentials, or `--credentials
   key.json`. Writing needs a role with write access (e.g. `roles/datastore.user`); the backup
   workflow's `roles/datastore.viewer` cannot restore.
@@ -227,9 +247,11 @@ simply the newest. Keep `restore-work/` out of Git (it contains personal data).
 python scripts/restore_firestore.py validate restore-work/<name>/firestore-*.json --expect-source-project guess-the-player-from-path-bot
 ```
 
-Record `created_at`, `file_sha256`, `total_documents` and `document_counts` in the incident
-notes. Do not continue with a file that is invalid. `complete: false` means some inventory
-collections are absent: decide explicitly whether that is acceptable.
+Record `created_at`, `file_sha256`, `total_documents`, `document_counts` and the `Restore
+quality` line in the incident notes. Do not continue with a file that is invalid. For a normal
+production restore the quality must be `disaster-recovery`; if it is `exceptional`, prefer an
+older complete native v2 backup, and only fall back to the exceptional path (§8.4) after
+inspecting the file in the emulator.
 
 ### 8.3 Restore into the emulator first
 
@@ -254,6 +276,10 @@ emulator restore completes with `RESTORE COMPLETED AND VERIFIED`.
    later legitimate changes to those documents). There is no per-collection or per-document
    selection in the tool; for a narrow repair build a reduced file in the emulator (restore
    there, fix, re-export the needed collections with `backup_firestore.py --collections`).
+   Such a reduced or partial file, like a converted v1 file, is `exceptional` quality: restoring
+   it into production is the **exceptional recovery path** and needs
+   `--allow-incomplete-or-lossy-backup` in addition to every guard below. Restore it into the
+   emulator first and write down why a complete native v2 backup could not be used.
 2. **Stop or reduce writers.** There is no maintenance mode. Pause the nightly job
    (`gcloud scheduler jobs pause daily-generation --location <scheduler-region>`) and the
    queues (`gcloud tasks queues pause telegram-updates --location europe-west1`,
@@ -317,7 +343,10 @@ python scripts/restore_firestore.py validate firestore-v2-from-v1.json
 
 `--created-at` is the export time from the v1 file name (runner clock, UTC on GitHub Actions).
 The result is `complete: false` (v1 never had `referrals`, `app_duels`, `group_rounds`,
-`monthly_closures`, `daily_jobs`), and only the known timestamp fields are typed back.
+`monthly_closures`, `daily_jobs`), only the known timestamp fields are typed back, and it is
+marked `legacy_conversion.lossy: true`. It is not equivalent to a native v2 backup: its quality
+is always `exceptional`, a normal production restore refuses it, and only the exceptional path
+(`--allow-incomplete-or-lossy-backup`, after an emulator inspection) can use it.
 
 ## 9. Code rollback vs data restore
 
@@ -377,4 +406,5 @@ complete, unclassified), `backup.export.collection` (collection, documents),
 `backup.export.unclassified_collection`, `backup.export.written`, `backup.export.invalid`,
 `backup.validate.completed`, `backup.restore.completed|failed` (mode, planned, written,
 verified, missing/different/extra), `backup.restore.real_target` (WARNING),
+`backup.restore.quality_override` (WARNING: target, `complete`, `lossy`, issue count),
 `backup.verify.completed`.

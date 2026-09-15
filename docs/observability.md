@@ -152,7 +152,7 @@ also attached to the Sentry event as the sanitised `observability` context.
 | `candidate.dataset.unreadable` | ERROR | Production dataset missing, corrupt or malformed during a mutation. |
 | `candidate.approval.persistence_failed` / `.rolled_back` / `.rollback_failed` | ERROR / WARNING / CRITICAL | Approval write path. |
 | `backup.export.completed` / `.failed`, `backup.export.collection`, `backup.export.unclassified_collection`, `backup.export.written` / `.invalid` | INFO / ERROR, INFO, WARNING, INFO / ERROR | Firestore export (`scripts/backup_firestore.py`): collection names, document counts, `complete`; never ids or values. |
-| `backup.validate.completed`, `backup.restore.completed` / `.failed`, `backup.restore.real_target`, `backup.verify.completed` | INFO, INFO / ERROR, WARNING, INFO | Validation and restore (`scripts/restore_firestore.py`): mode, target project, planned/written/verified counts. See [backup-recovery.md](backup-recovery.md). |
+| `backup.validate.completed`, `backup.restore.completed` / `.failed`, `backup.restore.real_target`, `backup.restore.quality_override`, `backup.verify.completed` | INFO, INFO / ERROR, WARNING, WARNING, INFO | Validation and restore (`scripts/restore_firestore.py`): mode, target project, planned/written/verified counts. See [backup-recovery.md](backup-recovery.md). |
 
 Existing plain `logging.exception(...)` calls (for example inside `/admin_*` commands or
 `/forgetme`) still reach Sentry through the logging integration and carry the bound context

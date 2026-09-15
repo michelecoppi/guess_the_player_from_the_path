@@ -356,8 +356,11 @@ Consequences for this checklist:
   Firestore* → *Run workflow* (or `python scripts/backup_firestore.py` with production
   credentials), then
   `python scripts/restore_firestore.py validate <file> --expect-source-project guess-the-player-from-path-bot`
-  must print `VALID backup.` and list the collections the migration touches with plausible
-  `document_counts`.
+  must print `VALID backup.`, `Restore quality: disaster-recovery`, and list the collections
+  the migration touches with plausible `document_counts`. A structurally valid backup is not
+  automatically restorable into production: a partial (`--collections`) or legacy-converted
+  file is `exceptional` quality and would need the exceptional recovery path
+  ([backup-recovery.md § 7.1](backup-recovery.md#71-safety-guard)), so take a full backup.
 - For a migration that is hard to reverse, also restore that file into the emulator and run
   the migration there first ([backup-recovery.md § 8.3](backup-recovery.md#83-restore-into-the-emulator-first)).
 - The migration's rollback note (§8.1) names the backup (`created_at`, file SHA-256, run id)

@@ -8,9 +8,14 @@
     FIRESTORE_EMULATOR_HOST=127.0.0.1:8571 \
         python scripts/restore_firestore.py restore FILE --project demo-gtp-restore [--dry-run]
 
-    # Real project: all guards are required, and nothing is ever deleted.
+    # Real project: all guards are required, and nothing is ever deleted. Only a complete,
+    # native v2 backup ("disaster-recovery" quality) is accepted by default.
     python scripts/restore_firestore.py restore FILE --project P --allow-production \
         --confirm-project P [--mode empty|missing-only|overwrite] [--dry-run]
+
+    # Exceptional: a partial or legacy-converted (lossy) backup into a real project. Every guard
+    # above still applies; this flag only lifts the backup-quality refusal.
+    ... restore FILE --project P --allow-production --confirm-project P --allow-incomplete-or-lossy-backup
 
     # Read-only comparison of a target with a backup.
     python scripts/restore_firestore.py verify FILE --project P [--allow-production]
@@ -36,6 +41,14 @@ from services.firestore_backup import archive, codec, restore  # noqa: E402
 EXIT_OK, EXIT_INVALID, EXIT_REFUSED, EXIT_FAILED = 0, 1, 2, 3
 
 
+def _print_quality(backup: dict) -> tuple[str, list[str]]:
+    quality, issues = archive.restore_quality(backup)
+    print(f"Restore quality: {quality}")
+    for issue in issues:
+        print(f"  - {issue}")
+    return quality, issues
+
+
 def _print_report(report: archive.ValidationReport, file_sha256: str | None = None) -> None:
     meta = dict(report.summary)
     if file_sha256:
@@ -59,6 +72,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     if not report.ok:
         print("INVALID backup: do not use it.", file=sys.stderr)
         return EXIT_INVALID
+    _print_quality(obj)
     if args.strict and report.warnings:
         print("Valid, but --strict fails on warnings.", file=sys.stderr)
         return EXIT_INVALID
@@ -68,7 +82,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def _target(args: argparse.Namespace, *, read_only: bool) -> restore.Target:
     return restore.resolve_target(project=args.project, confirm_project=getattr(args, "confirm_project", None),
-                                  allow_production=args.allow_production, read_only=read_only)
+                                  allow_production=args.allow_production, read_only=read_only,
+                                  allow_incomplete_or_lossy=getattr(args, "allow_incomplete_or_lossy_backup", False))
 
 
 def cmd_restore(args: argparse.Namespace) -> int:
@@ -84,13 +99,20 @@ def cmd_restore(args: argparse.Namespace) -> int:
         print("INVALID backup: nothing was restored.", file=sys.stderr)
         return EXIT_INVALID
     _print_report(report, file_sha256)
+    _, issues = _print_quality(backup)
     print(f"Target: {target.describe()} | mode: {args.mode} | dry-run: {args.dry_run}")
     if not target.is_emulator:
         print(f"WARNING: writing to a REAL Firestore project ({target.project}). Nothing will be deleted.")
     try:
+        # Both checks run before any connection, so a refusal can never follow a write.
         restore.check_source(target, backup)
+        restore.check_quality(target, backup, allow_incomplete_or_lossy=args.allow_incomplete_or_lossy_backup)
+        if issues and not target.is_emulator:
+            print(f"WARNING: EXCEPTIONAL restore of a backup that is not disaster-recovery quality "
+                  f"({len(issues)} issue(s) listed above), acknowledged with {restore.QUALITY_OVERRIDE_FLAG}.")
         client = restore.connect(target, args.credentials)
-        stats, verification = restore.restore(client, target, backup, mode=args.mode, dry_run=args.dry_run)
+        stats, verification = restore.restore(client, target, backup, mode=args.mode, dry_run=args.dry_run,
+                                              allow_incomplete_or_lossy=args.allow_incomplete_or_lossy_backup)
     except restore.RestoreSafetyError as exc:
         print(f"REFUSED: {exc}", file=sys.stderr)
         return EXIT_REFUSED
@@ -182,9 +204,17 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("--credentials", help="service account JSON for a real project (default: ADC)")
         command.add_argument("--mode", choices=restore.MODES, default="empty")
 
-    restore_cmd = sub.add_parser("restore", help="restore a backup (emulator by default)")
+    restore_cmd = sub.add_parser(
+        "restore", help="restore a backup (emulator by default)",
+        description="Restore a validated backup. The emulator accepts any structurally valid backup. A real "
+                    "project additionally requires a 'disaster-recovery' quality backup: complete, native v2 "
+                    "(not converted from v1), with every recovery-critical collection and no validation warning.")
     target_args(restore_cmd)
     restore_cmd.add_argument("--confirm-project", help="repeat --project to confirm a real target")
+    restore_cmd.add_argument(
+        restore.QUALITY_OVERRIDE_FLAG, dest="allow_incomplete_or_lossy_backup", action="store_true",
+        help="EXCEPTIONAL recovery only: allow a partial or legacy-converted (lossy) backup into a real project. "
+             "Does not replace --allow-production, --confirm-project or the source-project checks")
     restore_cmd.add_argument("--dry-run", action="store_true", help="validate and plan; write nothing")
     restore_cmd.set_defaults(func=cmd_restore)
 

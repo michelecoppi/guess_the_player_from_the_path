@@ -219,6 +219,25 @@ def test_full_backup_restore_round_trip_preserves_every_document_and_type(emulat
     assert restore_firestore.main(["verify", path, "--project", TARGET]) == 0
 
 
+def test_an_incomplete_backup_can_be_inspected_and_restored_into_the_emulator(emulator, tmp_path, capsys):
+    """Subset backups are legitimate for inspection and partial recovery tests: only real targets
+    require disaster-recovery quality (tests/test_backup_restore_safety.py)."""
+    source, target = emulator
+    seed(source)
+    assert backup_firestore.main(["--out", str(tmp_path), "--project", SOURCE, "--quiet",
+                                  "--collections", "users", "leagues"]) == 0
+    path = glob.glob(str(tmp_path / "firestore-*.json"))[0]
+
+    assert restore_firestore.main(["validate", path]) == 0
+    assert "Restore quality: exceptional" in capsys.readouterr().out
+    assert restore_firestore.main(["restore", path, "--project", TARGET]) == 0
+    expected = snapshot_tree(source, {"users", "leagues"})
+    actual = snapshot_tree(target)
+    assert sorted(actual) == sorted(expected)
+    for doc_path in expected:
+        assert_same(expected[doc_path], actual[doc_path], doc_path)
+
+
 def test_restore_refuses_a_non_empty_target_and_writes_nothing(emulator, tmp_path):
     source, target = emulator
     seed(source)

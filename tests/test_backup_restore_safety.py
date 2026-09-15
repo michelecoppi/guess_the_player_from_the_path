@@ -245,3 +245,174 @@ def test_upgrade_v1_command_writes_a_valid_v2_file_and_never_overwrites(tmp_path
     obj, report, _ = archive.load_archive(str(out))
     assert report.ok and codec.decode_value(obj["data"]["users"]["1"]["fields"])["date_created"].year == 2026
     assert restore_firestore.main(args) == restore_firestore.EXIT_REFUSED
+
+
+# ---------------------------------------------------------------------------
+# Production-restore quality gate: structurally valid is not the same as DR quality
+# ---------------------------------------------------------------------------
+
+OVERRIDE = "--allow-incomplete-or-lossy-backup"
+PROD_GUARDS = ["--project", PROD, "--allow-production", "--confirm-project", PROD]
+
+
+def _partial_backup(source_project=PROD, source_emulator=False):
+    """A valid subset export (only `users`): complete is false, recovery-critical collections missing."""
+    client = FakeClient(project=source_project, docs={"users/1": {"name": "Private Name"}})
+    return exporter.export_archive(client, source_project=source_project, source_emulator=source_emulator,
+                                   requested=["users"], clock=lambda: CREATED)
+
+
+def _lossy_backup():
+    """A legacy v1 export converted to v2 that is otherwise complete: only the lossy conversion is wrong."""
+    legacy = {name: {} for name in inventory.backed_up_names()}
+    legacy["users"] = {"1": {"_data": {"name": "Private Name", "date_created": "2026-01-01T00:00:00+00:00"}}}
+    return archive.upgrade_v1(legacy, source_project=PROD, created_at=CREATED)
+
+
+def _write(tmp_path, backup, name="backup.json"):
+    path = tmp_path / name
+    path.write_text(json.dumps(backup), encoding="utf-8")
+    return str(path)
+
+
+def _real_target_cli(monkeypatch, client=None):
+    """No emulator; `connect` either fails the test or hands back an in-memory production stand-in."""
+    monkeypatch.delenv("FIRESTORE_EMULATOR_HOST", raising=False)
+    if client is None:
+        monkeypatch.setattr(restore, "connect", lambda *a, **k: pytest.fail("must not connect"))
+    else:
+        monkeypatch.setattr(restore, "connect", lambda *a, **k: client)
+
+
+def test_quality_levels_distinguish_dr_ready_from_exceptional_archives():
+    assert archive.restore_quality(_backup()) == (archive.QUALITY_DISASTER_RECOVERY, [])
+    quality, issues = archive.restore_quality(_partial_backup())
+    assert quality == archive.QUALITY_EXCEPTIONAL
+    assert any("not complete" in issue for issue in issues)
+    assert any("recovery-critical" in issue and "purchases" in issue for issue in issues)
+    quality, issues = archive.restore_quality(_lossy_backup())
+    assert quality == archive.QUALITY_EXCEPTIONAL and any("legacy v1" in issue for issue in issues)
+
+
+def test_an_incomplete_backup_validates_with_a_warning_and_restores_into_the_emulator(tmp_path, capsys):
+    backup = _partial_backup()
+    assert archive.validate_archive(backup).ok and backup["complete"] is False
+    assert restore_firestore.main(["validate", _write(tmp_path, backup)]) == 0
+    out = capsys.readouterr().out
+    assert "WARNING: incomplete backup" in out and "Restore quality: exceptional" in out
+
+    target = FakeClient()
+    stats, verification = restore.restore(target, EMULATOR_TARGET, backup)
+    assert stats.written == 1 and not verification.failures("empty")
+
+
+def test_an_incomplete_backup_is_refused_for_production_by_default(tmp_path, monkeypatch, capsys):
+    _real_target_cli(monkeypatch)
+    code = restore_firestore.main(["restore", _write(tmp_path, _partial_backup()), *PROD_GUARDS])
+    assert code == restore_firestore.EXIT_REFUSED
+    err = capsys.readouterr().err
+    assert "not disaster-recovery quality" in err and OVERRIDE in err and "Private Name" not in err
+
+
+def test_an_incomplete_backup_is_refused_for_a_production_dry_run_too(tmp_path, monkeypatch):
+    _real_target_cli(monkeypatch)
+    code = restore_firestore.main(["restore", _write(tmp_path, _partial_backup()), *PROD_GUARDS, "--dry-run"])
+    assert code == restore_firestore.EXIT_REFUSED
+
+
+def test_a_lossy_legacy_conversion_is_refused_for_production_by_default(tmp_path, monkeypatch, capsys):
+    backup = _lossy_backup()
+    assert backup["complete"] is True and backup["legacy_conversion"]["lossy"] is True
+    _real_target_cli(monkeypatch)
+    assert restore_firestore.main(["restore", _write(tmp_path, backup), *PROD_GUARDS]) == restore_firestore.EXIT_REFUSED
+    assert "legacy v1" in capsys.readouterr().err
+
+
+def test_the_quality_refusal_happens_before_planning_or_any_write(monkeypatch):
+    target = FakeClient(project=PROD)
+    monkeypatch.setattr(restore, "plan", lambda *a, **k: pytest.fail("must not read or plan"))
+    monkeypatch.setattr(restore, "apply", lambda *a, **k: pytest.fail("must not write"))
+    for backup in (_partial_backup(), _lossy_backup()):
+        with pytest.raises(restore.RestoreSafetyError, match="not disaster-recovery quality"):
+            restore.restore(target, restore.Target(PROD, None), backup)
+    assert target.commits == 0 and target.docs == {}
+
+
+def test_the_override_does_not_replace_allow_production(tmp_path, monkeypatch, capsys):
+    _real_target_cli(monkeypatch)
+    code = restore_firestore.main(["restore", _write(tmp_path, _partial_backup()), "--project", PROD,
+                                   "--confirm-project", PROD, OVERRIDE])
+    assert code == restore_firestore.EXIT_REFUSED
+    assert "REAL Firestore" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("confirm", [[], ["--confirm-project", PROD + "x"]])
+def test_the_override_does_not_replace_the_project_confirmation(tmp_path, monkeypatch, confirm):
+    _real_target_cli(monkeypatch)
+    code = restore_firestore.main(["restore", _write(tmp_path, _partial_backup()), "--project", PROD,
+                                   "--allow-production", *confirm, OVERRIDE])
+    assert code == restore_firestore.EXIT_REFUSED
+
+
+def test_the_override_does_not_allow_an_emulator_backup_into_production(tmp_path, monkeypatch, capsys):
+    _real_target_cli(monkeypatch)
+    backup = _partial_backup(source_project="demo-x", source_emulator=True)
+    code = restore_firestore.main(["restore", _write(tmp_path, backup), *PROD_GUARDS, OVERRIDE])
+    assert code == restore_firestore.EXIT_REFUSED
+    assert "emulator" in capsys.readouterr().err
+
+
+def test_the_override_does_not_allow_another_projects_backup_into_production(tmp_path, monkeypatch):
+    _real_target_cli(monkeypatch)
+    backup = _partial_backup(source_project="staging-project")
+    code = restore_firestore.main(["restore", _write(tmp_path, backup), *PROD_GUARDS, OVERRIDE])
+    assert code == restore_firestore.EXIT_REFUSED
+
+
+def test_the_override_is_refused_for_the_emulator():
+    with pytest.raises(restore.RestoreSafetyError, match="only applies to a real target"):
+        restore.resolve_target(project="demo-gtp", confirm_project=None, allow_production=False,
+                               environ=EMULATOR, allow_incomplete_or_lossy=True)
+
+
+def test_the_override_only_lifts_the_quality_refusal_and_warns_with_metadata_only(tmp_path, monkeypatch, capsys, caplog):
+    client = FakeClient(project=PROD)
+    _real_target_cli(monkeypatch, client)
+    for name, backup in (("partial.json", _partial_backup()), ("lossy.json", _lossy_backup())):
+        client.docs.clear()
+        code = restore_firestore.main(["restore", _write(tmp_path, backup, name), *PROD_GUARDS, OVERRIDE])
+        assert code == restore_firestore.EXIT_OK
+        assert ("users", "1") in client.docs
+    out = capsys.readouterr().out
+    assert "EXCEPTIONAL restore" in out and "RESTORE COMPLETED AND VERIFIED" in out
+    assert "backup.restore.quality_override" in caplog.text
+    assert "Private Name" not in out and "Private Name" not in caplog.text
+
+
+def test_a_complete_native_v2_backup_follows_the_normal_production_path(tmp_path, monkeypatch, capsys, caplog):
+    client = FakeClient(project=PROD)
+    _real_target_cli(monkeypatch, client)
+    assert restore_firestore.main(["restore", _write(tmp_path, _backup()), *PROD_GUARDS]) == restore_firestore.EXIT_OK
+    out = capsys.readouterr().out
+    assert "Restore quality: disaster-recovery" in out and "EXCEPTIONAL" not in out
+    assert "RESTORE COMPLETED AND VERIFIED" in out
+    assert client.docs[("users", "1", "history", "2026-09-14")] == {"solved": True}
+    assert "backup.restore.quality_override" not in caplog.text
+
+
+def test_cli_help_explains_the_quality_distinction(capsys):
+    with pytest.raises(SystemExit):
+        restore_firestore.main(["restore", "--help"])
+    text = " ".join(capsys.readouterr().out.split())
+    assert OVERRIDE in text
+    assert "disaster-recovery" in text and "native v2" in text
+    assert "Does not replace --allow-production, --confirm-project" in text
+
+
+def test_docs_explain_the_production_quality_gate():
+    from pathlib import Path
+
+    doc = (Path(__file__).resolve().parents[1] / "docs" / "backup-recovery.md").read_text(encoding="utf-8")
+    assert OVERRIDE in doc
+    assert "complete, native v2" in doc
+    assert "not equivalent to a native v2 backup" in doc

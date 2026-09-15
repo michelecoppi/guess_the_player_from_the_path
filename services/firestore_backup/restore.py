@@ -2,6 +2,10 @@
 
 Target safety (`resolve_target`):
 
+- Backup quality (`check_quality`): a real target only accepts a `disaster-recovery` quality
+  archive (complete, native v2, no warning). A partial or lossy archive needs the separate
+  `--allow-incomplete-or-lossy-backup` acknowledgement, which bypasses nothing else. The
+  emulator accepts any structurally valid archive.
 - With `FIRESTORE_EMULATOR_HOST` set, the target is the emulator. A project id is required
   and it may not be a known production project id, so a command copied from an emulator
   rehearsal cannot become a production restore by unsetting one variable.
@@ -36,6 +40,7 @@ from services import observability
 from services.firestore_backup import archive, codec, exporter
 
 PRODUCTION_PROJECT_IDS = frozenset({"guess-the-player-from-path-bot"})
+QUALITY_OVERRIDE_FLAG = "--allow-incomplete-or-lossy-backup"
 MODES = ("empty", "missing-only", "overwrite")
 BATCH_SIZE = 250
 MAX_BATCH_BYTES = 4_000_000
@@ -104,6 +109,7 @@ def resolve_target(
     allow_production: bool,
     environ: Mapping[str, str] | None = None,
     read_only: bool = False,
+    allow_incomplete_or_lossy: bool = False,
 ) -> Target:
     environ = os.environ if environ is None else environ
     emulator_host = (environ.get(EMULATOR_ENV) or "").strip() or None
@@ -112,6 +118,10 @@ def resolve_target(
     if emulator_host:
         if allow_production:
             raise RestoreSafetyError(f"--allow-production contradicts {EMULATOR_ENV}={emulator_host}; unset one of them")
+        if allow_incomplete_or_lossy:
+            raise RestoreSafetyError(
+                f"{QUALITY_OVERRIDE_FLAG} only applies to a real target; the emulator already accepts "
+                "any structurally valid backup")
         if project in PRODUCTION_PROJECT_IDS:
             raise RestoreSafetyError(
                 f"the emulator target uses the production project id {project!r}; use a demo- project id "
@@ -135,6 +145,23 @@ def check_source(target: Target, backup: Mapping[str, Any]) -> None:
     if target.is_production and backup["source_project"] != target.project:
         raise RestoreSafetyError(
             f"backup comes from {backup['source_project']!r}, not from the production project {target.project!r}")
+
+
+def check_quality(target: Target, backup: Mapping[str, Any], *, allow_incomplete_or_lossy: bool = False) -> list[str]:
+    """Refuse a partial/lossy archive for a real target unless explicitly acknowledged.
+
+    Runs before any connection or write. Returns the quality issues (metadata only), empty for a
+    disaster-recovery quality archive. The acknowledgement does not replace any target guard:
+    `resolve_target` and `check_source` still apply."""
+    _, issues = archive.restore_quality(dict(backup))
+    if target.is_emulator or not issues:
+        return issues
+    if not allow_incomplete_or_lossy:
+        raise RestoreSafetyError(
+            f"refusing to restore into the REAL project {target.project!r} a backup that is not "
+            f"disaster-recovery quality: {'; '.join(issues)}. Inspect it in the emulator first; an "
+            f"exceptional partial/lossy restore needs {QUALITY_OVERRIDE_FLAG} in addition to all other guards")
+    return issues
 
 
 def connect(target: Target, credentials_path: str | None = None) -> Any:
@@ -283,8 +310,16 @@ def restore(
     mode: str = "empty",
     dry_run: bool = False,
     batch_size: int = BATCH_SIZE,
+    allow_incomplete_or_lossy: bool = False,
 ) -> tuple[RestoreStats, VerifyReport | None]:
     check_source(target, backup)
+    quality_issues = check_quality(target, backup, allow_incomplete_or_lossy=allow_incomplete_or_lossy)
+    if quality_issues and not target.is_emulator:
+        conversion = backup.get("legacy_conversion")
+        observability.log_event(
+            "backup.restore.quality_override", logging.WARNING, component="backup", target_project=target.project,
+            complete=backup.get("complete"), lossy=bool(isinstance(conversion, dict) and conversion.get("lossy")),
+            issues=len(quality_issues), backup_created_at=backup["created_at"])
     with observability.operation("backup.restore", component="backup", target_project=target.project,
                                  target_emulator=target.is_emulator, mode=mode, dry_run=dry_run,
                                  source_project=backup["source_project"],

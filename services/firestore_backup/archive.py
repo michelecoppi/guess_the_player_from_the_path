@@ -335,6 +335,41 @@ def require_valid(path: str) -> tuple[dict[str, Any], ValidationReport, str]:
 
 
 # ---------------------------------------------------------------------------
+# Restore quality
+# ---------------------------------------------------------------------------
+
+QUALITY_DISASTER_RECOVERY = "disaster-recovery"
+QUALITY_EXCEPTIONAL = "exceptional"
+
+
+def restore_quality(backup: dict[str, Any]) -> tuple[str, list[str]]:
+    """Quality class of a *structurally valid* archive, with the reasons (metadata only).
+
+    Three levels, deliberately separate:
+
+    - invalid: `validate_archive` has errors; nothing may use the file (not decided here);
+    - `disaster-recovery`: a complete, native v2 backup with no validation warning - the only
+      kind a real (non-emulator) restore accepts by default;
+    - `exceptional`: valid but partial, converted from legacy v1 (lossy), missing a collection
+      the current inventory marks recovery-critical, or otherwise carrying a warning. Fine to
+      inspect or restore into the emulator; a real restore needs an explicit extra override.
+    """
+    issues = []
+    if backup.get("complete") is not True:
+        issues.append("backup is not complete (complete is not true)")
+    conversion = backup.get("legacy_conversion")
+    if conversion is not None:
+        lossy = conversion.get("lossy") if isinstance(conversion, dict) else None
+        issues.append(f"converted from a legacy v1 export (lossy={lossy!r}), not a native v2 backup")
+    critical = [policy.name for policy in inventory.INVENTORY if policy.recovery_critical]
+    missing = sorted(set(critical) - set(backup.get("data") or {}))
+    if missing:
+        issues.append(f"missing recovery-critical collections: {missing}")
+    issues.extend(f"validation warning: {warning}" for warning in validate_archive(backup).warnings)
+    return (QUALITY_EXCEPTIONAL if issues else QUALITY_DISASTER_RECOVERY), issues
+
+
+# ---------------------------------------------------------------------------
 # v1 upgrade
 # ---------------------------------------------------------------------------
 
