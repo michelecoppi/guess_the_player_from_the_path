@@ -19,7 +19,7 @@ class FakeResponse:
 
 
 def _settings(**overrides):
-    base = {"POSTHOG_PERSONAL_API_KEY": "phx_test_key", "POSTHOG_PROJECT_ID": "12345"}
+    base = {"POSTHOG_PERSONAL_API_KEY": "phx_test_key", "POSTHOG_PROJECT_ID": "12345"}  # pragma: allowlist secret
     base.update(overrides)
     return paq.Settings.from_env(base)
 
