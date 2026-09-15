@@ -108,7 +108,7 @@
       "accent": "#7fc4ff",
       "accentText": "#05101f",
       "track": "#1a2a48",
-      "pattern": "repeating-radial-gradient(circle at 22% 10%, rgba(255,255,255,.14) 0 1.6px, transparent 2px 52px), repeating-radial-gradient(circle at 70% 40%, rgba(255,255,255,.1) 0 1.3px, transparent 2px 39px)"
+      "pattern": "radial-gradient(circle at 6% 12%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 24% 38%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 41% 9%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 58% 52%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 73% 21%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 88% 63%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 14% 79%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 46% 85%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 33% 66%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 67% 8%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 81% 42%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 95% 74%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 19% 24%, #ffffff1a 1.1px, transparent 1.6px)"
     },
     "frame": {
       "ring": "conic-gradient(#bfe6ff, #ffffff, #6ba8d8, #eaf6ff, #bfe6ff)",
