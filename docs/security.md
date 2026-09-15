@@ -51,7 +51,7 @@ tests only check language parity, not truthfulness.
 - Secrets are environment variables on Cloud Run (Secret Manager for key material):
   `BOT_TOKEN`, `WEBHOOK_SECRET`, `TASK_SECRET`, `GENERATION_SECRET`, Firebase
   credentials. Replicas must share the same values; they are never generated at startup.
-- `.env`, `firebase-key.json`, `backup/`, `data/incoming/` and `data/candidates/` are
+- `.env`, `firebase-key.json`, `backup/`, `restore-work/`, `data/incoming/` and `data/candidates/` are
   gitignored. `.env.example` contains placeholders only.
 - CI/CD authenticates to GCP with Workload Identity Federation; no service-account key
   is stored in GitHub secrets.
@@ -80,5 +80,7 @@ never a way to make CI green.
 - Error tracking (Sentry) is optional and off without `SENTRY_DSN`; there is no security
   alerting beyond Telegram admin messages, Cloud Run logs and Sentry
   ([observability.md](observability.md), including its redaction policy).
-- Backups contain personal data; restore has not been tested
-  ([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)).
+- Backups contain personal data; they are GitHub Actions artifacts readable by anyone with
+  access to the repository's Actions, for 365 days. A restore re-creates users erased after
+  the backup, so erasures must be re-applied
+  ([backup-recovery.md § 4](backup-recovery.md#4-what-these-backups-do-not-protect)).

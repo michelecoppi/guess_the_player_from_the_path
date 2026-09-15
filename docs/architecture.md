@@ -47,7 +47,7 @@ Runs on a maintainer machine (files are copied into the image but never run by t
   scripts/ (imports, reports, backups, migrations, previews)
   Candidate ingestion pipeline (services/candidate_*.py, services/adapters/) → data/candidates/
 
-GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly Firestore JSON export)
+GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly Firestore JSON export) ; restore-verification.yml (emulator restore drill)
 ```
 
 | Component | Where it lives | Responsibility |
@@ -163,16 +163,17 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 **Planned evolution.** Versioning, CHANGELOG and a release checklist now exist
 ([release-checklist.md](release-checklist.md), [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49));
 adoption is opt-in going forward, so this table's "manual, no one-command rollback"
-still describes today's default. Backup retention and a *tested* restore procedure
-remain [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)
-(both under epic [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20)).
-A weekly backup export exists today; restore has not been verified.
+still describes today's default. Backup scope, retention, the restore tool and the
+periodic emulator restore test are in [backup-recovery.md](backup-recovery.md)
+([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50), epic
+[#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20)); rolling back
+code does not restore data.
 
 ## 8. Roadmap items that change this picture
 
 | Issue | Topic | Status of the capability today |
 | --- | --- | --- |
-| [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20) / [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49) / [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50) | Release management, backup recovery | Automated deploy + weekly export exist; no versioning, no tested restore |
+| [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20) / [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49) / [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50) | Release management, backup recovery | Versioning/checklist (#49) and validated weekly backup with emulator-verified restore (#50) exist; adoption of tagged releases is opt-in |
 | [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Rule-based difficulty from popularity + career path |
 | [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Not implemented; behavior toggles are env vars (`PUBLIC_BASE_URL`, `BOT_USERNAME`) and Firestore admin overrides |
 | [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25) | Dataset Health dashboard | A health report exists (`services/dataset_health.py`, `/admin_pool`, Admin “Dataset”); the dedicated dashboard does not |

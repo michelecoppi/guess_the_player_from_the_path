@@ -1,0 +1,66 @@
+name: Restore verification
+
+# Prova periodica del ripristino (#50): backup -> validazione -> restore -> confronto, con gli
+# stessi script che userebbe un operatore, su un Firestore vero ma isolato (l'emulatore, due
+# progetti demo- che non esistono su GCP). I dati sono sintetici ma con la forma di quelli di
+# produzione (tests/test_backup_restore_emulator.py): un artifact reale conterrebbe dati
+# personali che in CI non servono.
+#
+# Serve ad accorgersi se la meccanica di restore si rompe anche nelle settimane in cui nessuno
+# tocca il codice (una nuova versione dell'emulatore o del client, un tipo di valore nuovo).
+# Non usa credenziali, non ha accesso a GCP e non puo' in alcun modo scrivere in produzione.
+# Procedura: docs/backup-recovery.md.
+on:
+  schedule:
+    - cron: "0 5 * * 2"   # ogni martedi' alle 05:00 UTC, il giorno dopo il backup settimanale
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Installa le dipendenze
+        run: pip install -r requirements-dev.txt
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Avvia l'emulatore Firestore
+        run: |
+          gcloud components install cloud-firestore-emulator --quiet
+          nohup gcloud emulators firestore start --host-port=127.0.0.1:8571 > /tmp/firestore.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -s -o /dev/null http://127.0.0.1:8571/; then
+              echo "emulatore pronto"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "l'emulatore non e' partito entro 60 secondi"
+          cat /tmp/firestore.log
+          exit 1
+
+      - name: Backup, restore e confronto (round trip completo, ripetuto)
+        env:
+          # Il fixture fallisce (non salta) senza emulatore quando CI e' impostata.
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8571
+        run: |
+          for run in 1 2 3; do
+            echo "round trip $run"
+            pytest -q -p no:cacheprovider tests/test_backup_restore_emulator.py \
+              tests/test_backup_format.py tests/test_backup_restore_safety.py tests/test_backup_inventory.py
+          done

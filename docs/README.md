@@ -42,6 +42,7 @@ English. Both are equally authoritative when listed as primary below.
 | Release management | [release-checklist.md](release-checklist.md) | Versioning policy, canonical version source, CHANGELOG, release checklist, tag convention, exact-commit requirement, rollback, post-deploy smoke matrix |
 | Security | [security.md](security.md) | Trust boundaries, payments, secrets, automated security checks, known limits |
 | Operations | [operations.md](operations.md) | Scheduled/background work, manual responsibilities, backup and release state |
+| Backup and disaster recovery | [backup-recovery.md](backup-recovery.md) | Collection inventory, backup format v2, validation, guarded restore tool, recovery procedure, recovery points, periodic restore test |
 | Observability | [observability.md](observability.md) | Structured JSON logs, Sentry setup and env vars, component/event vocabulary, correlation ids, redaction policy |
 | Analytics | [operations.md § Analytics](operations.md#analytics) | No product analytics today; planned #29 |
 | Performance | [performance.md](performance.md) | Mini App API latency design, rate limiting, caching, `Server-Timing` |

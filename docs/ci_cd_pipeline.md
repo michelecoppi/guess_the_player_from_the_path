@@ -182,8 +182,8 @@ Fatta nella stessa sessione di lavoro, perché toccava gli stessi file:
   distinzione code-only/con migrazione in
   [release-checklist.md § Rollback](release-checklist.md#10-rollback). Versioning,
   changelog e checklist di rilascio sono in
-  [release-checklist.md](release-checklist.md); restore testato dei backup resta
-  [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50).
+  [release-checklist.md](release-checklist.md); backup, restore e la prova periodica del
+  ripristino (`restore-verification.yml`) in [backup-recovery.md](backup-recovery.md).
 - **`data/incoming/`**: i batch di calciatori in staging (in attesa di
   `scripts/import_players.py`) sono in `.gitignore`, quindi solo locali: se la macchina si
   rompe si perdono. Nessun backup automatico, per scelta (non fanno parte del dataset
