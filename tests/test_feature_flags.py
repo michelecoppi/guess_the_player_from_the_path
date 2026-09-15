@@ -460,11 +460,154 @@ def test_while_one_thread_refreshes_the_others_keep_the_current_snapshot():
     assert service.is_enabled(Flag.ARENA) is True
 
 
-def test_evaluation_never_raises_even_if_the_service_breaks(monkeypatch):
+# ---------------------------------------------------------------------------
+# Internal failures: never crash, never re-enable a known kill switch
+# ---------------------------------------------------------------------------
+
+def boom(*args, **kwargs):
+    raise RuntimeError("internal failure for user 555000111")
+
+
+KILL_SWITCH_DOC = doc({
+    "shop": {"enabled": False},                                   # known kill switch
+    "hints": {"enabled": True},                                   # stored, fully on, no deny
+    "leaderboard": {"deny_users": ["555000111"]},                 # stored, deny list
+    "arena": {"rollout_percentage": 40},                          # stored, partial rollout
+})
+
+
+def loaded_service():
+    service, clock = service_with(Loader(KILL_SWITCH_DOC))
+    assert service.is_enabled(Flag.SHOP, user_id=1) is False
+    return service, clock
+
+
+def test_cold_process_with_a_broken_snapshot_path_uses_defaults_without_raising(monkeypatch):
     service, _ = service_with(Loader(None))
-    monkeypatch.setattr(service, "snapshot", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(service, "snapshot", boom)
     assert service.is_enabled(Flag.SHOP, user_id=1) is True
     assert service.resolved(user_id=1) == {key: True for key in ALL_KEYS}
+
+
+def test_cold_process_with_a_failing_loader_uses_defaults_without_raising():
+    loader = Loader()
+    loader.error = RuntimeError("down")
+    service, _ = service_with(loader)
+    assert service.resolved(user_id=1) == {key: True for key in ALL_KEYS}
+
+
+def test_a_known_kill_switch_survives_snapshot_raising(monkeypatch):
+    service, _ = loaded_service()
+    monkeypatch.setattr(service, "snapshot", boom)
+    assert service.is_enabled(Flag.SHOP, user_id=1) is False
+    assert service.resolved(user_id=1)["shop"] is False
+    # Unaffected flags keep their real evaluation from the retained configuration.
+    assert service.is_enabled(Flag.HINTS, user_id=1) is True
+    assert service.is_enabled(Flag.LEADERBOARD, user_id=555000111) is False
+    assert service.is_enabled(Flag.LEADERBOARD, user_id=1) is True
+    assert service.is_enabled(Flag.DAILY_UI, user_id=1) is True
+
+
+def test_a_known_kill_switch_survives_a_refresh_that_raises_after_the_load(monkeypatch):
+    """A bug past the loader (post-processing) escapes `_refresh`, so `snapshot()` raises."""
+    service, clock = loaded_service()
+    clock.now += 31
+    monkeypatch.setattr(ff, "parse_document", boom)
+    monkeypatch.setattr(service, "_refresh", boom)
+    assert service.is_enabled(Flag.SHOP, user_id=1) is False
+    assert service.resolved(user_id=1)["shop"] is False
+
+
+def test_last_known_good_is_used_when_there_is_no_snapshot_to_fall_back_on(monkeypatch):
+    service, _ = loaded_service()
+    service._snapshot = None
+    monkeypatch.setattr(service, "snapshot", boom)
+    assert service.is_enabled(Flag.SHOP, user_id=1) is False
+    assert service.is_enabled(Flag.HINTS, user_id=1) is True
+
+
+def test_a_known_kill_switch_survives_evaluate_raising(monkeypatch):
+    service, _ = loaded_service()
+    monkeypatch.setattr(ff, "evaluate", boom)
+    assert service.is_enabled(Flag.SHOP, user_id=1) is False
+    # Conservative per flag, never a global switch-off:
+    assert service.is_enabled(Flag.DAILY_UI, user_id=1) is True        # no stored rule → default
+    assert service.is_enabled(Flag.HINTS, user_id=1) is True           # could not have refused anyone
+    assert service.is_enabled(Flag.LEADERBOARD, user_id=1) is False    # deny list cannot be checked
+    assert service.is_enabled(Flag.ARENA, user_id=1) is False          # partial rollout cannot be checked
+
+
+def test_resolved_keeps_known_disabled_flags_during_the_same_failures(monkeypatch):
+    service, _ = loaded_service()
+    monkeypatch.setattr(ff, "evaluate", boom)
+    resolved = service.resolved(user_id=1)
+    assert resolved == {"arena": False, "shop": False, "daily_ui": True, "hints": True,
+                        "player_pipeline": True, "events_v2": True, "leaderboard": False}
+    assert all(isinstance(value, bool) for value in resolved.values())
+
+    monkeypatch.setattr(ff, "evaluate", evaluate)
+    monkeypatch.setattr(service, "snapshot", boom)
+    assert service.resolved(user_id=1)["shop"] is False
+
+
+def test_evaluate_failing_on_a_cold_process_still_answers_with_defaults(monkeypatch):
+    service, _ = service_with(Loader(None))
+    monkeypatch.setattr(service, "snapshot", boom)
+    monkeypatch.setattr(ff, "evaluate", boom)
+    assert service.resolved(user_id=1) == {key: True for key in ALL_KEYS}
+
+
+def test_even_a_broken_retained_configuration_cannot_re_enable_anything(monkeypatch):
+    service, _ = loaded_service()
+
+    class BrokenRules:
+        def get(self, flag):
+            raise RuntimeError("corrupted in memory")
+
+    broken = FlagConfig(rules=BrokenRules())  # type: ignore[arg-type]
+    service._snapshot = ff.Snapshot(broken, ff.SOURCE_FIRESTORE, 0.0, float("inf"))
+    monkeypatch.setattr(ff, "evaluate", boom)
+    assert service.is_enabled(Flag.SHOP, user_id=1) is False
+    assert service.is_enabled(Flag.DAILY_UI, user_id=1) is False
+
+
+def test_the_snapshot_path_is_not_retried_once_per_flag(monkeypatch):
+    service, _ = loaded_service()
+    calls = []
+    monkeypatch.setattr(service, "snapshot", lambda: calls.append(1) or boom())
+    service.resolved(user_id=1)
+    assert len(calls) == 1
+
+
+def test_unknown_keys_stay_false_even_during_failures(monkeypatch):
+    service, _ = service_with(Loader(None))
+    monkeypatch.setattr(service, "snapshot", boom)
+    monkeypatch.setattr(ff, "evaluate", boom)
+    for key in ("new_checkout", "shop", None, 3):
+        assert service.is_enabled(key, user_id=1) is False  # type: ignore[arg-type]
+        assert ff.is_enabled(key) is False  # type: ignore[arg-type]
+
+
+def test_internal_fallbacks_are_reported_once_without_ids_or_messages(monkeypatch, caplog):
+    service, _ = loaded_service()
+    monkeypatch.setattr(service, "snapshot", boom)
+    monkeypatch.setattr(ff, "evaluate", boom)
+    with caplog.at_level(logging.WARNING):
+        for _ in range(50):
+            service.is_enabled(Flag.SHOP, user_id=555000111, group_id=-100987)
+            service.resolved(user_id=555000111)
+    records = [r for r in caplog.records if r.getMessage() == "feature_flags.evaluation.fallback"]
+    # snapshot stage: once for shop, once for resolved(); evaluate stage: once per flag.
+    assert len(records) == 2 + len(ALL_KEYS)
+    assert all(r.levelno == logging.ERROR for r in records)
+    for record in records:
+        rendered = f"{record.getMessage()} {record.__dict__}"
+        for leaked in ("555000111", "-100987", "internal failure", "deny_users"):
+            assert leaked not in rendered
+    contexts = [getattr(r, "_gtp_context", {}) for r in records]
+    assert {c.get("stage") for c in contexts} == {"snapshot", "evaluate"}
+    assert {c.get("source") for c in contexts} == {ff.SOURCE_CURRENT_SNAPSHOT, ff.SOURCE_CONSERVATIVE}
+    assert {c.get("error_type") for c in contexts} == {"RuntimeError"}
 
 
 def test_module_entry_points_use_the_installed_service():

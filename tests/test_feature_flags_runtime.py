@@ -375,3 +375,41 @@ def test_admin_refund_and_paysupport_are_never_gated():
     assert not hasattr(shop_handler.admin_refund, "feature_flag")
     assert not hasattr(shop_handler.successful_payment_callback, "feature_flag")
     assert not hasattr(support_handler.paysupport, "feature_flag")
+
+
+# ---------------------------------------------------------------------------
+# Flag infrastructure failures never become request failures
+# ---------------------------------------------------------------------------
+
+def _broken(*args, **kwargs):
+    raise RuntimeError("flag internals broke")
+
+
+def test_a_broken_flag_service_does_not_fail_requests_on_a_cold_process(api, monkeypatch, profile_backend):
+    service = ff.FeatureFlagService(lambda: None, ttl=300)
+    ff.set_service(service)
+    monkeypatch.setattr(service, "snapshot", _broken)
+    monkeypatch.setattr(ff, "evaluate", _broken)
+    monkeypatch.setattr(bot.shop, "catalogue_for", lambda user, lang: {"sections": []})
+    assert api.post("/app/api/shop", json={"initData": "x"}).status_code == 200
+    me = api.post("/app/api/me", json={"initData": "x"})
+    assert me.status_code == 200 and all(me.json()["features"].values())
+
+
+def test_a_broken_flag_service_keeps_an_observed_shop_kill_switch(api, monkeypatch, profile_backend, stars):
+    install({"shop": {"enabled": False}})
+    service = ff.get_service()
+    assert service.is_enabled(Flag.SHOP, user_id=42) is False
+    monkeypatch.setattr(service, "snapshot", _broken)
+    monkeypatch.setattr(ff, "evaluate", _broken)
+    monkeypatch.setattr(bot.shop, "catalogue_for", fail("catalogue_for"))
+
+    assert_disabled(api.post("/app/api/shop", json={"initData": "x"}), "shop")
+    assert_disabled(api.post("/app/api/shop/buy", json={"initData": "x", "item": "neon"}), "shop")
+    me = api.post("/app/api/me", json={"initData": "x"})
+    assert me.status_code == 200 and me.json()["features"]["shop"] is False
+
+    query = FakePreCheckout(shop.payload_for(42, "neon"))
+    asyncio.run(shop_handler.precheckout_callback(
+        SimpleNamespace(pre_checkout_query=query, effective_user=query.from_user), None))
+    assert query.answers[0][0] is False and stars["reserved"] == 0

@@ -142,6 +142,27 @@ Each process holds one `FeatureFlagService`:
 - **Cold start without Firestore:** repository defaults (all on).
 - **Document deleted:** a valid state meaning "no stored rules" → defaults.
 
+### Internal failures
+
+Evaluation never raises into a request, and **a switch-off this process has already seen
+stays off** even if the flag code itself fails. The configuration used, in order:
+
+1. the snapshot returned by the cache (normal path);
+2. if the cache path raises: the last snapshot already built (validated, even if expired),
+   otherwise the last-known-good configuration — read directly, without re-entering the
+   failing refresh;
+3. repository defaults only if the process never had a usable configuration.
+
+If evaluation of one flag raises, only that flag gets a conservative answer without
+targeting: no stored rule → its default; stored `enabled: false` → off; stored rule at 100 %
+with empty deny lists → on (it could not have refused anyone); any other stored rule
+(partial rollout or deny lists) → off. If even that inspection fails, the answer is off once
+a configuration has been seen, the default otherwise. Unknown keys are always off.
+`resolved()` uses one configuration for all flags, so a failing cache path is not retried
+once per flag. Each distinct failure (stage, flag, source, error type) is logged once per
+process as `feature_flags.evaluation.fallback` at ERROR, without ids, targets or exception
+text.
+
 ### Malformed configuration
 
 Firestore content is untrusted operational input.
@@ -165,6 +186,7 @@ names only, never values or ids. WARNING records do not create Sentry events.
 | `feature_flags.config.rejected` | WARNING | The document was unusable as a whole (`reason`) |
 | `feature_flags.config.invalid` | WARNING | Malformed entries or unknown keys (`flags`, `fields`, `kill_switch_kept`, `unknown_count`, `revision`) |
 | `feature_flags.change.applied` | INFO | A change made with the operator tool (`flag`, `operation`, `revision`) |
+| `feature_flags.evaluation.fallback` | ERROR (once per distinct failure per process) | Unexpected internal failure in the cache path or in evaluation (`stage` = `snapshot`/`evaluate`, `flag`, `source` = `current_snapshot`/`last_known_good`/`default`/`conservative`, `error_type`) — see [Internal failures](#internal-failures) |
 | `payment.invoice.refused` / `payment.precheckout.rejected` with `reason=feature_disabled` | INFO | Shop disabled at purchase initiation |
 
 Individual evaluations are never logged. A refused API call is visible as
@@ -259,7 +281,8 @@ in the rollout stay in it as the percentage grows.
 
 - [`tests/test_feature_flags.py`](../tests/test_feature_flags.py): registry, precedence,
   bucketing (including across processes), schema validation, cache TTL, last-known-good,
-  failures, stampede, change planning and revision safety.
+  failures, internal-failure fallbacks that keep known kill switches, stampede, change
+  planning and revision safety.
 - [`tests/test_feature_flags_runtime.py`](../tests/test_feature_flags_runtime.py): API
   contract per flag, `/me` exposure, Telegram gates, Stars pre-checkout/delivery regressions.
 - [`tests/test_feature_flags_cli.py`](../tests/test_feature_flags_cli.py): operator tool.

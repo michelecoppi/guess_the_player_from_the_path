@@ -59,6 +59,11 @@ RULE_FIELDS = frozenset({"enabled", "rollout_percentage", *TARGET_LISTS})
 SOURCE_FIRESTORE = "firestore"
 SOURCE_DEFAULT = "default"
 SOURCE_LAST_KNOWN_GOOD = "last_known_good"
+# Only in `feature_flags.evaluation.fallback` records.
+SOURCE_CURRENT_SNAPSHOT = "current_snapshot"
+SOURCE_CONSERVATIVE = "conservative"
+# Bound on distinct internal-failure records per process (7 flags x a few stages/types).
+_MAX_INTERNAL_REPORTS = 64
 
 
 class Flag(str, Enum):
@@ -377,6 +382,8 @@ class FeatureFlagService:
         self._snapshot: Optional[Snapshot] = None
         self._last_known_good: Optional[FlagConfig] = None
         self._warned: Optional[tuple[Any, ...]] = None
+        self._reported: set[tuple[Any, ...]] = set()
+        self._reported_lock = threading.Lock()
 
     @property
     def ttl(self) -> float:
@@ -464,17 +471,97 @@ class FeatureFlagService:
         config = self._last_known_good if self._last_known_good is not None else FlagConfig()
         return Snapshot(config, self._fallback_source(), now, now + self._ttl)
 
+    # -- Evaluation with a fail-safe fallback ---------------------------------------------
+    #
+    # Evaluation never raises, and an internal failure never re-enables a flag this process
+    # has seen switched off. The configuration used, in order:
+    #
+    #   1. the snapshot served by `snapshot()` (normal path);
+    #   2. if `snapshot()` itself raises: the last snapshot already built (validated, even
+    #      if expired), else the last-known-good configuration;
+    #   3. repository defaults only if the process never had a usable configuration.
+    #
+    # If `evaluate()` raises for one flag, that flag alone gets `_conservative()`, which
+    # can only return True when the stored rule could not have denied anyone.
+
     def is_enabled(self, flag: Flag, *, user_id: Any = None, group_id: Any = None) -> bool:
-        try:
-            return evaluate(flag, self.snapshot().config, user_id=user_id, group_id=group_id)
-        except Exception:  # noqa: BLE001 - last line of defence: the repository default
-            return REGISTRY[flag].default if flag in REGISTRY else False
+        if not isinstance(flag, Flag):
+            return False
+        config = self._config_for_evaluation(flag)
+        return self._evaluate_safely(flag, config, user_id=user_id, group_id=group_id)
 
     def resolved(self, *, user_id: Any = None, group_id: Any = None) -> dict[str, bool]:
+        # One configuration for all seven flags: a failing snapshot path is not retried per flag.
+        config = self._config_for_evaluation(None)
+        return {flag.value: self._evaluate_safely(flag, config, user_id=user_id, group_id=group_id)
+                for flag in Flag}
+
+    def _config_for_evaluation(self, flag: Optional[Flag]) -> Optional[FlagConfig]:
+        """The configuration to evaluate against; None means "never had one" (defaults)."""
         try:
-            return resolve_all(self.snapshot().config, user_id=user_id, group_id=group_id)
+            return self.snapshot().config
+        except Exception as exc:  # noqa: BLE001 - flags must never take a request down
+            # Plain attribute reads: no lock, no refresh, so the failing path is not re-entered.
+            current, last_good = self._snapshot, self._last_known_good
+            if current is not None:
+                config, source = current.config, SOURCE_CURRENT_SNAPSHOT
+            elif last_good is not None:
+                config, source = last_good, SOURCE_LAST_KNOWN_GOOD
+            else:
+                config, source = None, SOURCE_DEFAULT
+            self._report_internal("snapshot", flag, source, exc)
+            return config
+
+    def _evaluate_safely(self, flag: Flag, config: Optional[FlagConfig], *,
+                         user_id: Any, group_id: Any) -> bool:
+        try:
+            return evaluate(flag, config if config is not None else FlagConfig(),
+                            user_id=user_id, group_id=group_id)
+        except Exception as exc:  # noqa: BLE001
+            self._report_internal("evaluate", flag, SOURCE_CONSERVATIVE, exc)
+            return self._conservative(flag, config)
+
+    def _conservative(self, flag: Flag, config: Optional[FlagConfig]) -> bool:
+        """Answer for one flag when evaluation itself failed, without targeting.
+
+        - no configuration ever, or no stored rule for this flag → the repository default
+          (nothing was switched off);
+        - stored `enabled: false` → False (the kill switch always holds);
+        - stored rule that is fully rolled out with empty deny lists → True (it could not
+          have refused anyone);
+        - any other stored rule (partial rollout, deny lists) → False, because the refusal
+          cannot be ruled out.
+        If even that inspection fails: False once a configuration has been seen, the default
+        otherwise."""
+        try:
+            rule = config.rules.get(flag) if config is not None else None
+            if rule is None:
+                return REGISTRY[flag].default
+            if rule.enabled is not True:
+                return False
+            return rule.rollout_percentage >= 100 and not rule.deny_users and not rule.deny_groups
         except Exception:  # noqa: BLE001
-            return {flag.value: REGISTRY[flag].default for flag in Flag}
+            if config is None and self._last_known_good is None and self._snapshot is None:
+                return REGISTRY[flag].default if flag in REGISTRY else False
+            return False
+
+    def _report_internal(self, stage: str, flag: Optional[Flag], source: str, exc: BaseException) -> None:
+        """One ERROR per distinct (stage, flag, source, error type) per process: an internal
+        failure is a bug worth an alert, but never a record per request. No ids, no targets,
+        no exception text (it could carry values)."""
+        signature = (stage, flag.value if flag is not None else None, source, type(exc).__name__)
+        try:
+            with self._reported_lock:
+                if signature in self._reported:
+                    return
+                if len(self._reported) >= _MAX_INTERNAL_REPORTS:
+                    return
+                self._reported.add(signature)
+            observability.log_event("feature_flags.evaluation.fallback", logging.ERROR,
+                                    stage=stage, flag=signature[1], source=source,
+                                    error_type=signature[3])
+        except Exception:  # noqa: BLE001 - reporting must not break evaluation either
+            pass
 
 
 # ---------------------------------------------------------------------------
@@ -507,7 +594,8 @@ def set_service(service: Optional[FeatureFlagService]) -> None:
 
 
 def is_enabled(flag: Flag, *, user_id: Any = None, group_id: Any = None) -> bool:
-    """Never raises: on any internal failure it answers with the repository default."""
+    """Never raises. Unknown keys are False. On an internal failure the service keeps any
+    switch-off it has already seen (see `FeatureFlagService` fallback order)."""
     if not isinstance(flag, Flag):
         return False
     return get_service().is_enabled(flag, user_id=user_id, group_id=group_id)
