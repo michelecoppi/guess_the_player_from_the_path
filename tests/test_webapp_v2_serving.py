@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,9 @@ from fastapi import HTTPException
 from starlette.testclient import TestClient
 
 import bot
+from services import firebase_service
+
+PREVIEW_MODULE = "scripts.preview_webapp"
 
 
 def test_webapp_legacy_serving_unaffected():
@@ -121,9 +125,39 @@ def test_webapp_api_backend_contract_requires_body_initdata(monkeypatch):
     assert data["user"]["name"] == "TestUser"
 
 
-def test_preview_webapp_guess_contract():
+@pytest.fixture
+def preview_webapp(monkeypatch):
+    """Import scripts/preview_webapp.py and undo what the import does to the process.
+
+    The preview replaces services.firebase_service functions with in-memory stubs at import
+    time (reserve_checkout always answers "ok", for example) and prepends the repo root to
+    sys.path. Left in place, those stubs leak into every later test that uses the real
+    module. The import is also forced fresh, so the stubs are active for this test even if
+    the module had been imported before.
+    """
+    import scripts
+
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.delitem(sys.modules, PREVIEW_MODULE, raising=False)
+    monkeypatch.delattr(scripts, "preview_webapp", raising=False)
+    saved = dict(vars(firebase_service))
+    try:
+        from scripts import preview_webapp as module
+
+        yield module
+    finally:
+        for name in set(vars(firebase_service)) - set(saved):
+            delattr(firebase_service, name)
+        for name, value in saved.items():
+            if vars(firebase_service).get(name) is not value:
+                setattr(firebase_service, name, value)
+        # monkeypatch only restores entries that existed before; drop the fresh import.
+        sys.modules.pop(PREVIEW_MODULE, None)
+        vars(scripts).pop("preview_webapp", None)
+
+
+def test_preview_webapp_guess_contract(preview_webapp):
     """Preview webapp /app/api/guess must accept 'answer' payload matching production contract."""
-    from scripts import preview_webapp
     client = TestClient(preview_webapp.app)
 
     res_wrong = client.post("/app/api/guess", json={"answer": "Messi"})
