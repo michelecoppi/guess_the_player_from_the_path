@@ -159,11 +159,141 @@ def test_unknown_properties_are_dropped_not_forwarded(monkeypatch):
 
 @pytest.mark.parametrize("bad_key", ["token", "authorization", "cookie", "password", "secret", "initdata"])
 def test_sensitive_looking_keys_are_never_forwarded_even_if_allow_listed(monkeypatch, bad_key):
+    """Even if BOTH layers of the schema mistakenly allow a sensitive-looking key - it is on
+    the event's allowed-key set AND has a (permissive) validator - `is_sensitive_key` still
+    refuses it. A schema authoring mistake must not become a leak."""
     client = enable(monkeypatch)
-    monkeypatch.setattr(analytics, "ALLOWED_PROPERTIES", analytics.ALLOWED_PROPERTIES | {bad_key})
+    monkeypatch.setitem(
+        analytics.EVENT_PROPERTIES, analytics.Event.BOT_STARTED,
+        analytics.EVENT_PROPERTIES[analytics.Event.BOT_STARTED] | {bad_key},
+    )
+    monkeypatch.setitem(analytics.PROPERTY_VALIDATORS, bad_key, lambda value: True)
     analytics.capture(analytics.Event.BOT_STARTED, user_id=1, properties={bad_key: "super-secret-value"})
     sent_props = client.capture.call_args.kwargs["properties"]
     assert bad_key not in sent_props
+
+
+# ---------------------------------------------------------------------------
+# Per-event property schema (name AND value are validated, not just the key)
+# ---------------------------------------------------------------------------
+
+def test_bot_started_cannot_carry_item_id(monkeypatch):
+    """`item_id` is a perfectly valid property name (for Shop events) but is not on
+    BOT_STARTED's own allowed-key set, so it must be dropped regardless of its value."""
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.BOT_STARTED, user_id=1, properties={
+        "language": "it", "is_new_user": True, "item_id": "neon",
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "item_id" not in sent_props
+    assert sent_props["language"] == "it"
+
+
+def test_daily_events_cannot_carry_shop_only_properties(monkeypatch):
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=1, properties={
+        "surface": "miniapp", "status": "correct", "attempts_used": 2,
+        "item_id": "neon", "price_stars": 60,
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "item_id" not in sent_props
+    assert "price_stars" not in sent_props
+    assert sent_props["status"] == "correct"
+
+
+def test_unknown_surface_value_is_dropped(monkeypatch):
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.SHOP_VIEWED, user_id=1, properties={"surface": "desktop_browser"})
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "surface" not in sent_props
+
+
+def test_an_arbitrary_user_supplied_item_id_is_not_forwarded(monkeypatch):
+    """The property NAME `item_id` is allowed for Shop events, but the VALUE must be a real,
+    currently-existing catalogue id (`services/shop.py::get_item`) - not merely a string
+    that looks like one. This is the fix for a user-controlled payload (e.g. the Mini App's
+    `POST /app/api/shop/buy` body) turning into an arbitrary analytics dimension."""
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.SHOP_ITEM_PREVIEWED, user_id=1, properties={
+        "surface": "miniapp", "item_id": "totally-made-up-item-42", "item_kind": "theme",
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "item_id" not in sent_props
+    # A real catalogue id (used throughout tests/test_shop.py) is accepted.
+    client.capture.reset_mock()
+    analytics.capture(analytics.Event.SHOP_ITEM_PREVIEWED, user_id=1, properties={
+        "surface": "miniapp", "item_id": "neon", "item_kind": "theme",
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert sent_props["item_id"] == "neon"
+
+
+def test_an_arbitrary_item_kind_is_not_forwarded(monkeypatch):
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.SHOP_ITEM_EQUIPPED, user_id=1, properties={
+        "surface": "telegram_chat", "item_id": "neon", "item_kind": "not_a_real_kind",
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "item_kind" not in sent_props
+
+
+@pytest.mark.parametrize("bad_value", [
+    "5", 5.5, True, -1, 100_000_000, None, [], {}, "not_a_number",
+])
+def test_malformed_numeric_values_are_dropped(monkeypatch, bad_value):
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=1, properties={
+        "surface": "miniapp", "status": "correct", "attempts_used": bad_value,
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "attempts_used" not in sent_props
+
+
+@pytest.mark.parametrize("bad_value", ["true", 1, 0, "yes", None, "True"])
+def test_malformed_boolean_values_are_dropped(monkeypatch, bad_value):
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.BOT_STARTED, user_id=1, properties={
+        "language": "it", "is_new_user": bad_value,
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "is_new_user" not in sent_props
+
+
+@pytest.mark.parametrize("bad_value", ["FR", "italian", "", 1, None, "it "])
+def test_malformed_enum_values_are_dropped(monkeypatch, bad_value):
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.BOT_STARTED, user_id=1, properties={"language": bad_value})
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert "language" not in sent_props
+
+
+def test_valid_values_of_every_kind_pass_through(monkeypatch):
+    """The positive counterpart to the malformed-value tests above: a well-formed value of
+    each validator kind (enum/bool/int/catalogue) is not accidentally rejected too."""
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=1, properties={
+        "surface": "miniapp", "status": "correct", "attempts_used": 2, "hints_used": 0,
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert sent_props["surface"] == "miniapp"
+    assert sent_props["status"] == "correct"
+    assert sent_props["attempts_used"] == 2
+    assert sent_props["hints_used"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Person-profile minimization (#29 item 6)
+# ---------------------------------------------------------------------------
+
+def test_every_capture_marks_the_event_personless(monkeypatch):
+    """We never call identify() and only ever send a pseudonymous id, so PostHog should not
+    build a Person profile for it either. `$process_person_profile: False` is the SDK's own
+    recognised sentinel for this (verified against the installed posthog-python source -
+    see services/product_analytics.py::capture)."""
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.BOT_STARTED, user_id=1, properties={"language": "it"})
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert sent_props["$process_person_profile"] is False
 
 
 def test_privacy_regression_scan_of_a_representative_payload(monkeypatch):
@@ -257,6 +387,92 @@ def test_a_duplicate_shop_payment_fires_the_completed_event_only_once(monkeypatc
         if call.kwargs.get("event") == analytics.Event.SHOP_PURCHASE_COMPLETED.value
     ]
     assert len(completed_calls) == 1
+
+
+def test_referral_funnel_stays_on_one_identity_end_to_end(monkeypatch):
+    """The referral funnel (docs/product-analytics.md §11) is a sequence of events walked by
+    ONE distinct_id in a funnel tool: referral_opened -> bot_started -> the invitee's Daily
+    activity -> referral_converted. All four MUST resolve to the same pseudonymous id (the
+    invitee's), or funnel analysis silently breaks. referral_reward_granted is the one
+    deliberate exception - it is a fact about the INVITER, not the invitee, and must resolve
+    to a *different* distinct_id."""
+    from copy import deepcopy
+
+    from services import firebase_service as fs
+    from services import game, referrals
+    from services import shop as shop_service
+
+    INVITEE_ID, INVITER_ID = 2, 1
+    client = enable(monkeypatch)
+    invitee_distinct_id = analytics.distinct_id_for_user(INVITEE_ID)
+    inviter_distinct_id = analytics.distinct_id_for_user(INVITER_ID)
+    assert invitee_distinct_id != inviter_distinct_id
+
+    # Step 1-2: referral_opened and bot_started, both fired for the invitee in
+    # handlers/start_handler.py on the same `/start ref_XXXX` call.
+    analytics.capture(analytics.Event.REFERRAL_OPENED, user_id=INVITEE_ID,
+                      properties={"referral_attached": True})
+    analytics.capture(analytics.Event.BOT_STARTED, user_id=INVITEE_ID,
+                      properties={"language": "it", "is_new_user": True})
+
+    # Step 3: the invitee's own Daily completion (services/game.py, shared by chat/Mini App).
+    challenge = {"correct_answers": ["messi"], "difficulty": "easy", "player_id": "p1",
+                "first_correct_user": True}
+    monkeypatch.setattr(game.firebase_service, "begin_guess_attempt",
+                        lambda uid, day, max_attempts: {"ok": True, "attempts_used": 1, "attempts_left": 2, "hints_used": 0})
+    monkeypatch.setattr(game.firebase_service, "register_daily_outcome", lambda *a, **k: None)
+    monkeypatch.setattr(game.firebase_service, "claim_daily_first_correct", lambda day: False)
+    monkeypatch.setattr(game.firebase_service, "register_correct_guess",
+                        lambda *a, **k: {"points_awarded": 5, "current_streak": 1, "streak_bonus": 0})
+    monkeypatch.setattr(game.firebase_service, "add_points_to_leagues", lambda *a, **k: None)
+    monkeypatch.setattr(game.firebase_service, "record_daily_history", lambda *a, **k: None)
+    game.play_daily(INVITEE_ID, {}, "Messi", challenge=challenge, surface="telegram_chat")
+
+    # Step 4: the referral itself qualifies - services/referrals.py::credit_day(INVITEE_ID, ...).
+    records = {"user/1": {"referral_qualified": 0}}
+
+    class Ref:
+        def __init__(self, path):
+            self.path = path
+
+        def get(self, transaction=None):
+            return SimpleNamespace(exists=self.path in records, to_dict=lambda: deepcopy(records.get(self.path)))
+
+    class Transaction:
+        def update(self, reference, values):
+            target = records[reference.path]
+            for key, value in values.items():
+                if key != "cosmetics.earned":
+                    target[key] = deepcopy(value)
+
+    monkeypatch.setattr(fs, "db", SimpleNamespace(transaction=Transaction))
+    monkeypatch.setattr(fs.firestore, "transactional", lambda fn: fn)
+    monkeypatch.setattr(fs, "user_ref", lambda uid: Ref(f"user/{uid}"))
+    monkeypatch.setattr(fs, "history_ref", lambda uid, day: Ref(f"history/{uid}/{day}"))
+    monkeypatch.setattr(referrals, "ref", lambda uid: Ref(f"ref/{uid}"))
+    monkeypatch.setattr(shop_service, "newly_earned", lambda user: [])
+    records[f"ref/{INVITEE_ID}"] = {
+        "status": "pending", "inviter_id": INVITER_ID, "joined_day": "2026-01-01",
+        "days": [f"2026-01-0{i}" for i in range(1, referrals.REQUIRED_DAYS)],
+    }
+    records[f"history/{INVITEE_ID}/2026-01-05"] = {"solved": True, "attempts": 1}
+    credited = referrals.credit_day(INVITEE_ID, "2026-01-05")
+    assert credited is True
+
+    calls_by_event = {}
+    for call in client.capture.call_args_list:
+        calls_by_event.setdefault(call.kwargs["event"], []).append(call.kwargs["distinct_id"])
+
+    for event_name in (
+        analytics.Event.REFERRAL_OPENED.value, analytics.Event.BOT_STARTED.value,
+        analytics.Event.DAILY_COMPLETED.value, analytics.Event.REFERRAL_CONVERTED.value,
+    ):
+        assert calls_by_event[event_name] == [invitee_distinct_id], (
+            f"{event_name} did not resolve to the invitee's distinct_id"
+        )
+
+    # The one deliberate exception: the reward is the inviter's fact, not the invitee's.
+    assert calls_by_event[analytics.Event.REFERRAL_REWARD_GRANTED.value] == [inviter_distinct_id]
 
 
 def test_a_replayed_referral_credit_fires_the_conversion_event_only_once(monkeypatch):
@@ -380,3 +596,49 @@ def test_miniapp_open_and_daily_viewed_fire_on_a_full_bootstrap_only(monkeypatch
     events_sent = {c.kwargs["event"] for c in client.capture.call_args_list}
     assert analytics.Event.MINIAPP_OPENED.value in events_sent
     assert analytics.Event.DAILY_VIEWED.value in events_sent
+
+
+# ---------------------------------------------------------------------------
+# Real SDK smoke test: the genuine installed posthog-python client, zero network
+# ---------------------------------------------------------------------------
+
+def test_real_installed_posthog_sdk_accepts_our_adapter_call_shape():
+    """Every other test in this file monkeypatches `_build_client` to a `MagicMock`, which
+    proves our own logic but not that the *actual* installed SDK still accepts the exact
+    call our adapter makes. This test builds a REAL `posthog.Posthog` client - the one
+    `pip install`ed from `requirements.txt` - and calls `_call_capture` (the one function
+    that touches `Posthog.capture`) against it directly, bypassing `capture()`'s
+    try/except so a signature mismatch fails this test loudly instead of being logged and
+    swallowed.
+
+    Zero network traffic, no real API key: `disabled=True` is a genuine posthog-python
+    constructor option (`posthog/client.py::_enqueue` returns `None` before any queueing or
+    HTTP work happens whenever `self.disabled`), not a test-only shim - it is the SDK's own
+    supported way to build a fully real client that structurally cannot make a network call.
+    If a future `posthog` upgrade renames or removes `capture`'s `event`/`distinct_id`/
+    `properties` keywords, or removes the `disabled` constructor option, or changes what
+    `capture()` returns for a disabled client, this test fails and says so - that is the
+    point of it."""
+    from posthog import Posthog
+
+    from services.product_analytics import Event, _call_capture
+
+    client = Posthog(
+        project_api_key="phc_test_smoke",  # pragma: allowlist secret
+        host="https://posthog.invalid.example",
+        disabled=True,
+        disable_geoip=True,
+        enable_exception_autocapture=False,
+    )
+    try:
+        result = _call_capture(
+            client, Event.BOT_STARTED.value, "u_smoketest0000000000000",
+            {"language": "it", "is_new_user": True, "$process_person_profile": False},
+        )
+        # A disabled client's capture() is documented to short-circuit before enqueueing and
+        # return None - asserting on that return value is itself part of proving the call
+        # shape still matches what this codebase assumes.
+        assert result is None
+        client.flush()
+    finally:
+        client.shutdown()

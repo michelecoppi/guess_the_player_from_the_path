@@ -30,16 +30,42 @@ people actually using the product?"*. They must never merge:
 ## 2. Provider
 
 [PostHog](https://posthog.com), via the official `posthog-python` client
-(`posthog==3.7.4`, pinned in `requirements.txt`), using the documented
-`Posthog(api_key=..., host=...).capture(distinct_id=..., event=..., properties=...)`
-pattern. The client batches events and flushes them on its own background thread; this
-codebase does not build a second queue or thread pool around it.
+(`posthog==7.54.0`, pinned in `requirements.txt`), using
+`Posthog(project_api_key=..., host=...).capture(event=..., distinct_id=..., properties=...)`.
+The client batches events and flushes them on its own background thread; this codebase does
+not build a second queue or thread pool around it.
 
-**Version currency note for the reviewer:** `posthog-python` was pinned to the newest stable
-release available on PyPI (3.7.4) at the time this was written, verified live against
-`pip install` and the `Posthog.__init__`/`Posthog.capture` signatures. Re-verify the current
-stable version before merging if meaningful time has passed, the same way any other pinned
-dependency is checked.
+**Version currency, and what changed between 3.x and 7.x (both re-verified live, not
+assumed):** an earlier draft of this document pinned `posthog==3.7.4`, checked against
+`pip install` at the time. That was wrong to treat as "current" — re-checking directly
+against PyPI (`pip index versions posthog`, and `https://pypi.org/pypi/posthog/json`)
+showed `7.54.0` as the actual current stable release (published 2026-09-15, the day this
+was re-verified), supporting Python 3.10+, compatible with this repository's 3.11 baseline.
+The pin was updated to `7.54.0` and the adapter (`services/product_analytics.py`) was
+updated for two breaking changes found by inspecting the installed package's real
+constructor/method signatures (`inspect.signature`), not by reading changelogs alone:
+
+1. `Posthog.__init__`'s first argument was renamed from `api_key` to `project_api_key`.
+   Calling with the old `api_key=` keyword now raises `TypeError` (verified: it does).
+   `services/product_analytics.py::_build_client` uses `project_api_key=`.
+2. `Posthog.capture`'s signature changed from named `distinct_id`/`properties`/… parameters
+   to `capture(self, event: str, **kwargs: Unpack[OptionalCaptureArgs])`. `event` can still
+   be passed by keyword (it is a named, not keyword-only-via-`**kwargs`, parameter), and
+   `distinct_id`/`properties` are unchanged keys inside `OptionalCaptureArgs` — so the call
+   shape `capture(event=..., distinct_id=..., properties=...)` this codebase uses continues
+   to work, but the change is significant enough (a full signature replacement) that it
+   warranted an actual real-SDK test rather than trusting the diff: see
+   `tests/test_product_analytics.py::test_real_installed_posthog_sdk_accepts_our_adapter_call_shape`,
+   which builds a genuine `posthog.Posthog` client (with the SDK's own `disabled=True`
+   option, so it is real code with zero network reach) and calls the exact function our
+   `capture()` calls internally, so a future SDK upgrade that breaks this call shape fails
+   that test loudly instead of being silently swallowed by `capture()`'s own
+   never-raise contract.
+
+Re-verify the current stable version again before actually merging if meaningful time has
+passed since this was written — pin drift is exactly the failure mode this section is
+guarding against, and the right process is "check PyPI/GitHub releases live," not "trust
+whatever number is already in this document."
 
 Deliberately **not** enabled:
 
@@ -62,9 +88,11 @@ handler / API endpoint / service function (authoritative point)
         ▼
 services/product_analytics.capture(Event.X, user_id=..., properties={...})
         │  - validates Event is a known taxonomy member
-        │  - drops any property key not on the allow-list (never forwards a raw dict)
+        │  - keeps only properties THIS event allows, whose VALUE also passes its
+        │    type/enum/catalogue validator (never forwards a raw dict, never a
+        │    fabricated Shop item id - see §7)
         │  - pseudonymizes user_id -> distinct_id (HMAC-SHA256, dedicated salt)
-        │  - enriches: environment, app_version, app_revision
+        │  - enriches: environment, app_version, app_revision, $process_person_profile=False
         │  - never raises; a no-op if disabled/misconfigured/unavailable
         ▼
 posthog-python client (background thread, batches, retries its own transport)
@@ -106,7 +134,11 @@ Guarantees, all covered by `tests/test_product_analytics.py`:
   only place that imports and constructs `posthog.Posthog`) is called exactly once, from
   `init()`, only when a key is present and analytics is enabled; tests either never reach it
   (the default) or monkeypatch it to a fake client (see
-  `tests/test_product_analytics.py::enable`).
+  `tests/test_product_analytics.py::enable`). The one exception is a deliberate one: a real
+  `posthog.Posthog` client built with the SDK's own `disabled=True` option, which is a
+  genuinely real client that cannot reach the network by construction (see §2 and
+  `test_real_installed_posthog_sdk_accepts_our_adapter_call_shape`) — used once, specifically
+  to prove the adapter still matches the installed SDK's actual signature.
 - **Invalid config → a bounded operational warning through `observability.log_event`, never
   a crash.** A bad host/key that fails when building the client is caught in `init()`;
   analytics is then a no-op for the rest of the process.
@@ -121,7 +153,9 @@ Guarantees, all covered by `tests/test_product_analytics.py`:
 `services/product_analytics.py` exposes:
 
 - `capture(event, *, user_id=None, anonymous_id=None, properties=None)` — the only entry
-  point call sites use.
+  point call sites use. Internally delegates the actual SDK call to `_call_capture`, split
+  out on purpose so the real-SDK smoke test (§2) can exercise it directly, bypassing
+  `capture()`'s own blanket exception handling.
 - `flush()` / `shutdown()` — best-effort, called once from `bot.py`'s FastAPI lifespan
   teardown; never required for correctness (posthog-python flushes on its own).
 - `distinct_id_for_user(user_id)` / `distinct_id_for_anonymous(session_id)` — identity
@@ -243,10 +277,32 @@ screen with its own scope toggle), instrument that specific interaction then.
 | `referral_converted` | `services/referrals.py::credit_day`, the exact commit where the ledger's `days` count reaches `REQUIRED_DAYS` and its `status` flips `pending → qualified` | server | **fires exactly once per referral, ever.** `credit_day`'s own top-of-function guard (`entry.get("status") != "pending"`) makes every subsequent call for an already-qualified ledger a no-op before it reaches the write path — a Cloud Tasks retry, `reconcile()` replaying the same day, or a duplicate `record_completion` call cannot re-fire it. Covered by `tests/test_product_analytics.py::test_a_replayed_referral_credit_fires_the_conversion_event_only_once`. | `qualified_days` | completion — server-authoritative by construction (credit is tied to the same durable Daily-history record the game itself uses to decide the day counted) |
 | `referral_reward_granted` | Same commit as `referral_converted` (the cosmetic reward is granted in the same transaction) | server | same guarantee as above | `reward_item_count` | completion |
 
-The subject of `referral_converted`/`referral_reward_granted` is the **inviter** (the person
-whose referral qualified), not the invitee — the product question is "how many of this
-person's invites converted," and the invitee's own gameplay is already fully covered by the
-Daily events above.
+**Identity, precisely — this is the part an earlier draft of this document got wrong, and
+it matters for funnel correctness:**
+
+- `referral_opened`, `bot_started` and the invitee's own Daily events (`daily_completed`
+  etc.) are all captured under the **invitee's** `user_id` — the person who opened the
+  referral link and is now playing.
+- `referral_converted` is *also* captured under the **invitee's** `user_id`
+  (`services/referrals.py::credit_day(user_id, day)` — `user_id` there already *is* the
+  invitee; the function's own parameter, not a separate lookup). "This referred user
+  fulfilled the referral qualification conditions" is a fact about the invitee, and a
+  PostHog funnel is walked by ONE `distinct_id` through a sequence of steps — if
+  `referral_converted` resolved to a different identity than `referral_opened`/
+  `bot_started`, no funnel tool could connect them and the referral funnel below would
+  silently show zero conversions no matter how many referrals actually qualified.
+- `referral_reward_granted` is the **one deliberate exception**: it is captured under the
+  **inviter's** `user_id`, because "this inviter received their reward" is a fact about the
+  inviter, not the invitee — a different subject for a genuinely different product
+  question ("how many of this person's invites converted and paid off for them").
+  `referral_converted` and `referral_reward_granted` fire from the same Firestore commit but
+  are deliberately captured under two different identities.
+
+`tests/test_product_analytics.py::test_referral_funnel_stays_on_one_identity_end_to_end`
+is the regression test for exactly this: it drives `referral_opened` → `bot_started` → a
+Daily completion → `credit_day` for one simulated invitee, and asserts all four resolve to
+the same `distinct_id`, while `referral_reward_granted` resolves to a different one (the
+inviter's).
 
 ### Shop / payments
 
@@ -282,24 +338,48 @@ every event. Nothing else.
   PostHog client, and the codebase never computes an IP itself), auth tokens, credentials.
 - Full user/profile objects, raw exception data, arbitrary runtime dicts.
 
-**Enforcement mechanism**, not just documentation:
+**Enforcement mechanism**, not just documentation. `_clean_properties(event, raw)`
+(`services/product_analytics.py`) applies every layer below to every property on every
+`capture()` call, in order:
 
 1. `capture()` refuses any `event` that is not a member of the `Event` enum.
-2. Every property is checked against `ALLOWED_PROPERTIES`, a fixed, hand-written allow-list
-   (§6 lists exactly what each event actually sends, which is a subset of this). A property
-   key not on the list is dropped, not forwarded — call sites cannot leak an arbitrary dict
-   by construction.
-3. Every property key is additionally checked with
+2. **Per-event key allow-list** (`EVENT_PROPERTIES[event]`): a property must be on the
+   specific allowed-key set for *that* event, not just "known to the module somewhere." A
+   global allow-list (an earlier design) could not express that `item_id` is legitimate for
+   `shop_item_previewed` but meaningless — and therefore refused — on `bot_started`; the
+   per-event set is what `test_bot_started_cannot_carry_item_id` and
+   `test_daily_events_cannot_carry_shop_only_properties` exercise.
+3. **Per-property value validator** (`PROPERTY_VALIDATORS[key]`): a key being allowed for
+   the event is not enough — its *value* must also pass a validator bound to a concrete
+   shape: a fixed string enum (`surface`, `language`, `status`, `reason`, `scope`,
+   `event_type`), a real `bool` (not `1`/`"true"`/anything merely truthy — Python's `bool`
+   is an `int` subclass, and the validator explicitly rejects a bare `int` where a `bool` is
+   expected), a bounded `int` range, or — for `item_id`/`item_kind` — a **live lookup
+   against the real Shop catalogue** (`services/shop.py::get_item`/`KINDS`), not a
+   shape/regex check. This is the fix for a user-controlled request (e.g. the Mini App's
+   `POST /app/api/shop/buy` body) turning an arbitrary string into an analytics dimension
+   merely because the key name `item_id` is allowed: the value must be a catalogue id that
+   actually exists right now. `event_code`/`duel_code` (server-generated content ids, not
+   user input) are bounded by a fixed-shape regex instead, since there is no equivalent
+   catalogue to check them against — a deliberate, narrower defense-in-depth choice,
+   documented here rather than silently assumed.
+4. Every property key is additionally checked with
    `observability.is_sensitive_key` (the same denylist `token`/`secret`/`password`/
    `cookie`/`authorization`/`initdata`/… used throughout the codebase) as defense in depth,
-   in case a key is ever added to the allow-list by mistake.
-4. Property *values* pass through `observability.sanitize()` before being sent — the same
+   in case a key is ever added to a schema by mistake — proven even when both of the above
+   layers are deliberately (and wrongly) made to allow it, by
+   `test_sensitive_looking_keys_are_never_forwarded_even_if_allow_listed`.
+5. Property *values* pass through `observability.sanitize()` before being sent — the same
    scrubbing used for Sentry events (secret-value redaction, string length/size bounds,
-   depth bounds), a second layer beneath the key allow-list.
-5. `tests/test_product_analytics.py::test_privacy_regression_scan_of_a_representative_payload`
+   depth bounds), a final layer beneath the schema above.
+6. `tests/test_product_analytics.py::test_privacy_regression_scan_of_a_representative_payload`
    is the automated regression test: it calls `capture()` with a deliberately
    attacker-shaped payload (`invoice_payload`, `charge_id`, `raw_user_id`, a raw Telegram id)
-   and asserts none of it appears anywhere in the resulting call — key or value.
+   and asserts none of it appears anywhere in the resulting call — key or value. It is
+   complemented by `test_malformed_numeric_values_are_dropped`,
+   `test_malformed_boolean_values_are_dropped`, `test_malformed_enum_values_are_dropped` and
+   `test_an_arbitrary_user_supplied_item_id_is_not_forwarded`, each proving one specific way
+   a well-named-but-malformed property is still refused.
 
 **Pseudonymous identity.** `distinct_id_for_user(user_id)` computes
 `"u_" + HMAC-SHA256(PRODUCT_ANALYTICS_SALT, str(user_id)).hexdigest()[:24]` — a keyed HMAC
@@ -318,6 +398,28 @@ would be scope creep. Arena opponents are never identified even pseudonymously i
 (`duel_created`/`duel_joined`/`duel_completed` carry no opponent reference at all — the
 product question these events answer is about *this* player's Arena usage, not
 person-to-person graphs).
+
+**Person-profile behavior, verified against the installed SDK (not assumed from older
+posthog-python versions).** We deliberately never call `identify()` and only ever send a
+pseudonymous `distinct_id` — but simply supplying *any* `distinct_id` to `Posthog.capture()`
+is, by itself, enough for the SDK to treat the event as belonging to a real Person and build
+a profile for it server-side (inspected directly in the installed `posthog/client.py`:
+`get_identity_state()` only marks an event "personless" automatically when **no**
+`distinct_id` was supplied at all — not our case, since we always supply one). To keep
+person-profile creation minimal despite always supplying our own id,
+`services/product_analytics.py::capture()` sets the property
+**`$process_person_profile: False`** on every single outgoing event. This is not a
+made-up flag: it is a recognised sentinel property the SDK itself looks for
+(`posthog/capture_v1.py`'s `_OPTION_SENTINELS`, which lifts it into the batch payload's
+`process_person_profile` field regardless of how `distinct_id` was resolved) — verified by
+reading that source directly, not by assuming 3.x behaviour still applies in 7.x. Proven by
+`test_every_capture_marks_the_event_personless`.
+
+This client-side setting reduces what PostHog *tries* to build a profile from, but the
+final word on Person-profile handling is still a **PostHog project setting** (see §15,
+"Person profiles") — an operator must still confirm the project itself is configured for
+pseudonymous/anonymous-only person handling, because a client-side property is a request to
+the ingestion pipeline, not a guarantee that overrides project-level configuration.
 
 **Anonymous/unauthenticated surfaces.** `distinct_id_for_anonymous(session_id)` exists as a
 documented extension point but is **not wired to any call site**: every event defined in §6
@@ -416,11 +518,12 @@ There is **no multi-step onboarding** in the current product to define a funnel 
 
 ### Referral funnel
 
-`referral_opened` (subject: whichever account opens the link — not tracked as a funnel
-subject today, since the invitee's own identity isn't yet linked to prior opens) →
-`bot_started` (`is_new_user=true`, same request) → `daily_completed` × `REQUIRED_DAYS`
-(currently 5, `services/referrals.REQUIRED_DAYS`) → `referral_converted` (subject: the
-**inviter**) → `referral_reward_granted`.
+`referral_opened` → `bot_started` (`is_new_user=true`, same request) → `daily_completed` ×
+`REQUIRED_DAYS` (currently 5, `services/referrals.REQUIRED_DAYS`) → `referral_converted`.
+**All four steps share one funnel subject: the invitee's pseudonymous `distinct_id`** — see
+§6 for exactly why (and why `referral_reward_granted`, which follows the inviter's identity
+instead, is one step *past* the end of this funnel, not part of it — it belongs to a
+separate "did this inviter's referrals pay off" question, not the invitee's own journey).
 
 **Avoiding double-counting repeated link opens:** `referral_opened` intentionally fires on
 *every* `/start ref_XXXX`, including a friend re-clicking the same link twice. That is the
@@ -457,7 +560,8 @@ non-fatal branch, not a step toward completion.
 | Events participation/completion | count `event_started` vs. `event_completed`, grouped by `event_code` |
 | Leaderboard usage | count `leaderboard_viewed`, grouped by `scope` |
 | Referral conversion rate | `referral_converted` ÷ `referral_opened` where `referral_attached=true` |
-| Shop view→purchase conversion | `shop_purchase_started` ÷ `shop_viewed` (session-scoped) |
+| Shop view→checkout-start rate | `shop_purchase_started` ÷ `shop_viewed` (session-scoped). **Intent only** — an invoice was shown, Telegram has not charged anything yet. Do not call this "purchase conversion"; that name belongs to the row below. |
+| Shop view→purchase-completion conversion | `shop_purchase_completed` ÷ `shop_viewed` (session-scoped). **This is the real purchase-conversion KPI** — the numerator is `shop.deliver()` having actually returned `True` (Stars charged and item durably owned), not merely an invoice having been shown. An earlier draft of this document defined "purchase conversion" using `shop_purchase_started` as the numerator, which measures checkout-start rate, not completed purchases — that definition was wrong and has been replaced by this row. |
 | Purchase→equip conversion | `shop_item_equipped` ÷ `shop_purchase_completed`, matched on `item_id` |
 | Mini App activation | distinct users with `miniapp_opened` ÷ distinct users with `bot_started` |
 | Daily returning-user behavior | **Not claimed as implemented.** This needs a cohort/retention analysis in PostHog itself (grouping `daily_completed` by pseudonymous `distinct_id` over calendar weeks) — the event data supports it, but no dashboard or saved insight is shipped with this change. Do not describe DAU/retention cohorts as "implemented" until such an insight actually exists in the PostHog project. |
@@ -506,12 +610,49 @@ committed:
   project's existing EU-only data residency (see [security.md](security.md) /
   [firestore.md](firestore.md)); an operator changing `POSTHOG_HOST` to the US region is a
   deliberate data-residency decision, not a default.
-- **Dashboards/insights** — this document (§6, §11, §12) is the reproducible specification
-  (event names, funnel steps, property breakdowns); no dashboard is created automatically,
-  and no personal PostHog API token is stored in this repository. An operator with a
-  personally-scoped PostHog API key can build the dashboards described here manually, or
-  script it outside this repository — that is intentionally not part of the CI/deploy
-  pipeline.
+- **Dashboards/insights** — no dashboard is created automatically by this repository, and no
+  personal PostHog API token is stored in it (nothing here requires remote credentials to
+  build or test). What follows is the precise, reproducible specification for a named
+  dashboard an operator (with their own, never-committed PostHog personal API key) can
+  recreate by hand in the PostHog UI, or script against the PostHog API outside this
+  repository — intentionally not part of the CI/deploy pipeline.
+
+### Dashboard: "Guess the Player — Product Overview"
+
+One insight per row below. "Breakdown" is the PostHog property to split the insight by, when
+one is specified. "Window" is the funnel conversion window where applicable — a PostHog
+insight setting, not something enforced by code. Every insight excludes `environment` values
+other than `production` (this product/analytics is off outside it by default — §4 — but an
+operator who has explicitly turned it on for `staging` for testing should filter it out of
+this dashboard).
+
+| # | Insight | Type | Event(s) / filter | Breakdown | Window / aggregation |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Activation funnel | Funnel | `bot_started` (`is_new_user=true`) → `daily_guess_submitted` | — | 24h |
+| 2 | Daily completion rate | Trend (ratio) | `daily_completed` ÷ unique users on `daily_guess_submitted` | `status` | Daily |
+| 3 | Guesses per completed Daily | Trend (average) | `attempts_used` on `daily_completed` | `status` | Daily, mean |
+| 4 | Hint usage rate | Trend (ratio) | unique users on `hint_used` ÷ unique users on `daily_guess_submitted` | — | Daily |
+| 5 | Training starts vs. completions | Trend (two series) | `training_started`; `training_completed` (`status=correct`) | `surface` | Daily, count |
+| 6 | Arena participation vs. completion | Trend (two series) | `duel_created` + `duel_joined`; `duel_completed` | `surface` | Daily, count |
+| 7 | Events participation vs. completion | Trend (two series) | `event_started`; `event_completed` | `event_code` | Daily, count |
+| 8 | Leaderboard views | Trend | `leaderboard_viewed` | `scope` | Daily, count |
+| 9 | Referral funnel | Funnel | `referral_opened` (`referral_attached=true`) → `bot_started` (`is_new_user=true`) → `daily_completed` (×`REQUIRED_DAYS`, currently 5 — repeat the `daily_completed` step 5 times in the funnel builder, or use a single step with a minimum-occurrence-count setting if the tool supports it) → `referral_converted` | — | No fixed window (referral qualification has no deadline in the product itself; leave the insight's window generous, e.g. 90 days) |
+| 10 | Shop view → checkout-start rate | Trend (ratio) | `shop_purchase_started` ÷ `shop_viewed` | `surface` | Session-scoped |
+| 11 | Shop view → purchase-completion conversion | Trend (ratio) | `shop_purchase_completed` ÷ `shop_viewed` | `item_kind` | Session-scoped |
+| 12 | Purchase → equip conversion | Trend (ratio) | `shop_item_equipped` ÷ `shop_purchase_completed` | `item_kind`, matched on `item_id` | Session-scoped |
+
+Rows 10-12 deliberately do **not** collapse into one funnel: `shop_viewed` happens once per
+visit to the Shop but a person can preview/start several different items in the same visit,
+so a strict PostHog funnel (which counts a person once per step) would undercount per-item
+detail that the ratio-of-independent-trends approach above preserves. If a future need
+specifically wants a single-item purchase funnel, build `shop_item_previewed` →
+`shop_purchase_started` → `shop_purchase_completed` as its own funnel, filtered to one
+`item_id` at a time.
+
+Not included as a saved insight, and not claimed as implemented (§12): Daily returning-user
+/ retention cohorts. PostHog's own retention insight type, applied to `daily_completed`, is
+the natural tool for this once there is a real product question driving it — no cohort
+definition is prescribed here ahead of that need.
 
 ## 16. Relationship with other issues
 
@@ -532,6 +673,7 @@ committed:
   context, so a separate bounded event would be redundant.
 - **#21 Difficulty** — `services/difficulty.py` has a difficulty *value* per challenge
   (`challenge["difficulty"]`) but no stable, named "difficulty band" concept yet in the
-  codebase today. No `difficulty_band` property is invented; `ALLOWED_PROPERTIES` reserves
-  the name for when #21 actually defines one, and it can be added to the relevant events at
-  that point without any other taxonomy change.
+  codebase today. No `difficulty_band` property is invented, and none of the per-event
+  schemas in `EVENT_PROPERTIES`/`PROPERTY_VALIDATORS` (§7) include one; when #21 actually
+  defines a stable band concept, add a validator and the relevant event(s)' allowed-key
+  entry at that point, without any other taxonomy change.

@@ -107,13 +107,26 @@ def credit_day(user_id, day):
     # Fires exactly once per referral: `status` flips from "pending" to "qualified" here and
     # the top-of-function check above then always returns False for this ledger, so a retry
     # or `reconcile()` replay cannot re-fire it.
-    if credited and outcome["qualified"] and outcome["inviter_id"] is not None:
-        reward_items = outcome["reward_items"]
-        reward_item_count = len(reward_items) if isinstance(reward_items, tuple) else 0
-        analytics.capture(analytics.Event.REFERRAL_CONVERTED, user_id=outcome["inviter_id"],
+    #
+    # Identity, deliberately: REFERRAL_CONVERTED is captured under `user_id` - the INVITEE
+    # (the parameter this function already receives, the same person whose Daily activity
+    # produced `referral_opened`/`bot_started`/the Daily events that led here) - not the
+    # inviter. "This referred user fulfilled the referral qualification conditions" is a
+    # fact about the invitee, and every other step of the referral funnel
+    # (docs/product-analytics.md §11) is already keyed by the invitee's pseudonymous id;
+    # keying this one step differently would silently break funnel analysis, which walks one
+    # distinct_id through a sequence of events. REFERRAL_REWARD_GRANTED stays on the
+    # inviter - "this inviter received their reward" is a fact about them, not the invitee -
+    # so the two events are deliberately captured under two different identities even though
+    # they fire from the same commit.
+    if credited and outcome["qualified"]:
+        analytics.capture(analytics.Event.REFERRAL_CONVERTED, user_id=user_id,
                           properties={"qualified_days": REQUIRED_DAYS})
-        analytics.capture(analytics.Event.REFERRAL_REWARD_GRANTED, user_id=outcome["inviter_id"],
-                          properties={"reward_item_count": reward_item_count})
+        if outcome["inviter_id"] is not None:
+            reward_items = outcome["reward_items"]
+            reward_item_count = len(reward_items) if isinstance(reward_items, tuple) else 0
+            analytics.capture(analytics.Event.REFERRAL_REWARD_GRANTED, user_id=outcome["inviter_id"],
+                              properties={"reward_item_count": reward_item_count})
     return credited
 
 
