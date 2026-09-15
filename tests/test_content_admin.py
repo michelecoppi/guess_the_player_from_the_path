@@ -230,6 +230,61 @@ def test_delete_daily_removes_a_planned_challenge(fake_db):
     assert "2026-03-12" not in fake_db["daily"]
 
 
+def test_set_daily_locked_requires_an_existing_challenge(fake_db):
+    with pytest.raises(ContentAdminError):
+        content_admin.set_daily_locked("2026-03-12", True)
+
+
+def test_set_daily_locked_toggles_the_flag(fake_db):
+    fake_db["daily"]["2026-03-12"] = {"day": "2026-03-12", "player_id": "messi"}
+
+    assert content_admin.set_daily_locked("2026-03-12", True) is True
+    assert fake_db["daily"]["2026-03-12"]["locked"] is True
+    assert content_admin.describe_daily("2026-03-12", fake_db["daily"]["2026-03-12"])["locked"] is True
+
+    assert content_admin.set_daily_locked("2026-03-12", False) is False
+    assert fake_db["daily"]["2026-03-12"]["locked"] is False
+
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        lambda day: content_admin.set_daily_player(day, "messi"),
+        lambda day: content_admin.regenerate_daily(day),
+        lambda day: content_admin.update_daily_answers(day, ["messi"]),
+        lambda day: content_admin.update_daily_difficulty(day, "hard"),
+        lambda day: content_admin.delete_daily(day, today=TODAY),
+    ],
+)
+def test_locked_challenge_refuses_content_edits(fake_db, action):
+    day = "2026-03-12"
+    fake_db["daily"][day] = {"day": day, "player_id": "messi", "locked": True}
+
+    with pytest.raises(ContentAdminError):
+        action(day)
+
+    assert fake_db["daily"][day]["player_id"] == "messi"
+
+
+def test_locked_challenge_still_allows_bonus_toggle(fake_db):
+    day = "2026-03-12"
+    fake_db["daily"][day] = {"day": day, "player_id": "messi", "locked": True, "first_correct_user": True}
+
+    content_admin.set_daily_first_correct(day, False)
+
+    assert fake_db["daily"][day]["first_correct_user"] is False
+
+
+def test_unlocking_allows_edits_again(fake_db):
+    day = "2026-03-12"
+    fake_db["daily"][day] = {"day": day, "player_id": "messi", "locked": True}
+
+    content_admin.set_daily_locked(day, False)
+    content_admin.update_daily_difficulty(day, "hard")
+
+    assert fake_db["daily"][day]["difficulty"] == "hard"
+
+
 # ---------------------------------------------------------------------------
 # Eventi
 # ---------------------------------------------------------------------------
