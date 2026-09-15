@@ -12,6 +12,9 @@ from services import content_admin as content_admin
 from services import dataset_editor as dataset_editor
 from services import firebase_service as firebase_service
 from services import observability
+from services import referrals as referrals
+from services import shop as shop
+from services import shop_editor as shop_editor
 from services.candidate_player import CandidateState as CandidateState
 from services.candidate_review import AdminIdentity as AdminIdentity
 from services.candidate_review import CandidateReviewService as CandidateReviewService
@@ -48,6 +51,7 @@ from services.player_pool import get_incomplete_or_unverified_players as get_inc
 from services.player_pool import get_player_by_id as get_player_by_id
 from services.player_pool import load_config as load_config
 from services.repos.candidates import FileCandidatePlayerRepository as FileCandidatePlayerRepository
+from services.shop_editor import ShopEditError as ShopEditError
 
 CACHE_TTL_SECONDS = 45
 
@@ -97,6 +101,8 @@ def guarded(action, success_message):
     except ManualEventError as e:
         st.error(str(e))
     except DatasetEditError as e:
+        st.error(str(e))
+    except ShopEditError as e:
         st.error(str(e))
     except Exception as e:  # noqa: BLE001 - in dashboard l'errore va mostrato, non nascosto
         # Gli errori di dominio sopra sono rifiuti attesi; questo e' un guasto da guardare.
@@ -171,6 +177,35 @@ def collect_player_changes(before_rows, edited):
 def save_player_changes(changes, career_changes=None):
     result = dataset_editor.apply_player_changes(changes, career_changes)
     _reset_dataset_editors()
+    return result
+
+
+# Colonna modificabile della tabella shop -> campo dell'oggetto (services/shop_editor.py).
+SHOP_COLUMN_FIELDS = {"prezzo": "price", "nome": "name", "bloccato": "locked"}
+
+
+def collect_shop_changes(before_rows, edited):
+    changes = {}
+    for before, after in zip(before_rows, as_records(edited)):
+        fields = {}
+        for column, field in SHOP_COLUMN_FIELDS.items():
+            new_value = after.get(column)
+            if new_value is None:
+                continue
+            if field == "price":
+                new_value = int(new_value)
+            elif field == "locked":
+                new_value = bool(new_value)
+            if new_value != before[column]:
+                fields[field] = new_value
+        if fields:
+            changes[before["id"]] = fields
+    return changes
+
+
+def save_shop_changes(changes):
+    result = shop_editor.apply_item_changes(changes)
+    st.session_state["shop_rev"] = st.session_state.get("shop_rev", 0) + 1
     return result
 
 
@@ -275,6 +310,16 @@ def cached_leagues(limit):
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_groups(limit):
     return firebase_service.list_groups(limit=limit)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_referral_overview():
+    return referrals.admin_overview()
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_referral_top_inviters(limit):
+    return firebase_service.get_top_users("referral_qualified", limit)
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)

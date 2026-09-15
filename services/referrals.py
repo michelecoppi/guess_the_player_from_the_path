@@ -182,6 +182,17 @@ def dashboard(user_id, lang="it", cursor=None, user=None):
                         for target, ids in REWARDS.items()]}
 
 
+def admin_overview():
+    """Conteggi aggregati per la pagina Referral della dashboard: quante inviti sono in
+    ogni stato, senza dover contare a mano dalla console Firestore."""
+    query = fs.db.collection(COLLECTION)
+    return {
+        "total": fs._count_collection(query),
+        "pending": fs._count_collection(query.where("status", "==", "pending")),
+        "qualified": fs._count_collection(query.where("status", "==", "qualified")),
+    }
+
+
 def erase_user(user_id):
     """Remove referral personal data, retaining only a pseudonymous no-reuse marker.
 

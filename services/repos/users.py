@@ -504,6 +504,7 @@ def _public_user(data):
         "players_guessed": data.get("players_guessed", 0),
         "best_streak": data.get("best_streak", 0),
         "archive_solved": data.get("archive_solved", 0),
+        "referral_qualified": data.get("referral_qualified", 0),
     }
 
 
