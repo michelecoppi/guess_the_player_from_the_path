@@ -1,12 +1,11 @@
 """Stato di salute del dataset calciatori.
 
-Serve a rispondere alla domanda pratica "il pool basta ancora?" senza aprire il database:
-quanti giocatori sono realmente selezionabili, per quanti giorni il bot puo' andare avanti
-senza ripetere nessuno, quali fasce di difficolta' sono scoperte e quali eventi tematici
-non hanno abbastanza candidati.
-
-Usato da `scripts/dataset_report.py` (CI e riga di comando) e dal comando Telegram /admin_pool.
+Il report statico e' condiviso da CLI/CI, Telegram Admin e dashboard. Le anomalie di
+utilizzo (mai usato / usato troppo recentemente) vengono invece calcolate solo quando il
+chiamante fornisce uno storico Daily: in questo modo la CI resta deterministica e non ha
+mai bisogno di Firestore.
 """
+from services.dates import shift_iso, today_iso
 from services.difficulty import DIFFICULTY_ORDER, compute_difficulty
 from services.player_pool import (
     _load_raw_players,
@@ -14,8 +13,11 @@ from services.player_pool import (
     get_all_players,
     is_practice_only,
     load_config,
+    normalize_league,
     validate_dataset,
 )
+
+SEVERITY_ORDER = ("error", "warning", "info")
 
 
 def _load_templates():
@@ -26,17 +28,7 @@ def _load_templates():
 
 
 def unclassified_leagues(players, config):
-    """I campionati abbastanza frequenti da meritare una classificazione, che non ce l'hanno.
-
-    Le tre liste di data/config.json corrispondono ai tre pesi di `league_tier_weight`
-    (services/difficulty.py): `top_leagues` vale 0, `known_leagues` 0.5, `obscure_leagues` 1.0.
-    L'ultima non cambia nessun punteggio - 1.0 e' gia' il peso di ripiego per tutto cio' che
-    non e' in nessuna lista - e serve solo a distinguere "guardato, pesa come sconosciuto" da
-    "non ancora guardato": solo il secondo caso e' un avviso.
-
-    Il ripiego e' giusto per la coda lunga (la maggior parte delle leghe del dataset compare
-    una o due volte), ma sopra una certa frequenza smette di essere un ripiego e diventa una
-    decisione presa da nessuno. La soglia sta in `unclassified_league_warning_min`."""
+    """Campionati abbastanza frequenti da meritare una classificazione esplicita."""
     minimum = config.get("unclassified_league_warning_min", 20)
     classified = (
         set(config.get("top_leagues", []))
@@ -55,6 +47,186 @@ def unclassified_leagues(players, config):
     )
 
 
+def _anomaly(*, severity, category, cause, action, player_id=None, source="dataset", **extra):
+    item = {
+        "severity": severity,
+        "category": category,
+        "player_id": player_id,
+        "cause": cause,
+        "action": action,
+        "source": source,
+    }
+    item.update(extra)
+    return item
+
+
+def classify_dataset_problem(problem, player_ids=()):
+    """Trasforma il testo storico di ``validate_dataset`` in un record azionabile.
+
+    ``validate_dataset`` resta la source of truth del gate CI; qui aggiungiamo solo
+    struttura per Admin/diagnostica, senza duplicare le regole di validazione.
+    """
+    player_id = None
+    cause = problem
+    prefix, separator, remainder = problem.partition(": ")
+    if separator and prefix in set(player_ids):
+        player_id = prefix
+        cause = remainder
+
+    lowered = cause.lower()
+    if "alias ambiguo" in lowered or "id duplicato" in lowered:
+        category = "identity"
+        action = "Rendere univoci id e alias prima di pubblicare il dataset."
+    elif "traduz" in lowered:
+        category = "translation"
+        action = "Aggiungere o correggere la traduzione nel catalogo i18n e rieseguire il dataset check."
+    elif "club '" in lowered or lowered.startswith("club "):
+        category = "club"
+        action = "Correggere la tappa o dichiarare esplicitamente l'eccezione di club nel config."
+    elif "campionato" in lowered or "lega" in lowered:
+        category = "league"
+        action = "Canonicalizzare il nome del campionato e la sua classificazione in data/config.json."
+    elif "tappa" in lowered or "carriera" in lowered:
+        category = "career"
+        action = "Completare o correggere la carriera del giocatore e rivalidare la scheda."
+    else:
+        category = "metadata"
+        action = "Correggere i metadati della scheda e rieseguire scripts/dataset_report.py --strict."
+
+    return _anomaly(
+        severity="error",
+        category=category,
+        player_id=player_id,
+        cause=cause,
+        action=action,
+    )
+
+
+def club_spelling_anomalies(players):
+    """Grafie diverse dello stesso club normalizzato, senza promuoverle a errore CI.
+
+    E' intenzionalmente un warning: punteggiatura/abbreviazioni possono avere casi legittimi,
+    ma in Admin devono essere visibili per evitare duplicati silenziosi nel dataset.
+    """
+    spellings: dict[str, dict[str, int]] = {}
+    for player in players:
+        for stop in player.get("career", []):
+            team = stop.get("team")
+            if not team:
+                continue
+            bucket = spellings.setdefault(normalize_league(team), {})
+            bucket[team] = bucket.get(team, 0) + 1
+
+    anomalies = []
+    for variants in spellings.values():
+        if len(variants) <= 1:
+            continue
+        detail = ", ".join(f"'{name}' ({count} tappe)" for name, count in sorted(variants.items()))
+        anomalies.append(
+            _anomaly(
+                severity="warning",
+                category="club",
+                cause=f"Possibile club duplicato con grafie diverse: {detail}.",
+                action="Verificare se e' lo stesso club; se si', scegliere una grafia canonica in tutte le carriere.",
+            )
+        )
+    return anomalies
+
+
+def build_usage_health(players, daily_paths, recent_days, today=None):
+    """Analizza lo storico Daily gia' letto dal chiamante, senza accedere a Firestore."""
+    today = today or today_iso()
+    recent_days = max(1, int(recent_days))
+    recent_cutoff = shift_iso(today, -(recent_days - 1))
+
+    last_used: dict[str, str] = {}
+    use_counts: dict[str, int] = {}
+    for row in daily_paths or ():
+        player_id = row.get("player_id")
+        day = row.get("day")
+        if not player_id or not day or day > today:
+            continue
+        use_counts[player_id] = use_counts.get(player_id, 0) + 1
+        if player_id not in last_used or day > last_used[player_id]:
+            last_used[player_id] = day
+
+    anomalies = []
+    selectable_ids = []
+    for player in players:
+        player_id = player.get("id")
+        if not player_id:
+            continue
+        selectable_ids.append(player_id)
+        last_day = last_used.get(player_id)
+        if last_day is None:
+            anomalies.append(
+                _anomaly(
+                    severity="info",
+                    category="usage",
+                    player_id=player_id,
+                    cause="Mai usato in una Daily presente nello storico disponibile.",
+                    action="Valutarlo come candidato prioritario nel planner se resta eleggibile e coerente con la difficolta'.",
+                    source="daily_history",
+                    usage_status="never_used",
+                    last_used=None,
+                )
+            )
+        elif last_day >= recent_cutoff:
+            anomalies.append(
+                _anomaly(
+                    severity="warning",
+                    category="usage",
+                    player_id=player_id,
+                    cause=f"Usato il {last_day}, dentro la finestra anti-ripetizione di {recent_days} giorni.",
+                    action=f"Non riproporlo prima del {shift_iso(last_day, recent_days)}.",
+                    source="daily_history",
+                    usage_status="recently_used",
+                    last_used=last_day,
+                )
+            )
+
+    never_used = sum(1 for item in anomalies if item.get("usage_status") == "never_used")
+    recently_used = sum(1 for item in anomalies if item.get("usage_status") == "recently_used")
+    used_selectable = sum(1 for player_id in selectable_ids if player_id in last_used)
+    return {
+        "available": True,
+        "history_rows": sum(use_counts.values()),
+        "used_selectable": used_selectable,
+        "never_used": never_used,
+        "recently_used": recently_used,
+        "recent_days": recent_days,
+        "anomalies": anomalies,
+    }
+
+
+def _count_anomalies(anomalies):
+    by_severity = {severity: 0 for severity in SEVERITY_ORDER}
+    by_category: dict[str, int] = {}
+    for item in anomalies:
+        severity = item.get("severity", "info")
+        by_severity[severity] = by_severity.get(severity, 0) + 1
+        category = item.get("category", "other")
+        by_category[category] = by_category.get(category, 0) + 1
+    return {"by_severity": by_severity, "by_category": by_category, "total": len(anomalies)}
+
+
+def attach_usage_health(report, daily_paths, today=None):
+    """Arricchisce un report statico con lo storico Daily gia' recuperato dall'Admin."""
+    usage = build_usage_health(
+        report["selectable_players"],
+        daily_paths,
+        report["history_days_no_repeat"],
+        today=today,
+    )
+    report = dict(report)
+    report["usage_health"] = usage
+    report["anomalies"] = list(report["anomalies"]) + usage["anomalies"]
+    report["anomaly_counts"] = _count_anomalies(report["anomalies"])
+    # Dettaglio interno utile solo all'aggancio; non deve diventare parte del contratto UI.
+    report.pop("selectable_players", None)
+    return report
+
+
 def build_report(exclude_ids=None):
     config = load_config()
     raw_players = _load_raw_players()
@@ -66,75 +238,93 @@ def build_report(exclude_ids=None):
         by_difficulty[compute_difficulty(player)] += 1
 
     rotation = config.get("difficulty_rotation", DIFFICULTY_ORDER)
-    # Con la rotazione delle difficolta', la fascia piu' povera e' quella che determina
-    # quando il generatore inizia a "ripiegare" su un'altra difficolta'.
     rotation_counts = {level: by_difficulty.get(level, 0) for level in rotation}
 
     templates = []
     for template in _load_templates():
         candidates = filter_players(selectable, template.get("rules", {}))
         duration = template.get("duration_days", config.get("event_default_duration_days", 5))
-        templates.append({
-            "id": template["id"],
-            "name": template["name"],
-            "manual_only": bool(template.get("manual_only")),
-            "candidates": len(candidates),
-            "duration_days": duration,
-            "ok": template.get("manual_only") or len(candidates) >= duration,
-        })
+        templates.append(
+            {
+                "id": template["id"],
+                "name": template["name"],
+                "manual_only": bool(template.get("manual_only")),
+                "candidates": len(candidates),
+                "duration_days": duration,
+                "ok": template.get("manual_only") or len(candidates) >= duration,
+            }
+        )
 
     dataset_problems = validate_dataset(raw_players, config=config)
+    player_ids = {player.get("id") for player in raw_players if player.get("id")}
+    anomalies = [classify_dataset_problem(problem, player_ids) for problem in dataset_problems]
+    anomalies.extend(club_spelling_anomalies(raw_players))
+
     unclassified = unclassified_leagues(raw_players, config)
+    for league, stints in unclassified:
+        anomalies.append(
+            _anomaly(
+                severity="warning",
+                category="league",
+                cause=f"Campionato '{league}' non classificato ({stints} tappe).",
+                action="Classificarlo in top_leagues, known_leagues o obscure_leagues in data/config.json.",
+            )
+        )
 
     warnings = []
     if unclassified:
-        # Una riga sola: sono nomi, e un avviso per ciascuno renderebbe illeggibile
-        # l'output di /admin_pool proprio quando il dataset cresce.
         elenco = ", ".join(f"{league} ({stints})" for league, stints in unclassified)
         warnings.append(
             f"Campionati non classificati in data/config.json, con il numero di tappe: {elenco}. "
-            f"Valgono come sconosciuti nel calcolo della difficolta': se e' la scelta giusta "
-            f"vanno scritti in 'obscure_leagues', altrimenti in 'known_leagues'. In un caso o "
-            f"nell'altro la decisione va registrata invece di restare il ripiego."
+            "Classificali esplicitamente invece di lasciare il peso di ripiego."
         )
     if len(selectable) <= history_days:
         warnings.append(
             f"Solo {len(selectable)} giocatori selezionabili contro {history_days} giorni di "
-            f"anti-ripetizione: il pool si esaurisce e il bot dovra' riproporre giocatori gia' usati."
+            "anti-ripetizione: il pool si esaurisce e il bot dovra' riproporre giocatori gia' usati."
         )
     elif len(selectable) < history_days * 1.5:
         warnings.append(
             f"Margine ridotto: {len(selectable)} giocatori selezionabili per {history_days} giorni "
-            f"di anti-ripetizione. Conviene ampliare il dataset."
+            "di anti-ripetizione. Conviene ampliare il dataset."
         )
     for level, count in rotation_counts.items():
         if count == 0:
-            warnings.append(f"Nessun giocatore nella fascia di difficolta' '{level}': la rotazione ripieghera' su altre fasce.")
+            warnings.append(
+                f"Nessun giocatore nella fascia di difficolta' '{level}': la rotazione ripieghera' su altre fasce."
+            )
         elif count < 5:
             warnings.append(f"Solo {count} giocatori nella fascia '{level}': ripetizioni probabili.")
     for template in templates:
         if not template["ok"]:
             warnings.append(
                 f"Evento '{template['id']}': {template['candidates']} candidati per {template['duration_days']} "
-                f"giorni di evento, i giorni si ripeteranno."
+                "giorni di evento, i giorni si ripeteranno."
             )
     if dataset_problems:
-        warnings.append(f"{len(dataset_problems)} problemi di integrita' nel dataset (vedi /admin_review o scripts/dataset_report.py).")
+        warnings.append(
+            f"{len(dataset_problems)} problemi di integrita' nel dataset "
+            "(vedi /admin_review o scripts/dataset_report.py)."
+        )
 
+    practice_reserved = sum(1 for player in raw_players if is_practice_only(player))
     return {
         "total": len(raw_players),
-        "verified": sum(1 for p in raw_players if p.get("verified")),
+        "verified": sum(1 for player in raw_players if player.get("verified")),
         "selectable": len(selectable),
-        # Riservati e scartati vanno contati separatamente: i primi sono una scelta (fanno
-        # da materiale per l'allenamento), i secondi un problema da guardare.
-        "practice_reserved": sum(1 for p in raw_players if is_practice_only(p)),
-        "excluded": len(raw_players) - len(selectable) - sum(1 for p in raw_players if is_practice_only(p)),
+        "practice_reserved": practice_reserved,
+        "excluded": len(raw_players) - len(selectable) - practice_reserved,
         "history_days_no_repeat": history_days,
         "autonomy_days": len(selectable),
         "by_difficulty": by_difficulty,
         "templates": templates,
         "dataset_problems": dataset_problems,
         "warnings": warnings,
+        "anomalies": anomalies,
+        "anomaly_counts": _count_anomalies(anomalies),
+        "usage_health": {"available": False},
+        # Campo interno: attach_usage_health lo consuma e lo rimuove prima dell'uso in Admin.
+        "selectable_players": selectable,
     }
 
 
@@ -154,21 +344,21 @@ def format_report_text(report):
     for level in DIFFICULTY_ORDER:
         lines.append(f"  {level}: {report['by_difficulty'].get(level, 0)}")
 
-    lines.append("")
-    lines.append("Eventi tematici:")
+    lines.extend(("", "Eventi tematici:"))
     for template in report["templates"]:
         flag = "manuale" if template["manual_only"] else ("ok" if template["ok"] else "POCHI CANDIDATI")
-        lines.append(f"  {template['id']}: {template['candidates']} candidati / {template['duration_days']} giorni [{flag}]")
+        lines.append(
+            f"  {template['id']}: {template['candidates']} candidati / "
+            f"{template['duration_days']} giorni [{flag}]"
+        )
 
     if report["warnings"]:
-        lines.append("")
-        lines.append("Avvisi:")
+        lines.extend(("", "Avvisi:"))
         for warning in report["warnings"]:
             lines.append(f"  - {warning}")
 
     if report["dataset_problems"]:
-        lines.append("")
-        lines.append("Problemi di integrita':")
+        lines.extend(("", "Problemi di integrita':"))
         for problem in report["dataset_problems"]:
             lines.append(f"  - {problem}")
 
