@@ -5,6 +5,7 @@ from firebase_admin import firestore
 from google.api_core.exceptions import AlreadyExists
 
 from services import firebase_service as fs
+from services import observability
 
 
 def reset_user(ref, closure):
@@ -27,6 +28,14 @@ def reset_user(ref, closure):
 
 
 def close_batch(day, cursor=None):
+    with observability.operation("monthly.close.batch", component="job", job="monthly_close",
+                                 day=day, first_page=cursor is None) as op:
+        result = _close_batch(day, cursor)
+        op["processed"] = result["processed"]
+        return result
+
+
+def _close_batch(day, cursor):
     from services import broadcast_store, task_queue
     result = broadcast_store.get_job(day)["monthly_result"]
     for user in result["winners"]:

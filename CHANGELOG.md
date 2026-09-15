@@ -16,11 +16,24 @@ new dated section below.
 
 ### Added
 
+- Optional Sentry error tracking for the backend (bot, API, jobs, Cloud Tasks workers,
+  payments, broadcasts, Admin, Candidate pipeline), enabled only by `SENTRY_DSN`; the Sentry
+  release is the `VERSION` release and the Cloud Run revision is a separate tag
+  ([#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18),
+  [observability.md](docs/observability.md)).
+- Structured runtime logs (JSON on Cloud Run) with stable event names, component tags,
+  durations, server-generated `X-Request-ID` and Cloud Tasks correlation.
+- HTTP regression tests for the `x-cron-secret` boundary of `POST /internal/daily-job`.
+
 ### Changed
 
 ### Fixed
 
 ### Security
+
+- Observability redaction of tokens, secrets, cookies, Authorization and Telegram `initData`;
+  raw player guesses, signed invoice payloads and admin command arguments are no longer
+  logged; pseudonymous user references only with a secret `OBSERVABILITY_USER_SALT`.
 
 ## [0.1.0] - 2026-09-14
 

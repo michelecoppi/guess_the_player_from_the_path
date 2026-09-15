@@ -1,12 +1,14 @@
 """Durable HTTP work. Deterministic task names deduplicate producer retries."""
 import hashlib
 import json
+import logging
 import re
 from functools import lru_cache
 
 from google.api_core.exceptions import AlreadyExists
 
 import config
+from services import observability
 
 
 @lru_cache(maxsize=1)
@@ -25,6 +27,16 @@ def validate_configuration():
 
 
 def enqueue(path, payload, key, *, broadcast=False):
+    try:
+        _enqueue(path, payload, key, broadcast=broadcast)
+    except Exception as exc:
+        # Mai il payload (un update Telegram e' un messaggio privato) ne' gli header.
+        observability.log_event("cloud_task.enqueue.failed", logging.ERROR, exc_info=exc, task_path=path,
+                                queue_kind="broadcast" if broadcast else "tasks", error_type=type(exc).__name__)
+        raise
+
+
+def _enqueue(path, payload, key, *, broadcast):
     validate_configuration()
     parent = config.BROADCAST_QUEUE if broadcast else config.TASKS_QUEUE
     name = hashlib.sha256(key.encode()).hexdigest()

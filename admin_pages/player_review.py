@@ -8,6 +8,7 @@ Ogni mutazione passa dal servizio, con la stessa ``expected_revision`` mostrata 
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Optional
 
 from admin_pages.shared import (
@@ -21,6 +22,7 @@ from admin_pages.shared import (
     show_table,
     st,
 )
+from services import observability
 
 PAGE_SIZE = 20
 
@@ -140,6 +142,9 @@ def _run_action(action_fn, *, success_message: Optional[str] = None):
         st.error(f"Accesso negato: {e}")
         return None
     except Exception as e:  # noqa: BLE001 - mai un traceback grezzo nella UI
+        if not observability.is_reported(e):
+            observability.log_event("admin.action.failed", logging.ERROR, exc_info=e, component="admin",
+                                    surface="streamlit", page="player_review", error_type=type(e).__name__)
         st.error(f"Errore imprevisto: {type(e).__name__}")
         return None
 

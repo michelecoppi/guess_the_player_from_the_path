@@ -72,7 +72,8 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
         firebase_service.register_daily_outcome(day_iso, solved=False)
 
     hints_used = attempt.get("hints_used", 0)
-    logging.info(f"[GUESS] {user_id} su {day_iso}: {answer}")
+    # Mai il testo: in chat privata qualunque messaggio vale come tentativo.
+    logging.info(f"[GUESS] {user_id} su {day_iso}: tentativo di {len(answer)} caratteri")
 
     match = find_match(answer, challenge.get("correct_answers", []))
     if not match:

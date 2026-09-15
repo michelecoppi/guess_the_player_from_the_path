@@ -75,14 +75,14 @@ repository.
 
 ## Observability
 
-**Current state.**
+**Current state.** Authoritative description: [observability.md](observability.md).
 
-- Python standard `logging` (`logging.basicConfig(level=INFO)`, plain text) to stdout,
-  read in Cloud Run logs. No structured/JSON logging, correlation ids or log-based
-  metrics are defined in this repository.
-- `/app/api/*` requests emit a `[WEBAPP] <route> status=<code> duration_ms=<ms>` log
-  line and a `Server-Timing: app;dur=<ms>` header (no request bodies, signatures or
-  answers are logged). See [performance.md](performance.md).
+- Structured logs (JSON on Cloud Run, readable text locally) with stable event names and
+  `component`/`route`/`request_id`/`task_name` fields, and optional Sentry error tracking
+  enabled by `SENTRY_DSN` (#18). Records carry the formal `release` (`VERSION`) and, on
+  Cloud Run, the exact build `revision`. No log-based metrics are defined in this repository.
+- `/app/api/*` requests also return a `Server-Timing: app;dur=<ms>` header. See
+  [performance.md](performance.md).
 - Telegram messages to admins (`ADMIN_TELEGRAM_IDS`) for: unhandled handler errors
   (`handlers/error_handler.py`), `uncertain` interrupted updates
   (`services/alerts.py`), broadcast completion summary and broadcast problems
@@ -90,11 +90,9 @@ repository.
 - [runtime-hardening.md](runtime-hardening.md) recommends Cloud Logging alerts for
   `uncertain`, worker errors and exhausted task retries. Whether they are configured
   lives in GCP, not in this repository, and is not verified here.
-- No error tracking service (Sentry or similar), no uptime checks and no dashboards are
-  part of the codebase.
+- No uptime checks, alert policies or dashboards are part of the codebase.
 
-**Planned evolution.** [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)
-— Sentry and structured logging (open, not implemented).
+**Planned evolution.**
 [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) —
 performance measurement (soft dependency on #18, see [evolutive-tracking.md](evolutive-tracking.md)).
 [#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38) — Admin

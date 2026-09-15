@@ -14,7 +14,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from config import ADMIN_TELEGRAM_IDS
-from services import firebase_service
+from services import firebase_service, observability
 from services.daily_generator import ensure_daily_buffer
 from services.dataset_health import build_report
 from services.dates import ITALY_TZ, to_display
@@ -57,9 +57,13 @@ def admin_only(handler):
         user_id = update.effective_user.id if update.effective_user else None
         if user_id not in ADMIN_TELEGRAM_IDS:
             await update.message.reply_text("⛔ Comando riservato agli amministratori.")
-            logging.warning(f"[ADMIN] Tentativo di accesso non autorizzato da {user_id} a /{update.message.text}")
+            # Solo il nome del comando: gli argomenti possono contenere id e testo di altri.
+            observability.log_event("admin.command.unauthorized", logging.WARNING, component="admin",
+                                    handler=handler.__name__, user_ref=observability.user_ref(user_id))
             return
-        await handler(update, context)
+        # Ogni logging.exception dentro i comandi admin porta component=admin e il comando.
+        with observability.bind(component="admin", handler=handler.__name__):
+            await handler(update, context)
     return wrapper
 
 

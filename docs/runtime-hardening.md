@@ -83,8 +83,9 @@ saltare un messaggio quando non è possibile sapere se Telegram l'ha ricevuto.
 La stessa scelta protegge i tentativi dopo un crash del worker. Non cancellare una
 ricevuta incerta senza aver prima verificato lo storico e gli effetti dell'operazione.
 
-Configurare alert Cloud Logging per `uncertain`, `manual reconciliation required`,
-errori worker e task che esauriscono i retry. L'error handler PTB informa l'utente
+Configurare alert Cloud Logging per gli eventi `telegram.update.uncertain` e
+`broadcast.delivery.uncertain`, errori worker e task che esauriscono i retry (nomi degli
+eventi e query in [observability.md](observability.md)). L'error handler PTB informa l'utente
 senza promettere che il tentativo sia stato annullato e invia agli admin un riferimento.
 Il messaggio all'utente e' tradotto nelle tre lingue e prende `language_code` dall'update:
 una lettura a Firestore dentro il gestore che gira dopo un guasto sarebbe un secondo modo

@@ -3,7 +3,7 @@
 Stato attuale delle scelte di prestazione. La misura sistematica e l'ottimizzazione guidata da
 dati sono pianificate in [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32)
 (con telemetria da [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)); oggi esistono solo
-l'header `Server-Timing` e i log `[WEBAPP]` descritti sotto.
+l'header `Server-Timing` e i log `api.request.completed` descritti sotto.
 
 Gli handler Telegram spostano le operazioni Firestore sincrone e i servizi che le
 incapsulano in `asyncio.to_thread`, inclusa la generazione delle immagini. Il webhook
@@ -53,7 +53,8 @@ Gli altri utenti possono comunque modificare le classifiche nel frattempo:
 il refresh leggero conserva quelle dell'ultimo caricamento completo.
 
 Ogni risposta API include `Server-Timing: app;dur=...` in millisecondi e genera
-un log `[WEBAPP]` con endpoint, stato HTTP e durata. Non registra il corpo della
+un log strutturato `api.request.completed` con `route`, `status_code` e `duration_ms`
+([observability.md](observability.md)). Non registra il corpo della
 richiesta, la firma Telegram o la risposta tentata. Per confrontare prima e dopo
 un deploy, osservare mediana e percentile 95 per endpoint a carico comparabile.
 Il tempo comprende l'attesa dei worker e del database; non comprende la rete

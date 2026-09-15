@@ -22,6 +22,7 @@ Provides the complete domain and service layer for human review and production p
 from __future__ import annotations
 
 import copy
+import functools
 import json
 import logging
 import os
@@ -34,8 +35,10 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Callable, Optional
 
+from services import observability
 from services.adapters.candidate_integration import populate_candidate_from_result
 from services.candidate_normalization import clean_text, normalize_candidate
 from services.candidate_player import (
@@ -56,8 +59,6 @@ from services.repos.candidates import (
     CandidatePlayerRepository,
 )
 from services.repos.file_lock import ProcessFileLock
-
-logger = logging.getLogger(__name__)
 
 # Fallback/default for admin IDs
 try:
@@ -258,6 +259,50 @@ class StaleRevisionError(Exception):
 # ---------------------------------------------------------------------------
 # Helper Functions
 # ---------------------------------------------------------------------------
+
+def _observed_review(action: str) -> Callable[[Callable[..., "ReviewResult"]], Callable[..., "ReviewResult"]]:
+    """Un record strutturato per ogni azione di review: esito, durata, candidato.
+
+    Osserva e basta: argomenti, risultato ed eccezioni passano invariati. I guasti veri
+    (scrittura del dataset, fonte esterna) hanno gia' il loro evento ERROR nel punto in cui
+    succedono; qui un esito negativo e' al piu' un WARNING, per non contarli due volte.
+    Non registra mai il candidato, i dati della fonte o i percorsi."""
+    def decorate(method: Callable[..., "ReviewResult"]) -> Callable[..., "ReviewResult"]:
+        @functools.wraps(method)
+        def wrapper(self: Any, *args: Any, **kwargs: Any) -> "ReviewResult":
+            admin = args[0] if args else kwargs.get("admin")
+            candidate_id = args[1] if len(args) > 1 else kwargs.get("candidate_id")
+            started = perf_counter()
+            with observability.bind(
+                component="ingestion", operation=action,
+                candidate_id=candidate_id if isinstance(candidate_id, str) else None,
+                actor_ref=observability.user_ref(getattr(admin, "user_id", None)),
+            ):
+                try:
+                    result = method(self, *args, **kwargs)
+                except (ReviewAuthError, ReviewForbiddenError, StaleRevisionError) as exc:
+                    observability.log_event("candidate.review.denied", logging.WARNING, error_type=type(exc).__name__)
+                    raise
+                except Exception as exc:
+                    observability.log_event("candidate.review.failed", logging.ERROR, exc_info=exc,
+                                            error_type=type(exc).__name__)
+                    raise
+                status = getattr(result.status, "value", str(result.status))
+                if result.success and action == "approve":
+                    event = "candidate.approved"
+                elif result.status == ReviewStatus.VALIDATION_FAILED:
+                    event = "candidate.validation.failed"
+                else:
+                    event = "candidate.review.completed"
+                observability.log_event(
+                    event, logging.INFO if result.success else logging.WARNING, status=status,
+                    success=result.success, error_count=len(result.errors or []),
+                    duration_ms=round((perf_counter() - started) * 1000, 1),
+                )
+            return result
+        return wrapper
+    return decorate
+
 
 def _normalize_name_for_comparison(name: str) -> str:
     """Normalizza un nome rimuovendo accenti, punteggiatura e spazi doppi."""
@@ -623,15 +668,17 @@ class CandidateReviewService:
     def _load_production_players_strict(self) -> tuple[Optional[list[dict[str, Any]]], Optional[str]]:
         """Carica il dataset di produzione con semantica FAIL-CLOSED per mutazioni."""
         if not self._players_path.is_file():
+            observability.log_event("candidate.dataset.unreadable", logging.ERROR, reason="missing")
             return None, "Dataset di produzione mancante o non accessibile."
         try:
             with open(self._players_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        except Exception:
-            logger.error("Impossibile deserializzare il dataset di produzione", exc_info=True)
+        except Exception as err:
+            observability.log_event("candidate.dataset.unreadable", logging.ERROR, exc_info=err, reason="invalid_json")
             return None, "Dataset di produzione non valido o corrotto."
 
         if not isinstance(data, dict) or "players" not in data or not isinstance(data["players"], list):
+            observability.log_event("candidate.dataset.unreadable", logging.ERROR, reason="invalid_structure")
             return None, "Struttura del dataset di produzione inattesa o non conforme."
 
         return list(data["players"]), None
@@ -797,6 +844,7 @@ class CandidateReviewService:
     # Mutazioni: approve, edit, reject, merge, mark_source_wrong, retry
     # -----------------------------------------------------------------------
 
+    @_observed_review("approve")
     def approve_candidate(
         self,
         admin: AdminIdentity,
@@ -984,7 +1032,8 @@ class CandidateReviewService:
             try:
                 self._atomic_write_production_dataset(simulated_dataset)
             except Exception as err:
-                logger.exception("Scrittura del dataset di produzione fallita: %s", err)
+                observability.log_event("candidate.approval.persistence_failed", logging.ERROR, exc_info=err,
+                                        stage="production_write", error_type=type(err).__name__)
                 return ReviewResult(
                     success=False,
                     status=ReviewStatus.PERSISTENCE_FAILURE,
@@ -1018,7 +1067,8 @@ class CandidateReviewService:
             try:
                 saved = self._repo.save_if_revision(candidate, expected_persisted_revision=expected_revision)
             except Exception as save_err:
-                logger.error("Salvataggio candidato fallito dopo scrittura produzione: %s", save_err, exc_info=True)
+                observability.log_event("candidate.approval.persistence_failed", logging.ERROR, exc_info=save_err,
+                                        stage="candidate_save", error_type=type(save_err).__name__)
                 saved = False
                 save_exc = True
             else:
@@ -1026,12 +1076,14 @@ class CandidateReviewService:
 
             if not saved:
                 # Ripristino da backup per garantire atomicità: mantenuto all'interno del lock di produzione
-                logger.error("Salvataggio fallito o conflitto di revisione. Eseguo rollback di produzione.")
+                observability.log_event("candidate.approval.rolled_back", logging.WARNING,
+                                        reason="save_failed" if save_exc else "stale_revision")
                 try:
                     if snapshot_dest.is_file():
                         shutil.copy2(str(snapshot_dest), str(self._players_path))
                 except Exception as rollback_err:
-                    logger.critical("Rollback del dataset di produzione fallito: %s", rollback_err)
+                    observability.log_event("candidate.approval.rollback_failed", logging.CRITICAL,
+                                            exc_info=rollback_err, error_type=type(rollback_err).__name__)
 
                 status = ReviewStatus.PERSISTENCE_FAILURE if save_exc else ReviewStatus.STALE_REVISION
                 return ReviewResult(
@@ -1055,6 +1107,7 @@ class CandidateReviewService:
             projection=projection,
         )
 
+    @_observed_review("edit")
     def edit(
         self,
         admin: AdminIdentity,
@@ -1190,6 +1243,7 @@ class CandidateReviewService:
             player_id_override=player_id_override,
         )
 
+    @_observed_review("reject")
     def reject_candidate(
         self,
         admin: AdminIdentity,
@@ -1269,6 +1323,7 @@ class CandidateReviewService:
             projection=projection,
         )
 
+    @_observed_review("merge")
     def merge_candidate(
         self,
         admin: AdminIdentity,
@@ -1366,6 +1421,7 @@ class CandidateReviewService:
             projection=projection,
         )
 
+    @_observed_review("mark_source_wrong")
     def mark_source_wrong(
         self,
         admin: AdminIdentity,
@@ -1467,6 +1523,7 @@ class CandidateReviewService:
             projection=projection,
         )
 
+    @_observed_review("retry_ingestion")
     def retry_ingestion(
         self,
         admin: AdminIdentity,
@@ -1563,7 +1620,8 @@ class CandidateReviewService:
             try:
                 adapter_result = self._adapter_resolver(effective_source, effective_source_id)
             except Exception as err:
-                logger.error("Errore durante l'acquisizione della fonte esterna: %s", err, exc_info=True)
+                observability.log_event("candidate.ingestion.source_failed", logging.ERROR, exc_info=err,
+                                        source=effective_source, error_type=type(err).__name__)
                 return ReviewResult(
                     success=False,
                     status=ReviewStatus.SOURCE_ERROR,
@@ -1579,7 +1637,8 @@ class CandidateReviewService:
             try:
                 adapter_result = adapter_fetcher(effective_source, effective_source_id)
             except Exception as err:
-                logger.error("Errore durante l'acquisizione della fonte esterna: %s", err, exc_info=True)
+                observability.log_event("candidate.ingestion.source_failed", logging.ERROR, exc_info=err,
+                                        source=effective_source, error_type=type(err).__name__)
                 return ReviewResult(
                     success=False,
                     status=ReviewStatus.SOURCE_ERROR,

@@ -12,7 +12,7 @@ docs or tests.
 | --- | --- | --- |
 | **Telegram → `/webhook`** | `X-Telegram-Bot-Api-Secret-Token` compared in constant time with `WEBHOOK_SECRET` (32–256 URL-safe chars, required at startup); rejected with 403 before the body is parsed; malformed updates 400; 200 only after durable enqueue | `tests/test_runtime_hardening.py` |
 | **Cloud Tasks → `/internal/telegram-update`, `/internal/broadcast`, `/internal/monthly-close`** | `X-Task-Secret` = `TASK_SECRET` (separate from the webhook secret); declarative `X-CloudTasks-*` headers are not trusted | `tests/test_runtime_hardening.py` |
-| **Cloud Scheduler → `/internal/daily-job`** | `x-cron-secret` = `GENERATION_SECRET`, constant-time, 403 otherwise | no dedicated HTTP test found |
+| **Cloud Scheduler → `/internal/daily-job`** | `x-cron-secret` = `GENERATION_SECRET`, constant-time, 403 otherwise | `tests/test_internal_daily_job.py` |
 | **Mini App → `/app/api/*`** | Identity comes only from Telegram `initData` (HMAC-SHA256 with a key derived from the bot token, `auth_date` max 24 h) in `services/webapp_auth.py`; the client never sends a user id; per-user token bucket before any Firestore read (429 + `Retry-After`, per process, capped by `--max-instances 10`) | `tests/test_webapp_auth.py`, `tests/test_runtime_hardening.py`, `tests/test_webapp_performance.py` |
 | **Server → Mini App data** | Explicit response projections; answers, accepted aliases and `player_id` never leave the server; hints only after payment of their point cost; duel solutions only after both players finish; public profiles expose a restricted projection | `tests/test_webapp_api.py::test_the_answer_never_reaches_the_page`, `tests/test_public_profiles.py`, `tests/test_app_arena.py` |
 | **Clients → Firestore** | `firestore.rules` denies all client access; only the Admin SDK on the server/local tools accesses data | rules file |
@@ -77,8 +77,8 @@ never a way to make CI green.
 
 - Rate limiting is in-memory per process; there is no global limit.
 - An `uncertain` background update is not retried and needs manual reconciliation.
-- There is no error tracking or security alerting beyond Telegram admin messages and
-  Cloud Run logs ([operations.md](operations.md); Sentry is planned in
-  [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)).
+- Error tracking (Sentry) is optional and off without `SENTRY_DSN`; there is no security
+  alerting beyond Telegram admin messages, Cloud Run logs and Sentry
+  ([observability.md](observability.md), including its redaction policy).
 - Backups contain personal data; restore has not been tested
   ([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)).

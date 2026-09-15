@@ -28,7 +28,7 @@ from telegram.ext import ContextTypes
 
 from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
 from handlers.keyboards import language_for, legal_buttons
-from services import firebase_service, shop
+from services import firebase_service, observability, shop
 from services.i18n import t
 
 CALLBACK_PREFIX = "shop_"
@@ -256,13 +256,17 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     lang = (await asyncio.to_thread(language_for, update))
 
     if not item_id or user_id != query.from_user.id:
-        logging.warning(f"[SHOP] Pre-checkout con payload inatteso: {query.invoice_payload!r}")
+        # Il payload non si registra: contiene la firma della quota. Un payload che non torna
+        # e' un tentativo di manomissione o un bug, non un rifiuto commerciale.
+        observability.log_event("payment.precheckout.rejected", logging.WARNING, component="payment",
+                                reason="invalid_payload")
         await query.answer(ok=False, error_message=t(lang, "shop.error_unknown_item"))
         return
 
     user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
+        _precheckout_rejected(item_id, status)
         await query.answer(ok=False, error_message=t(lang, f"shop.error_{status}"))
         return
 
@@ -272,13 +276,22 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     if query.currency != CURRENCY or query.total_amount != expected or (quote and (
         quote["price"] != expected or set(quote["granted"]) != missing
     )):
+        _precheckout_rejected(item_id, "price_changed")
         await query.answer(ok=False, error_message=t(lang, "shop.error_price_changed"))
         return
     reservation = (await asyncio.to_thread(firebase_service.reserve_checkout, user_id, query.id, (user_data.get("cosmetics") or {}).get("owned", [])))
     if reservation != "ok":
+        _precheckout_rejected(item_id, reservation)
         await query.answer(ok=False, error_message=t(lang, f"shop.error_{reservation}"))
         return
     await query.answer(ok=True)
+    observability.log_event("payment.precheckout.accepted", component="payment", item_id=item_id,
+                            amount=query.total_amount)
+
+
+def _precheckout_rejected(item_id, reason):
+    # Rifiuti commerciali attesi (gia' posseduto, prezzo cambiato): INFO, mai Sentry.
+    observability.log_event("payment.precheckout.rejected", component="payment", item_id=item_id, reason=reason)
 
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -297,16 +310,22 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
 
     item_id, _ = shop.parse_payload(payment.invoice_payload)
     item = shop.get_item(item_id)
+    # Il charge id e' gia' il riferimento operativo dei rimborsi (/admin_refund) e dello
+    # storico acquisti: si registra. Il payload, che porta la firma, no.
+    payment_fields = {"charge_id": payment.telegram_payment_charge_id, "amount": payment.total_amount,
+                      "user_ref": observability.user_ref(user_id)}
     if item is None:
-        logging.error(
-            f"[SHOP] Pagamento {payment.telegram_payment_charge_id} di {user_id} non consegnato: "
-            f"payload {payment.invoice_payload!r}"
-        )
+        # Stelle incassate e niente consegnato: va sistemato a mano, quindi e' un errore.
+        observability.log_event("payment.delivery.failed", logging.ERROR, component="payment",
+                                reason="unknown_item", **payment_fields)
         await update.effective_message.reply_text(t(lang, "shop.delivery_problem"))
         return
 
     quote = shop.payment_quote(payment.invoice_payload)
-    if not (await asyncio.to_thread(shop.deliver, user_id, item_id, payment.telegram_payment_charge_id, payment.total_amount, granted=quote["granted"] if quote else None)):
+    with observability.operation("payment.delivery", component="payment", item_id=item_id, **payment_fields) as op:
+        delivered = await asyncio.to_thread(shop.deliver, user_id, item_id, payment.telegram_payment_charge_id, payment.total_amount, granted=quote["granted"] if quote else None)
+        op["outcome"] = "delivered" if delivered else "duplicate"
+    if not delivered:
         # Update rispedito da Telegram: era gia' consegnato, e un secondo "grazie" farebbe
         # solo pensare a un secondo addebito.
         return
@@ -359,10 +378,14 @@ async def admin_refund(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     ok, error = await _refund_star_payment(purchase["user_id"], charge_id)
     if not ok:
+        observability.log_event("payment.refund.rejected", logging.WARNING, component="payment",
+                                charge_id=charge_id, reason=str(error)[:200])
         await update.message.reply_text(f"Telegram ha rifiutato il rimborso: {error}")
         return
 
     revoked = (await asyncio.to_thread(firebase_service.revoke_purchase, charge_id))
+    observability.log_event("payment.refunded", component="payment", charge_id=charge_id,
+                            amount=purchase.get("stars"), revoked_count=len(revoked or []))
     await update.message.reply_text(
         f"Rimborsate {purchase.get('stars')} ⭐ a {purchase['user_id']}.\n"
         f"Ritirati: {', '.join(revoked) if revoked else 'niente (li aveva anche da altri acquisti)'}"

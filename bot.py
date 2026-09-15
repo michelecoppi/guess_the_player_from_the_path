@@ -5,6 +5,7 @@ import hmac
 import logging
 import os
 import re
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from time import perf_counter
@@ -51,7 +52,7 @@ from handlers.admin_handler import (
 )
 from handlers.archive_handler import archive, archive_callback, back_to_today
 from handlers.daily_job import broadcast_batch, update_daily_challenge
-from handlers.error_handler import on_error
+from handlers.error_handler import describe_update, on_error
 from handlers.events_handler import events, handle_event_navigation
 from handlers.group_handler import (
     group_challenge,
@@ -94,6 +95,7 @@ from services import (
     firebase_service,
     game,
     monthly_closure,
+    observability,
     shop,
     task_queue,
     trophies,
@@ -116,12 +118,11 @@ from services.webapp_api import (
 )
 from services.webapp_auth import user_id_from_init_data
 
-logging.basicConfig(level=logging.INFO)
-# httpx registra a INFO la URL completa di ogni richiesta, e nelle chiamate a Telegram il
-# token del bot **sta dentro la URL**: a INFO finisce in chiaro nei log di Cloud Run, che
-# vede chiunque abbia il ruolo di lettura sui log. Da WARNING in su restano gli errori, che
-# non portano la URL. Non e' un dettaglio di rumore: e' il token che apre il bot.
-logging.getLogger("httpx").setLevel(logging.WARNING)
+# Log strutturati e (se SENTRY_DSN e' configurato) error tracking: tutto in
+# services/observability.py, che fra l'altro alza httpx a WARNING. httpx registra a INFO la
+# URL completa di ogni richiesta, e nelle chiamate a Telegram il token del bot **sta dentro
+# la URL**: a INFO finirebbe in chiaro nei log di Cloud Run.
+observability.init("bot", web=True)
 
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_error_handler(on_error)
@@ -241,18 +242,61 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+# Il sottosistema a cui appartiene una richiesta, per i log e per i tag di Sentry. Le pagine
+# statiche non compaiono: un record per ogni file servito sarebbe solo rumore.
+_REQUEST_COMPONENTS = (
+    ("/webhook", "telegram"),
+    ("/internal/telegram-update", "telegram"),
+    ("/internal/daily-job", "job"),
+    ("/internal/monthly-close", "job"),
+    ("/internal/broadcast", "broadcast"),
+    ("/app/api/shop/buy", "payment"),
+    ("/app/api/", "api"),
+)
+
+
+def _request_component(path):
+    return next((component for prefix, component in _REQUEST_COMPONENTS if path.startswith(prefix)), None)
+
+
 @app.middleware("http")
-async def measure_webapp_request(request: Request, call_next):
-    if not request.url.path.startswith("/app/api/"):
-        return await call_next(request)
+async def observe_request(request: Request, call_next):
+    """Correlation id, durata e esito di ogni richiesta API/interna.
+
+    L'id si genera sempre qui: un eventuale X-Request-ID del client non viene creduto. Gli
+    header di Cloud Tasks servono solo a correlare i log, mai ad autorizzare. Del corpo, degli
+    header e di initData non si registra niente."""
+    path = request.url.path
+    component = _request_component(path)
+    request_id = uuid.uuid4().hex
     started = perf_counter()
-    response = await call_next(request)
-    elapsed_ms = (perf_counter() - started) * 1000
-    response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
-    route = request.scope.get("route")
-    logging.info("[WEBAPP] %s status=%s duration_ms=%.1f",
-                 getattr(route, "path", "unknown"), response.status_code, elapsed_ms)
+    fields = {"component": component or "api", "request_id": request_id, "method": request.method,
+              **observability.cloud_task_fields(request.headers)}
+    with observability.bind(**fields):
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            reported = observability.is_reported(exc)
+            observability.log_event(
+                "api.request.failed", logging.WARNING if reported else logging.ERROR,
+                exc_info=None if reported else exc, route=_route_path(request), status_code=500,
+                duration_ms=round((perf_counter() - started) * 1000, 1), error_type=type(exc).__name__,
+            )
+            raise
+        elapsed_ms = (perf_counter() - started) * 1000
+        response.headers["X-Request-ID"] = request_id
+        if path.startswith("/app/api/"):
+            response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+        if component:
+            observability.log_event(
+                "api.request.completed", logging.WARNING if response.status_code >= 500 else logging.INFO,
+                route=_route_path(request), status_code=response.status_code, duration_ms=round(elapsed_ms, 1),
+            )
     return response
+
+
+def _route_path(request):
+    return getattr(request.scope.get("route"), "path", "unmatched")
 
 @app.get("/")
 async def root():
@@ -591,6 +635,8 @@ async def webapp_shop_buy(payload: dict = Body(default={})):
     item_id = payload.get("item")
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
+        observability.log_event("payment.invoice.refused", reason=status,
+                                item_id=item_id if isinstance(item_id, str) else None)
         return {"status": status}
 
     item = shop.get_item(item_id)
@@ -604,6 +650,7 @@ async def webapp_shop_buy(payload: dict = Body(default={})):
         currency="XTR",
         prices=[LabeledPrice(label=name, amount=shop.price_for(user_data, item))],
     )
+    observability.log_event("payment.invoice.created", item_id=item_id, amount=shop.price_for(user_data, item))
     return {"status": "ok", "link": link}
 
 
@@ -712,13 +759,18 @@ async def consume_telegram_update(payload: dict, x_task_secret: str = Header(def
     if type(payload.get("update_id")) is not int:
         raise HTTPException(status_code=400, detail="Invalid update")
     update = Update.de_json(payload, telegram_app.bot)
+    with observability.bind(update_id=update.update_id, **describe_update(update)):
+        return await _consume_update(update)
+
+
+async def _consume_update(update):
     key = f"telegram-{update.update_id}"
     user = update.effective_user
     state = await run_in_threadpool(work_receipts.claim, key, serial_key=str(user.id) if user else None)
     if state == "busy":
         raise HTTPException(status_code=503, detail="Update in progress")
     if state == "uncertain":
-        logging.error("Update %s interrupted: manual reconciliation required", update.update_id)
+        observability.log_event("telegram.update.uncertain", logging.ERROR, status="uncertain")
         # Nessuno se ne accorgerebbe altrimenti: la richiesta torna 200, l'utente non riceve
         # niente e non c'e' nessun errore da nessuna parte. E' il solo guasto del bot che
         # richiede per forza un intervento umano, quindi e' il solo che vale un messaggio.
@@ -750,4 +802,7 @@ def consume_monthly_close(payload: dict, x_task_secret: str = Header(default=Non
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # log_config=None: i logger di uvicorn passano dal formato di services/observability.py.
+    # Niente access log: Cloud Run registra gia' ogni richiesta, e le API/interne hanno
+    # `api.request.completed` con route, esito e durata.
+    uvicorn.run(app, host="0.0.0.0", port=port, log_config=None, access_log=False)
