@@ -1,11 +1,19 @@
 """leagues administration page."""
 from admin_pages.shared import (
+    ContentAdminError,
     cached_leagues,
+    confirm_button,
     firebase_service,
     fmt_dt,
+    guarded,
     show_table,
     st,
 )
+
+
+def _kick_member(code, user_id):
+    if not firebase_service.leave_league(code, user_id):
+        raise ContentAdminError(f"'{user_id}' non e' membro della lega {code}.")
 
 
 def render(today, now_italy):
@@ -32,9 +40,10 @@ def render(today, now_italy):
     )
 
     for lg in leagues:
-        with st.expander(f"🏆 {lg.get('name', '—')} [{lg['code']}] — {lg.get('members_count', 0)} membri"):
+        code = lg["code"]
+        with st.expander(f"🏆 {lg.get('name', '—')} [{code}] — {lg.get('members_count', 0)} membri"):
             try:
-                members = firebase_service.get_league_leaderboard(lg["code"], limit=50)
+                members = firebase_service.get_league_leaderboard(code, limit=50)
             except Exception as e:
                 members = []
                 st.error(f"Errore: {e}")
@@ -50,3 +59,17 @@ def render(today, now_italy):
                 ],
                 "Nessun membro.",
             )
+
+            st.markdown("**Modera**")
+            kick_col, kick_button_col = st.columns([2, 1])
+            kick_id = kick_col.text_input("Espelli un membro (telegram id)", key=f"kick_{code}")
+            if kick_button_col.button("👋 Espelli", key=f"kick_btn_{code}", disabled=not kick_id.strip()):
+                guarded(
+                    lambda c=code, uid=kick_id.strip(): _kick_member(c, uid),
+                    f"Utente espulso dalla lega {code}.",
+                )
+            if confirm_button("🗑️ Elimina lega", key=f"del_league_{code}", help_text="Elimina la lega e tutti i suoi membri, in modo irreversibile."):
+                guarded(
+                    lambda c=code: firebase_service.delete_league(c),
+                    f"Lega {code} eliminata.",
+                )
