@@ -228,3 +228,32 @@ test("every real purchasable theme gives a profile surface distinct from the def
     assert.match(skinTokens(parseResolvedAppearance(themeFixtures.ghiaccio.appearance))["--skin-profile-surface"]!, /#1f7ae0 30%, #0b121b/);
   } finally { cleanup(); }
 });
+
+test("'Notte di neve' pattern reads as scattered snow, not concentric rings (#91)", () => {
+  const pattern = themeFixtures.notte_di_neve.appearance.theme.pattern as string;
+
+  // The bug: repeating-radial-gradient(circle at <fixed point>, ...) repeats outward from a
+  // single origin, which necessarily renders as concentric rings, not falling snow.
+  assert.ok(!pattern.includes("repeating-radial-gradient"), "must not use a repeating radial gradient (concentric rings)");
+
+  // The fix: several independent, non-repeating radial-gradient dots ("flakes") at scattered
+  // positions — each one a discrete point, so no single origin can produce a ring.
+  const flakes = pattern.match(/radial-gradient\(circle at \d+% \d+%,/g) || [];
+  assert.ok(flakes.length >= 8, `expected a scattered field of flakes, found ${flakes.length}`);
+  // Positions must actually be scattered (not all sharing one origin, which would still ring).
+  assert.equal(new Set(flakes).size, flakes.length, "flake positions must be distinct");
+
+  // Kept within the #66 dark-only, reviewed-literal allowlist: resolving it end to end still
+  // yields the exact same reviewed value (never a pass-through of unreviewed CSS), and the
+  // dark base colours of the theme are untouched by this fix.
+  const resolved = parseResolvedAppearance(themeFixtures.notte_di_neve.appearance);
+  assert.equal(resolved.theme?.pattern, pattern);
+  assert.equal(skinTokens(resolved)["--skin-pattern"], pattern);
+  assert.equal(themeFixtures.notte_di_neve.appearance.theme.bg, "#070d1a");
+  assert.equal(themeFixtures.notte_di_neve.appearance.theme.text, "#eaf2ff");
+
+  // Legibility/contrast stays in the same subtle range as before the fix (was .10/.14 alpha).
+  const alphas = [...pattern.matchAll(/#ffffff([0-9a-f]{2})\b/g)].map((m) => parseInt(m[1]!, 16) / 255);
+  assert.ok(alphas.length > 0);
+  for (const a of alphas) assert.ok(a > 0.05 && a < 0.2, `flake opacity ${a} should stay subtle`);
+});
