@@ -8,6 +8,7 @@ from firebase_admin import firestore
 
 from config import BOT_TOKEN, BOT_USERNAME
 from services import firebase_service as fs
+from services import product_analytics as analytics
 from services.dates import today_iso
 from services.repos import bulk
 
@@ -61,6 +62,11 @@ def credit_day(user_id, day):
     """
     from services import shop
     ledger_ref = ref(user_id)
+    # `commit` may run more than once under Firestore transaction contention, but only the
+    # attempt that actually commits leaves anything behind - so it is the only attempt whose
+    # analytics matter. We stash what that attempt decided here and fire the capture *after*
+    # `commit(...)` returns, from data that is true of the state now durably written.
+    outcome: dict[str, object] = {"qualified": False, "inviter_id": None, "reward_items": ()}
 
     @firestore.transactional
     def commit(transaction):
@@ -79,6 +85,7 @@ def credit_day(user_id, day):
         owner_snapshot = owner_ref.get(transaction=transaction)
         if not owner_snapshot.exists:
             return False
+        outcome["inviter_id"] = entry["inviter_id"]
         days = sorted(set(days + [day]))
         update = {"days": days, "updated_at": firestore.SERVER_TIMESTAMP}
         if len(days) >= REQUIRED_DAYS:
@@ -91,10 +98,23 @@ def credit_day(user_id, day):
                 fields["cosmetics.earned"] = firestore.ArrayUnion(sorted(earned))
             transaction.update(owner_ref, fields)
             update.update(status="qualified", qualified_at=firestore.SERVER_TIMESTAMP)
+            outcome["qualified"] = True
+            outcome["reward_items"] = tuple(sorted(earned))
         transaction.update(ledger_ref, update)
         return True
 
-    return commit(fs.db.transaction())
+    credited = commit(fs.db.transaction())
+    # Fires exactly once per referral: `status` flips from "pending" to "qualified" here and
+    # the top-of-function check above then always returns False for this ledger, so a retry
+    # or `reconcile()` replay cannot re-fire it.
+    if credited and outcome["qualified"] and outcome["inviter_id"] is not None:
+        reward_items = outcome["reward_items"]
+        reward_item_count = len(reward_items) if isinstance(reward_items, tuple) else 0
+        analytics.capture(analytics.Event.REFERRAL_CONVERTED, user_id=outcome["inviter_id"],
+                          properties={"qualified_days": REQUIRED_DAYS})
+        analytics.capture(analytics.Event.REFERRAL_REWARD_GRANTED, user_id=outcome["inviter_id"],
+                          properties={"reward_item_count": reward_item_count})
+    return credited
 
 
 def record_completion(user_id, day):

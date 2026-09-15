@@ -104,6 +104,7 @@ from services import (
     work_receipts,
 )
 from services import leagues as league_rules
+from services import product_analytics as analytics
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
 from services.feature_flags import FeatureDisabled, Flag
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
@@ -126,6 +127,10 @@ from services.webapp_auth import user_id_from_init_data
 # URL completa di ogni richiesta, e nelle chiamate a Telegram il token del bot **sta dentro
 # la URL**: a INFO finirebbe in chiaro nei log di Cloud Run.
 observability.init("bot", web=True)
+# Product analytics (#29): a strictly separate concern from the observability line above -
+# see services/product_analytics.py's docstring. Off with no POSTHOG_API_KEY, and its own
+# failures never reach here (init() swallows them and logs through observability).
+analytics.init()
 
 telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
 telegram_app.add_error_handler(on_error)
@@ -240,6 +245,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         await telegram_app.shutdown()
+        analytics.shutdown()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -568,7 +574,7 @@ def webapp_hint(payload: dict = Body(default={})):
     """Un indizio sulla sfida di oggi, allo stesso prezzo che si paga in chat."""
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.HINTS, user_id)
-    return game.take_hint(user_id, _webapp_language(user_data))
+    return game.take_hint(user_id, _webapp_language(user_data), surface="miniapp")
 
 
 @app.post("/app/api/arena")
@@ -596,10 +602,23 @@ def webapp_arena(payload: dict = Body(default={})):
             if action == "get" and not code:
                 # Nessuna partita aperta: resta lo storico, che e' gia' nel documento utente.
                 return {"session": None, "ledger": arena.ledger(user)}
+            was_new = action == "create"
+            was_join = action == "join"
             result = arena.duel(user_id, user.get("first_name", "?"), action, code,
                                 payload.get("answer"), payload.get("revision"), lang, profile=user)
             if action != "delete":
                 result["invite_url"] = f"https://t.me/{BOT_USERNAME}?start=duel_{result['code']}" if BOT_USERNAME else None
+            if was_new:
+                analytics.capture(analytics.Event.DUEL_CREATED, user_id=user_id,
+                                  properties={"surface": "miniapp"})
+            elif was_join:
+                analytics.capture(analytics.Event.DUEL_JOINED, user_id=user_id,
+                                  properties={"surface": "miniapp"})
+            if action in ("join", "guess", "reveal") and result.get("complete"):
+                # `complete` flips exactly once per player (arena.duel records the match on
+                # the first request that observes it), so this cannot double-fire on a poll.
+                analytics.capture(analytics.Event.DUEL_COMPLETED, user_id=user_id,
+                                  properties={"surface": "miniapp"})
             return result
         if mode == "events":
             feedback = None
@@ -654,6 +673,7 @@ def webapp_shop(payload: dict = Body(default={})):
     """La vetrina: la **stessa** che disegna il comando /shop (services/shop.py)."""
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.SHOP, user_id)
+    analytics.capture(analytics.Event.SHOP_VIEWED, user_id=user_id, properties={"surface": "miniapp"})
     return shop.catalogue_for(user_data, _webapp_language(user_data))
 
 
@@ -668,16 +688,24 @@ async def webapp_shop_buy(payload: dict = Body(default={})):
     if not await run_in_threadpool(feature_flags.is_enabled, Flag.SHOP, user_id=user_id):
         # Prima di creare la fattura: nessun link, quindi nessun addebito possibile.
         observability.log_event("payment.invoice.refused", reason="feature_disabled")
+        analytics.capture(analytics.Event.SHOP_PURCHASE_REFUSED, user_id=user_id, properties={
+            "surface": "miniapp", "reason": "feature_disabled", "success": False,
+        })
         raise FeatureDisabled(Flag.SHOP)
     item_id = payload.get("item")
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
         observability.log_event("payment.invoice.refused", reason=status,
                                 item_id=item_id if isinstance(item_id, str) else None)
+        analytics.capture(analytics.Event.SHOP_PURCHASE_REFUSED, user_id=user_id, properties={
+            "surface": "miniapp", "reason": status, "success": False,
+            "item_id": item_id if isinstance(item_id, str) else None,
+        })
         return {"status": status}
 
     item = shop.get_item(item_id)
     name, description = shop.localize(item, _webapp_language(user_data))
+    price = shop.price_for(user_data, item)
     link = await telegram_app.bot.create_invoice_link(
         title=name,
         description=description[:255],
@@ -685,9 +713,14 @@ async def webapp_shop_buy(payload: dict = Body(default={})):
         # Le Stelle non passano da un fornitore esterno: il token e' vuoto per definizione.
         provider_token="",
         currency="XTR",
-        prices=[LabeledPrice(label=name, amount=shop.price_for(user_data, item))],
+        prices=[LabeledPrice(label=name, amount=price)],
     )
-    observability.log_event("payment.invoice.created", item_id=item_id, amount=shop.price_for(user_data, item))
+    observability.log_event("payment.invoice.created", item_id=item_id, amount=price)
+    # Intent, not completion: see successful_payment_callback (handlers/shop_handler.py) for
+    # the one authoritative `shop_purchase_completed`, common to both surfaces.
+    analytics.capture(analytics.Event.SHOP_PURCHASE_STARTED, user_id=user_id, properties={
+        "surface": "miniapp", "item_id": item_id, "item_kind": item.get("kind"), "price_stars": price,
+    })
     return {"status": "ok", "link": link}
 
 
@@ -697,9 +730,15 @@ def webapp_shop_equip(payload: dict = Body(default={})):
     solo l'utente autenticato dalla firma di initData, mai un id arrivato dal client."""
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.SHOP, user_id)
-    status = shop.equip(user_id, user_data, payload.get("item"))
+    item_id = payload.get("item")
+    status = shop.equip(user_id, user_data, item_id)
     if status != "ok":
         return {"status": status}
+    equipped_item = shop.get_item(item_id) if isinstance(item_id, str) else None
+    analytics.capture(analytics.Event.SHOP_ITEM_EQUIPPED, user_id=user_id, properties={
+        "surface": "miniapp", "item_id": item_id if isinstance(item_id, str) else None,
+        "item_kind": equipped_item.get("kind") if equipped_item else None,
+    })
     return {"status": "ok", "cosmetics": shop.appearance(
         firebase_service.get_user_data(user_id), _webapp_language(user_data)
     )}

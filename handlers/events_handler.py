@@ -17,6 +17,7 @@ from telegram.ext import ContextTypes
 
 from handlers.legend_handler import legend_keyboard
 from services import firebase_service
+from services import product_analytics as analytics
 from services.dates import to_display, today_iso
 from services.event_rules import evaluate_event_guess
 from services.guess_feedback import build_comparison, comparison_text
@@ -46,6 +47,9 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = get_event_home_message(event, lang)
     image_url = event.get("event_img") or _event_banner(event, lang)
+    analytics.capture(analytics.Event.EVENT_VIEWED, user_id=update.effective_user.id,
+                      properties={"surface": "telegram_chat", "event_code": event.get("code"),
+                                  "event_type": event.get("type", "path")})
 
     keyboard = [
         [
@@ -93,6 +97,10 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         # libero e' un tentativo su questo evento, non sulla sfida del giorno.
         if (event.get("daily_data") or {}).get(today_iso()):
             (await asyncio.to_thread(firebase_service.set_event_key, update.effective_user.id, session_key(event["code"])))
+            analytics.capture(analytics.Event.EVENT_STARTED, user_id=update.effective_user.id, properties={
+                "surface": "telegram_chat", "event_code": event.get("code"),
+                "event_type": event.get("type", "path"),
+            })
     elif data == "event_leaderboard":
         # La classifica si legge sempre fresca: e' l'unica parte dell'evento che cambia
         # mentre l'utente naviga.
@@ -307,6 +315,12 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
     bonus = 1 if (await asyncio.to_thread(firebase_service.claim_event_first_correct, event_code, day_iso)) else 0
     earned_points = today_data.get("points", 1) + bonus
     (await asyncio.to_thread(firebase_service.register_event_correct_guess, event_code, user.id, earned_points, day_iso))
+    # Authoritative and exactly once per event/day: `begin_event_attempt` above already
+    # refuses a repeat once this user has solved it (`already_guessed`).
+    analytics.capture(analytics.Event.EVENT_COMPLETED, user_id=user.id, properties={
+        "surface": "telegram_chat", "event_code": event_code, "event_type": event_type,
+        "attempts_used": attempt["attempts_used"], "bonus_awarded": bool(bonus),
+    })
 
     # Indovinata: la sessione si chiude da sola, cosi' i messaggi successivi tornano a
     # valere per la sfida del giorno senza dover ricordarsi di /today.

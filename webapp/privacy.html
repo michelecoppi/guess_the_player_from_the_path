@@ -230,8 +230,13 @@
       holders), no location, no contact list, no content from your other chats.</p>
       <p>Stars are handled entirely by Telegram: the bot only receives the transaction
       identifier and how many Stars were spent.</p>
-      <p>The mini app has no analytics and no third-party trackers. The only external script it
-      loads is Telegram's official one.</p>
+      <p>The mini app loads no third-party script other than Telegram's official one, and has
+      no session replay and no advertising trackers. Product usage analytics (which
+      screens and features are used, never your name, Telegram id or message content) may be
+      sent to PostHog under a pseudonymous identifier that cannot be traced back to your
+      Telegram account without our private key; it is off by default and, when an operator
+      turns it on, this page is updated first. See our analytics documentation for exactly
+      what is measured and what never leaves the server.</p>
     </div>
 
     <h2>4. What other players can see</h2>

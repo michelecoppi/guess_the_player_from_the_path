@@ -30,6 +30,7 @@ from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
 from handlers.feature_gate import feature_gate, flag_enabled
 from handlers.keyboards import language_for, legal_buttons
 from services import firebase_service, observability, shop
+from services import product_analytics as analytics
 from services.feature_flags import Flag
 from services.i18n import t
 
@@ -162,8 +163,9 @@ def _item_view(lang, user, item):
 @feature_gate(Flag.SHOP)
 async def shop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lang = (await asyncio.to_thread(language_for, update))
-    _, user = (await asyncio.to_thread(_user, update))
+    user_id, user = (await asyncio.to_thread(_user, update))
     text, keyboard = _main_view(lang, user)
+    analytics.capture(analytics.Event.SHOP_VIEWED, user_id=user_id, properties={"surface": "telegram_chat"})
     await update.effective_message.reply_text(text, reply_markup=keyboard, parse_mode="HTML")
 
 
@@ -194,6 +196,9 @@ async def shop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer(t(lang, "shop.error_unknown_item"), show_alert=True)
             return
         await query.answer()
+        analytics.capture(analytics.Event.SHOP_ITEM_PREVIEWED, user_id=user_id, properties={
+            "surface": "telegram_chat", "item_id": item.get("id"), "item_kind": item.get("kind"),
+        })
         text, keyboard = _item_view(lang, user, item)
         await query.edit_message_text(text, reply_markup=keyboard, parse_mode="HTML")
         return
@@ -205,6 +210,11 @@ async def shop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.answer(t(lang, f"shop.error_{status}"), show_alert=True)
             return
         await query.answer(t(lang, "shop.equipped_ok"))
+        equipped_item = shop.get_item(item_id)
+        analytics.capture(analytics.Event.SHOP_ITEM_EQUIPPED, user_id=user_id, properties={
+            "surface": "telegram_chat", "item_id": item_id,
+            "item_kind": equipped_item.get("kind") if equipped_item else None,
+        })
         # Si rilegge l'utente: il messaggio deve mostrare la maglietta sull'oggetto giusto.
         _, user = (await asyncio.to_thread(_user, update))
         text, keyboard = _item_view(lang, user, shop.get_item(item_id))
@@ -232,6 +242,7 @@ async def _send_invoice(update, context, lang, user, item_id):
 
     await query.answer()
     name, description = shop.localize(item, lang)
+    price = shop.price_for(user, item)
     await context.bot.send_invoice(
         chat_id=query.message.chat_id,
         title=name,
@@ -243,8 +254,13 @@ async def _send_invoice(update, context, lang, user, item_id):
         # non e' una configurazione che manca.
         provider_token="",
         currency=CURRENCY,
-        prices=[LabeledPrice(label=name, amount=shop.price_for(user, item))],
+        prices=[LabeledPrice(label=name, amount=price)],
     )
+    # Intent, not completion: the invoice was only offered. `shop_purchase_completed` fires
+    # once, later, only after successful_payment actually delivers (see that callback below).
+    analytics.capture(analytics.Event.SHOP_PURCHASE_STARTED, user_id=update.effective_user.id, properties={
+        "surface": "telegram_chat", "item_id": item_id, "item_kind": item.get("kind"), "price_stars": price,
+    })
 
 
 async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -271,14 +287,14 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     # non c'e' nessuno stato da riconciliare. La consegna di un pagamento gia' avvenuto
     # (successful_payment), i rimborsi e /paysupport non passano mai da questo flag.
     if not await flag_enabled(Flag.SHOP, update):
-        _precheckout_rejected(item_id, "feature_disabled")
+        _precheckout_rejected(item_id, "feature_disabled", user_id=user_id)
         await query.answer(ok=False, error_message=t(lang, "feature.disabled"))
         return
 
     user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
-        _precheckout_rejected(item_id, status)
+        _precheckout_rejected(item_id, status, user_id=user_id)
         await query.answer(ok=False, error_message=t(lang, f"shop.error_{status}"))
         return
 
@@ -288,12 +304,12 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     if query.currency != CURRENCY or query.total_amount != expected or (quote and (
         quote["price"] != expected or set(quote["granted"]) != missing
     )):
-        _precheckout_rejected(item_id, "price_changed")
+        _precheckout_rejected(item_id, "price_changed", user_id=user_id)
         await query.answer(ok=False, error_message=t(lang, "shop.error_price_changed"))
         return
     reservation = (await asyncio.to_thread(firebase_service.reserve_checkout, user_id, query.id, (user_data.get("cosmetics") or {}).get("owned", [])))
     if reservation != "ok":
-        _precheckout_rejected(item_id, reservation)
+        _precheckout_rejected(item_id, reservation, user_id=user_id)
         await query.answer(ok=False, error_message=t(lang, f"shop.error_{reservation}"))
         return
     await query.answer(ok=True)
@@ -301,9 +317,13 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
                             amount=query.total_amount)
 
 
-def _precheckout_rejected(item_id, reason):
+def _precheckout_rejected(item_id, reason, user_id=None):
     # Rifiuti commerciali attesi (gia' posseduto, prezzo cambiato): INFO, mai Sentry.
     observability.log_event("payment.precheckout.rejected", component="payment", item_id=item_id, reason=reason)
+    if user_id is not None:
+        analytics.capture(analytics.Event.SHOP_PURCHASE_REFUSED, user_id=user_id, properties={
+            "item_id": item_id, "reason": reason, "success": False,
+        })
 
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -339,8 +359,14 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         op["outcome"] = "delivered" if delivered else "duplicate"
     if not delivered:
         # Update rispedito da Telegram: era gia' consegnato, e un secondo "grazie" farebbe
-        # solo pensare a un secondo addebito.
+        # solo pensare a un secondo addebito. Same guard for analytics: `shop_purchase_completed`
+        # means successfully delivered/idempotently recorded, never a duplicate replay.
         return
+
+    analytics.capture(analytics.Event.SHOP_PURCHASE_COMPLETED, user_id=user_id, properties={
+        "item_id": item_id, "item_kind": item.get("kind"), "price_stars": payment.total_amount,
+        "success": True,
+    })
 
     name, _ = shop.localize(item, lang)
     await update.effective_message.reply_text(

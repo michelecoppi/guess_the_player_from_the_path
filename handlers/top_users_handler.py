@@ -13,6 +13,7 @@ from telegram.ext import ContextTypes
 
 from handlers.feature_gate import feature_gate
 from services import firebase_service, shop
+from services import product_analytics as analytics
 from services.feature_flags import Flag
 from services.i18n import resolve_language, t
 
@@ -71,6 +72,8 @@ async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     fallback_lang = resolve_language(getattr(update.effective_user, "language_code", None))
     message = (await asyncio.to_thread(_leaderboard_for, "global", telegram_id, fallback_lang=fallback_lang))
+    analytics.capture(analytics.Event.LEADERBOARD_VIEWED, user_id=telegram_id,
+                      properties={"surface": "telegram_chat", "scope": "global"})
     await update.effective_message.reply_text(message, parse_mode=ParseMode.HTML, reply_markup=_keyboard("global", fallback_lang))
 
 
@@ -83,5 +86,7 @@ async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     view = "monthly" if query.data == "show_monthly" else "global"
     message = (await asyncio.to_thread(_leaderboard_for, view, telegram_id, fallback_lang=fallback_lang))
+    analytics.capture(analytics.Event.LEADERBOARD_VIEWED, user_id=telegram_id,
+                      properties={"surface": "telegram_chat", "scope": view})
 
     await query.edit_message_text(message, parse_mode=ParseMode.HTML, reply_markup=_keyboard(view, fallback_lang))

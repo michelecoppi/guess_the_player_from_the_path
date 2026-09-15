@@ -109,7 +109,7 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
         await message.reply_text(t(lang, "common.no_challenge"))
         return
 
-    result = (await asyncio.to_thread(game.play_daily, user_id, user_data, user_answer, first_name=update.effective_user.first_name, challenge=challenge))
+    result = (await asyncio.to_thread(game.play_daily, user_id, user_data, user_answer, first_name=update.effective_user.first_name, challenge=challenge, surface="telegram_chat"))
 
     if result["status"] == "no_challenge":
         await message.reply_text(t(lang, "common.no_challenge"))
