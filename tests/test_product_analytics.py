@@ -28,7 +28,7 @@ def enable(monkeypatch, salt="analytics-salt-" + "x" * 20, **overrides):
     fake_client = MagicMock()
     monkeypatch.setattr(analytics, "_build_client", lambda settings: fake_client)
     settings = analytics.Settings(
-        enabled=True, api_key="phc_test", host="https://analytics.invalid",
+        enabled=True, api_key="phc_test", host="https://analytics.invalid",  # pragma: allowlist secret
         environment=overrides.pop("environment", "production"),
         release=overrides.pop("release", "1.2.3"),
         revision=overrides.pop("revision", "guess-the-player-00099-abc"),
@@ -56,14 +56,14 @@ def test_local_and_test_environments_default_off_even_with_a_key():
 
 def test_explicit_enable_wins_over_the_local_default(monkeypatch):
     settings = analytics.Settings.from_env(
-        {"POSTHOG_API_KEY": "phc_x", "PYTEST_CURRENT_TEST": "x", "PRODUCT_ANALYTICS_ENABLED": "true"}
+        {"POSTHOG_API_KEY": "phc_x", "PYTEST_CURRENT_TEST": "x", "PRODUCT_ANALYTICS_ENABLED": "true"}  # pragma: allowlist secret
     )
     assert settings.enabled is True
 
 
 def test_explicit_disable_wins_even_in_production():
     settings = analytics.Settings.from_env(
-        {"POSTHOG_API_KEY": "phc_x", "K_SERVICE": "guess-the-player", "PRODUCT_ANALYTICS_ENABLED": "false"}
+        {"POSTHOG_API_KEY": "phc_x", "K_SERVICE": "guess-the-player", "PRODUCT_ANALYTICS_ENABLED": "false"}  # pragma: allowlist secret
     )
     assert settings.environment == "production"
     assert settings.enabled is False

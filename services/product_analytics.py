@@ -46,7 +46,7 @@ from services import observability, version
 _logger = logging.getLogger("gtp.analytics")
 
 ENV_ENABLED = "PRODUCT_ANALYTICS_ENABLED"
-ENV_API_KEY = "POSTHOG_API_KEY"
+ENV_API_KEY = "POSTHOG_API_KEY"  # pragma: allowlist secret
 ENV_HOST = "POSTHOG_HOST"
 ENV_ENVIRONMENT = "PRODUCT_ANALYTICS_ENVIRONMENT"
 ENV_SALT = "PRODUCT_ANALYTICS_SALT"
