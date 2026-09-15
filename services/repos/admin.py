@@ -1,5 +1,6 @@
 """Firestore admin repository. Shared dependencies live in the compatibility facade."""
 import logging
+from datetime import datetime, timezone
 
 from firebase_admin import firestore
 from google.api_core.exceptions import GoogleAPICallError
@@ -53,6 +54,24 @@ def get_admin_overview():
             fs.db.collection("work_receipts").where("status", "==", "uncertain")
         ),
     }
+
+
+def list_failed_jobs(limit=50):
+    """Job bloccati: `work_receipts.claim()` (services/work_receipts.py) ha lasciato la
+    lease scaduta senza che `finish()` sia mai arrivato - il segnale di un job o una pagina
+    di broadcast che si e' interrotta a meta'."""
+    from services import firebase_service as fs
+    query = fs.db.collection("work_receipts").where("status", "==", "uncertain").limit(limit)
+    jobs = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        expires = data.get("expires")
+        jobs.append({
+            "key": doc.id,
+            "serial_key": data.get("serial_key"),
+            "expired_at": datetime.fromtimestamp(expires, tz=timezone.utc) if expires else None,
+        })
+    return jobs
 
 
 def get_blocked_player_ids():
