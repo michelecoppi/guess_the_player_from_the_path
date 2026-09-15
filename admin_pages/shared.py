@@ -273,6 +273,11 @@ def cached_leagues(limit):
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_groups(limit):
+    return firebase_service.list_groups(limit=limit)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_dataset_report(blocked_ids):
     return build_report(exclude_ids=list(blocked_ids))
 

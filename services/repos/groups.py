@@ -134,3 +134,35 @@ def get_group_leaderboard(chat_id, limit=10):
     )
     return [doc.to_dict() for doc in query.stream()]
 
+
+def list_groups(limit=50):
+    """I gruppi con un round di sfida aperto o passato, dal piu' recente: e' la sola vista
+    che un admin ha su questa modalita', senza query dirette a Firestore."""
+    from services import firebase_service as fs
+    query = fs.db.collection(fs.GROUP_ROUNDS_COLLECTION).order_by(
+        "started_at", direction=firestore.Query.DESCENDING
+    ).limit(limit)
+    groups = []
+    for doc in query.stream():
+        data = doc.to_dict()
+        data.setdefault("chat_id", doc.id)
+        groups.append(data)
+    return groups
+
+
+def delete_group_round(chat_id):
+    """Chiude un gruppo per moderazione: elimina il round corrente e la classifica dei
+    partecipanti. Il prossimo /sfida nel gruppo ne apre uno nuovo da zero."""
+    from services import firebase_service as fs
+    ref = fs.group_round_ref(chat_id)
+    if not ref.get().exists:
+        return False
+
+    batch = fs.db.batch()
+    for player_doc in ref.collection(fs.GROUP_PLAYERS_SUBCOLLECTION).stream():
+        batch.delete(player_doc.reference)
+    batch.delete(ref)
+    batch.commit()
+    logging.info(f"[GROUP] Round e classifica del gruppo {chat_id} eliminati da admin")
+    return True
+

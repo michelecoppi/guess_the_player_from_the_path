@@ -235,13 +235,16 @@ from services.repos.events import update_users_trophies as update_users_trophies
 from services.repos.groups import add_group_points as add_group_points
 from services.repos.groups import begin_group_attempt as begin_group_attempt
 from services.repos.groups import claim_group_round as claim_group_round
+from services.repos.groups import delete_group_round as delete_group_round
 from services.repos.groups import get_group_leaderboard as get_group_leaderboard
 from services.repos.groups import get_group_round as get_group_round
 from services.repos.groups import group_player_ref as group_player_ref
 from services.repos.groups import group_round_ref as group_round_ref
+from services.repos.groups import list_groups as list_groups
 from services.repos.groups import start_group_round as start_group_round
 from services.repos.leagues import add_points_to_leagues as add_points_to_leagues
 from services.repos.leagues import create_league as create_league
+from services.repos.leagues import delete_league as delete_league
 from services.repos.leagues import get_league as get_league
 from services.repos.leagues import get_league_leaderboard as get_league_leaderboard
 from services.repos.leagues import join_league as join_league
