@@ -176,6 +176,10 @@ def _fake_firestore():
     }
     for name, stub in stubs.items():
         setattr(firebase_service, name, stub)
+    # Feature flag (#51): niente documento, quindi i default del repository (tutto acceso),
+    # senza che il servizio provi a leggere Firestore.
+    from services import feature_flags
+    feature_flags.set_service(feature_flags.FeatureFlagService(lambda: None))
 
 
 _fake_firestore()

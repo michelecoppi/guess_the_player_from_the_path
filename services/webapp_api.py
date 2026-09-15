@@ -12,12 +12,13 @@ strumenti di sviluppo puo' leggere quello che gli mandiamo.
 Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.py), mai il
 client: nessuna di queste funzioni riceve un id da fuori.
 """
-from services import firebase_service, game, shop, trophies
+from services import feature_flags, firebase_service, game, shop, trophies
 from services.career_order import order_career
 from services.content_i18n import localize_career
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
 from services.dates import normalize_day, to_display, today_iso
 from services.difficulty import points_for_difficulty
+from services.feature_flags import Flag
 from services.hints import MAX_HINTS, build_hints
 from services.i18n import DEFAULT_LANGUAGE, difficulty_label
 from services.player_pool import get_player_by_id
@@ -43,6 +44,7 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
 
     day_iso = day_iso or today_iso()
     lang = lang or user.get("language") or DEFAULT_LANGUAGE
+    features = feature_flags.resolved_features(user_id=user_id)
 
     profile = {
         "language": lang,
@@ -59,10 +61,15 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
                      "max": trophies.MAX_PINNED},
         "today": _today_summary(user, day_iso, lang),
         "distribution": _distribution(user),
+        # Feature flags (#51) risolti per chi guarda: solo booleani, mai regole, liste di
+        # utenti/gruppi o percentuali. La pagina li usa per nascondere; decide il server.
+        "features": features,
     }
     # Wrong guesses and hints do not change standings; refresh only game state.
     if include_social:
-        profile["leaderboard"] = _leaderboard(user_id)
+        # Classifica spenta: lista vuota, stessa forma per i client gia' in giro. Punti e
+        # posizioni non si toccano, semplicemente non si leggono.
+        profile["leaderboard"] = _leaderboard(user_id) if features[Flag.LEADERBOARD.value] else []
         profile["leagues"] = _leagues(user, user_id)
     return profile
 
@@ -317,6 +324,12 @@ def build_archive_challenge(user_id, day_iso, lang=DEFAULT_LANGUAGE):
 # Un tentativo dalla mini app
 # ---------------------------------------------------------------------------
 
+def is_daily_play(day, today=None):
+    """Un tentativo senza `day`, o con la data di oggi, e' la sfida del giorno; altrimenti e'
+    l'archivio. Una sola definizione, usata da `play` e dal flag `daily_ui` in bot.py."""
+    return not day or day == (today or today_iso())
+
+
 def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None):
     """Un tentativo: la sfida di oggi, oppure una giornata passata se arriva `day`.
 
@@ -325,7 +338,7 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
     condividere quando la partita si chiude."""
     today = today or today_iso()
     symbols = shop.squares_symbols(user_data)
-    if day and day != today:
+    if not is_daily_play(day, today):
         result = game.play_archive(user_id, day, answer, MAX_ARCHIVE_ATTEMPTS)
         return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True, symbols=symbols)
 

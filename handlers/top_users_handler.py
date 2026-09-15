@@ -11,7 +11,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from handlers.feature_gate import feature_gate
 from services import firebase_service, shop
+from services.feature_flags import Flag
 from services.i18n import resolve_language, t
 
 FIELD_BY_VIEW = {"global": "points_totali", "monthly": "monthly_points"}
@@ -64,6 +66,7 @@ def _keyboard(view, lang="it"):
     return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "top.button_global"), callback_data="show_global")]])
 
 
+@feature_gate(Flag.LEADERBOARD)
 async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     fallback_lang = resolve_language(getattr(update.effective_user, "language_code", None))
@@ -71,6 +74,7 @@ async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(message, parse_mode=ParseMode.HTML, reply_markup=_keyboard("global", fallback_lang))
 
 
+@feature_gate(Flag.LEADERBOARD)
 async def leaderboard_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     telegram_id = query.from_user.id

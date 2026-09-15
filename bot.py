@@ -11,7 +11,7 @@ from pathlib import Path
 from time import perf_counter
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from telegram import LabeledPrice, MenuButtonWebApp, Update, WebAppInfo
 from telegram.ext import (
@@ -92,6 +92,7 @@ from handlers.top_users_handler import leaderboard_callback, top
 from handlers.training_handler import training, training_callback
 from services import (
     alerts,
+    feature_flags,
     firebase_service,
     game,
     monthly_closure,
@@ -104,6 +105,7 @@ from services import (
 )
 from services import leagues as league_rules
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
+from services.feature_flags import FeatureDisabled, Flag
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 from services.rate_limit import TokenBucket
 from services.share import card_image
@@ -113,6 +115,7 @@ from services.webapp_api import (
     build_calendar,
     build_profile,
     build_public_profile,
+    is_daily_play,
     play,
     search_public_profiles,
 )
@@ -240,6 +243,27 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(FeatureDisabled)
+async def feature_disabled_response(request: Request, exc: FeatureDisabled):
+    """Un flag spento (#51) e' un rifiuto previsto, non un guasto: risposta stabile, niente
+    traceback e niente Sentry (l'eccezione e' gestita, l'integrazione non la vede). 403 come
+    gli altri "adesso non si puo'"; `code` e' il contratto per il client, `detail` resta una
+    stringa come nel resto delle API."""
+    return JSONResponse(status_code=403, content={
+        "detail": "feature_disabled", "code": FeatureDisabled.code, "feature": exc.flag.value,
+    })
+
+
+def _require_feature(flag, user_id):
+    """Solo dopo `_webapp_user`: chi non e' autenticato riceve 401, non lo stato dei flag."""
+    feature_flags.ensure_enabled(flag, user_id=user_id)
+
+
+# Le modalita' di /app/api/arena e il flag che le governa. `events` e' l'esperienza eventi
+# della mini app (services/app_events.py), non gli eventi in chat ne' la loro generazione.
+_ARENA_MODE_FLAGS = {"training": Flag.ARENA, "duel": Flag.ARENA, "events": Flag.EVENTS_V2}
 
 
 # Il sottosistema a cui appartiene una richiesta, per i log e per i tag di Sentry. Le pagine
@@ -526,6 +550,9 @@ def webapp_guess(payload: dict = Body(default={})):
     Le regole sono quelle di services/game.py, cioe' **le stesse** che applica la chat: qui
     non si decide niente, si traduce solo il risultato in JSON."""
     user_id, user_data = _webapp_user(payload)
+    if is_daily_play(payload.get("day")):
+        # L'archivio passa di qui ma non e' la superficie Daily: resta giocabile.
+        _require_feature(Flag.DAILY_UI, user_id)
     answer = (payload.get("answer") or "").strip()
     if not answer:
         raise HTTPException(status_code=400, detail="risposta vuota")
@@ -540,6 +567,7 @@ def webapp_guess(payload: dict = Body(default={})):
 def webapp_hint(payload: dict = Body(default={})):
     """Un indizio sulla sfida di oggi, allo stesso prezzo che si paga in chat."""
     user_id, user_data = _webapp_user(payload)
+    _require_feature(Flag.HINTS, user_id)
     return game.take_hint(user_id, _webapp_language(user_data))
 
 
@@ -550,6 +578,10 @@ def webapp_arena(payload: dict = Body(default={})):
     user_id, user = _webapp_user(payload, cost=2)
     lang = _webapp_language(user)
     mode, action = payload.get("mode"), payload.get("action", "get")
+    if mode in _ARENA_MODE_FLAGS:
+        # Spento: nessuna lettura ne' mossa nuova. Duelli e sessioni restano intatti su
+        # Firestore e ricompaiono tali e quali quando il flag si riaccende.
+        _require_feature(_ARENA_MODE_FLAGS[mode], user_id)
     try:
         if mode == "training":
             return arena.training(user_id, action, payload.get("answer"), payload.get("revision"), lang)
@@ -620,7 +652,8 @@ def webapp_league(payload: dict = Body(default={})):
 @app.post("/app/api/shop")
 def webapp_shop(payload: dict = Body(default={})):
     """La vetrina: la **stessa** che disegna il comando /shop (services/shop.py)."""
-    _, user_data = _webapp_user(payload)
+    user_id, user_data = _webapp_user(payload)
+    _require_feature(Flag.SHOP, user_id)
     return shop.catalogue_for(user_data, _webapp_language(user_data))
 
 
@@ -632,6 +665,10 @@ async def webapp_shop_buy(payload: dict = Body(default={})):
     oggetto vuole, e quanto costa lo dice il catalogo. Se il prezzo arrivasse dal client,
     chiunque potrebbe comprare la collezione completa per una Stella."""
     user_id, user_data = await run_in_threadpool(_webapp_user, payload)
+    if not await run_in_threadpool(feature_flags.is_enabled, Flag.SHOP, user_id=user_id):
+        # Prima di creare la fattura: nessun link, quindi nessun addebito possibile.
+        observability.log_event("payment.invoice.refused", reason="feature_disabled")
+        raise FeatureDisabled(Flag.SHOP)
     item_id = payload.get("item")
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
@@ -659,6 +696,7 @@ def webapp_shop_equip(payload: dict = Body(default={})):
     """Indossa un oggetto gia' posseduto. La regola sta in services/shop.py: qui si passa
     solo l'utente autenticato dalla firma di initData, mai un id arrivato dal client."""
     user_id, user_data = _webapp_user(payload)
+    _require_feature(Flag.SHOP, user_id)
     status = shop.equip(user_id, user_data, payload.get("item"))
     if status != "ok":
         return {"status": status}
@@ -670,6 +708,7 @@ def webapp_shop_equip(payload: dict = Body(default={})):
 @app.post("/app/api/shop/look")
 def webapp_shop_look(payload: dict = Body(default={})):
     user_id, user_data = _webapp_user(payload)
+    _require_feature(Flag.SHOP, user_id)
     action = payload.get("action")
     name = payload.get("name")
     if action == "save":
@@ -687,6 +726,7 @@ def webapp_shop_look(payload: dict = Body(default={})):
 
 @app.post("/app/api/shop/history")
 def webapp_shop_history(payload: dict = Body(default={})):
+    # Mai dietro il flag `shop`: e' da qui che si recupera il charge id per un rimborso.
     user_id, user_data = _webapp_user(payload)
     lang = _webapp_language(user_data)
     rows = []

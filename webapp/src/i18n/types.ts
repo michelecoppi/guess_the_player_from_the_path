@@ -16,6 +16,8 @@ export interface TranslationSchema {
     streak: string;
     anonymous: string;
     trophiesCount: PluralForms;
+    /** Server refused with FEATURE_DISABLED (#51). */
+    featureDisabled: string;
   };
   nav: {
     play: string;
@@ -76,6 +78,7 @@ export interface TranslationSchema {
     notRegistered: string;
   };
   arena: {
+    feature_disabled: string;
     headline: string;
     intro: string;
     duel: string;
@@ -179,6 +182,7 @@ export interface TranslationSchema {
     featureAction: string;
   };
   events: {
+    feature_disabled: string;
     title: string;
     empty: string;
     emptyDesc: string;
@@ -218,6 +222,7 @@ export interface TranslationSchema {
     minCorrect: string;
   };
   training: {
+    feature_disabled: string;
     title: string;
     tag: string;
     desc: string;

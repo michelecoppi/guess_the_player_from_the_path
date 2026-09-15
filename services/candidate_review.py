@@ -106,6 +106,9 @@ class ReviewStatus(str, Enum):
     PERSISTENCE_FAILURE = "persistence_failure"
     FORBIDDEN_FIELD = "forbidden_field"
     SOURCE_ERROR = "source_error"
+    # Il flag operativo `player_pipeline` (#51) e' spento: nessuna fonte esterna viene
+    # interrogata. Approvazioni, rifiuti e merge dei candidati gia' presenti restano possibili.
+    FEATURE_DISABLED = "feature_disabled"
 
 
 @dataclass
@@ -603,6 +606,13 @@ def _default_adapter_resolver(source: str, source_id: str) -> Optional[Any]:
     return None
 
 
+def _pipeline_flag_enabled() -> bool:
+    """Il flag `player_pipeline` (#51). Senza Firestore raggiungibile vale il default del
+    repository (acceso), o l'ultima configurazione valida letta."""
+    from services import feature_flags
+    return feature_flags.is_enabled(feature_flags.Flag.PLAYER_PIPELINE)
+
+
 # ---------------------------------------------------------------------------
 # CandidateReviewService
 # ---------------------------------------------------------------------------
@@ -620,6 +630,7 @@ class CandidateReviewService:
         admin_ids: Optional[list[int]] = None,
         current_year_provider: Optional[Callable[[], int]] = None,
         adapter_resolver: Optional[Callable[[str, str], Any]] = None,
+        ingestion_enabled: Optional[Callable[[], bool]] = None,
     ) -> None:
         effective_repo = candidate_repo if candidate_repo is not None else repo
         if effective_repo is None:
@@ -643,6 +654,7 @@ class CandidateReviewService:
 
         self._current_year_provider = current_year_provider
         self._adapter_resolver = adapter_resolver or _default_adapter_resolver
+        self._ingestion_enabled = ingestion_enabled or _pipeline_flag_enabled
 
     def _verify_auth(self, admin: Optional[AdminIdentity]) -> AdminIdentity:
         """Verifica che l'amministratore sia valido e autorizzato."""
@@ -1579,6 +1591,17 @@ class CandidateReviewService:
                 status=ReviewStatus.STALE_REVISION,
                 candidate_id=candidate_id,
                 message=f"Conflitto di revisione per '{candidate_id}': attesa {expected_revision}, attuale {candidate.revision}.",
+            )
+
+        # Nuova acquisizione da fonti esterne: e' l'ingresso della pipeline che il flag
+        # `player_pipeline` governa. Si controlla prima di qualunque adapter o scrittura, cosi'
+        # il candidato resta esattamente com'era e si puo' ritentare quando il flag torna acceso.
+        if not self._ingestion_enabled():
+            return ReviewResult(
+                success=False,
+                status=ReviewStatus.FEATURE_DISABLED,
+                candidate_id=candidate_id,
+                message="Ingestione da fonti esterne temporaneamente disattivata (flag 'player_pipeline').",
             )
 
         # --- Source selection logic ---

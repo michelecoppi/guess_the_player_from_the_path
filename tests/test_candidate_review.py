@@ -1813,3 +1813,57 @@ def test_retry_without_override_after_recovery_resolves_updated_source(temp_env,
     assert res2.projection.source_id == "Q9999"
 
 
+
+
+# ---------------------------------------------------------------------------
+# Feature flag `player_pipeline` (#51)
+# ---------------------------------------------------------------------------
+
+def _pipeline_off():
+    from services import feature_flags
+    feature_flags.set_service(feature_flags.FeatureFlagService(
+        lambda: {"schema_version": 1, "revision": 1, "flags": {"player_pipeline": {"enabled": False}}}, ttl=300))
+
+
+def test_retry_ingestion_is_refused_without_calling_any_source_when_the_pipeline_is_disabled(temp_env):
+    _pipeline_off()
+    service, repo, admin = temp_env["service"], temp_env["repo"], temp_env["admin"]
+    repo.save(create_sample_candidate("cand_flag_off", "Paused Player", state=CandidateState.REVIEW_REQUIRED, career=[]))
+    before = repo.get_by_id("cand_flag_off").to_dict()
+
+    def fetcher(source, source_id):
+        pytest.fail("no external source may be contacted while player_pipeline is disabled")
+
+    result = service.retry_ingestion(admin, "cand_flag_off", expected_revision=1, adapter_fetcher=fetcher)
+    assert result.success is False
+    assert result.status == ReviewStatus.FEATURE_DISABLED
+    assert repo.get_by_id("cand_flag_off").to_dict() == before
+
+
+def test_retry_ingestion_still_checks_authorization_before_the_flag(temp_env):
+    _pipeline_off()
+    temp_env["repo"].save(create_sample_candidate("cand_flag_auth", "Someone", state=CandidateState.REVIEW_REQUIRED))
+    with pytest.raises(ReviewForbiddenError):
+        temp_env["service"].retry_ingestion(temp_env["stranger"], "cand_flag_auth", expected_revision=1)
+
+
+def test_existing_candidates_can_still_be_approved_and_rejected_with_the_pipeline_disabled(temp_env):
+    _pipeline_off()
+    service, repo, admin = temp_env["service"], temp_env["repo"], temp_env["admin"]
+    repo.save(create_sample_candidate("cand_flag_ok", "Alessandro Del Piero", state=CandidateState.READY))
+    repo.save(create_sample_candidate("cand_flag_no", "Wrong Person", state=CandidateState.REVIEW_REQUIRED))
+
+    assert service.approve(admin, "cand_flag_ok", expected_revision=1).status == ReviewStatus.SUCCESS
+    rejected = service.reject_candidate(admin, "cand_flag_no", expected_revision=1, reason="dati errati")
+    assert rejected.success is True
+
+
+def test_an_injected_gate_overrides_the_global_flag(temp_env, tmp_path):
+    service = CandidateReviewService(
+        candidate_repo=temp_env["repo"], players_path=temp_env["service"]._players_path,
+        backup_dir=tmp_path / "bk", admin_ids=[100], ingestion_enabled=lambda: False,
+    )
+    temp_env["repo"].save(create_sample_candidate("cand_flag_inject", "Injected", state=CandidateState.REVIEW_REQUIRED))
+    result = service.retry_ingestion(temp_env["admin"], "cand_flag_inject", expected_revision=1,
+                                     adapter_fetcher=lambda s, i: pytest.fail("gated"))
+    assert result.status == ReviewStatus.FEATURE_DISABLED

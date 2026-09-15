@@ -1,6 +1,6 @@
-import { ApiClient, api } from "@/api/client";
+import { ApiClient, ApiError, api } from "@/api/client";
 import { getTelegramWebApp } from "@/telegram/webapp";
-import { setLanguage } from "@/i18n";
+import { setLanguage, t } from "@/i18n";
 import {
   fetchDailyProfile,
   submitDailyGuess,
@@ -195,7 +195,9 @@ export class DailyController {
       if (currentSeq === this.requestSeq) {
         this.updateState({
           status: "ready",
-          errorMessage: err?.detail || err?.message || "Errore durante l'invio della risposta.",
+          errorMessage: err instanceof ApiError && err.isFeatureDisabled
+            ? t("common.featureDisabled")
+            : err?.detail || err?.message || "Errore durante l'invio della risposta.",
         });
       }
       return null;
@@ -219,6 +221,10 @@ export class DailyController {
         await this.loadDailyData({ lightweight: true });
       }
     } catch (err: any) {
+      if (err instanceof ApiError && err.isFeatureDisabled) {
+        this.updateState({ errorMessage: t("common.featureDisabled") });
+        return;
+      }
       console.warn("Hint error:", err);
     }
   }

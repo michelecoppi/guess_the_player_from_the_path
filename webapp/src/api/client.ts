@@ -1,11 +1,15 @@
 import { clearResolvedAppearance } from "@/appearance";
-import type { ApiProfileResponse, ApiPublicProfileResponse, ApiRequestPayload } from "./types";
+import { FEATURE_DISABLED } from "./types";
+import type { ApiProfileResponse, ApiPublicProfileResponse, ApiRequestPayload, FeatureFlagKey } from "./types";
 import { getInitData } from "@/telegram/webapp";
 
 export class ApiError extends Error {
   status: number;
   data?: unknown;
   detail?: string;
+  /** Stable machine code when the server sends one (e.g. `FEATURE_DISABLED`). */
+  code?: string;
+  feature?: FeatureFlagKey;
 
   constructor(message: string, status: number, data?: unknown) {
     super(message);
@@ -20,6 +24,16 @@ export class ApiError extends Error {
     ) {
       this.detail = (data as { detail: string }).detail;
     }
+    if (data && typeof data === "object") {
+      const body = data as { code?: unknown; feature?: unknown };
+      if (typeof body.code === "string") this.code = body.code;
+      if (typeof body.feature === "string") this.feature = body.feature as FeatureFlagKey;
+    }
+  }
+
+  /** The server refused because a feature flag is off for this user (#51). */
+  get isFeatureDisabled(): boolean {
+    return this.code === FEATURE_DISABLED;
   }
 }
 
