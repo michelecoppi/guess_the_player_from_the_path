@@ -67,6 +67,7 @@ from admin_pages import (
     leagues,
     overview,
     player_review,
+    shop,
     users,
 )
 from admin_pages.shared import CACHE_TTL_SECONDS, ITALY_TZ, firebase_service, render_flash, today_iso
@@ -87,6 +88,7 @@ PAGES = [
     "👤 Utenti",
     "👥 Gruppi",
     "🏆 Leghe",
+    "🛍️ Shop & Referral",
     "📚 Dataset",
     "🔎 Review giocatori",
     "🚫 Giocatori sospesi",
@@ -122,6 +124,7 @@ RENDERERS = {
     '👤 Utenti': users.render,
     '👥 Gruppi': groups.render,
     '🏆 Leghe': leagues.render,
+    '🛍️ Shop & Referral': shop.render,
     '📚 Dataset': dataset.render,
     '🔎 Review giocatori': player_review.render,
     '🚫 Giocatori sospesi': blocked.render,
