@@ -111,7 +111,19 @@ function themeShot(style: Record<string, unknown>): string {
   `;
 }
 
-function shopArtwork(item: ShopCosmeticItem): string {
+interface ShopArtworkOptions {
+  /**
+   * Whether to render the wearer's own avatar/name inside the artwork. The try-on bar
+   * already shows the wearer's identity once (with this item applied) in its own
+   * "preview-person" panel, so its product-detail panel renders artwork with this off
+   * to avoid showing that same avatar/name a second time (#90). The catalogue grid has
+   * no separate identity panel, so its cells keep the default (identity shown).
+   */
+  showIdentity?: boolean;
+}
+
+function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): string {
+  const showIdentity = opts.showIdentity !== false;
   const kind = item.kind;
   const style = item.style || {};
   const caption = `<div class="preview-caption">${escapeHtml(t("shop.tryOn"))}</div>`;
@@ -128,10 +140,13 @@ function shopArtwork(item: ShopCosmeticItem): string {
 
   if (kind === "frame") {
     const ring = typeof style.ring === "string" ? `background:${style.ring}` : undefined;
+    const identityHtml = showIdentity
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+         <div class="preview-name">${escapeHtml(previewDisplayName())}</div>`
+      : "";
     return `
       <div class="shop-stage">
-        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
-        <div class="preview-name">${escapeHtml(previewDisplayName())}</div>
+        ${identityHtml}
         ${caption}
       </div>
     `;
@@ -141,7 +156,7 @@ function shopArtwork(item: ShopCosmeticItem): string {
     return `
       <div class="shop-stage">
         <div class="emoji-preview">${escapeHtml((style.emoji as string) || "—")}</div>
-        <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml((style.emoji as string) || "")}</div>
+        ${showIdentity ? `<div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml((style.emoji as string) || "")}</div>` : ""}
         ${caption}
       </div>
     `;
@@ -165,7 +180,7 @@ function shopArtwork(item: ShopCosmeticItem): string {
     const color = (style.color as string) || "var(--muted)";
     return `
       <div class="shop-stage">
-        <div class="preview-name">${escapeHtml(previewDisplayName())}</div>
+        ${showIdentity ? `<div class="preview-name">${escapeHtml(previewDisplayName())}</div>` : ""}
         <div class="title-tag" style="color:${escapeHtml(color)}">${escapeHtml(label)}</div>
         ${caption}
       </div>
@@ -178,10 +193,14 @@ function shopArtwork(item: ShopCosmeticItem): string {
       <div class="shop-stage">
         ${caption}
         <div class="emoji-preview number-glyph">${escapeHtml(num)}</div>
-        <div class="preview-name">
-          <span class="shirt">${escapeHtml(num)}</span>
-          ${escapeHtml(previewDisplayName())}
-        </div>
+        ${
+          showIdentity
+            ? `<div class="preview-name">
+                 <span class="shirt">${escapeHtml(num)}</span>
+                 ${escapeHtml(previewDisplayName())}
+               </div>`
+            : ""
+        }
       </div>
     `;
   }
@@ -234,11 +253,17 @@ function shopArtwork(item: ShopCosmeticItem): string {
     const wrong = (squares.wrong as string) || "";
     const unused = (squares.unused as string) || "";
 
+    const identityHtml = showIdentity
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+         <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml(badgeEmoji)}</div>`
+      : badgeEmoji
+        ? `<div class="emoji-preview">${escapeHtml(badgeEmoji)}</div>`
+        : "";
+
     return `
       <div class="shop-stage" style="background-color:${escapeHtml(bg)};background-image:${escapeHtml(pattern)};color:${escapeHtml(text)}">
         ${caption}
-        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
-        <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml(badgeEmoji)}</div>
+        ${identityHtml}
         ${titleLabel ? `<div class="title-tag" style="color:${escapeHtml(titleColor)}">${escapeHtml(titleLabel)}</div>` : ""}
         ${correct ? `<div class="emoji-preview">${escapeHtml(wrong + correct + unused)}</div>` : ""}
       </div>
@@ -473,7 +498,7 @@ export function renderPreviewBar(state: ShopState): string {
       </div>
       </div>
       <div class="preview-product">
-      <div class="preview-item-detail">${shopArtwork(item)}</div>
+      <div class="preview-item-detail">${shopArtwork(item, { showIdentity: false })}</div>
       <h3 class="preview-product-name">${escapeHtml(item.name)}</h3>
       <p class="preview-description">${escapeHtml(item.description)}</p>
       ${item.owned && item.equippable ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${item.equipped || state.equippingItemId || state.lookMutation ? 'disabled' : ''}>${escapeHtml(t(item.equipped ? 'shop.worn' : 'shop.wear'))}</button>` : ''}
