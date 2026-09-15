@@ -10,6 +10,7 @@ import { leaderboardFixture, shopFixture, profileFixture } from '../../webapp/sr
 import { createPreviewAppearance } from '../../webapp/src/features/shop/preview';
 import { appearanceFixtures } from '../../webapp/src/prototypes/appearance-fixtures';
 import { setLanguage } from '../../webapp/src/i18n';
+import type { ShopCosmeticItem } from '../../webapp/src/features/shop/types';
 
 test('ranking search starts at two characters, debounces and discards stale responses', async () => {
   const calls: Array<{ query: string; resolve: (value: unknown) => void }> = [];
@@ -97,4 +98,82 @@ test('wardrobe honors non-equippable ownership and preview keeps identity and pr
   assert.ok(html.includes('class="preview-product"'));
   state.lookMutation = 'wear';
   assert.match(renderPreviewBar(state), /data-equip="[^"]+" disabled/);
+});
+
+test('Shop try-on preview shows the wearer identity/avatar exactly once, not duplicated as product artwork (#90)', () => {
+  const state = shopFixture();
+  const frame = state.catalogue!.sections[0]!.items[1]!;
+  assert.equal(frame.kind, 'frame');
+
+  // The catalogue cell IS the item's own preview art — it legitimately renders one avatar.
+  const cellHtml = renderShopCell(frame, state);
+  assert.equal((cellHtml.match(/class="avatar-wrap/g) || []).length, 1);
+
+  // The try-on bar already shows the wearer's identity once, with this item applied,
+  // in its own "preview-person" panel — the product-detail panel must not repeat it.
+  state.preview = { item: frame, appearance: createPreviewAppearance(appearanceFixtures.default, frame) };
+  const previewHtml = renderPreviewBar(state);
+  assert.equal(
+    (previewHtml.match(/class="avatar-wrap/g) || []).length,
+    1,
+    'exactly one avatar (the identity panel) must render in the try-on bar',
+  );
+  assert.match(previewHtml, /class="preview-person"[\s\S]*class="avatar-wrap/, 'the single avatar belongs to preview-person');
+  assert.doesNotMatch(
+    previewHtml,
+    /class="preview-item-detail"[\s\S]*class="avatar-wrap/,
+    'the product-detail panel must not render its own avatar',
+  );
+
+  // Appearance slots stay visible without the avatar: the ring itself is still applied
+  // to the one identity avatar that remains.
+  const ringStyle = String(frame.style.ring);
+  assert.match(previewHtml, new RegExp(`class="ring[^"]*" style="background:${ringStyle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+});
+
+test('Shop try-on preview for a bundle keeps its contents preview but drops the duplicated identity (#90)', () => {
+  const bundle: ShopCosmeticItem = {
+    id: 'pack_review',
+    kind: 'bundle',
+    name: 'Collezione di revisione',
+    description: 'Un pacchetto per la prova.',
+    price: 80,
+    full_price: 100,
+    missing: [],
+    achievement: null,
+    progress: 0,
+    style: {},
+    grants: ['tema_review', 'cornice_review'],
+    owned: false,
+    equipped: false,
+    free: false,
+    featured: false,
+    equippable: true,
+    rarity: 'collector',
+    completes: [],
+    trophy: null,
+    welcome: false,
+    contents: [
+      { id: 'tema_review', kind: 'theme', name: 'Tema di revisione', description: '', price: 0, full_price: 0, missing: [], achievement: null, progress: 0, style: { bg: '#0a131e', pattern: 'none' }, grants: [], owned: false, equipped: false, free: false, featured: false, equippable: true, rarity: 'collector', completes: [], trophy: null, welcome: false },
+      { id: 'cornice_review', kind: 'frame', name: 'Cornice di revisione', description: '', price: 0, full_price: 0, missing: [], achievement: null, progress: 0, style: { ring: '#123456' }, grants: [], owned: false, equipped: false, free: false, featured: false, equippable: true, rarity: 'collector', completes: [], trophy: null, welcome: false },
+      { id: 'stella_review', kind: 'badge', name: 'Distintivo di revisione', description: '', price: 0, full_price: 0, missing: [], achievement: null, progress: 0, style: { emoji: '⭐' }, grants: [], owned: false, equipped: false, free: false, featured: false, equippable: true, rarity: 'collector', completes: [], trophy: null, welcome: false },
+    ],
+  };
+
+  const state = shopFixture();
+
+  // Catalogue cell still shows the bundle's own single avatar preview.
+  const cellHtml = renderShopCell(bundle, state);
+  assert.equal((cellHtml.match(/class="avatar-wrap/g) || []).length, 1);
+
+  state.preview = { item: bundle, appearance: createPreviewAppearance(appearanceFixtures.default, bundle) };
+  const previewHtml = renderPreviewBar(state);
+  assert.equal(
+    (previewHtml.match(/class="avatar-wrap/g) || []).length,
+    1,
+    'a bundle try-on must still show exactly one avatar (the identity panel)',
+  );
+  assert.doesNotMatch(previewHtml, /class="preview-item-detail"[\s\S]*class="avatar-wrap/);
+  // Bundle contents preview (badge glyph) still renders in the product-detail panel.
+  assert.match(previewHtml, /class="preview-item-detail"[\s\S]*⭐/);
 });
