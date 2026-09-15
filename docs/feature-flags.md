@@ -26,8 +26,9 @@ Mini App clients never read Firestore (see [`firestore.rules`](../firestore.rule
 receive only resolved booleans for the authenticated user.
 
 The document lives next to `admin_settings/dataset_overrides` (`/admin_block`), the existing
-immediate runtime switch, so it is inside the `admin_settings` collection that the weekly
-backup already exports ([operations.md](operations.md)).
+immediate runtime switch. The backup inventory classifies the whole `admin_settings`
+collection as durable and recovery-critical, so this document is exported and restored with
+it without any flag-specific handling ([backup-recovery.md](backup-recovery.md)).
 
 ## Supported keys and defaults
 
