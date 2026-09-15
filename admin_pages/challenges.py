@@ -66,6 +66,7 @@ def render(today, now_italy):
                 "origine": row["source"] or "—",
                 "bonus primo": "assegnato" if row["first_correct_taken"] else ("libero" if row["exists"] else "—"),
                 "verificato": fmt_bool(row["verified"]),
+                "🔒": "sì" if row["locked"] else "",
             }
             for row in window
         ],
@@ -82,6 +83,7 @@ def render(today, now_italy):
         title = (
             f"{icon} {row['weekday']} {row['day_display']} · #{row['challenge_number']} · "
             + (f"{row['player_name'] or row['player_id']} ({row['difficulty']})" if row["exists"] else "nessuna sfida")
+            + (" · 🔒" if row["locked"] else "")
         )
         with st.expander(title, expanded=(day == today)):
             if not row["exists"]:
@@ -119,6 +121,22 @@ def render(today, now_italy):
                     "la sfida funziona lo stesso (il percorso è salvato nel documento) ma il dataset è disallineato."
                 )
 
+            lock_col, lock_button_col = st.columns([3, 1])
+            if row["locked"]:
+                lock_col.warning("🔒 Sfida bloccata: sostituzione, rigenerazione, risposte, difficoltà ed eliminazione sono disabilitate finché non la sblocchi.")
+                if lock_button_col.button("🔓 Sblocca", key=f"unlock_{day}"):
+                    guarded(
+                        lambda d=day: content_admin.set_daily_locked(d, False),
+                        f"Sfida del {to_display(day)} sbloccata.",
+                    )
+            else:
+                lock_col.caption("Sfida non bloccata: modificabile liberamente.")
+                if lock_button_col.button("🔒 Blocca", key=f"lock_{day}"):
+                    guarded(
+                        lambda d=day: content_admin.set_daily_locked(d, True),
+                        f"Sfida del {to_display(day)} bloccata.",
+                    )
+
             st.markdown("**Risposte accettate:** " + ", ".join(f"`{a}`" for a in row["answers"]))
             show_table(career_rows(row["career"]), "Percorso vuoto: la sfida non è giocabile.")
 
@@ -146,12 +164,12 @@ def render(today, now_italy):
                     )
                 chosen = player_picker(f"pick_{day}", "Nuovo giocatore")
                 col_a, col_b = st.columns(2)
-                if col_a.button("💾 Sostituisci", key=f"replace_{day}", disabled=not chosen):
+                if col_a.button("💾 Sostituisci", key=f"replace_{day}", disabled=not chosen or row["locked"]):
                     guarded(
                         lambda d=day, p=chosen: content_admin.set_daily_player(d, p),
                         lambda r: f"Sfida del {to_display(r['day'])} impostata su {r['player_name']}.",
                     )
-                if col_b.button("🎲 Rigenera (altro giocatore)", key=f"regen_{day}"):
+                if col_b.button("🎲 Rigenera (altro giocatore)", key=f"regen_{day}", disabled=row["locked"]):
                     guarded(
                         lambda d=day: content_admin.regenerate_daily(d, avoid_current=True),
                         lambda r: f"Sfida del {to_display(r['day'])} rigenerata: {r['player_name']} ({r['difficulty']}).",
@@ -165,7 +183,7 @@ def render(today, now_italy):
                 answers_text = st.text_input(
                     "Risposte accettate", value=", ".join(row["answers"]), key=f"answers_{day}"
                 )
-                if st.button("💾 Salva risposte", key=f"save_answers_{day}"):
+                if st.button("💾 Salva risposte", key=f"save_answers_{day}", disabled=row["locked"]):
                     parsed = content_admin.parse_answers_list(answers_text)
                     guarded(
                         lambda d=day, a=parsed: content_admin.update_daily_answers(d, a),
@@ -185,7 +203,7 @@ def render(today, now_italy):
                 new_difficulty = st.selectbox(
                     "Difficoltà (decide i punti assegnati)", DIFFICULTY_ORDER, index=current_index, key=f"diff_{day}"
                 )
-                if st.button("💾 Salva difficoltà", key=f"save_diff_{day}"):
+                if st.button("💾 Salva difficoltà", key=f"save_diff_{day}", disabled=row["locked"]):
                     guarded(
                         lambda d=day, v=new_difficulty: content_admin.update_daily_difficulty(d, v),
                         lambda r: f"Difficoltà del {to_display(day)} impostata su {r}.",
@@ -213,6 +231,8 @@ def render(today, now_italy):
             with tab_delete:
                 if row["status"] == content_admin.STATUS_TODAY:
                     st.info("La sfida di oggi non si elimina: è in gioco. Sostituisci il giocatore o rigenerala.")
+                elif row["locked"]:
+                    st.info("Sfida bloccata: sbloccala prima di eliminarla.")
                 else:
                     st.caption("Il documento `daily_path/" + day + "` viene eliminato definitivamente.")
                     if confirm_button("🗑️ Elimina la sfida", key=f"del_daily_{day}"):

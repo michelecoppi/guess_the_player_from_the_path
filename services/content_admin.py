@@ -101,6 +101,7 @@ def describe_daily(day_iso, doc, today=None):
         "source": None,
         "generated_at": None,
         "first_correct_taken": None,
+        "locked": False,
     }
     if not doc:
         return info
@@ -124,6 +125,7 @@ def describe_daily(day_iso, doc, today=None):
         "source": doc.get("source", "auto"),
         "generated_at": doc.get("generated_at"),
         "first_correct_taken": bool(doc.get("first_correct_user")),
+        "locked": bool(doc.get("locked", False)),
     })
     return info
 
@@ -180,7 +182,19 @@ def _daily_doc_for_player(player, difficulty=None, source="manual", keep=None):
         "first_correct_user": bool(keep.get("first_correct_user", False)),
         "generated_at": datetime.now(ITALY_TZ),
         "source": source,
+        "locked": bool(keep.get("locked", False)),
     }
+
+
+def _ensure_unlocked(day_iso, existing):
+    """Una sfida bloccata (`set_daily_locked`) e' protetta da modifiche accidentali:
+    va sbloccata esplicitamente prima di sostituire, rigenerare, correggere o eliminare
+    il contenuto. Il bonus del primo che indovina resta escluso: e' uno stato di gioco,
+    non contenuto della sfida."""
+    if (existing or {}).get("locked"):
+        raise ContentAdminError(
+            f"La sfida del {to_display(day_iso)} e' bloccata: sbloccala prima di modificarla."
+        )
 
 
 def set_daily_player(day_iso, player_id):
@@ -195,6 +209,7 @@ def set_daily_player(day_iso, player_id):
         )
 
     existing = firebase_service.get_daily_path(day_iso) or {}
+    _ensure_unlocked(day_iso, existing)
     doc = _daily_doc_for_player(player, source="manual", keep=existing)
     firebase_service.save_daily_path(day_iso, doc)
     logging.info(f"[ADMIN] Sfida del {day_iso} impostata a mano su '{player['id']}'")
@@ -212,6 +227,7 @@ def regenerate_daily(day_iso, avoid_current=True):
 
     recent = set(firebase_service.get_recent_player_ids(config.get("history_days_no_repeat", 60)))
     existing = firebase_service.get_daily_path(day_iso) or {}
+    _ensure_unlocked(day_iso, existing)
     if avoid_current and existing.get("player_id"):
         recent.add(existing["player_id"])
 
@@ -249,8 +265,10 @@ def update_daily_answers(day_iso, answers):
     day_iso = _require_iso(normalize_day(day_iso))
     if not answers:
         raise ContentAdminError("Serve almeno una risposta accettata.")
-    if not firebase_service.get_daily_path(day_iso):
+    existing = firebase_service.get_daily_path(day_iso)
+    if not existing:
         raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
+    _ensure_unlocked(day_iso, existing)
     firebase_service.update_daily_path(day_iso, {"correct_answers": list(answers)})
     return answers
 
@@ -259,10 +277,23 @@ def update_daily_difficulty(day_iso, difficulty):
     day_iso = _require_iso(normalize_day(day_iso))
     if difficulty not in DIFFICULTY_ORDER:
         raise ContentAdminError(f"Difficolta' '{difficulty}' sconosciuta: usa {', '.join(DIFFICULTY_ORDER)}.")
-    if not firebase_service.get_daily_path(day_iso):
+    existing = firebase_service.get_daily_path(day_iso)
+    if not existing:
         raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
+    _ensure_unlocked(day_iso, existing)
     firebase_service.update_daily_path(day_iso, {"difficulty": difficulty})
     return difficulty
+
+
+def set_daily_locked(day_iso, locked):
+    """Blocca (o sblocca) una sfida contro modifiche accidentali dall'admin: sostituzione,
+    rigenerazione, correzione di risposte/difficolta' ed eliminazione richiedono di
+    sbloccarla prima. Utile soprattutto sui giorni futuri gia' verificati a mano."""
+    day_iso = _require_iso(normalize_day(day_iso))
+    if not firebase_service.get_daily_path(day_iso):
+        raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
+    firebase_service.update_daily_path(day_iso, {"locked": bool(locked)})
+    return bool(locked)
 
 
 def set_daily_first_correct(day_iso, taken):
@@ -286,6 +317,7 @@ def delete_daily(day_iso, today=None):
             "La sfida di oggi non si elimina: e' in gioco. Se il contenuto e' sbagliato, "
             "sostituisci il giocatore o rigenerala."
         )
+    _ensure_unlocked(day_iso, firebase_service.get_daily_path(day_iso))
     if not firebase_service.delete_daily_path(day_iso):
         raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
     return True
