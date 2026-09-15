@@ -137,6 +137,71 @@ def test_build_bumped_changelog_requires_unreleased_section():
 
 
 # ---------------------------------------------------------------------------
+# package.json version reading — fail closed on any malformed metadata (#49 review)
+# ---------------------------------------------------------------------------
+
+
+def test_read_package_json_version_returns_valid_version(tmp_path):
+    path = tmp_path / "package.json"
+    path.write_text(json.dumps({"name": "x", "version": "1.2.3"}), encoding="utf-8")
+    assert release.read_package_json_version(path) == "1.2.3"
+
+
+def test_read_package_json_version_missing_file_raises(tmp_path):
+    with pytest.raises(release.PackageJsonError):
+        release.read_package_json_version(tmp_path / "does-not-exist.json")
+
+
+def test_read_package_json_version_malformed_json_raises(tmp_path):
+    path = tmp_path / "package.json"
+    path.write_text("{not valid json", encoding="utf-8")
+    with pytest.raises(release.PackageJsonError):
+        release.read_package_json_version(path)
+
+
+def test_read_package_json_version_missing_version_field_raises(tmp_path):
+    path = tmp_path / "package.json"
+    path.write_text(json.dumps({"name": "x"}), encoding="utf-8")
+    with pytest.raises(release.PackageJsonError):
+        release.read_package_json_version(path)
+
+
+def test_read_package_json_version_non_string_version_raises(tmp_path):
+    path = tmp_path / "package.json"
+    path.write_text(json.dumps({"name": "x", "version": 123}), encoding="utf-8")
+    with pytest.raises(release.PackageJsonError):
+        release.read_package_json_version(path)
+
+
+def test_read_package_json_version_blank_version_raises(tmp_path):
+    path = tmp_path / "package.json"
+    path.write_text(json.dumps({"name": "x", "version": "   "}), encoding="utf-8")
+    with pytest.raises(release.PackageJsonError):
+        release.read_package_json_version(path)
+
+
+def test_read_package_json_version_top_level_array_raises(tmp_path):
+    path = tmp_path / "package.json"
+    path.write_text(json.dumps(["not", "an", "object"]), encoding="utf-8")
+    with pytest.raises(release.PackageJsonError):
+        release.read_package_json_version(path)
+
+
+def test_build_package_json_update_replaces_version_only():
+    raw = '{\r\n  "name": "x",\r\n  "version": "0.1.0"\r\n}\r\n'
+    updated = release.build_package_json_update(raw, "0.2.0")
+    assert '"version": "0.2.0"' in updated
+    assert '"name": "x"' in updated
+    # Formatting (CRLF, indentation) must be preserved, not reformatted via json.dumps.
+    assert updated.count("\r\n") == raw.count("\r\n")
+
+
+def test_build_package_json_update_raises_when_version_field_absent():
+    with pytest.raises(release.PackageJsonError):
+        release.build_package_json_update('{"name": "x"}', "0.2.0")
+
+
+# ---------------------------------------------------------------------------
 # check (read-only)
 # ---------------------------------------------------------------------------
 
@@ -186,6 +251,51 @@ def test_run_check_detects_package_json_drift(tmp_path, monkeypatch):
     _patch_paths(monkeypatch, tmp_path)
     errors, _summary = release.run_check()
     assert any("does not match VERSION" in e for e in errors)
+
+
+def test_run_check_detects_missing_package_json(tmp_path, monkeypatch):
+    _write_repo_fixture(tmp_path)
+    (tmp_path / "package.json").unlink()
+    _patch_paths(monkeypatch, tmp_path)
+    errors, summary = release.run_check()
+    assert any("package.json not found" in e for e in errors)
+    assert summary["package_json_version"] is None
+
+
+def test_run_check_detects_malformed_package_json(tmp_path, monkeypatch):
+    _write_repo_fixture(tmp_path)
+    (tmp_path / "package.json").write_text("{not valid json", encoding="utf-8")
+    _patch_paths(monkeypatch, tmp_path)
+    errors, summary = release.run_check()
+    assert any("not valid JSON" in e for e in errors)
+    assert summary["package_json_version"] is None
+
+
+def test_run_check_detects_missing_version_field_in_package_json(tmp_path, monkeypatch):
+    _write_repo_fixture(tmp_path)
+    (tmp_path / "package.json").write_text(json.dumps({"name": "x"}), encoding="utf-8")
+    _patch_paths(monkeypatch, tmp_path)
+    errors, _summary = release.run_check()
+    assert any("no valid string 'version'" in e for e in errors)
+
+
+def test_run_check_detects_non_string_version_in_package_json(tmp_path, monkeypatch):
+    _write_repo_fixture(tmp_path)
+    (tmp_path / "package.json").write_text(json.dumps({"name": "x", "version": 123}), encoding="utf-8")
+    _patch_paths(monkeypatch, tmp_path)
+    errors, _summary = release.run_check()
+    assert any("no valid string 'version'" in e for e in errors)
+
+
+def test_run_check_malformed_package_json_does_not_also_report_bogus_drift(tmp_path, monkeypatch):
+    """A malformed package.json must produce exactly one clear error, not a confusing
+    'None does not match VERSION' — the drift check should never fire without a real value.
+    """
+    _write_repo_fixture(tmp_path)
+    (tmp_path / "package.json").write_text("{not valid json", encoding="utf-8")
+    _patch_paths(monkeypatch, tmp_path)
+    errors, _summary = release.run_check()
+    assert not any("does not match VERSION" in e for e in errors)
 
 
 def test_run_check_detects_missing_required_files(tmp_path, monkeypatch):
@@ -262,6 +372,78 @@ def test_cmd_bump_allow_empty_overrides_refusal(tmp_path, monkeypatch):
     code = release.cmd_bump(args)
     assert code == 0
     assert release.read_version(tmp_path / "VERSION") == "0.1.1"
+
+
+def test_cmd_bump_preflight_fails_closed_on_malformed_package_json(tmp_path, monkeypatch, capsys):
+    """Regression for the fail-closed bump requirement: a malformed package.json must abort
+    the whole bump *before* VERSION or CHANGELOG.md are touched — never a half-applied bump.
+    """
+    _write_repo_fixture(tmp_path)
+    original_version_text = (tmp_path / "VERSION").read_text(encoding="utf-8")
+    original_changelog_text = (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8")
+    (tmp_path / "package.json").write_text("{not valid json", encoding="utf-8")
+    _patch_paths(monkeypatch, tmp_path)
+
+    args = release.build_parser().parse_args(["bump", "patch", "--date", "2026-10-01"])
+    code = release.cmd_bump(args)
+
+    assert code == 1
+    assert (tmp_path / "VERSION").read_text(encoding="utf-8") == original_version_text
+    assert (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8") == original_changelog_text
+    assert "package.json" in capsys.readouterr().err
+
+
+def test_cmd_bump_preflight_fails_closed_when_package_json_missing(tmp_path, monkeypatch):
+    _write_repo_fixture(tmp_path)
+    original_version_text = (tmp_path / "VERSION").read_text(encoding="utf-8")
+    original_changelog_text = (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8")
+    (tmp_path / "package.json").unlink()
+    _patch_paths(monkeypatch, tmp_path)
+
+    args = release.build_parser().parse_args(["bump", "patch", "--date", "2026-10-01"])
+    code = release.cmd_bump(args)
+
+    assert code == 1
+    assert (tmp_path / "VERSION").read_text(encoding="utf-8") == original_version_text
+    assert (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8") == original_changelog_text
+
+
+def test_cmd_bump_preflight_fails_closed_when_version_field_missing_from_package_json(tmp_path, monkeypatch):
+    _write_repo_fixture(tmp_path)
+    original_version_text = (tmp_path / "VERSION").read_text(encoding="utf-8")
+    original_changelog_text = (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8")
+    (tmp_path / "package.json").write_text(json.dumps({"name": "x"}), encoding="utf-8")
+    _patch_paths(monkeypatch, tmp_path)
+
+    args = release.build_parser().parse_args(["bump", "patch", "--date", "2026-10-01"])
+    code = release.cmd_bump(args)
+
+    assert code == 1
+    assert (tmp_path / "VERSION").read_text(encoding="utf-8") == original_version_text
+    assert (tmp_path / "CHANGELOG.md").read_text(encoding="utf-8") == original_changelog_text
+
+
+def test_cmd_bump_preflight_runs_before_any_write_is_observed(tmp_path, monkeypatch):
+    """Belt-and-suspenders: patch write_text itself to prove it is never called when the
+    package.json preflight fails, rather than only checking the end-state content.
+    """
+    _write_repo_fixture(tmp_path)
+    (tmp_path / "package.json").write_text("{not valid json", encoding="utf-8")
+    _patch_paths(monkeypatch, tmp_path)
+
+    from pathlib import Path
+
+    real_write_text = Path.write_text
+    calls = []
+
+    def spy_write_text(self, *args, **kwargs):
+        calls.append(self)
+        return real_write_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "write_text", spy_write_text)
+    args = release.build_parser().parse_args(["bump", "patch", "--date", "2026-10-01"])
+    assert release.cmd_bump(args) == 1
+    assert calls == []
 
 
 def test_cmd_bump_never_calls_git_or_subprocess(tmp_path, monkeypatch):

@@ -256,7 +256,11 @@ async def measure_webapp_request(request: Request, call_next):
 
 @app.get("/")
 async def root():
-    return {"message": "Bot attivo!", "version": version.get_version()}
+    return {
+        "message": "Bot attivo!",
+        "version": version.get_version(),
+        "revision": version.get_build_revision(),
+    }
 
 @app.head("/ping")
 async def ping():

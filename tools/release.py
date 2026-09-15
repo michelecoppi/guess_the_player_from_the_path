@@ -60,13 +60,46 @@ def bump_semver(current: str, level: str) -> str:
     raise ValueError(f"unknown bump level '{level}' (use major, minor or patch)")
 
 
-def read_package_json_version(path: Optional[Path] = None) -> Optional[str]:
+class PackageJsonError(Exception):
+    """package.json is missing, malformed, or has no valid string 'version' field.
+
+    package.json is the required VERSION mirror in this repository (see
+    docs/release-checklist.md § Canonical version source): release validation must fail
+    closed on any of these, not silently treat them as "no opinion."
+    """
+
+
+def read_package_json_version(path: Optional[Path] = None) -> str:
+    """Reads and validates package.json's `version` field. Raises PackageJsonError on any
+    problem — a missing file, invalid JSON, or a missing/non-string `version`.
+    """
+    target = path or PACKAGE_JSON_PATH
     try:
-        data = json.loads((path or PACKAGE_JSON_PATH).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    version = data.get("version")
-    return version if isinstance(version, str) else None
+        raw = target.read_text(encoding="utf-8")
+    except OSError as err:
+        raise PackageJsonError(f"package.json not found at {target}") from err
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as err:
+        raise PackageJsonError(f"package.json is not valid JSON ({err})") from err
+    version_value = data.get("version") if isinstance(data, dict) else None
+    if not isinstance(version_value, str) or not version_value.strip():
+        raise PackageJsonError("package.json has no valid string 'version' field")
+    return version_value
+
+
+_PACKAGE_JSON_VERSION_RE = re.compile(r'("version"\s*:\s*")[^"]*(")')
+
+
+def build_package_json_update(raw_text: str, new_version: str) -> str:
+    """Returns `raw_text` with the `version` field value replaced, all other formatting
+    (indentation, line endings) preserved. Raises PackageJsonError if the field can't be
+    located unambiguously — bump must fail rather than silently desync package.json.
+    """
+    replaced, count = _PACKAGE_JSON_VERSION_RE.subn(rf"\g<1>{new_version}\g<2>", raw_text, count=1)
+    if count != 1:
+        raise PackageJsonError("could not locate a single 'version' field to update in package.json")
+    return replaced
 
 
 def _split_sections(text: str) -> list[tuple[str, Optional[str], int, int]]:
@@ -169,7 +202,11 @@ def run_check(tag: Optional[str] = None) -> tuple[list[str], dict]:
         if not is_valid_semver(version):
             errors.append(f"VERSION contains an invalid SemVer string: '{version}'")
 
-    package_version = read_package_json_version()
+    package_version: Optional[str] = None
+    try:
+        package_version = read_package_json_version()
+    except PackageJsonError as err:
+        errors.append(str(err))
     if version and package_version and package_version != version:
         errors.append(
             f"package.json version ('{package_version}') does not match VERSION ('{version}')"
@@ -242,6 +279,14 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 
 def cmd_bump(args: argparse.Namespace) -> int:
+    """Bumps VERSION/CHANGELOG.md/package.json.
+
+    All validation — reading and parsing every file that will be touched, and computing
+    every new value — happens before the first write. This is deliberate: a bump that
+    fails partway through (e.g. on a malformed package.json) must never leave VERSION or
+    CHANGELOG.md changed while package.json silently falls out of sync (fail-closed
+    metadata, see docs/release-checklist.md § Canonical version source).
+    """
     try:
         current = read_version()
     except FileNotFoundError:
@@ -259,6 +304,10 @@ def cmd_bump(args: argparse.Namespace) -> int:
         return 1
     changelog_text = CHANGELOG_PATH.read_text(encoding="utf-8")
 
+    if get_changelog_section(changelog_text, "Unreleased") is None:
+        print("error: CHANGELOG.md has no '## [Unreleased]' section", file=sys.stderr)
+        return 1
+
     if unreleased_is_empty(changelog_text) and not args.allow_empty:
         print(
             "error: CHANGELOG.md '## [Unreleased]' has no entries — nothing to release.\n"
@@ -270,27 +319,40 @@ def cmd_bump(args: argparse.Namespace) -> int:
     release_date = args.date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     new_changelog = build_bumped_changelog(changelog_text, new_version, release_date)
 
+    # package.json preflight: validate it is present, parseable and updatable *before* any
+    # write happens, not after VERSION/CHANGELOG.md have already changed.
+    if not PACKAGE_JSON_PATH.exists():
+        print(
+            f"error: {PACKAGE_JSON_PATH} not found — refusing to bump (package.json must stay "
+            "in sync with VERSION)",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        read_package_json_version()
+    except PackageJsonError as err:
+        print(f"error: {err} — refusing to bump (nothing was written)", file=sys.stderr)
+        return 1
+    package_json_raw = PACKAGE_JSON_PATH.read_text(encoding="utf-8")
+    try:
+        new_package_json = build_package_json_update(package_json_raw, new_version)
+    except PackageJsonError as err:
+        print(f"error: {err} — refusing to bump (nothing was written)", file=sys.stderr)
+        return 1
+
+    # All validation passed: perform the writes.
     VERSION_PATH.write_text(new_version + "\n", encoding="utf-8")
     CHANGELOG_PATH.write_text(new_changelog, encoding="utf-8")
-
-    updated_package_json = False
-    if PACKAGE_JSON_PATH.exists():
-        raw = PACKAGE_JSON_PATH.read_text(encoding="utf-8")
-        replaced, count = re.subn(
-            r'("version"\s*:\s*")[^"]*(")', rf"\g<1>{new_version}\g<2>", raw, count=1
-        )
-        if count == 1:
-            PACKAGE_JSON_PATH.write_text(replaced, encoding="utf-8")
-            updated_package_json = True
+    PACKAGE_JSON_PATH.write_text(new_package_json, encoding="utf-8")
 
     print(f"Bumped version: {current} -> {new_version} ({args.level})")
     print(f"  updated: {VERSION_PATH.relative_to(ROOT_DIR)}")
     print(f"  updated: {CHANGELOG_PATH.relative_to(ROOT_DIR)} (Unreleased -> [{new_version}] - {release_date})")
-    if updated_package_json:
-        print(f"  updated: {PACKAGE_JSON_PATH.relative_to(ROOT_DIR)}")
+    print(f"  updated: {PACKAGE_JSON_PATH.relative_to(ROOT_DIR)}")
     print(
-        "\nNothing was committed, tagged, pushed or deployed. Review the diff, commit it,\n"
-        "then follow docs/release-checklist.md to tag and deploy."
+        "\nNothing was committed, tagged, pushed or deployed. Review the diff, commit it — that\n"
+        "commit becomes the release candidate SHA — then follow docs/release-checklist.md to\n"
+        "validate, tag and deploy."
     )
     return 0
 

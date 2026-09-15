@@ -49,3 +49,32 @@ def test_get_version_is_cached(monkeypatch):
         assert calls["count"] == 1
     finally:
         version.get_version.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# get_build_revision — exact deployed build identity, separate from VERSION
+# ---------------------------------------------------------------------------
+
+
+def test_get_build_revision_reads_k_revision(monkeypatch):
+    monkeypatch.setenv("K_REVISION", "guess-the-player-00042-abc")
+    assert version.get_build_revision() == "guess-the-player-00042-abc"
+
+
+def test_get_build_revision_none_when_not_on_cloud_run(monkeypatch):
+    monkeypatch.delenv("K_REVISION", raising=False)
+    assert version.get_build_revision() is None
+
+
+def test_get_build_revision_none_when_k_revision_empty(monkeypatch):
+    monkeypatch.setenv("K_REVISION", "")
+    assert version.get_build_revision() is None
+
+
+def test_get_build_revision_does_not_fabricate_a_git_sha(monkeypatch):
+    """Outside Cloud Run there is nothing the runtime can prove about its own build — the
+    function must not invent a value (e.g. reading a local .git directory) to fill the gap.
+    """
+    monkeypatch.delenv("K_REVISION", raising=False)
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+    assert version.get_build_revision() is None

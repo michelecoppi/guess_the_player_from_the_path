@@ -42,12 +42,49 @@ application's release version:
   redeploying. This is the boundary [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)
   (Sentry/error tracking) can later read the same identifier from for its `release` tag —
   no runtime redesign needed, just importing `services.version.get_version()`.
-- `package.json`'s `version` field is a **mirror**, kept in sync by the bump tool (§7). It
-  exists only because npm expects one; it is not read anywhere in the app and is not a
-  second source of truth. `python -m tools.release check` fails if it drifts from `VERSION`.
+- `package.json`'s `version` field is a **mirror**, kept in sync by the bump tool (§7),
+  required to be present and valid. It exists only because npm expects one; it is not read
+  anywhere in the app and is not a second source of truth. `python -m tools.release check`
+  fails closed if it's missing, malformed, has no valid string `version`, or drifts from
+  `VERSION` — see §7.
 - `pyproject.toml` has no `[project]` table and defines no version — Python packaging is
   not in play here (this is a service, not a published package), so it stays out of the
   versioning story.
+
+### 2.1 Release version vs. deployed build identity
+
+**These are two different things — do not conflate them.** `VERSION` is bumped
+*deliberately*, at release time. Deployment is still continuous (§6): every commit that
+passes CI on `main` deploys to Cloud Run automatically, tag or no tag. That means, between
+two formal releases, production can already be running `main` commits newer than whatever
+`VERSION` currently says — an untagged, continuously-deployed commit is a completely normal
+state for this repository, not a process violation.
+
+So `GET /` reports both, kept explicitly distinct:
+
+```json
+{
+  "message": "Bot attivo!",
+  "version": "0.1.0",
+  "revision": "guess-the-player-00042-abc"
+}
+```
+
+- **`version`** (`services.version.get_version()`) — the formal release version from
+  `VERSION`. Can be stale relative to what's actually deployed; that staleness is expected,
+  not a bug.
+- **`revision`** (`services.version.get_build_revision()`) — the exact Cloud Run revision
+  serving the request, read from `K_REVISION`, which the Cloud Run runtime itself injects
+  into every instance. An operator can't produce a wrong value here by forgetting to bump
+  something; `null` outside Cloud Run (local dev, tests) rather than a fabricated value —
+  this repository has no way to prove a git SHA from inside a process that wasn't told one,
+  so it doesn't pretend to.
+
+**Consequence for release evidence (§12) and the exact-commit requirement (§8):** never
+write down `version` alone as proof of what's deployed. Record all four identifiers —
+formal version, release candidate SHA, CI SHA, and the deployed `revision` — and use
+`revision` (cross-referenced against Cloud Build history, §14) as the actual proof of what
+code is running, not `version`.
 
 ## 3. CHANGELOG
 
@@ -62,32 +99,60 @@ history — `git log` remains authoritative for individual historical commits.
 
 ## 4. Release lifecycle
 
+**Ordering matters here, and it is easy to get backwards**: `python -m tools.release bump`
+*writes files* (`VERSION`, `CHANGELOG.md`, `package.json`, §7) — committing that change
+produces a **new** SHA, different from whatever commit was on `main` before the bump. So the
+bump has to happen, and be committed, *before* a commit can be called the release candidate
+— not after. Picking a candidate SHA and then bumping on top of it would silently swap in a
+different, unvalidated SHA at the last step. Correct order:
+
 ```
 main (small PRs land continuously, each already gated by CI — see ci_cd_pipeline.md)
    │
    ▼
-release candidate  = the exact commit on main chosen to become a release.
-                      Not a branch: main already gates every commit with CI, so a long-lived
-                      release branch would just duplicate that gate. "Candidate" is a status
-                      applied to one SHA, recorded in the PR/issue, not a git ref.
+prepare release    = python -m tools.release bump <level> (§7): writes VERSION,
+                      CHANGELOG.md, package.json locally. Nothing committed, tagged,
+                      pushed or deployed yet — review the diff.
    │
    ▼
-validation         = §5 checklist run against that exact SHA
+commit / merge      = the release-prep change lands on main as an ordinary commit
+                       (its own small PR, gated by CI like any other).
    │
    ▼
-release/tag        = python -m tools.release bump <level>, review + commit, git tag vX.Y.Z
-                      on that SHA, push tag → triggers release-check.yml (§9)
+release candidate  = THAT exact commit — the one containing the bump — and no other.
+                      Not a branch: main already gates every commit with CI, so a
+                      long-lived release branch would just duplicate that gate.
+                      "Candidate" is a status applied to one SHA, recorded in the
+                      PR/issue, not a git ref.
    │
    ▼
-deploy              = §6 (the same automatic Cloud Run deploy already in place — the tag
-                       does not trigger a separate deploy pipeline, see §6)
+CI green on that SHA = the same CI run that gated the release-prep commit's merge — this
+                        is also "the CI SHA" referenced throughout §8; no separate re-run.
    │
    ▼
-post-deploy smoke   = §11
+validation          = §5 checklist run against that exact SHA
+   │
+   ▼
+tag                 = git tag vX.Y.Z on that exact SHA (§13), push tag → triggers
+                       release-check.yml (§9), which re-validates VERSION/CHANGELOG.md
+                       against the tag on that same commit
+   │
+   ▼
+deploy              = §6 (the same automatic Cloud Run deploy already in place — the
+                       release-prep commit deploys like any other `main` commit; the tag
+                       does not trigger a separate deploy pipeline)
+   │
+   ▼
+post-deploy smoke   = §11, against the deployed `revision` (§2.1) — confirm it corresponds
+                       to the release candidate SHA, not just that "a" deploy happened
    │
    ▼
 complete  OR  rollback (§10)
 ```
+
+There is no ambiguity about which SHA was approved because there is only one candidate SHA
+in this flow: the commit the bump was merged as. Nothing is bumped *on* a pre-chosen
+candidate after the fact.
 
 No long-lived release branches: this repository ships continuously and small, and a
 parallel branch would drift from `main` and duplicate CI for no benefit. If a real need for
@@ -207,8 +272,9 @@ one alias away from an accidental mutation).
 - moves the Unreleased content into a new `## [X.Y.Z] - YYYY-MM-DD` section and blanks
   Unreleased;
 - updates `VERSION` and mirrors the value into `package.json`;
-- **does not** commit, tag, push, or deploy. Review the diff (`git diff`), commit it, then
-  continue to §8.
+- **does not** commit, tag, push, or deploy. Review the diff (`git diff`), commit it — per
+  §4, that commit is what becomes the release candidate SHA, not a commit chosen before
+  bumping — then continue to §8.
 
 `check` validates release *metadata* (SemVer format, `package.json` drift, required files
 present, CHANGELOG has the entry a tag claims) — it does not re-run the test suite; that's
@@ -216,32 +282,41 @@ CI's job (§9 explicitly avoids duplicating it).
 
 ## 8. Exact-commit requirement
 
-Release approval always applies to one exact SHA — never "latest main." Before deploying
-(or after, when verifying what's live), these four must be the same commit:
+Release approval always applies to one exact SHA — never "latest main." Per §2.1, `VERSION`
+is a label, not proof of what's running — the following three **must resolve to the same
+commit**, and `VERSION` is recorded alongside them as the human-readable version that commit
+carries, not as a fourth thing to reconcile against the others:
 
 ```
-release version   (VERSION at the tagged commit)
 release candidate SHA
-CI SHA             (the run that was green)
-deployed image SHA (what Cloud Run is actually serving)
+CI SHA              (the run that was green)
+deployed revision    (what Cloud Run is actually serving — resolves to a commit via Cloud Build)
+─────────────────────────────────────────────────────────────────────────────────────────
+recorded alongside, as a label for that commit, not compared as its own "match":
+release version      (VERSION at that commit)
 ```
 
 How to check each in practice:
 
-- **Release candidate SHA**: the commit you ran §5 against — `git rev-parse HEAD` at that
-  point, or `python -m tools.release check` (prints it).
+- **Release candidate SHA**: the commit you ran §5 against (per §4, the commit containing
+  the version bump) — `git rev-parse HEAD` at that point, or `python -m tools.release check`
+  (prints it).
 - **CI SHA**: the `head_sha` GitHub shows on the CI run you're relying on — don't trust "CI
   is green on main" without opening the run and reading its commit.
-- **Deployed image SHA**: `gcloud run services describe guess-the-player --region
-  europe-west1 --format='value(status.traffic)'` shows the serving revision; cross-reference
-  with `gcloud run revisions describe <revision> --region europe-west1
-  --format='value(metadata.labels)'` (Cloud Run stamps the source commit on revisions
-  created via `--source .` deploys) or the Cloud Build log for that revision.
-- **Release version**: the deployed revision's `/` endpoint now returns
-  `{"message": "...", "version": "X.Y.Z"}` (§2) — compare it to `VERSION` at the SHA you
-  believe is deployed.
+- **Deployed revision**: query the running service directly — `GET /` now returns
+  `{"message": "...", "version": "X.Y.Z", "revision": "guess-the-player-00042-abc"}`
+  (§2.1); `revision` comes from Cloud Run's own `K_REVISION`, not from anything this repo
+  asserts about itself. Cross-reference that revision name with
+  `gcloud run services describe guess-the-player --region europe-west1
+  --format='value(status.traffic)'` (confirms it's actually serving traffic) and the Cloud
+  Build log for that revision (§14) to resolve it back to a commit.
+- **Release version**: read directly from the same `GET /` response — it will not always
+  equal the last tagged `VERSION` if untagged commits have deployed since (§2.1); that's
+  expected, not an error, as long as the *revision* traces back to a known commit.
 
-Never write "latest main passed" in release evidence (§12) — write the SHA.
+Never write "latest main passed" in release evidence (§12) — write the SHA. Likewise, never
+write "version X.Y.Z is deployed" as if `version` alone proved it — write the `revision` and
+what commit it resolves to.
 
 ### 8.1 Firestore migration gate
 
@@ -370,7 +445,7 @@ Run against the live deployed revision, not the CI emulator. Required rows first
 
 | Check | Required? | How |
 | --- | --- | --- |
-| Health/startup | Required | `GET /` returns 200 with the expected `version` (§2) |
+| Health/startup | Required | `GET /` returns 200 with `revision` matching the release candidate SHA (§2.1/§8), not just the expected `version` |
 | Telegram bot | Required | `/start` in Telegram gets a response |
 | Daily | Required | `/show` returns today's challenge |
 | `/app` | Required | Opens, one guess submits successfully |
@@ -395,17 +470,17 @@ content — this tool does not generate marketing copy, just reformats what's al
 written). Record, either in the GitHub Release body or the release PR:
 
 ```
-version:          X.Y.Z
-date:              YYYY-MM-DD
-git SHA:           <exact commit, §8>
-CI run:            <URL/ID of the green run for that SHA>
-image identifier:  <Cloud Run revision name, §8>
-migration status:  none | done (link migration + backup evidence, §8.1)
-backup status:     n/a | fresh export confirmed (§8.2) — never "disaster-recovery verified"
-deployer:          <who ran/approved this>
-smoke result:      pass | issues (link them)
-rollback target:   <previous known-good version/SHA/revision, §10>
-notes:             <anything a future operator needs that isn't in CHANGELOG>
+version:           X.Y.Z                          (label, not proof — see §2.1)
+date:               YYYY-MM-DD
+git SHA:            <release candidate commit, §8>
+CI run:             <URL/ID of the green run for that SHA>
+deployed revision:  <Cloud Run revision name from GET / "revision", §2.1/§8 — the proof>
+migration status:   none | done (link migration + backup evidence, §8.1)
+backup status:      n/a | fresh export confirmed (§8.2) — never "disaster-recovery verified"
+deployer:           <who ran/approved this>
+smoke result:       pass | issues (link them)
+rollback target:    <previous known-good version/SHA/revision, §10>
+notes:              <anything a future operator needs that isn't in CHANGELOG>
 ```
 
 ## 13. Tag convention
@@ -426,12 +501,15 @@ this stays an explicit, manual operator action; `tools/release.py` never touches
 `gcloud run deploy --source .` builds via Cloud Build and uploads to Artifact Registry
 (`docs/deploy.md`); there is currently no explicit image label carrying the git SHA beyond
 what Cloud Build/Cloud Run already record. To trace a running revision back to a commit
-without adding new build steps: Cloud Run revision names are sequential
-(`guess-the-player-000NN-xxx`), and each revision's Cloud Build log (Console → Cloud
-Build → History, or `gcloud builds list`) records the source it built from. Combined with
-the `version` field the running revision now reports at `/` (§2, §8), an operator has: the
-app version from the service itself, and the exact build/commit from Cloud Build history for
-that revision — no secrets are added to image metadata, and none should be.
+without adding new build steps: `GET /` now reports the exact serving revision as
+`revision` (§2.1, sourced from Cloud Run's own `K_REVISION` — not asserted by this repo).
+Cloud Run revision names are sequential (`guess-the-player-000NN-xxx`), and each revision's
+Cloud Build log (Console → Cloud Build → History, or `gcloud builds list`) records the
+source it built from. Combined, an operator has: the exact serving revision straight from
+the service itself, and the exact build/commit from Cloud Build history for that revision —
+no secrets are added to image metadata, and none should be. `version` (also from `/`) is
+the formal release label, useful for a human-readable "what's live," but §2.1 is explicit
+that it is not itself proof of a commit — `revision` is.
 
 ## 15. Mini App V2 release context
 
