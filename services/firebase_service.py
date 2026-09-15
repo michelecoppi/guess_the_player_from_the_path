@@ -184,6 +184,7 @@ from services.repos.admin import block_player_id as block_player_id
 from services.repos.admin import delete_father_son_pair as delete_father_son_pair
 from services.repos.admin import get_admin_overview as get_admin_overview
 from services.repos.admin import get_blocked_player_ids as get_blocked_player_ids
+from services.repos.admin import list_failed_jobs as list_failed_jobs
 from services.repos.admin import list_father_son_pairs as list_father_son_pairs
 from services.repos.admin import mark_father_son_pairs_used as mark_father_son_pairs_used
 from services.repos.admin import unblock_player_id as unblock_player_id

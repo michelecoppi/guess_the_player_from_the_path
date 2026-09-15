@@ -8,6 +8,7 @@ import streamlit as st
 
 from config import ADMIN_TELEGRAM_IDS as ADMIN_TELEGRAM_IDS
 from config import BOT_TOKEN as BOT_TOKEN
+from services import backup_status as backup_status
 from services import content_admin as content_admin
 from services import dataset_editor as dataset_editor
 from services import firebase_service as firebase_service
@@ -290,6 +291,11 @@ def cached_overview():
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_daily_stats(day):
     return firebase_service.get_daily_stats(day)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_failed_jobs(limit):
+    return firebase_service.list_failed_jobs(limit=limit)
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
