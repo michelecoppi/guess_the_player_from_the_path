@@ -140,9 +140,27 @@ def test_arena_second_seat_has_only_one_winner(emulator_db, monkeypatch):
 
     monkeypatch.setattr(arena.practice_content, "pick", pick)
     code = arena.duel(1, "Anna", "create")["code"]
-    run_together(lambda n: arena.duel(n + 2, str(n), "join", code), 4)
+
+    def join(n):
+        # ArenaError is a ValueError: catch it here so run_together cannot hide "full" as GAVE_UP.
+        try:
+            arena.duel(n + 2, str(n), "join", code)
+            return n + 2
+        except arena.ArenaError as error:
+            return str(error)
+
+    outcomes = run_together(join, 4)
+    joined = [outcome for outcome in outcomes if isinstance(outcome, int)]
+    assert len(joined) <= 1, f"the second seat was given {len(joined)} times: {outcomes}"
+    assert set(outcomes) <= {*joined, "full", GAVE_UP}
+    if not joined:
+        # The emulator may abort every contender (see GAVE_UP): nobody sat down. The seat
+        # must still be free, and a retry without contention takes it.
+        arena.duel(2, "0", "join", code)
+        joined = [2]
     doc = emulator_db.collection(arena.DUELS).document(code).get().to_dict()
-    assert len(doc["members"]) == len(doc["seats"]) == 2
+    assert doc["members"] == [1, joined[0]]
+    assert set(doc["seats"]) == {"1", str(joined[0])}
 
 
 def test_app_event_winner_is_recorded_once(emulator_db, monkeypatch):
