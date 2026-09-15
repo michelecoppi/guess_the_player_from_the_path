@@ -8,6 +8,7 @@ from firebase_admin import firestore
 
 from config import BOT_TOKEN, BOT_USERNAME
 from services import firebase_service as fs
+from services import product_analytics as analytics
 from services.dates import today_iso
 from services.repos import bulk
 
@@ -61,6 +62,11 @@ def credit_day(user_id, day):
     """
     from services import shop
     ledger_ref = ref(user_id)
+    # `commit` may run more than once under Firestore transaction contention, but only the
+    # attempt that actually commits leaves anything behind - so it is the only attempt whose
+    # analytics matter. We stash what that attempt decided here and fire the capture *after*
+    # `commit(...)` returns, from data that is true of the state now durably written.
+    outcome: dict[str, object] = {"qualified": False, "inviter_id": None, "reward_items": ()}
 
     @firestore.transactional
     def commit(transaction):
@@ -79,6 +85,7 @@ def credit_day(user_id, day):
         owner_snapshot = owner_ref.get(transaction=transaction)
         if not owner_snapshot.exists:
             return False
+        outcome["inviter_id"] = entry["inviter_id"]
         days = sorted(set(days + [day]))
         update = {"days": days, "updated_at": firestore.SERVER_TIMESTAMP}
         if len(days) >= REQUIRED_DAYS:
@@ -91,10 +98,36 @@ def credit_day(user_id, day):
                 fields["cosmetics.earned"] = firestore.ArrayUnion(sorted(earned))
             transaction.update(owner_ref, fields)
             update.update(status="qualified", qualified_at=firestore.SERVER_TIMESTAMP)
+            outcome["qualified"] = True
+            outcome["reward_items"] = tuple(sorted(earned))
         transaction.update(ledger_ref, update)
         return True
 
-    return commit(fs.db.transaction())
+    credited = commit(fs.db.transaction())
+    # Fires exactly once per referral: `status` flips from "pending" to "qualified" here and
+    # the top-of-function check above then always returns False for this ledger, so a retry
+    # or `reconcile()` replay cannot re-fire it.
+    #
+    # Identity, deliberately: REFERRAL_CONVERTED is captured under `user_id` - the INVITEE
+    # (the parameter this function already receives, the same person whose Daily activity
+    # produced `referral_opened`/`bot_started`/the Daily events that led here) - not the
+    # inviter. "This referred user fulfilled the referral qualification conditions" is a
+    # fact about the invitee, and every other step of the referral funnel
+    # (docs/product-analytics.md §11) is already keyed by the invitee's pseudonymous id;
+    # keying this one step differently would silently break funnel analysis, which walks one
+    # distinct_id through a sequence of events. REFERRAL_REWARD_GRANTED stays on the
+    # inviter - "this inviter received their reward" is a fact about them, not the invitee -
+    # so the two events are deliberately captured under two different identities even though
+    # they fire from the same commit.
+    if credited and outcome["qualified"]:
+        analytics.capture(analytics.Event.REFERRAL_CONVERTED, user_id=user_id,
+                          properties={"qualified_days": REQUIRED_DAYS})
+        if outcome["inviter_id"] is not None:
+            reward_items = outcome["reward_items"]
+            reward_item_count = len(reward_items) if isinstance(reward_items, tuple) else 0
+            analytics.capture(analytics.Event.REFERRAL_REWARD_GRANTED, user_id=outcome["inviter_id"],
+                              properties={"reward_item_count": reward_item_count})
+    return credited
 
 
 def record_completion(user_id, day):

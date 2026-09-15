@@ -15,6 +15,7 @@ consumare un tentativo e assegnare i punti sono per definizione scritture.
 import logging
 
 from services import firebase_service
+from services import product_analytics as analytics
 from services.daily_challenge import MAX_ATTEMPTS, get_today_challenge
 from services.dates import today_iso
 from services.difficulty import points_for_difficulty
@@ -37,7 +38,7 @@ def max_hints_for(challenge, lang):
     return min(MAX_HINTS, len(hints_available(challenge, lang)))
 
 
-def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challenge=None):
+def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challenge=None, surface="telegram_chat"):
     """Un tentativo sulla sfida del giorno.
 
     Ritorna sempre un dizionario con `status`:
@@ -49,7 +50,13 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
       che l'utente ha scritto, o None);
     - `correct`: giusto, con i punti effettivamente assegnati.
 
-    `challenge` si passa solo per non rileggerla quando chi chiama ce l'ha gia'."""
+    `challenge` si passa solo per non rileggerla quando chi chiama ce l'ha gia'.
+
+    `surface` (`"telegram_chat"` | `"miniapp"`) e' solo per l'analytics (#29): questa
+    funzione e' l'unico punto in cui un tentativo Daily diventa autoritativo, in chat come
+    nella mini app, quindi e' anche l'unico posto che deve emettere `daily_guess_submitted` /
+    `daily_completed` - farlo negli handler avrebbe voluto dire due implementazioni della
+    stessa regola di "quando e' finita la giornata", col rischio che divergano."""
     day_iso = day_iso or today_iso()
     challenge = challenge or get_today_challenge()
     if not challenge:
@@ -59,12 +66,16 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
     # inviate nello stesso istante (due schede della mini app, o app e chat insieme).
     attempt = firebase_service.begin_guess_attempt(user_id, day_iso, MAX_ATTEMPTS)
     if not attempt["ok"]:
-        return {
+        result = {
             "status": "refused",
             "reason": attempt["reason"],
             "attempts_used": attempt.get("attempts_used", MAX_ATTEMPTS),
             "hints_used": attempt.get("hints_used", 0),
         }
+        analytics.capture(analytics.Event.DAILY_GUESS_SUBMITTED, user_id=user_id, properties={
+            "surface": surface, "status": "refused", "reason": attempt["reason"],
+        })
+        return result
 
     # Il primo tentativo della giornata conta la persona fra quelle che ci hanno provato:
     # e' il denominatore della percentuale mostrata a giornata chiusa.
@@ -90,6 +101,17 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
             firebase_service.record_daily_history(
                 user_id, day_iso, solved=False, attempts=attempt["attempts_used"], hints=hints_used
             )
+        analytics.capture(analytics.Event.DAILY_GUESS_SUBMITTED, user_id=user_id, properties={
+            "surface": surface, "status": "wrong", "attempts_used": attempt["attempts_used"],
+            "attempts_left": attempt["attempts_left"], "hints_used": hints_used,
+        })
+        if attempt["attempts_left"] == 0:
+            # Terminal loss: this IS the Daily completing (unsolved). Exactly once, because
+            # `begin_guess_attempt` refuses a further attempt once attempts are spent.
+            analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=user_id, properties={
+                "surface": surface, "status": "wrong", "attempts_used": attempt["attempts_used"],
+                "hints_used": hints_used,
+            })
         return result
 
     firebase_service.register_daily_outcome(day_iso, solved=True)
@@ -114,6 +136,21 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
     firebase_service.record_daily_history(
         user_id, day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used
     )
+
+    analytics.capture(analytics.Event.DAILY_GUESS_SUBMITTED, user_id=user_id, properties={
+        "surface": surface, "status": "correct", "attempts_used": attempt["attempts_used"],
+        "hints_used": hints_used, "typo": bool(match["typo"]),
+    })
+    analytics.capture(analytics.Event.DAILY_GUESS_CORRECT, user_id=user_id, properties={
+        "surface": surface, "attempts_used": attempt["attempts_used"], "hints_used": hints_used,
+        "streak": registered.get("current_streak", 0), "bonus_awarded": bool(bonus),
+    })
+    # Terminal win: this IS the Daily completing (solved), exactly once - `register_correct_guess`
+    # only runs on the first correct attempt (`begin_guess_attempt` refuses a repeat).
+    analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=user_id, properties={
+        "surface": surface, "status": "correct", "attempts_used": attempt["attempts_used"],
+        "hints_used": hints_used,
+    })
 
     return {
         "status": "correct",
@@ -164,7 +201,7 @@ def play_archive(user_id, day_iso, answer, max_attempts):
     return result
 
 
-def take_hint(user_id, lang, day_iso=None, challenge=None):
+def take_hint(user_id, lang, day_iso=None, challenge=None, surface="telegram_chat"):
     """Un indizio sulla sfida del giorno.
 
     Ritorna `{'status': 'ok', 'index', 'total', 'text', 'points', 'full_points'}` oppure
@@ -172,7 +209,10 @@ def take_hint(user_id, lang, day_iso=None, challenge=None):
     'no_challenge'}`.
 
     Gli indizi si costruiscono **prima** di consumarne uno: se la scheda non ha niente da
-    dire, nessuno deve pagare un punto per un messaggio vuoto."""
+    dire, nessuno deve pagare un punto per un messaggio vuoto.
+
+    `surface` e' solo per l'analytics (#29): questa funzione e' condivisa da chat e mini
+    app, quindi e' il solo punto che deve emettere `hint_requested`/`hint_used`."""
     day_iso = day_iso or today_iso()
     challenge = challenge or get_today_challenge()
     if not challenge:
@@ -183,12 +223,17 @@ def take_hint(user_id, lang, day_iso=None, challenge=None):
         return {"status": "unavailable"}
 
     total = min(MAX_HINTS, len(hints))
+    analytics.capture(analytics.Event.HINT_REQUESTED, user_id=user_id,
+                      properties={"surface": surface})
     taken = firebase_service.take_daily_hint(user_id, day_iso, total, MAX_ATTEMPTS)
     if not taken["ok"]:
         return {"status": "refused", "reason": taken["reason"], "total": total}
 
     index = taken["index"]
     full_points = points_for_difficulty(challenge.get("difficulty"))
+    analytics.capture(analytics.Event.HINT_USED, user_id=user_id, properties={
+        "surface": surface, "hint_index": index, "hints_used": taken["hints_used"],
+    })
     return {
         "status": "ok",
         "index": index,

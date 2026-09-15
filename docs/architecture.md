@@ -148,9 +148,10 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Admin | `admin_ui.py`, `admin_pages/`, `handlers/admin_handler.py` | [admin.md](admin.md) |
 | Firestore | `services/firebase_service.py`, `services/repos/` | [firestore.md](firestore.md) |
 | Security | cross-cutting | [security.md](security.md) |
-| Operations, analytics | cross-cutting | [operations.md](operations.md) |
+| Operations | cross-cutting | [operations.md](operations.md) |
 | Feature flags (implemented, #51) | `services/feature_flags.py`, `services/repos/feature_flags.py`, `handlers/feature_gate.py`, `scripts/feature_flags.py`: `admin_settings/feature_flags`, server-side evaluation with TTL cache and last-known-good | [feature-flags.md](feature-flags.md) |
 | Observability (implemented, #18) | `services/observability.py`: structured JSON logs, optional Sentry, request/task correlation, redaction; `release` from `VERSION`, `revision` from Cloud Run | [observability.md](observability.md) |
+| Product analytics (implemented, #29) | `services/product_analytics.py`: typed PostHog event capture, pseudonymous identity, off without `POSTHOG_API_KEY`; a strictly separate concern from observability above | [product-analytics.md](product-analytics.md) |
 
 ## 7. Deployment topology (summary)
 

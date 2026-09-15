@@ -22,6 +22,7 @@ from telegram.ext import ContextTypes
 
 from handlers.legend_handler import legend_keyboard
 from services import firebase_service, practice_content
+from services import product_analytics as analytics
 from services.difficulty import points_for_difficulty
 from services.guess_feedback import build_comparison, comparison_text
 from services.i18n import difficulty_label, resolve_language, t
@@ -72,6 +73,8 @@ async def _serve_new_challenge(message, user_id, exclude_key, lang):
         return
 
     (await asyncio.to_thread(firebase_service.set_training_key, user_id, challenge["key"]))
+    analytics.capture(analytics.Event.TRAINING_STARTED, user_id=user_id,
+                      properties={"surface": "telegram_chat"})
 
     difficulty = difficulty_label(lang, challenge.get("difficulty"))
     career_path = challenge["career_path"]
@@ -128,6 +131,10 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
 
     if find_match(user_answer, challenge.get("correct_answers", [])):
         (await asyncio.to_thread(firebase_service.register_training_solved, user_id))
+        analytics.capture(analytics.Event.TRAINING_GUESS_SUBMITTED, user_id=user_id,
+                          properties={"surface": "telegram_chat", "status": "correct", "attempt_index": attempts})
+        analytics.capture(analytics.Event.TRAINING_COMPLETED, user_id=user_id,
+                          properties={"surface": "telegram_chat", "status": "correct", "attempts_used": attempts})
         await message.reply_text(
             t(lang, "training.correct", attempts=attempts),
             reply_markup=_keyboard(lang, with_reveal=False),
@@ -135,6 +142,8 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
         return
 
     (await asyncio.to_thread(firebase_service.register_training_attempt, user_id))
+    analytics.capture(analytics.Event.TRAINING_GUESS_SUBMITTED, user_id=user_id,
+                      properties={"surface": "telegram_chat", "status": "wrong", "attempt_index": attempts})
     comparison = comparison_text(lang, build_comparison(user_answer, challenge.get("player_id")))
     attempts_left = MAX_TRAINING_ATTEMPTS - attempts
 
@@ -143,6 +152,8 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
         return
 
     (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
+    analytics.capture(analytics.Event.TRAINING_COMPLETED, user_id=user_id,
+                      properties={"surface": "telegram_chat", "status": "failed", "attempts_used": attempts})
     await message.reply_text(
         t(lang, "training.wrong_last", answer=challenge["answer"]) + comparison,
         reply_markup=_keyboard(lang, with_reveal=False),

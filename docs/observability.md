@@ -4,7 +4,10 @@ Authoritative description of runtime observability for the backend (bot, FastAPI
 Cloud Tasks workers, payments, broadcasts, Admin and the Candidate pipeline). Introduced by
 [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18).
 
-Out of scope here: product analytics ([#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)),
+Out of scope here: **product analytics**, which is a deliberately separate system - see
+[product-analytics.md](product-analytics.md) (#29) for what it tracks, how it stays
+pseudonymous, and how it differs from this document (this one answers "is the app healthy",
+that one answers "how are people using the product") -
 performance work ([#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32)),
 the Admin system-health view ([#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38)),
 the release process itself ([release-checklist.md](release-checklist.md), #49) and

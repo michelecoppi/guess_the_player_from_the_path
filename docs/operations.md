@@ -98,10 +98,17 @@ system health and logs.
 
 ## Analytics
 
-**Current state.** There is **no product analytics**: no event tracking SDK, no event
-schema, no funnels and no analytics dashboards. The privacy page states that the Mini
-App has no analytics or third-party trackers. What exists are operational aggregates
-stored as part of game state:
+**Current state.** Product analytics ([#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29))
+is implemented: a typed event taxonomy sent to PostHog through
+[`services/product_analytics.py`](../services/product_analytics.py), off by default and
+requiring an operator-supplied `POSTHOG_API_KEY` to send anything. Full contract - event
+list, pseudonymous identity, privacy review, funnels, metric definitions, how to disable it
+- is authoritative in [product-analytics.md](product-analytics.md). It is a strictly
+separate system from the operational aggregates below and from
+[observability.md](observability.md) (#18).
+
+Operational aggregates stored as part of game state (not analytics, must not be described
+as funnels):
 
 - `daily_path/{day}.players_count` and `solved_count` (Increment counters);
 - `/admin_stats` (registered users, notifications enabled, solved today) and the
@@ -109,12 +116,10 @@ stored as part of game state:
 - per-user attempt histogram `solved_in`, streaks and referral qualification counts;
 - `daily_jobs/{day}.sent_total` for broadcasts.
 
-These are not a substitute for analytics and must not be described as funnels.
-
-**Planned evolution.** [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)
-— product analytics and funnel definition. Related work:
+**Related, not implemented here.**
 [#39](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/39) (Admin
-analytics view) and [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52)
-(experimentation, blocked by #29). Feature flags
-([#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51)) are
-also not implemented. Any analytics change must update the privacy page.
+analytics view, to be built on top of the #29 event schema) and
+[#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52)
+(experimentation - variants, assignment, statistical significance - explicitly out of scope
+for #29 and still blocked by it). Any further analytics change must keep the privacy page
+(`webapp/privacy.html`) accurate.

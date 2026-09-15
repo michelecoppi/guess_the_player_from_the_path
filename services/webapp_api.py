@@ -13,6 +13,7 @@ Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.p
 client: nessuna di queste funzioni riceve un id da fuori.
 """
 from services import feature_flags, firebase_service, game, shop, trophies
+from services import product_analytics as analytics
 from services.career_order import order_career
 from services.content_i18n import localize_career
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
@@ -45,6 +46,13 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
     day_iso = day_iso or today_iso()
     lang = lang or user.get("language") or DEFAULT_LANGUAGE
     features = feature_flags.resolved_features(user_id=user_id)
+    # `include_social=False` is the lightweight polling variant used to refresh game state
+    # only; the full bundle is what a real "the Mini App/Daily was opened" looks like, so
+    # that is the only branch that counts as a view (avoids an event per poll).
+    if include_social:
+        analytics.capture(analytics.Event.MINIAPP_OPENED, user_id=user_id, properties={"language": lang})
+        analytics.capture(analytics.Event.DAILY_VIEWED, user_id=user_id,
+                          properties={"surface": "miniapp", "language": lang})
 
     profile = {
         "language": lang,
@@ -306,6 +314,8 @@ def build_archive_challenge(user_id, day_iso, lang=DEFAULT_LANGUAGE):
     result = firebase_service.get_archive_result(user_id, day_iso) or {}
     attempts_used = result.get("attempts", 0)
 
+    analytics.capture(analytics.Event.DAILY_ARCHIVE_VIEWED, user_id=user_id,
+                      properties={"surface": "miniapp"})
     return {
         "day": day_iso,
         "label": to_display(day_iso),
@@ -342,7 +352,8 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
         result = game.play_archive(user_id, day, answer, MAX_ARCHIVE_ATTEMPTS)
         return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True, symbols=symbols)
 
-    result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"))
+    result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"),
+                             surface="miniapp")
     return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols)
 
 

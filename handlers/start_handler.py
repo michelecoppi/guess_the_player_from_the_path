@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 
 from handlers.keyboards import app_invitation, menu_keyboard
 from handlers.league_handler import DEEP_LINK_PREFIX, league_join
+from services import product_analytics as analytics
 from services.firebase_service import save_user
 from services.i18n import resolve_language, t
 
@@ -23,6 +24,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = (await asyncio.to_thread(save_user, user.id, user.first_name, language=detected_lang, **referral))
 
     lang = result["language"]
+    # bot_started: fires on every /start, `is_new_user` distinguishes first contact from a
+    # returning one. referral_opened only when the deep link actually carried a referral
+    # code - a bare `/start` is not a referral event.
+    analytics.capture(
+        analytics.Event.BOT_STARTED, user_id=user.id,
+        properties={"language": lang, "is_new_user": bool(result["created"])},
+    )
+    if argument.startswith("ref_"):
+        analytics.capture(
+            analytics.Event.REFERRAL_OPENED, user_id=user.id,
+            properties={"referral_attached": bool(result.get("referral_attached"))},
+        )
     key = "start.welcome_new" if result["created"] else "start.welcome_back"
     if argument.startswith("duel_"):
         from config import WEBAPP_URL

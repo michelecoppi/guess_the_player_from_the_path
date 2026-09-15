@@ -135,7 +135,7 @@ def test_events_v2_flag_covers_only_the_mini_app_event_mode(api, monkeypatch):
 
 def test_a_rollout_is_evaluated_for_the_authenticated_user_only(api, monkeypatch):
     install({"hints": {"rollout_percentage": 0, "allow_users": ["42"]}})
-    monkeypatch.setattr(bot.game, "take_hint", lambda uid, lang: {"status": "ok", "user": uid})
+    monkeypatch.setattr(bot.game, "take_hint", lambda uid, lang, **kwargs: {"status": "ok", "user": uid})
     assert api.post("/app/api/hint", json={"initData": "x", "user_id": 7}).json() == {"status": "ok", "user": 42}
 
     monkeypatch.setattr(bot, "_webapp_user", lambda payload, cost=1: (7, dict(USER)))
