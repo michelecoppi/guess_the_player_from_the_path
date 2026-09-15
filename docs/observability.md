@@ -113,7 +113,7 @@ also attached to the Sentry event as the sanitised `observability` context.
 | `service`, `environment`, `release` | Process identity (always present); `release` is the formal version. |
 | **`revision`** | Exact Cloud Run build (`K_REVISION`); only on Cloud Run. |
 | **`event`** | Stable event name (see [Event catalogue](#event-catalogue)). |
-| **`component`** | Subsystem: `telegram`, `api`, `job`, `admin`, `ingestion`, `payment`, `broadcast`. |
+| **`component`** | Subsystem: `telegram`, `api`, `job`, `admin`, `ingestion`, `payment`, `broadcast`, `backup`. |
 | **`route`**, **`method`**, `status_code` | FastAPI route template (`/app/api/shop`, never the raw path with ids), HTTP method and status. |
 | **`request_id`** | Server-generated correlation id per HTTP request. |
 | **`task_name`**, **`task_retry_count`**, `task_execution_count`, `task_queue` | Cloud Tasks metadata from `X-CloudTasks-*` headers. |
@@ -151,6 +151,8 @@ also attached to the Sentry event as the sanitised `observability` context.
 | `candidate.ingestion.source_failed` | ERROR | Source adapter raised during `retry_ingestion`. |
 | `candidate.dataset.unreadable` | ERROR | Production dataset missing, corrupt or malformed during a mutation. |
 | `candidate.approval.persistence_failed` / `.rolled_back` / `.rollback_failed` | ERROR / WARNING / CRITICAL | Approval write path. |
+| `backup.export.completed` / `.failed`, `backup.export.collection`, `backup.export.unclassified_collection`, `backup.export.written` / `.invalid` | INFO / ERROR, INFO, WARNING, INFO / ERROR | Firestore export (`scripts/backup_firestore.py`): collection names, document counts, `complete`; never ids or values. |
+| `backup.validate.completed`, `backup.restore.completed` / `.failed`, `backup.restore.real_target`, `backup.verify.completed` | INFO, INFO / ERROR, WARNING, INFO | Validation and restore (`scripts/restore_firestore.py`): mode, target project, planned/written/verified counts. See [backup-recovery.md](backup-recovery.md). |
 
 Existing plain `logging.exception(...)` calls (for example inside `/admin_*` commands or
 `/forgetme`) still reach Sentry through the logging integration and carry the bound context

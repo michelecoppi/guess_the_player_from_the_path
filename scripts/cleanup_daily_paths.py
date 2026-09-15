@@ -37,9 +37,10 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from scripts.backup_firestore import DEFAULT_OUT_DIR, jsonable  # noqa: E402
+from scripts.backup_firestore import DEFAULT_OUT_DIR  # noqa: E402
 from services import firebase_service  # noqa: E402
 from services.dates import shift_iso, today_iso  # noqa: E402
+from services.firestore_backup import codec  # noqa: E402
 
 ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DEFAULT_KEEP_DAYS = 365
@@ -89,7 +90,9 @@ def save_copy(entries, out_dir, label):
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     path = os.path.join(out_dir, f"daily_path-{label}-{stamp}.json")
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({doc_id: jsonable(data) for doc_id, data, _ in entries}, f, ensure_ascii=False, indent=2)
+        # Stessa codifica tipizzata del backup (services/firestore_backup/codec.py): le date restano date.
+        json.dump({doc_id: codec.encode_fields(data, "daily_path/*") for doc_id, data, _ in entries},
+                  f, ensure_ascii=False, indent=2)
     return path
 
 

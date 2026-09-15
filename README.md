@@ -1031,11 +1031,16 @@ mano con *Run workflow*). Si autentica con la stessa Workload Identity Federatio
 nessuna chiave di servizio nei secret.
 
 ```bash
-python scripts/backup_firestore.py            # copia in backup/, sotto-collezioni comprese
+python scripts/backup_firestore.py                              # backup v2 validato in backup/
+python scripts/restore_firestore.py validate backup/<file>.json # controlla senza ripristinare
 ```
 
-L'export segue le **sotto-collezioni** (`participants`, `members`, `archive`): sono metà dei
-dati del gioco, e un backup che si ferma al primo livello sarebbe un backup finto.
+L'export segue le **sotto-collezioni** (`participants`, `members`, `archive`, `players`):
+sono metà dei dati del gioco, e un backup che si ferma al primo livello sarebbe un backup
+finto. Quali collection sono coperte (e perché `work_receipts`/`update_locks` no), il formato
+tipizzato, il ripristino — sull'emulatore per default, in produzione solo con conferme
+esplicite — e la prova periodica del restore sono in
+[`docs/backup-recovery.md`](docs/backup-recovery.md).
 
 `daily_path` cresce di 365 documenti l'anno e non si guarda indietro — l'archivio mostra dieci
 giorni, l'anti-ripetizione sessanta, il numero della sfida è calcolato dalla data:

@@ -15,7 +15,8 @@ capability is missing it says so and links the roadmap issue.
 | Monthly close | Cloud Tasks → `POST /internal/monthly-close` | `services/monthly_closure.py` | Podium frozen in `monthly_closures/{YYYY-MM}`, per-user transactional reset in pages |
 | Telegram updates | Cloud Tasks `TASKS_QUEUE` → `POST /internal/telegram-update` | `bot.py`, `services/work_receipts.py` | Deduplicated and serialized per user; `uncertain` updates alert admins and are not replayed |
 | Deploy | GitHub Actions `deploy.yml` after successful CI on `main` | [ci_cd_pipeline.md](ci_cd_pipeline.md) | Every merge to `main` that passes CI is deployed |
-| Firestore backup | GitHub Actions `backup.yml`, Mondays 03:30 UTC, or manual dispatch | `scripts/backup_firestore.py` | JSON artifact kept 365 days |
+| Firestore backup | GitHub Actions `backup.yml`, Mondays 03:30 UTC, or manual dispatch | `scripts/backup_firestore.py`, `services/firestore_backup/` | Typed v2 JSON, validated before upload, artifact kept 365 days ([backup-recovery.md](backup-recovery.md)) |
+| Restore verification | GitHub Actions `restore-verification.yml`, Tuesdays 05:00 UTC, or manual dispatch; also every CI run | `tests/test_backup_restore_emulator.py` | Synthetic backup→restore→compare on the emulator; no credentials |
 | Dependency updates | Dependabot, weekly | `.github/dependabot.yml` | PRs go through normal CI |
 
 If the scheduler does not run, today's challenge is generated on first use, but the
@@ -38,22 +39,21 @@ broadcast, trophies and monthly close do not happen until the job runs.
 
 ## Backup and recovery state
 
-**Current state.**
+**Current state.** Authoritative description: [backup-recovery.md](backup-recovery.md) (#50).
 
-- Weekly JSON export of `users`, `daily_path`, `events`, `seasons`, `leagues`,
-  `father_son_pairs`, `admin_settings`, `purchases`, including their subcollections,
-  stored as a GitHub Actions artifact for 365 days.
-- Not in the export list: `referrals`, `app_duels`, `group_rounds`, and operational
-  collections (`work_receipts`, `update_locks`, `daily_jobs`, `monthly_closures`).
-- There is no documented or tested restore procedure. Having an export is not a
-  verified recovery capability.
+- Weekly typed JSON export (format v2) of every durable collection in the inventory
+  (`services/firestore_backup/inventory.py`), subcollections included, validated before upload and
+  stored as a GitHub Actions artifact for 365 days. Maximum expected data loss with the
+  schedule alone: up to 7 days.
+- Deliberately excluded: `work_receipts`, `update_locks` (ephemeral dedup/lock state).
+- `scripts/restore_firestore.py` validates, restores (emulator by default; a real project
+  needs explicit guards; never deletes) and verifies. The full backup→restore→compare path
+  runs on the emulator in every CI run and weekly (`restore-verification.yml`), with
+  synthetic data. A restore of a real artifact is a manual drill.
 - Local dataset edits and candidate approvals write file backups to `backup/`
   (gitignored, local only).
 
-**Planned evolution.** [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)
-— retention, restore test and documentation (epic
-[#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20)). Admin
-visibility of backups/system health is
+**Planned evolution.** Admin visibility of backups/system health is
 [#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38).
 
 ## Release state
@@ -68,10 +68,8 @@ so most deploys so far still have no tag. Cloud-side configuration (env vars, qu
 scheduler, IAM) is set with `gcloud` as documented and is not reconciled from the
 repository.
 
-**Planned evolution.** Tested backup/restore is
-[#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)
-(release-checklist.md's backup gate depends on it, see
-[§8.2](release-checklist.md#82-backup-gate)).
+Data migrations use the backup gate in [release-checklist.md § 8.2](release-checklist.md#82-backup-gate),
+which relies on the verified procedure in [backup-recovery.md](backup-recovery.md).
 
 ## Observability
 

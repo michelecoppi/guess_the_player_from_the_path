@@ -326,7 +326,7 @@ When it does:
 
 - the migration step is deliberate and separate from the code deploy, not implied by it
   (code deploys automatically on CI green; a migration script does not run itself);
-- a backup exists first — see §8.2, this gate cannot be satisfied without it;
+- a validated backup exists first — see §8.2, this gate cannot be satisfied without it;
 - dry-run/validation first where the migration script supports it (see existing patterns in
   `scripts/migrate_firestore.py`, `scripts/backfill_users.py` —
   [operations.md](operations.md#manual-operational-responsibilities));
@@ -334,31 +334,38 @@ When it does:
   (restoring from the backup taken above, or a documented reverse transform) — not a generic
   "we have backups" statement.
 
-This issue (#49) does not implement disaster recovery — it only ensures the release process
-knows when this gate applies and blocks on it. See §8.2.
+The release process only decides when this gate applies and blocks on it; the backup,
+restore and recovery mechanics are in [backup-recovery.md](backup-recovery.md) (#50). See §8.2.
 
 ### 8.2 Backup gate
 
-**Current gap, stated plainly:** `scripts/backup_firestore.py` does not export `referrals`,
-`app_duels`, or `group_rounds` (see
-[operations.md § Backup and recovery state](operations.md#backup-and-recovery-state)), and
-**no restore procedure has ever been run or documented**. An export existing is not the same
-as recovery being proven.
+Backup scope, format, restore tool and procedure are defined in
+[backup-recovery.md](backup-recovery.md) (#50). What that gives a release, stated precisely:
+the weekly backup covers every durable collection in the inventory
+([backup-recovery.md § 3](backup-recovery.md#3-collection-inventory)) — deliberately not
+`work_receipts`/`update_locks` — it is validated before upload, and the restore path is
+verified on the emulator with synthetic data in every CI run and weekly
+([§ 10](backup-recovery.md#10-periodic-restore-verification)). It is **not** a rehearsed
+production restore, and it can be up to 7 days old
+([§ 2](backup-recovery.md#2-recovery-properties)).
 
 Consequences for this checklist:
 
-- A release **cannot** claim "disaster-recovery readiness" — that checkbox does not exist
-  here on purpose. Full backup/restore is
-  [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50), tracked
-  separately and not implemented by #49.
-- Any release with a risky data migration (§8.1) requires a **freshly taken, verified**
-  backup (`python scripts/backup_firestore.py`, confirm the output file is non-empty and
-  covers the collections the migration touches) before the migration runs — this is the
-  minimum, not a substitute for #50.
-- If the migration touches `referrals`, `app_duels`, or `group_rounds`, the gap above means
-  the automatic backup doesn't cover it: back those up manually
-  (`--collections referrals,app_duels,group_rounds`) or treat the migration as higher-risk
-  and get a second reviewer before running it.
+- Any release with a risky data migration (§8.1), or any operation that rewrites/deletes
+  existing documents, requires a **fresh** backup taken immediately before it: *Backup
+  Firestore* → *Run workflow* (or `python scripts/backup_firestore.py` with production
+  credentials), then
+  `python scripts/restore_firestore.py validate <file> --expect-source-project guess-the-player-from-path-bot`
+  must print `VALID backup.` and list the collections the migration touches with plausible
+  `document_counts`.
+- For a migration that is hard to reverse, also restore that file into the emulator and run
+  the migration there first ([backup-recovery.md § 8.3](backup-recovery.md#83-restore-into-the-emulator-first)).
+- The migration's rollback note (§8.1) names the backup (`created_at`, file SHA-256, run id)
+  and the restore mode it would use
+  ([backup-recovery.md § 8.4](backup-recovery.md#84-emergency-production-restore)); remember
+  that rolling code back does not restore data ([§ 9](backup-recovery.md#9-code-rollback-vs-data-restore)).
+- A release still never claims "disaster-recovery verified" in its evidence: the evidence is
+  the validated backup identity, not a general statement.
 
 ## 9. CI release gate — `release-check.yml`
 
@@ -432,10 +439,12 @@ gcloud run services update-traffic guess-the-player \
 ```
 
 **Release with a Firestore migration.** Routing traffic back is not sufficient — old code
-may not understand data the migration already changed. Recovery requires the
-migration-specific plan and backup written down in §8.1/§8.2 for *that* migration; there is
-no generic automated path. This is exactly the gap #50 exists to close — until then, rolling
-back a data migration is a manual, case-by-case recovery, not a one-command rollback.
+may not understand data the migration already changed, and deploying an old revision never
+restores Firestore. Recovery follows the migration-specific plan written down in §8.1/§8.2:
+restore the pre-migration backup with `scripts/restore_firestore.py` as described in
+[backup-recovery.md § 8.4](backup-recovery.md#84-emergency-production-restore) (emulator
+first, dry-run, explicit mode, verification), together with the code rollback. It remains a
+deliberate manual operation, not a one-command rollback.
 
 In both cases, record in release evidence (§12) the exact known-good version/SHA/image you
 rolled back to — not "the previous one," the actual identifier (§8).
@@ -477,7 +486,7 @@ git SHA:            <release candidate commit, §8>
 CI run:             <URL/ID of the green run for that SHA>
 deployed revision:  <Cloud Run revision name from GET / "revision", §2.1/§8 — the proof>
 migration status:   none | done (link migration + backup evidence, §8.1)
-backup status:      n/a | fresh export confirmed (§8.2) — never "disaster-recovery verified"
+backup status:      n/a | validated backup <created_at, file sha256, run id> (§8.2) — never "disaster-recovery verified"
 deployer:           <who ran/approved this>
 smoke result:       pass | issues (link them)
 rollback target:    <previous known-good version/SHA/revision, §10>
@@ -542,7 +551,8 @@ Not implemented by this document or its tooling — see the linked issues:
 [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)
 (Sentry/structured logging — §2 only prepares the boundary),
 [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)
-(backup/restore — §8.2 only states the gate),
+(backup/restore — implemented separately in [backup-recovery.md](backup-recovery.md); §8.2
+states the release gate),
 [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51)
 (feature flags), [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)
 (analytics), and the V2 rollout issue referenced in §15.

@@ -24,8 +24,18 @@ new dated section below.
 - Structured runtime logs (JSON on Cloud Run) with stable event names, component tags,
   durations, server-generated `X-Request-ID` and Cloud Tasks correlation.
 - HTTP regression tests for the `x-cron-secret` boundary of `POST /internal/daily-job`.
+- Verified Firestore restore: `scripts/restore_firestore.py` (`validate`, `restore`, `verify`,
+  `upgrade-v1`), emulator-by-default with explicit production guards and no deletes, a real
+  emulator backup→restore→compare test, and the weekly `restore-verification.yml` workflow
+  ([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50),
+  [backup-recovery.md](docs/backup-recovery.md)).
 
 ### Changed
+
+- Firestore backups use a typed, validated format v2 driven by one collection inventory; they
+  now also cover `referrals`, `app_duels`, `group_rounds`, `monthly_closures`, `daily_jobs` and
+  subcollections under missing parent documents, and the weekly workflow uploads only a
+  validated file ([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)).
 
 ### Fixed
 

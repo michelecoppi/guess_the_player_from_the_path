@@ -233,9 +233,11 @@ gcloud projects get-iam-policy guess-the-player-from-path-bot \
 Senza questo ruolo il workflow fallisce con un errore di permessi al primo lunedì utile: il
 codice è a posto, manca solo l'autorizzazione.
 
-Quali collection finiscono nell'export è elencato in [operations.md](operations.md#backup-and-recovery-state).
-Una procedura di ripristino **non è ancora documentata né provata**: è l'obiettivo di
-[#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50).
+Quali collection finiscono nell'export, il formato, la validazione prima dell'upload, la
+procedura di ripristino (con `scripts/restore_firestore.py`) e la prova periodica del restore
+sono in [backup-recovery.md](backup-recovery.md). Il ruolo `roles/datastore.viewer` basta per
+il backup ma **non** per un ripristino, che richiede un'identità con scrittura e le conferme
+esplicite descritte lì.
 
 In locale invece lo script usa il `firebase-key.json` come tutto il resto:
 

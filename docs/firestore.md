@@ -44,6 +44,10 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `daily_jobs/{day}` | ISO day | Immutable nightly broadcast payload and `sent_total` |
 | `monthly_closures/{YYYY-MM}` | month | Frozen podium before monthly reset |
 
+Backup coverage of each collection (durable, reconstructable or ephemeral, and why) is the
+inventory in [backup-recovery.md § 3](backup-recovery.md#3-collection-inventory); a new
+collection must be classified there (`services/firestore_backup/inventory.py`).
+
 Composite indexes are in [`firestore.indexes.json`](../firestore.indexes.json).
 Optional TTL policies (`app_duels.expires_at`, `work_receipts.delete_after`) are
 described as optional in the code/docs and are not managed from this repository.
