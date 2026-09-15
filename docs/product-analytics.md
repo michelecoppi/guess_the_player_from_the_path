@@ -654,14 +654,36 @@ Not included as a saved insight, and not claimed as implemented (§12): Daily re
 the natural tool for this once there is a real product question driving it — no cohort
 definition is prescribed here ahead of that need.
 
+## 15a. Reading metrics back (admin dashboard, #39)
+
+`services/product_analytics.py` is capture-only by design (§1); reading events back needs a
+different credential class entirely — PostHog's **Personal** API Key (query-scoped), never
+the **Project** key `POSTHOG_API_KEY` above (write-only, used only for `capture()`).
+`services/product_analytics_query.py` reads its own pair,
+`POSTHOG_PERSONAL_API_KEY`/`POSTHOG_PROJECT_ID`, and never falls back to the capture
+settings — pasting one key into the other's variable fails loudly (`QueryError`), not
+silently.
+
+It runs one read-only HogQL `SELECT` per row of the core-metrics table (§12) that a single
+query can answer (completion rate, hint usage, referral conversion, shop conversion, Mini
+App activation, guesses per completed Daily) via PostHog's Query API
+(`POST /api/projects/{id}/query/`). The multi-step, session-scoped funnels in §11
+(onboarding, referral, shop) are **not** reimplemented here — they need PostHog's own
+funnel insight to correlate ordered events within one person's session, which a bare HogQL
+`SELECT` cannot express as a simple ratio. The admin page (`admin_pages/analytics.py`)
+shows the core metrics and links to PostHog for those funnels instead.
+
+Unconfigured (either variable missing) means the admin page shows a configuration notice
+and makes no network call — same fail-closed posture as `product_analytics.py` itself.
+
 ## 16. Relationship with other issues
 
 - **#18 Observability** — strictly separate concern (§1); reuses only `services/version.py`
   and `observability`'s redaction helpers, never its Sentry transport or log formatters.
-- **#39 Admin Analytics** — not built here. The event taxonomy (§6) and metric definitions
-  (§12) are the schema #39 is expected to read from PostHog (via its API/export, or a future
-  internal aggregation) — this issue deliberately stops at "the data exists and is
-  well-defined," not "there is an Admin page showing it."
+- **#39 Admin Analytics** — implemented (§15a): `services/product_analytics_query.py`
+  reads the single-query core metrics (§12) back from PostHog via a read-only Personal API
+  Key, shown on `admin_pages/analytics.py`. The multi-step funnels (§11) still need
+  PostHog's own funnel insight and are linked from that page, not reimplemented.
 - **#52 Experimentation** — blocked by this issue, still open, not implemented. No variant
   assignment, no A/B testing UI, no statistical significance tooling exists in this change.
 - **#51 Feature flags** — a `FEATURE_DISABLED` refusal (`services.feature_flags.FeatureDisabled`)
