@@ -59,7 +59,7 @@ entry is no longer used, or if this table disagrees with the inventory module.
 | `purchases` | durable | yes | — | yes | Stars ledger; the Telegram charge id is needed for refunds and idempotent delivery |
 | `app_duels` | durable | yes | — | no | Arena duels (7-day expiry) referenced by `users.app_duel`; expired duels are ignored by the code |
 | `referrals` | durable | yes | — | yes | Attribution and qualification ledger; the invite code is consumed at registration, so it cannot be recomputed |
-| `admin_settings` | durable | yes | — | yes | Admin overrides (`dataset_overrides`); the whole collection is exported, so documents added later are covered |
+| `admin_settings` | durable | yes | — | yes | Admin overrides (`dataset_overrides`, `feature_flags`, `daily_planner`); the whole collection is exported, so documents added later are covered |
 | `father_son_pairs` | durable | yes | — | no | Manual event content with Telegram file ids, not in any file |
 | `monthly_closures` | durable | yes | — | yes | Frozen podium; without it a closure resumed after a restore would recompute winners from reset points |
 | `daily_jobs` | reconstructable | yes | — | no | Nightly broadcast payload and `sent_total`; derivable, but tiny, and restoring it keeps a resumed job from re-deciding |

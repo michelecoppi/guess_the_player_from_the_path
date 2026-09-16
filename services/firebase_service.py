@@ -50,6 +50,8 @@ ADMIN_SETTINGS_COLLECTION = "admin_settings"
 DATASET_OVERRIDES_DOC = "dataset_overrides"
 # Flag operativi (#51): services/feature_flags.py, docs/feature-flags.md.
 FEATURE_FLAGS_DOC = "feature_flags"
+# Esclusioni del planner delle sfide (#30): services/daily_planner.py.
+DAILY_PLANNER_DOC = "daily_planner"
 FATHER_SON_COLLECTION = "father_son_pairs"
 ARCHIVE_SUBCOLLECTION = "archive"
 HISTORY_SUBCOLLECTION = "history"
@@ -184,6 +186,9 @@ from services.repos.admin import block_player_id as block_player_id
 from services.repos.admin import delete_father_son_pair as delete_father_son_pair
 from services.repos.admin import get_admin_overview as get_admin_overview
 from services.repos.admin import get_blocked_player_ids as get_blocked_player_ids
+from services.repos.admin import get_planner_exclusions as get_planner_exclusions
+from services.repos.admin import remove_planner_exclusion as remove_planner_exclusion
+from services.repos.admin import set_planner_exclusion as set_planner_exclusion
 from services.repos.admin import list_failed_jobs as list_failed_jobs
 from services.repos.admin import list_father_son_pairs as list_father_son_pairs
 from services.repos.admin import mark_father_son_pairs_used as mark_father_son_pairs_used
@@ -201,7 +206,6 @@ from services.repos.archive import register_archive_solved as register_archive_s
 from services.repos.archive import set_archive_day as set_archive_day
 from services.repos.challenges import claim_daily_first_correct as claim_daily_first_correct
 from services.repos.challenges import count_day_winners as count_day_winners
-from services.repos.challenges import daily_path_exists as daily_path_exists
 from services.repos.challenges import daily_path_ref as daily_path_ref
 from services.repos.challenges import delete_daily_path as delete_daily_path
 from services.repos.challenges import get_daily_path as get_daily_path
@@ -209,7 +213,6 @@ from services.repos.challenges import get_daily_paths_range as get_daily_paths_r
 from services.repos.challenges import get_daily_stats as get_daily_stats
 from services.repos.challenges import get_display_name_for_day as get_display_name_for_day
 from services.repos.challenges import get_past_daily_paths as get_past_daily_paths
-from services.repos.challenges import get_recent_player_ids as get_recent_player_ids
 from services.repos.challenges import register_daily_outcome as register_daily_outcome
 from services.repos.challenges import save_daily_path as save_daily_path
 from services.repos.challenges import update_daily_path as update_daily_path

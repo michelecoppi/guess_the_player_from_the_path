@@ -28,7 +28,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `users/{telegram_id}` | Telegram user id | Profile, points (total/monthly), day counters anchored to `last_played_day`, streaks, trophies, cosmetics (`owned`, `earned`, `equipped`, looks), sessions (`archive_day`, `training_key`, `event_key`, `app_duel`), duel ledger, `shop_checkout` reservation |
 | `users/{id}/history/{day}` | ISO day | One result per finished daily challenge (calendar) |
 | `users/{id}/archive/{day}` | ISO day | Archive replay results |
-| `daily_path/{day}` | ISO day | Daily challenge content, accepted answers, difficulty, `difficulty_prediction` snapshot, first-solver bonus state, `players_count`/`solved_count`/`solved_attempts_total`/`solved_hints_total` ([difficolta.md §6](difficolta.md)) |
+| `daily_path/{day}` | ISO day | Daily challenge content, accepted answers, difficulty, `difficulty_prediction` snapshot, `planner_audit` (planned days), first-solver bonus state, `players_count`/`solved_count`/`solved_attempts_total`/`solved_hints_total` ([difficolta.md §6](difficolta.md)) |
 | `events/{code}` | event code | Event definition and per-day `daily_data` |
 | `events/{code}/participants/{telegram_id}` | user id | Event points and attempts |
 | `seasons/{id}` | season | Monthly seasons |
@@ -38,6 +38,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `app_duels/{code}` | random code | Arena duels (two seats, five puzzles, `expires_at`) |
 | `referrals/{key}` | SHA-256 of a user id (`services/referrals.py::referral_key`) | Referral attribution (`inviter_id`) and qualification |
 | `admin_settings/dataset_overrides` | fixed | Players blocked with `/admin_block` |
+| `admin_settings/daily_planner` | fixed | Players excluded from the Daily planner: `excluded.{player_id}` = `reason`, `until` (ISO day or null), `excluded_at` ([game-modes.md](game-modes.md#daily-planner)) |
 | `admin_settings/feature_flags` | fixed | Operational feature flags: schema version, revision, per-flag master switch, rollout and user/group targeting ([feature-flags.md](feature-flags.md)) |
 | `father_son_pairs/{auto}` | auto | Manual father/son event content (Telegram `file_id`) |
 | `work_receipts/{key}` | e.g. `telegram-{update_id}`, `notify-{day}-{user}` | Deduplication/outcome of background work (`delete_after` for optional TTL) |

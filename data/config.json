@@ -96,5 +96,11 @@
     "failure_weight": 0.7,
     "attempts_weight": 0.3,
     "mismatch_tolerance": 25
+  },
+  "daily_planner": {
+    "horizon_days": 30,
+    "club_cooldown_days": 3,
+    "nationality_cooldown_days": 3,
+    "max_same_band_streak": 2
   }
 }

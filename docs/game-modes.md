@@ -27,12 +27,10 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
 
 1. **Content creation.** `services/daily_generator.py::ensure_daily_buffer` writes
    missing `daily_path/{YYYY-MM-DD}` documents for the next `buffer_days_ahead` days
-   (`data/config.json`, currently 3). Selection uses only verified, non-blocked,
-   non-`practice_only` players with at least `min_teams_in_career` clubs, excludes players
-   used in the last `history_days_no_repeat` days (falling back to repeats, with a
-   warning, if the pool is exhausted), follows `difficulty_rotation` with nearest-band
-   fallback, and seeds the RNG with the date so a rerun picks the same player for the
-   same day.
+   (`data/config.json`). Player selection is owned by the Daily planner
+   ([`services/daily_planner.py`](../services/daily_planner.py), see
+   [Daily planner](#daily-planner)); the buffer only fills gaps and never touches an
+   existing day.
 2. **Triggers.** The nightly Cloud Scheduler call to `/internal/daily-job`
    ([`handlers/daily_job.py`](../handlers/daily_job.py)) runs the buffer; `/admin_regen`
    and `scripts/generate_content.py` run it on demand; if today's document is still
@@ -59,14 +57,52 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
 answers/difficulty, reopen the bonus, delete or schedule a challenge on any date; rules
 such as “today's challenge cannot be deleted” live in the service, not the UI.
 
-**Planned evolution.** There is no long-horizon planner: the automatic 30–90-day Daily
-planner is [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)
-(open). Admin Daily management beyond the current page is
-[#34](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/34). Every
-generated or manually set Daily carries a `difficulty_prediction` snapshot that the Admin
-compares with observed results
+Every generated or manually set Daily carries a `difficulty_prediction` snapshot that the
+Admin compares with observed results
 ([#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21),
 [difficolta.md §6](difficolta.md)).
+
+**Planned evolution.** Admin Daily management beyond the current pages is
+[#34](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/34).
+
+### Daily planner
+
+**Current state** ([#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)).
+One module chooses every automatic Daily player: the nightly buffer, `/admin_regen`,
+`get_today_challenge`, the “Rigenera” button (`content_admin.regenerate_daily`) and the
+Admin “🗓️ Planner sfide” page, which proposes a 7–90-day calendar, lets the admin review it
+and writes it only on *Applica*.
+
+Rules, in priority order (parameters in `data/config.json`):
+
+| Rule | Parameter |
+| --- | --- |
+| Eligible: verified, complete, non-`practice_only`, not blocked (`/admin_block`), not excluded from the planner | `admin_settings/daily_planner.excluded` (reason, optional `until` day) |
+| No player repeated within N days **before or after** the day (future fixed days count) | `history_days_no_repeat` |
+| Band from the rotation (by day of year), at most N consecutive days in the same band | `difficulty_rotation`, `daily_planner.max_same_band_streak` |
+| No shared club / nationality with the neighbouring days | `daily_planner.club_cooldown_days`, `daily_planner.nationality_cooldown_days` |
+
+Among the valid candidates the planner prefers players not present anywhere in the read
+window, then picks with an RNG seeded by `day|variant`: the same state gives the same
+calendar, and “another player” changes the variant, not the randomness. When the rules
+cannot all hold, it relaxes them in this order instead of leaving a hole: nationality and
+club, then band, then the band streak, and last the player repetition. Every relaxation is
+recorded.
+
+**Modes.** *Fill* creates only missing days. *Replan* also replaces future days that are
+not locked and were not chosen by hand (`source: "manual"`). Today and past days are never
+replaced, and a past day without a Daily is reported, not created. Days that will be
+replaced do not constrain their neighbours.
+
+**Audit.** Every planned Daily stores `planner_audit`: target band, chosen band, relaxed
+rules, the candidate funnel (pool → not excluded → not repeated → no shared club → other
+nationality → final candidates), variant, mode and `planned_at`. The Admin shows it per day
+in the planner and in “Sfide giornaliere”.
+
+**Review controls.** Per proposed day: another player (preview only), exclude the player
+(with reason and expiry, then recompute); per existing future day: lock/unlock. *Applica*
+re-reads each day just before writing and skips it if it was locked, created or changed
+since the preview.
 
 ## Archive
 

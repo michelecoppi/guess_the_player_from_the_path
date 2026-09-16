@@ -59,7 +59,7 @@ def fake_db(monkeypatch):
     monkeypatch.setattr(content_admin.firebase_service, "delete_event", delete_event)
     monkeypatch.setattr(content_admin.firebase_service, "get_active_events", get_active_events)
     monkeypatch.setattr(content_admin.firebase_service, "get_blocked_player_ids", lambda: state["blocked"])
-    monkeypatch.setattr(content_admin.firebase_service, "get_recent_player_ids", lambda days: state["recent"])
+    monkeypatch.setattr(content_admin.firebase_service, "get_planner_exclusions", lambda: {})
     return state
 
 

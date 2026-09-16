@@ -4,17 +4,12 @@ import logging
 from firebase_admin import firestore
 from google.api_core.exceptions import GoogleAPICallError
 
-from services.dates import shift_iso, today_iso
+from services.dates import today_iso
 
 
 def daily_path_ref(day_iso):
     from services import firebase_service as fs
     return fs.db.collection(fs.DAILY_PATH_COLLECTION).document(day_iso)
-
-
-def daily_path_exists(day_iso):
-    from services import firebase_service as fs
-    return fs.daily_path_ref(day_iso).get().exists
 
 
 def get_daily_path(day_iso):
@@ -33,21 +28,6 @@ def save_daily_path(day_iso, doc):
     doc["day"] = day_iso
     fs.daily_path_ref(day_iso).set(doc)
     logging.info(f"[GENERATOR] Salvata daily_path per {day_iso} (player_id={doc.get('player_id')})")
-
-
-def get_recent_player_ids(days):
-    """Gli id dei giocatori usati (o gia' programmati) nella finestra di anti-ripetizione.
-    Query di intervallo sulla data: possibile solo perche' le date sono ISO."""
-    from services import firebase_service as fs
-    start_day = shift_iso(today_iso(), -days)
-    docs = fs.db.collection(fs.DAILY_PATH_COLLECTION).where("day", ">=", start_day).stream()
-
-    ids = []
-    for doc in docs:
-        player_id = doc.to_dict().get("player_id")
-        if player_id:
-            ids.append(player_id)
-    return ids
 
 
 def claim_daily_first_correct(day_iso):

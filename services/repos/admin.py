@@ -100,6 +100,35 @@ def unblock_player_id(player_id):
     logging.info(f"[ADMIN] Giocatore riammesso nella selezione automatica: {player_id}")
 
 
+def _planner_ref():
+    from services import firebase_service as fs
+    return fs.db.collection(fs.ADMIN_SETTINGS_COLLECTION).document(fs.DAILY_PLANNER_DOC)
+
+
+def get_planner_exclusions():
+    """Giocatori esclusi dal planner delle sfide (#30): {player_id: {reason, until, excluded_at}}.
+
+    Non e' la sospensione di /admin_block (dato sbagliato, fuori da tutto): e' una scelta
+    editoriale sul calendario ("e' appena stato in tendenza, non programmarlo fino a
+    giugno"), con una scadenza facoltativa."""
+    doc = _planner_ref().get()
+    if not doc.exists:
+        return {}
+    return dict(doc.to_dict().get("excluded") or {})
+
+
+def set_planner_exclusion(player_id, exclusion):
+    _planner_ref().set({"excluded": {player_id: dict(exclusion)}}, merge=True)
+    logging.info(f"[ADMIN] Giocatore escluso dal planner: {player_id}")
+
+
+def remove_planner_exclusion(player_id):
+    ref = _planner_ref()
+    if ref.get().exists:
+        ref.update({f"excluded.{player_id}": firestore.DELETE_FIELD})
+    logging.info(f"[ADMIN] Giocatore riammesso nel planner: {player_id}")
+
+
 def add_father_son_pair(pair):
     """Salva una coppia padre/figlio inviata dall'admin via Telegram (foto + risposte).
     Il campo 'file_id' e' l'identificativo della foto su Telegram: puo' essere rispedito

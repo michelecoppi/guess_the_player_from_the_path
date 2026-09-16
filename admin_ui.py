@@ -67,6 +67,7 @@ from admin_pages import (
     groups,
     leagues,
     overview,
+    planner,
     player_review,
     shop,
     system,
@@ -86,6 +87,7 @@ now_italy = datetime.now(ITALY_TZ)
 PAGES = [
     "📊 Stato generale",
     "📅 Sfide giornaliere",
+    "🗓️ Planner sfide",
     "🎊 Eventi",
     "👤 Utenti",
     "👥 Gruppi",
@@ -124,6 +126,7 @@ render_flash()
 RENDERERS = {
     '📊 Stato generale': overview.render,
     '📅 Sfide giornaliere': challenges.render,
+    '🗓️ Planner sfide': planner.render,
     '🎊 Eventi': events.render,
     '👤 Utenti': users.render,
     '👥 Gruppi': groups.render,
