@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["scripts/preview_webapp.py"],
       "port": 8888
+    },
+    {
+      "name": "admin (dashboard Streamlit)",
+      "runtimeExecutable": "streamlit",
+      "runtimeArgs": ["run", "admin_ui.py", "--server.headless", "true"],
+      "port": 8501
     }
   ]
 }
