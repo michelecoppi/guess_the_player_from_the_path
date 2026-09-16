@@ -25,6 +25,16 @@ CODE_ALPHABET = "".join(c for c in string.ascii_uppercase + string.digits if c n
 # basterebbero: lo spazio dei codici e' enorme rispetto al numero di leghe.
 CODE_ATTEMPTS = 5
 
+# Il parametro di /start che apre l'iscrizione a una lega: il link si condivide dalla chat e
+# dalla mini app, e /start lo riconosce (handlers/start_handler.py).
+DEEP_LINK_PREFIX = "lega_"
+
+
+def invite_link(code, bot_username):
+    if not bot_username:
+        return ""
+    return f"https://t.me/{bot_username}?start={DEEP_LINK_PREFIX}{code}"
+
 
 def generate_code():
     return "".join(random.choice(CODE_ALPHABET) for _ in range(CODE_LENGTH))

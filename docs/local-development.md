@@ -184,7 +184,7 @@ Architettura, confini e funzionalità della Admin: [admin.md](admin.md).
 
 ### 5.4 API e Server Principale (`bot.py`)
 
-Il server principale `bot.py` include l'applicazione FastAPI, il webhook Telegram e gli endpoint della Mini App.
+Il server principale `bot.py` compone l'applicazione FastAPI (`apps/api/`: webhook Telegram, worker interni, endpoint della Mini App, pagine statiche) e il bot Telegram (`apps/bot/`).
 
 #### Requisiti di avvio del lifespan
 All'avvio (`lifespan`), `bot.py` verifica la sicurezza e l'integrazione con Cloud Tasks:

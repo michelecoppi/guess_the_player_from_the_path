@@ -23,7 +23,7 @@ def load_bot(monkeypatch, generation_secret):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     job = AsyncMock(return_value={"day": "2026-09-14", "status": "queued"})
-    monkeypatch.setattr(module, "update_daily_challenge", job)
+    monkeypatch.setattr(module.bot_bridge, "run_daily_job", job)
     return module, job
 
 

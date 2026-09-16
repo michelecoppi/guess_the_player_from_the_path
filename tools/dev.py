@@ -96,6 +96,7 @@ def cmd_syntax(extra_args: list[str]) -> int:
         "-q",
         "bot.py",
         "config.py",
+        "apps",
         "services",
         "handlers",
         "scripts",

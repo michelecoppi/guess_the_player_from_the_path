@@ -55,7 +55,7 @@ tests only check language parity, not truthfulness.
   gitignored. `.env.example` contains placeholders only.
 - CI/CD authenticates to GCP with Workload Identity Federation; no service-account key
   is stored in GitHub secrets.
-- `httpx` logging is raised to `WARNING` in `bot.py` because Telegram URLs contain the
+- `httpx` logging is raised to `WARNING` by `services/observability.py` (initialised by `bot.py`) because Telegram URLs contain the
   bot token; the PTB error handler logs only the exception type and update id.
 
 ## Automated checks

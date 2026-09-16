@@ -27,15 +27,12 @@ from services.i18n import resolve_language, t
 from services.leagues import MAX_LEAGUES_PER_USER, MAX_MEMBERS, MAX_NAME_LENGTH
 
 CALLBACK_PREFIX = "lg_"
-DEEP_LINK_PREFIX = "lega_"
 
 MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
 
 
 def invite_link(code):
-    if not BOT_USERNAME:
-        return ""
-    return f"https://t.me/{BOT_USERNAME}?start={DEEP_LINK_PREFIX}{code}"
+    return league_rules.invite_link(code, BOT_USERNAME)
 
 
 def _lang_for(update: Update, user_data=None):

@@ -112,8 +112,8 @@ gcloud run deploy guess-the-player \
 | `BOT_USERNAME` | Username del bot **senza @**, es. `guess_the_player_bot`. Facoltativa: serve ai link di condivisione del risultato e agli inviti alle leghe; se manca, quei bottoni non compaiono |
 
 Se cambia l'URL del servizio (es. nuova region o nuovo nome), vanno aggiornati `WEBHOOK_URL` e
-`PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`bot.py`, funzione
-`lifespan`), non serve nessuna azione manuale su Telegram.
+`PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`apps/bot/application.py`,
+`startup`, chiamata dal lifespan di `apps/api/app.py`), non serve nessuna azione manuale su Telegram.
 
 Le variabili si impostano una volta sola sul servizio e **sopravvivono ai deploy**: il workflow
 [`deploy.yml`](../.github/workflows/deploy.yml) non passa `--set-env-vars`, quindi non le
@@ -130,7 +130,7 @@ gcloud run services update guess-the-player \
 ### Mini app: pulsante nel menu del bot
 
 Con `PUBLIC_BASE_URL` impostata, la pagina risponde su `<PUBLIC_BASE_URL>/app`. All'avvio il bot
-imposta da solo il pulsante **Play** del menu su quell'URL (`set_chat_menu_button` in `bot.py`);
+imposta da solo il pulsante **Play** del menu su quell'URL (`set_chat_menu_button` in `apps/bot/application.py`);
 in alternativa si può configurare a mano da @BotFather → `/mybots` → il bot → *Bot Settings* →
 *Menu Button*. Telegram accetta solo HTTPS, che Cloud Run fornisce già.
 
@@ -184,7 +184,7 @@ gcloud scheduler jobs create http daily-generation \
 
 L'orario (23:15 UTC) è poco dopo mezzanotte a Roma sia in ora solare che legale.
 
-Cosa fa la chiamata (`bot.py` → `@app.post("/internal/daily-job")` → `handlers/daily_job.py`,
+Cosa fa la chiamata (`apps/api/internal.py` → `@router.post("/internal/daily-job")` → `handlers/daily_job.py`,
 `update_daily_challenge()`):
 
 1. verifica l'header `x-cron-secret` contro `GENERATION_SECRET`, rifiuta con `403` se manca o

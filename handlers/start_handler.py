@@ -5,10 +5,11 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppI
 from telegram.ext import ContextTypes
 
 from handlers.keyboards import app_invitation, menu_keyboard
-from handlers.league_handler import DEEP_LINK_PREFIX, league_join
+from handlers.league_handler import league_join
 from services import product_analytics as analytics
 from services.firebase_service import save_user
 from services.i18n import resolve_language, t
+from services.leagues import DEEP_LINK_PREFIX
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):

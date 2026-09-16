@@ -42,7 +42,7 @@ fallisce); il file del workflow resta la fonte esatta:
 | Test client legacy | le funzioni pure della mini app `/app` (`webapp/client.js`) e l'allineamento delle stringhe | `node --test tests/client.test.cjs` |
 | Test frontend V2 | test unitari TypeScript | `npm run test:frontend` |
 | Audit dipendenze frontend | vulnerabilità npm di livello alto | `npm audit --audit-level=high` |
-| Controllo sintassi | i moduli Python compilano | `python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py tools` |
+| Controllo sintassi | i moduli Python compilano | `python -m compileall -q bot.py config.py apps services handlers scripts admin_pages admin_ui.py tools` |
 | Lint | regole `E`, `F`, `W`, `I` di ruff (`E501` disattivato) | `ruff check .` |
 | Type check | annotazioni coerenti in `services/` | `mypy services/` |
 | Sicurezza | pip-audit con eccezioni a scadenza, detect-secrets, npm audit (vedi [security.md](security.md)) | `python -m tools.security` |

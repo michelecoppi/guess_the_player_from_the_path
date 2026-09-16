@@ -11,8 +11,10 @@ import pytest
 from google.api_core.exceptions import AlreadyExists
 
 import config
+from apps.api import miniapp
+from apps.bot import application as bot_application
 from handlers import error_handler, guess_handler
-from services import rate_limit, task_queue, work_receipts
+from services import alerts, firebase_service, rate_limit, task_queue, work_receipts
 
 
 @pytest.fixture
@@ -36,7 +38,7 @@ def request(server, path, *, method="POST", **kwargs):
 @pytest.mark.parametrize("secret", [None, "wrong", "", "a" * 47])
 def test_forged_webhook_is_rejected_before_parsing(server, monkeypatch, secret):
     calls = []
-    monkeypatch.setattr(server.task_queue, "enqueue", lambda *a, **kw: calls.append(a))
+    monkeypatch.setattr(task_queue, "enqueue", lambda *a, **kw: calls.append(a))
     headers = {"X-Telegram-Bot-Api-Secret-Token": secret} if secret is not None else {}
     response = request(server, "/webhook", content=b"not even json", headers=headers)
     assert response.status_code == 403
@@ -45,13 +47,13 @@ def test_forged_webhook_is_rejected_before_parsing(server, monkeypatch, secret):
 
 def test_webhook_acknowledges_durable_enqueue_without_processing(server, monkeypatch):
     calls = []
-    monkeypatch.setattr(server.task_queue, "enqueue", lambda *a, **kw: calls.append(a))
+    monkeypatch.setattr(task_queue, "enqueue", lambda *a, **kw: calls.append(a))
     processor = AsyncMock()
     monkeypatch.setattr(server.telegram_app, "process_update", processor)
     update = {"update_id": 123}
     for _ in range(2):
         response = request(server, "/webhook", json=update,
-                           headers={"X-Telegram-Bot-Api-Secret-Token": server.WEBHOOK_SECRET})
+                           headers={"X-Telegram-Bot-Api-Secret-Token": config.WEBHOOK_SECRET})
         assert response.status_code == 200
     assert calls == [("/internal/telegram-update", update, "telegram-123")] * 2
     processor.assert_not_called()
@@ -60,38 +62,38 @@ def test_webhook_acknowledges_durable_enqueue_without_processing(server, monkeyp
 def test_webhook_queue_failure_is_not_acknowledged(server, monkeypatch):
     def fail(*a, **kw):
         raise RuntimeError("queue unavailable")
-    monkeypatch.setattr(server.task_queue, "enqueue", fail)
+    monkeypatch.setattr(task_queue, "enqueue", fail)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app, raise_app_exceptions=False),
                                      base_url="http://test") as client:
             response = await client.post("/webhook", json={"update_id": 123},
-                                         headers={"X-Telegram-Bot-Api-Secret-Token": server.WEBHOOK_SECRET})
+                                         headers={"X-Telegram-Bot-Api-Secret-Token": config.WEBHOOK_SECRET})
             assert response.status_code == 500
     asyncio.run(run())
 
 
 def test_lifespan_registers_secret_and_shuts_down(server, monkeypatch):
     initialize, shutdown, register = AsyncMock(), AsyncMock(), AsyncMock()
-    monkeypatch.setattr(server, "WEBHOOK_URL", "https://example.test/webhook")
+    monkeypatch.setattr(config, "WEBHOOK_URL", "https://example.test/webhook")
     monkeypatch.setattr(server.telegram_app, "initialize", initialize)
     monkeypatch.setattr(server.telegram_app, "shutdown", shutdown)
     monkeypatch.setattr(type(server.telegram_app.bot), "set_webhook", register)
-    monkeypatch.setattr(server, "_register_bot_commands", AsyncMock())
-    monkeypatch.setattr(server.task_queue, "validate_configuration", lambda: None)
+    monkeypatch.setattr(bot_application, "register_bot_commands", AsyncMock())
+    monkeypatch.setattr(task_queue, "validate_configuration", lambda: None)
 
     async def run():
-        async with server.lifespan(server.app):
+        async with server.app.router.lifespan_context(server.app):
             assert initialize.await_count == 1
     asyncio.run(run())
-    register.assert_awaited_once_with(server.WEBHOOK_URL, secret_token=server.WEBHOOK_SECRET)
+    register.assert_awaited_once_with(config.WEBHOOK_URL, secret_token=config.WEBHOOK_SECRET)
     shutdown.assert_awaited_once()
 
 
 def test_missing_webhook_secret_fails_closed_at_startup(server, monkeypatch):
-    monkeypatch.setattr(server, "WEBHOOK_SECRET", "")
+    monkeypatch.setattr(config, "WEBHOOK_SECRET", "")
     async def run():
-        async with server.lifespan(server.app):
+        async with server.app.router.lifespan_context(server.app):
             pytest.fail("Should never start without a secret")
     with pytest.raises(RuntimeError, match="WEBHOOK_SECRET"):
         asyncio.run(run())
@@ -100,7 +102,7 @@ def test_missing_webhook_secret_fails_closed_at_startup(server, monkeypatch):
 @pytest.mark.parametrize("path", ["/internal/telegram-update", "/internal/broadcast", "/internal/monthly-close"])
 def test_workers_require_separate_secret(server, path):
     assert request(server, path, json={"update_id": 1, "day": "2026-09-09"},
-                   headers={"X-Task-Secret": server.WEBHOOK_SECRET}).status_code == 403
+                   headers={"X-Task-Secret": config.WEBHOOK_SECRET}).status_code == 403
 
 
 def test_worker_skips_delivered_or_uncertain_updates(server, monkeypatch):
@@ -111,7 +113,7 @@ def test_worker_skips_delivered_or_uncertain_updates(server, monkeypatch):
     monkeypatch.setattr(work_receipts, "claim", lambda key, **kw: next(states))
     monkeypatch.setattr(work_receipts, "finish", finished.append)
     codes = [request(server, "/internal/telegram-update", json={"update_id": 1},
-                     headers={"X-Task-Secret": server.TASK_SECRET}).status_code for _ in range(4)]
+                     headers={"X-Task-Secret": config.TASK_SECRET}).status_code for _ in range(4)]
     assert codes == [200, 200, 200, 503]
     assert process.await_count == 1
     assert finished == ["telegram-1"]
@@ -119,9 +121,9 @@ def test_worker_skips_delivered_or_uncertain_updates(server, monkeypatch):
 
 def test_authenticated_rate_limit_precedes_firestore(server, monkeypatch):
     reads = []
-    monkeypatch.setattr(server, "user_id_from_init_data", lambda *args: 42)
-    monkeypatch.setattr(server.firebase_service, "get_user_data", lambda uid: reads.append(uid) or {})
-    monkeypatch.setattr(server, "api_limiter", rate_limit.TokenBucket(capacity=1, refill=0.01))
+    monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
+    monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: reads.append(uid) or {})
+    monkeypatch.setattr(miniapp, "api_limiter", rate_limit.TokenBucket(capacity=1, refill=0.01))
     assert request(server, "/app/api/shop", json={}).status_code == 200
     response = request(server, "/app/api/shop", json={})
     assert response.status_code == 429
@@ -239,8 +241,8 @@ def test_an_interrupted_update_reaches_an_admin(server, monkeypatch):
     che si va a cercare solo se si sa gia' di doverlo fare."""
     sent = []
     monkeypatch.setattr(config, "ADMIN_TELEGRAM_IDS", [7])
-    monkeypatch.setattr(server.alerts, "ADMIN_TELEGRAM_IDS", [7])
-    monkeypatch.setattr(server.alerts, "get_bot",
+    monkeypatch.setattr(alerts, "ADMIN_TELEGRAM_IDS", [7])
+    monkeypatch.setattr(alerts, "get_bot",
                         lambda: SimpleNamespace(send_message=AsyncMock(side_effect=lambda **kw: sent.append(kw))))
     monkeypatch.setattr(work_receipts, "claim", lambda key, **kw: "uncertain")
 
@@ -248,7 +250,7 @@ def test_an_interrupted_update_reaches_an_admin(server, monkeypatch):
                        json={"update_id": 55, "message": {"message_id": 1, "date": 0,
                                                           "chat": {"id": 3, "type": "private"},
                                                           "from": {"id": 42, "is_bot": False, "first_name": "T"}}},
-                       headers={"X-Task-Secret": server.TASK_SECRET})
+                       headers={"X-Task-Secret": config.TASK_SECRET})
 
     assert response.status_code == 200 and response.json() == {"status": "uncertain"}
     assert len(sent) == 1 and sent[0]["chat_id"] == 7
@@ -259,13 +261,13 @@ def test_a_normal_update_does_not_wake_an_admin(server, monkeypatch):
     """Se ogni guasto diventasse un messaggio, il canale degli avvisi smetterebbe di voler
     dire 'guarda questo'. Qui l'update passa: nessun avviso."""
     sent = []
-    monkeypatch.setattr(server.alerts, "ADMIN_TELEGRAM_IDS", [7])
-    monkeypatch.setattr(server.alerts, "get_bot",
+    monkeypatch.setattr(alerts, "ADMIN_TELEGRAM_IDS", [7])
+    monkeypatch.setattr(alerts, "get_bot",
                         lambda: SimpleNamespace(send_message=AsyncMock(side_effect=lambda **kw: sent.append(kw))))
     monkeypatch.setattr(server.telegram_app, "process_update", AsyncMock())
     monkeypatch.setattr(work_receipts, "claim", lambda key, **kw: "claimed")
     monkeypatch.setattr(work_receipts, "finish", lambda key: None)
 
     assert request(server, "/internal/telegram-update", json={"update_id": 56},
-                   headers={"X-Task-Secret": server.TASK_SECRET}).status_code == 200
+                   headers={"X-Task-Secret": config.TASK_SECRET}).status_code == 200
     assert sent == []

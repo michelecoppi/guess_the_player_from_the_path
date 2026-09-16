@@ -115,7 +115,7 @@ rete - quadretti del risultato, istogramma dei tentativi, conteggio del podio,
 normalizzazione della lingua - ed e' l'unica parte del client che si prova senza browser
 (`tests/client.test.cjs`, in CI). Il criterio per spostare qualcosa qui: stessi argomenti,
 stesso risultato. Non richiede bundler: `index.html` lo carica come `<script>` e i test con
-`require()`. La rotta `/app/client.js` esiste sia in `bot.py` sia in
+`require()`. La rotta `/app/client.js` esiste sia in `apps/api/static.py` sia in
 `scripts/preview_webapp.py`: senza, la pagina si carica a meta'.
 
 ```bash

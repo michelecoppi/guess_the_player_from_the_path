@@ -25,7 +25,7 @@ Gameplay rules as seen by a player are described in the root [README](../README.
                       │ webhook               ▲ Bot API calls
                       ▼                       │
 ┌──────────────────────────── Cloud Run service (one container) ─────────────────────────┐
-│ bot.py  — FastAPI app + python-telegram-bot Application (composition root)            │
+│ bot.py  — composition root: apps/bot (PTB Application) + apps/api (FastAPI app)       │
 │   /webhook ──enqueue──► Cloud Tasks ──► /internal/telegram-update ──► handlers/*       │
 │   /internal/daily-job  (Cloud Scheduler)   /internal/broadcast, /internal/monthly-close │
 │   /app      legacy Mini App (webapp/index.html + *.js)     ← production default        │
@@ -52,7 +52,9 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 
 | Component | Where it lives | Responsibility |
 | --- | --- | --- |
-| Composition root | [`bot.py`](../bot.py), [`config.py`](../config.py) | Builds the FastAPI app and the PTB `Application`, registers every Telegram handler, defines all HTTP routes (webhook, workers, Mini App API, static pages) and validates required secrets at startup |
+| Composition root | [`bot.py`](../bot.py), [`config.py`](../config.py) | Initialises observability and analytics, builds the PTB `Application` and the FastAPI app and wires them with a `TelegramBridge`; holds no routes or rules |
+| Bot app | [`apps/bot/application.py`](../apps/bot/application.py) | PTB `Application` with its shared HTTP client, registration of every Telegram handler (in order), webhook/command/menu-button setup and shutdown |
+| API app | [`apps/api/`](../apps/api/) | `app.py` factory (lifespan with secret validation, `FeatureDisabled` mapping, middleware, routers), `observe.py` (request middleware), `internal.py` (webhook and Cloud Tasks/Scheduler workers), `miniapp.py` (Mini App JSON API, `initData` auth, rate limit, flags), `static.py` (`/`, `/ping`, Mini App pages and assets, legal pages), `bridge.py` (what the API needs from the bot) |
 | Telegram handlers | [`handlers/`](../handlers/) | Translate Telegram updates/callbacks into service calls and localized replies; some flows (for example group rounds in `handlers/group_handler.py`) still keep rules here |
 | Application services | [`services/`](../services/) | Game rules ([`game.py`](../services/game.py), [`matching.py`](../services/matching.py), [`hints.py`](../services/hints.py), [`streak.py`](../services/streak.py)), content generation, Mini App projections ([`webapp_api.py`](../services/webapp_api.py)), arena/events, shop, trophies, referrals, leagues, i18n, image rendering |
 | Persistence | [`services/firebase_service.py`](../services/firebase_service.py) (client, collection names, facade/re-exports) + [`services/repos/`](../services/repos/) (per-area repositories) | All Firestore reads/writes and transactions |
@@ -70,11 +72,14 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 
 **Current state.**
 
-- `bot.py` is the single process entrypoint (`CMD ["python", "bot.py"]`). It is a
-  composition root *and* an HTTP adapter: route functions authenticate, rate-limit and
-  delegate, but some small behaviors are still inline (for example the `/app/api/arena`
-  mode dispatch and `/app/api/shop/look` delete branch). `admin_ui.py` is the composition
-  root of the Streamlit Admin.
+- `bot.py` is the single process entrypoint (`CMD ["python", "bot.py"]`, `uvicorn bot:app`)
+  and a pure composition root (#110): it builds the Telegram application
+  (`apps.bot.application`) and the HTTP app (`apps.api.app.create_app`) and connects them
+  through a `TelegramBridge` (the PTB application, bot start/stop, the nightly job and a
+  broadcast page), so the `api` app never imports the `bot` app. Route functions in
+  `apps/api/` authenticate, rate-limit and delegate; a few small behaviors are still inline
+  (for example the `/app/api/arena` mode dispatch and `/app/api/shop/look` delete branch).
+  `admin_ui.py` is the composition root of the Streamlit Admin.
 - Game rules shared by chat and Mini App live in services — `services/game.py` is used
   by both `handlers/guess_handler.py` and `/app/api/guess`, so there is one scoring
   implementation. The same holds for leagues (`services/leagues.py`) and the shop
@@ -95,8 +100,8 @@ describes the components, not their files.
 | Kind | Component | Responsibility | Lives in today |
 | --- | --- | --- | --- |
 | Composition root | — | Build and wire an application; may import anything, imported by nothing | `bot.py`, `admin_ui.py` |
-| App | `bot` | Telegram adapters: commands, callbacks, payments, jobs triggered from chat | `handlers/` |
-| App | `api` | HTTP adapter: webhook, Cloud Tasks workers, Mini App API and its projections, `initData` auth, rate limiting | routes in `bot.py`; `services/webapp_api.py`, `webapp_auth.py`, `rate_limit.py`. The Mini App frontend (`webapp/`) is delivered by this app |
+| App | `bot` | Telegram adapters: commands, callbacks, payments, jobs triggered from chat | `apps/bot/`, `handlers/` |
+| App | `api` | HTTP adapter: webhook, Cloud Tasks workers, Mini App API and its projections, `initData` auth, rate limiting | `apps/api/`; `services/webapp_api.py`, `webapp_auth.py`, `rate_limit.py`. The Mini App frontend (`webapp/`) is delivered by this app |
 | App | `admin` | Streamlit Admin pages | `admin_pages/` |
 | App | `scripts` | Operator command lines (imports, backups, migrations, previews) | `scripts/` |
 | App | `tools` | Developer tooling (dev runner, environment, release, security, reports, this check) | `tools/` |
@@ -148,9 +153,9 @@ so the list only shrinks. `python -m tools.dev architecture` prints the current 
 **Planned evolution.** [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28)
 reorganizes the monorepo by domain incrementally, without a big-bang rewrite:
 [#109](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/109) (this map and
-its checks) →
+its checks, done) →
 [#110](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/110) (`bot.py` as
-a pure composition root, routes and handler registration moved into the `api` and `bot` apps) →
+a pure composition root, done) →
 [#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111) (first domains
 moved into packages, with the migration procedure). Other domains move when they are next
 touched.
@@ -159,7 +164,7 @@ touched.
 
 | Component | Reads Firestore | Mutates Firestore | Mutates versioned datasets (`data/*.json`) | Calls external sources | Exposes authenticated API |
 | --- | --- | --- | --- | --- | --- |
-| Cloud Run service (`bot.py`, handlers, services) | yes | yes | **no** (image is read-only by design; runs as non-root) | Telegram Bot API, Cloud Tasks | `/webhook` (Telegram secret token), `/internal/*` (task/cron secrets), `/app/api/*` (Telegram `initData`) |
+| Cloud Run service (`bot.py`, `apps/`, handlers, services) | yes | yes | **no** (image is read-only by design; runs as non-root) | Telegram Bot API, Cloud Tasks | `/webhook` (Telegram secret token), `/internal/*` (task/cron secrets), `/app/api/*` (Telegram `initData`) |
 | Admin Streamlit (local) | yes | yes, on the project its credentials point to | yes: `data/players.json`, `data/config.json` via `services/dataset_editor.py` and the candidate review service; writes backups to `backup/` | adapters, only on explicit candidate retry | no network API; local UI |
 | Candidate pipeline services | no | no | only on explicit approval/merge through `CandidateReviewService`; otherwise writes only `data/candidates/` | Wikipedia, Wikidata | no |
 | `scripts/` | depends on script | some (`migrate_firestore.py`, `backfill_users.py`, `cleanup_daily_paths.py`, `generate_content.py`) | `import_players.py`, `reserve_practice_players.py`, `scripts/wikipedia/*` produce/modify datasets | Wikipedia (`scripts/wikipedia/`) | no |

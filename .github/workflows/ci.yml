@@ -42,7 +42,7 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Controllo sintassi
-        run: python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py tools
+        run: python -m compileall -q bot.py config.py apps services handlers scripts admin_pages admin_ui.py tools
 
       - name: Lint (ruff)
         run: ruff check .
