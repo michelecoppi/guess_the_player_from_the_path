@@ -11,25 +11,21 @@ from typing import Any, Optional
 
 import pytest
 
-from services.adapters.base import (
+from domains.players.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
     AdapterSearchResult,
     PlayerSourceAdapter,
 )
-from services.adapters.candidate_integration import (
+from domains.players.adapters.candidate_integration import (
     populate_candidate_from_result,
     record_adapter_failure,
 )
-from services.adapters.http_client import HttpClient, HttpError, HttpResponse, UrllibHttpClient
-from services.adapters.wikidata import WikidataAdapter
-from services.adapters.wikipedia import WikipediaAdapter
-from services.candidate_player import (
-    CandidatePlayer,
-    CandidateState,
-    make_candidate_id,
-)
+from domains.players.adapters.http_client import HttpClient, HttpError, HttpResponse, UrllibHttpClient
+from domains.players.adapters.wikidata import WikidataAdapter
+from domains.players.adapters.wikipedia import WikipediaAdapter
+from domains.players.candidates.model import CandidatePlayer, CandidateState, make_candidate_id
 
 # ── Fixture paths ────────────────────────────────────────────────────────
 

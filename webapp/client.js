@@ -29,7 +29,7 @@ function mergeProfile(previous, incoming, lightweight) {
 
   Il conto e' meno ovvio di quanto sembra: `used` comprende anche il tentativo giusto,
   quindi chi indovina al primo colpo ha zero quadretti rossi e non uno. I simboli arrivano
-  da fuori perche' si possono comprare in negozio (services/shop.py): un set diverso non
+  da fuori perche' si possono comprare in negozio (domains/shop/service.py): un set diverso non
   cambia il conteggio.
 */
 function squares(used, max, solved, symbols) {

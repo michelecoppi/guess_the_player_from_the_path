@@ -38,25 +38,18 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable, Optional
 
+from domains.players.adapters.candidate_integration import populate_candidate_from_result
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.normalization import clean_text, normalize_candidate
+from domains.players.candidates.repository import CandidatePlayerRepository
+from domains.players.candidates.validation import validate_candidate
 from services import observability
-from services.adapters.candidate_integration import populate_candidate_from_result
-from services.candidate_normalization import clean_text, normalize_candidate
-from services.candidate_player import (
-    CandidatePlayer,
-    CandidateState,
-)
-from services.candidate_validation import (
-    validate_candidate,
-)
 from services.career_order import order_career
 from services.matching import similarity
 from services.player_pool import (
     reload_dataset,
     validate_dataset,
     validate_player,
-)
-from services.repos.candidates import (
-    CandidatePlayerRepository,
 )
 from services.repos.file_lock import ProcessFileLock
 
@@ -596,11 +589,11 @@ def _default_adapter_resolver(source: str, source_id: str) -> Optional[Any]:
     """Risolutore di adapter standard per la pipeline di acquisizione."""
     src = str(source).strip().lower()
     if src == "wikipedia":
-        from services.adapters.wikipedia import WikipediaAdapter
+        from domains.players.adapters.wikipedia import WikipediaAdapter
 
         return WikipediaAdapter().fetch_player(source_id)
     elif src == "wikidata":
-        from services.adapters.wikidata import WikidataAdapter
+        from domains.players.adapters.wikidata import WikidataAdapter
 
         return WikidataAdapter().fetch_player(source_id)
     return None
@@ -636,7 +629,7 @@ class CandidateReviewService:
         if effective_repo is None:
             raise ValueError("Candidate repository must be provided")
         self._repo = effective_repo
-        base_dir = Path(__file__).resolve().parents[1]
+        base_dir = Path(__file__).resolve().parents[3]  # repository root
 
         self._players_path = Path(players_path).resolve() if players_path else (base_dir / "data" / "players.json").resolve()
         self._production_lock_path = self._players_path.with_suffix(".lock")

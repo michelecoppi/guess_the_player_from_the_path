@@ -148,7 +148,7 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
     # Cosmetici comprati in Stelle, traguardi guadagnati giocando, trofei appesi al profilo,
     # e cosa ha addosso adesso.
     # `owned` non elenca gli oggetti gratuiti: quelli li hanno tutti per definizione
-    # (services/shop.py), e scriverli qui vorrebbe dire ripassare su ogni utente ogni volta
+    # (domains/shop/service.py), e scriverli qui vorrebbe dire ripassare su ogni utente ogni volta
     # che se ne aggiunge uno. `earned` invece si scrive, ed e' separato da `owned` perche' i
     # due rispondono a domande diverse: da `owned` si ritira quando si rimborsa un acquisto.
     "cosmetics": {"owned": [], "earned": [], "pinned": [], "equipped": {}},
@@ -158,7 +158,7 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # I traguardi del negozio
 #
-# Un traguardo (services/shop.py, gli oggetti con `achievement`) si ricava da un contatore.
+# Un traguardo (domains/shop/service.py, gli oggetti con `achievement`) si ricava da un contatore.
 # Finche' resta solo un calcolo e' anche reversibile: basta alzare un obiettivo in
 # data/shop.json, o rinominare un id, e chi stava sotto la soglia nuova si ritrova senza un
 # distintivo che aveva gia' guadagnato - senza aver fatto niente, e senza che nessuno se ne
@@ -259,16 +259,16 @@ from services.repos.leagues import leave_league as leave_league
 from services.repos.leagues import list_leagues as list_leagues
 from services.repos.leagues import member_ref as member_ref
 from services.repos.seasons import get_or_create_season as get_or_create_season
-from services.repos.shop import deliver_purchase as deliver_purchase
-from services.repos.shop import equip_cosmetic as equip_cosmetic
-from services.repos.shop import equip_look as equip_look
-from services.repos.shop import get_purchase as get_purchase
-from services.repos.shop import get_user_purchases as get_user_purchases
-from services.repos.shop import pin_trophies as pin_trophies
-from services.repos.shop import purchase_ref as purchase_ref
-from services.repos.shop import reserve_checkout as reserve_checkout
-from services.repos.shop import revoke_purchase as revoke_purchase
-from services.repos.shop import save_looks as save_looks
+from domains.shop.repository import deliver_purchase as deliver_purchase
+from domains.shop.repository import equip_cosmetic as equip_cosmetic
+from domains.shop.repository import equip_look as equip_look
+from domains.shop.repository import get_purchase as get_purchase
+from domains.shop.repository import get_user_purchases as get_user_purchases
+from domains.shop.repository import pin_trophies as pin_trophies
+from domains.shop.repository import purchase_ref as purchase_ref
+from domains.shop.repository import reserve_checkout as reserve_checkout
+from domains.shop.repository import revoke_purchase as revoke_purchase
+from domains.shop.repository import save_looks as save_looks
 from services.repos.users import _bump_counters as _bump_counters
 from services.repos.users import _newly_earned as _newly_earned
 from services.repos.users import _public_user as _public_user

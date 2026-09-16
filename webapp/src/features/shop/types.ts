@@ -13,7 +13,7 @@ export interface ShopCardCompletionItem {
   owned: boolean;
 }
 
-/** Server-calculated shop card from services/shop.py::_card. */
+/** Server-calculated shop card from domains/shop/service.py::_card. */
 export interface ShopCosmeticItem {
   id: string;
   kind: CosmeticSlot | "bundle";

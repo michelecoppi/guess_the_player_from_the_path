@@ -12,7 +12,8 @@ strumenti di sviluppo puo' leggere quello che gli mandiamo.
 Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.py), mai il
 client: nessuna di queste funzioni riceve un id da fuori.
 """
-from services import feature_flags, firebase_service, game, shop, trophies
+from domains.shop import service as shop
+from services import feature_flags, firebase_service, game, trophies
 from services import product_analytics as analytics
 from services.career_order import order_career
 from services.content_i18n import localize_career
@@ -59,7 +60,7 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
         "user": _user_summary(user),
         # I cosmetici comprati in negozio: colori del tema, cornice, titolo, distintivo.
         # Stanno nel profilo e non dietro la scheda del negozio perche' la pagina si deve
-        # disegnare gia' giusta alla prima apertura (services/shop.py, `appearance`).
+        # disegnare gia' giusta alla prima apertura (domains/shop/service.py, `appearance`).
         "cosmetics": shop.appearance(user, lang),
         "wardrobe": _public_wardrobe(user, lang),
         # I trofei vinti, scelti da chi li ha vinti (services/trophies.py). Viaggiano col

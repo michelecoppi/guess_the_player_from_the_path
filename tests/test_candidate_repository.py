@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from services.candidate_player import CandidatePlayer, CandidateState
-from services.repos.candidates import (
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.repository import (
     CandidateRepositoryError,
     FileCandidatePlayerRepository,
     InMemoryCandidatePlayerRepository,

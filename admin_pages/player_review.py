@@ -1,6 +1,6 @@
 """Coda di revisione dei candidati calciatori (#15 -> #35).
 
-Interfaccia puramente umana sopra ``services.candidate_review.CandidateReviewService``:
+Interfaccia puramente umana sopra ``domains.players.candidates.review.CandidateReviewService``:
 nessuna regola di dominio (FSM, normalizzazione, validazione, conflitti di provenienza,
 CAS sulla revisione, blocco/backup del dataset di produzione, retry) viene ricreata qui.
 Ogni mutazione passa dal servizio, con la stessa ``expected_revision`` mostrata a schermo.
@@ -27,7 +27,7 @@ from services import observability
 PAGE_SIZE = 20
 
 # Fonti di retry attualmente supportate dal resolver di default del servizio
-# (`_default_adapter_resolver` in services/candidate_review.py). Qui è solo l'elenco dei
+# (`_default_adapter_resolver` in domains/players/candidates/review.py). Qui è solo l'elenco dei
 # nomi ammessi per popolare la scelta: nessun adapter viene mai importato o chiamato
 # direttamente dalla Admin, la risoluzione resta interamente dentro il servizio.
 SUPPORTED_RETRY_SOURCES = ["wikipedia", "wikidata"]

@@ -11,8 +11,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
+from domains.shop import service as shop
 from handlers.feature_gate import feature_gate
-from services import firebase_service, shop
+from services import firebase_service
 from services import product_analytics as analytics
 from services.feature_flags import Flag
 from services.i18n import resolve_language, t

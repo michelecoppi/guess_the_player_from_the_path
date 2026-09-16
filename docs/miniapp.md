@@ -31,8 +31,8 @@ Both frontends call the same `POST /app/api/*` endpoints implemented in
   ([`services/rate_limit.py`](../services/rate_limit.py)), and loads the user document
   (404 if the user never ran `/start`). The client never sends a user id.
 - Responses are explicit projections built in services (`services/webapp_api.py`,
-  `services/arena.py`, `services/app_events.py`, `services/shop.py`,
-  `services/referrals.py`, `services/trophies.py`). Answers, accepted aliases and
+  `services/arena.py`, `services/app_events.py`, `domains/shop/service.py`,
+  `domains/referrals/service.py`, `services/trophies.py`). Answers, accepted aliases and
   unpaid hints are never serialized; prices come from the server catalogue.
 - Endpoints: `me`, `profile/public`, `profile/search`, `referrals`, `guess`, `hint`,
   `arena` (`mode`: `training` | `duel` | `events`), `calendar`, `league`, `shop`,
@@ -72,7 +72,7 @@ Shop, Profilo; referral lives under Profile.
 
 V2 is structurally dark-only: product-owned tokens define structure, readability and
 interaction states, and Telegram light/system preferences cannot change them.
-Cosmetics are resolved by the backend (`services/shop.py::appearance`) and applied
+Cosmetics are resolved by the backend (`domains/shop/service.py::appearance`) and applied
 only through an allowlist of sanitized decorative tokens. There are eight cosmetic
 slots — `theme`, `frame`, `title`, `badge`, `squares`, `number`, `celebration`, `card` —
 and ownership, pricing and equip rules stay in Python. The full contract, token

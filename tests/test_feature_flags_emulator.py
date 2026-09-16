@@ -11,8 +11,8 @@ import pytest
 from starlette.testclient import TestClient
 
 from apps.api import miniapp
+from domains.shop import service as shop
 from services import feature_flags as ff
-from services import shop
 from services.feature_flags import Flag
 from services.repos import feature_flags as repo
 

@@ -37,7 +37,7 @@ Title color decorates a border, while the label retains readable product text.
 
 ## Contract and lifecycle
 
-`appearance/types.ts::ResolvedAppearance` represents `services/shop.py::appearance`,
+`appearance/types.ts::ResolvedAppearance` represents `domains/shop/service.py::appearance`,
 returned under `/app/api/me.cosmetics` and public-profile `cosmetics`:
 `equipped?`, `theme?`, `frame?`, `title?`, `badge?` (string), `squares?`,
 `number?` (string, preserves leading zero), `celebration?` (effect string), `card?`.

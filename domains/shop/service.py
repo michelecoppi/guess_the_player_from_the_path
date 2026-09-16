@@ -26,7 +26,8 @@ from services import firebase_service, trophies
 from services.dates import parse_iso, today_iso
 from services.i18n import DEFAULT_LANGUAGE
 
-SHOP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "shop.json")
+# Repository root: domains/shop/service.py -> parents[2].
+SHOP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "shop.json")
 
 # I tipi di cosmetico, nell'ordine in cui si mostrano. Uno per "slot": si tiene equipaggiato
 # un oggetto per tipo, e il tipo e' anche quello che dice **dove** si vede.

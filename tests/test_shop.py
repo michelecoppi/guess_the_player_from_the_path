@@ -14,8 +14,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from domains.shop import service as shop
 from handlers import shop_handler
-from services import shop
 from services.share import share_text
 
 FREE = {"theme": "notturno", "frame": "cornice_nessuna", "title": "titolo_nessuno",

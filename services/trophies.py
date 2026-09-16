@@ -8,7 +8,7 @@ profilo, accanto al titolo comprato in negozio.
 Perche' non e' un cosmetico del negozio, pur finendo nello stesso posto: un cosmetico si
 compra e sta in un catalogo fisso (`data/shop.json`, con `get_item` e `owned_ids` che ci
 lavorano sopra), un trofeo si vince e il suo "catalogo" e' diverso per ogni utente - e' la
-sua bacheca. Farlo passare da `services/shop.py` avrebbe voluto dire un catalogo per utente,
+sua bacheca. Farlo passare da `domains/shop/service.py` avrebbe voluto dire un catalogo per utente,
 cioe' rompere la cosa che tiene in piedi il negozio. Restano due mondi separati che si
 incontrano solo alla fine, quando la pagina disegna.
 

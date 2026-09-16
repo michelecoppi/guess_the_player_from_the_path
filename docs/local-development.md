@@ -94,7 +94,7 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | `make test-cov` | `python -m tools.dev test-cov`<br>`.\dev.ps1 test-cov` | Esegue i test con report di code coverage nel terminale |
 | `make test-node` | `python -m tools.dev test-node`<br>`.\dev.ps1 test-node` | Esegue i test client Node.js per la Mini App (`tests/client.test.cjs`) |
 | `make lint` | `python -m tools.dev lint`<br>`.\dev.ps1 lint` | Verifica lo stile del codice con `ruff check .` |
-| `make typecheck` | `python -m tools.dev typecheck`<br>`.\dev.ps1 typecheck` | Controllo tipi statici con `mypy services/` |
+| `make typecheck` | `python -m tools.dev typecheck`<br>`.\dev.ps1 typecheck` | Controllo tipi statici con `mypy services/ domains/` |
 | `make syntax` | `python -m tools.dev syntax`<br>`.\dev.ps1 syntax` | Verifica sintassi con `compileall` su tutti i moduli |
 | `make dataset-check` | `python -m tools.dev dataset-check`<br>`.\dev.ps1 dataset-check` | Controlla integrità e salute del dataset calciatori (`scripts/dataset_report.py --strict`) |
 | — | `python -m tools.dev dataset-regression-check` | Verifica che le metriche del dataset non peggiorino rispetto a `data/dataset_baseline.json` |

@@ -11,7 +11,7 @@ anche con la inline mode del bot disattivata.
 from urllib.parse import quote
 
 from config import BOT_USERNAME
-from services import shop
+from domains.shop import service as shop
 from services.i18n import t
 from services.path_image import render_share_card
 
@@ -58,7 +58,7 @@ def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0,
     e' un'informazione sulla difficolta' della sfida, e la card la legge anche chi oggi non
     ha ancora giocato.
 
-    `symbols` sono i quadratini comprati in negozio (services/shop.py). Cambiano l'aspetto e
+    `symbols` sono i quadratini comprati in negozio (domains/shop/service.py). Cambiano l'aspetto e
     basta: il punteggio "2/3" accanto resta, quindi una card con i cuori si confronta con una
     classica senza doverla decifrare."""
     title_key = "share.archive_title" if archive else "share.title"

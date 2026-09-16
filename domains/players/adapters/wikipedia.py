@@ -16,7 +16,7 @@ import re
 import urllib.parse
 from typing import Any, Optional
 
-from services.adapters.base import (
+from domains.players.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
@@ -24,7 +24,7 @@ from services.adapters.base import (
     CareerEntry,
     PlayerSourceAdapter,
 )
-from services.adapters.http_client import HttpClient, HttpError, UrllibHttpClient
+from domains.players.adapters.http_client import HttpClient, HttpError, UrllibHttpClient
 
 # ── Wikipedia API constants ──────────────────────────────────────────────
 

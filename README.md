@@ -418,7 +418,7 @@ una finitura dedicata sulle immagini dei risultati condivisi; le animazioni risp
 la preferenza di movimento ridotto, si fermano quando il campo esce dallo schermo e nelle
 miniature dei premi non partono affatto.
 
-`services/referrals.py` conserva un documento per invitato nella collezione `referrals`,
+`domains/referrals/service.py` conserva un documento per invitato nella collezione `referrals`,
 con invitante, invitato, nome, timestamp di associazione, giornate conteggiate e timestamp
 di qualificazione. La chiave è un hash stabile dell'id dell'invitato. La transazione
 legge lo storico come prova e salva insieme qualificazione, contatore dell'invitante e
@@ -525,7 +525,7 @@ lista dietro un bottone di `/stats`. Ora sono anche **targhe da indossare**: se 
 fino a tre (`services/trophies.py`) e vanno sul profilo, accanto al titolo comprato in
 negozio e sul profilo pubblico.
 
-Non passano da `services/shop.py`, pur finendo nello stesso posto. Un cosmetico si compra e
+Non passano da `domains/shop/service.py`, pur finendo nello stesso posto. Un cosmetico si compra e
 sta in un catalogo fisso, uguale per tutti; un trofeo si vince, e il suo catalogo e' diverso
 per ogni utente — e' la sua bacheca. Farlo entrare nel negozio avrebbe voluto dire un
 catalogo per utente, cioe' rompere la cosa su cui `get_item` e `owned_ids` sono costruiti.
@@ -732,7 +732,7 @@ giudicano addosso a una pagina vera, non su un francobollo nella scheda del nego
 meno su sei stringhe esadecimali dentro `data/shop.json`.
 
 E' la pagina vera (`webapp/index.html`) servita dalle funzioni vere (`services/webapp_api.py`,
-`services/shop.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
+`domains/shop/service.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
 in memoria. L'utente finto ha gia' **tutto** il catalogo e cinque trofei, cosi' ogni oggetto
 si indossa con un click e ogni traguardo e' sbloccato; il negozio funziona ma "Compra"
 consegna subito, senza fattura, perche' non c'e' niente da pagare.

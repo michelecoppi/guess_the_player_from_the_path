@@ -8,6 +8,19 @@ import streamlit as st
 
 from config import ADMIN_TELEGRAM_IDS as ADMIN_TELEGRAM_IDS
 from config import BOT_TOKEN as BOT_TOKEN
+from domains.players.candidates.model import CandidateState as CandidateState
+from domains.players.candidates.repository import (
+    FileCandidatePlayerRepository as FileCandidatePlayerRepository,
+)
+from domains.players.candidates.review import AdminIdentity as AdminIdentity
+from domains.players.candidates.review import CandidateReviewService as CandidateReviewService
+from domains.players.candidates.review import ReviewAuthError as ReviewAuthError
+from domains.players.candidates.review import ReviewForbiddenError as ReviewForbiddenError
+from domains.players.candidates.review import ReviewStatus as ReviewStatus
+from domains.referrals import service as referrals
+from domains.shop import editor as shop_editor
+from domains.shop import service as shop  # noqa: F401 - re-exported for admin_pages/shop.py
+from domains.shop.editor import ShopEditError as ShopEditError
 from services import backup_status as backup_status
 from services import content_admin as content_admin
 from services import daily_planner as daily_planner
@@ -17,15 +30,6 @@ from services import event_config as event_config
 from services import event_template_editor as event_template_editor
 from services import firebase_service as firebase_service
 from services import product_analytics_query as product_analytics_query
-from services import referrals as referrals
-from services import shop as shop
-from services import shop_editor as shop_editor
-from services.candidate_player import CandidateState as CandidateState
-from services.candidate_review import AdminIdentity as AdminIdentity
-from services.candidate_review import CandidateReviewService as CandidateReviewService
-from services.candidate_review import ReviewAuthError as ReviewAuthError
-from services.candidate_review import ReviewForbiddenError as ReviewForbiddenError
-from services.candidate_review import ReviewStatus as ReviewStatus
 from services.content_admin import ContentAdminError as ContentAdminError
 from services.daily_challenge import MAX_ATTEMPTS as MAX_ATTEMPTS
 from services.daily_generator import ensure_daily_buffer as ensure_daily_buffer
@@ -57,8 +61,6 @@ from services.player_pool import (
 from services.player_pool import get_incomplete_or_unverified_players as get_incomplete_or_unverified_players
 from services.player_pool import get_player_by_id as get_player_by_id
 from services.player_pool import load_config as load_config
-from services.repos.candidates import FileCandidatePlayerRepository as FileCandidatePlayerRepository
-from services.shop_editor import ShopEditError as ShopEditError
 
 CACHE_TTL_SECONDS = 45
 
@@ -191,7 +193,7 @@ def save_player_changes(changes, career_changes=None):
     return result
 
 
-# Colonna modificabile della tabella shop -> campo dell'oggetto (services/shop_editor.py).
+# Colonna modificabile della tabella shop -> campo dell'oggetto (domains/shop/editor.py).
 SHOP_COLUMN_FIELDS = {"prezzo": "price", "nome": "name", "bloccato": "locked"}
 
 

@@ -230,7 +230,7 @@ document is deliberately not duplicating).
       [deploy.md](deploy.md#mini-app-pulsante-nel-menu-del-bot)).
 - [ ] **Daily challenge / scheduler** (§9) — required only if `handlers/daily_job.py`,
       buffer generation, or the Cloud Scheduler job/endpoint contract changes.
-- [ ] **Stars/shop/payment sanity** (§9) — required only if `services/shop.py`,
+- [ ] **Stars/shop/payment sanity** (§9) — required only if `domains/shop/service.py`,
       `handlers/shop_handler.py`, or payment/refund flows change.
 - [ ] **Admin sanity** — required only if `admin_ui.py`, `admin_pages/`, or
       `handlers/admin_handler.py` change; confirm Admin starts and the touched page loads.

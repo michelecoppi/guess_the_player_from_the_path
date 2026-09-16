@@ -12,12 +12,10 @@ from typing import Any
 
 import pytest
 
-from services.adapters.base import AdapterResult, CareerEntry
-from services.candidate_player import (
-    CandidatePlayer,
-    CandidateState,
-)
-from services.candidate_review import (
+from domains.players.adapters.base import AdapterResult, CareerEntry
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.repository import FileCandidatePlayerRepository
+from domains.players.candidates.review import (
     AdminIdentity,
     CandidateReviewService,
     ReviewAction,
@@ -28,9 +26,6 @@ from services.candidate_review import (
     make_production_player_id,
 )
 from services.player_pool import validate_dataset
-from services.repos.candidates import (
-    FileCandidatePlayerRepository,
-)
 
 
 @pytest.fixture
@@ -1269,7 +1264,7 @@ def test_retry_actually_invokes_existing_ingestion_pipeline(temp_env, monkeypatc
             ],
         )
 
-    from services.adapters.wikipedia import WikipediaAdapter
+    from domains.players.adapters.wikipedia import WikipediaAdapter
     monkeypatch.setattr(WikipediaAdapter, "fetch_player", mock_fetch_player)
 
     res = service.retry_ingestion(admin, "cand_pipe_retry", expected_revision=1, adapter_fetcher=None)
@@ -1336,8 +1331,8 @@ def test_source_wrong_retry_with_explicit_source_uses_real_adapter(temp_env, mon
     5. The wikipedia observation is excluded from blocking-conflict evaluation.
     6. approve_candidate() succeeds and the player lands in the production dataset.
     """
-    from services.adapters.base import AdapterResult, CareerEntry
-    from services.adapters.wikidata import WikidataAdapter
+    from domains.players.adapters.base import AdapterResult, CareerEntry
+    from domains.players.adapters.wikidata import WikidataAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1429,7 +1424,7 @@ def test_source_wrong_retry_with_explicit_source_uses_real_adapter(temp_env, mon
     assert obs_wdata.raw_value == "Wikidata Correct Name"
 
     # 4. The wikipedia observation is excluded from blocking-conflict evaluation
-    from services.candidate_review import get_candidate_provenance_conflicts
+    from domains.players.candidates.review import get_candidate_provenance_conflicts
     conflicts = get_candidate_provenance_conflicts(after_retry)
     assert "full_name" not in conflicts, (
         f"Wikipedia observation must not create a blocking conflict for full_name. Conflicts: {conflicts}"
@@ -1459,7 +1454,7 @@ def test_retry_without_alternative_fails_closed_when_source_marked_unreliable(te
 
     No adapter must be invoked; the candidate must remain unchanged.
     """
-    from services.adapters.wikipedia import WikipediaAdapter
+    from domains.players.adapters.wikipedia import WikipediaAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1522,7 +1517,7 @@ def test_trusted_sources_conflict_remains_blocking_after_source_wrong(temp_env):
     Separate verification:
     - If NEITHER source is marked wrong, the conflict still blocks approval (fail-closed).
     """
-    from services.candidate_review import get_candidate_provenance_conflicts
+    from domains.players.candidates.review import get_candidate_provenance_conflicts
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1583,7 +1578,7 @@ def test_review_projection_conflict_status_uses_review_aware_policy():
       projection.has_source_conflicts == False
       Both observations remain visible in field_observations.
     """
-    from services.candidate_review import build_review_projection
+    from domains.players.candidates.review import build_review_projection
 
     cand = create_sample_candidate("cand_proj_test", "Entity X", state=CandidateState.READY)
     cand.source = "wikipedia"
@@ -1635,8 +1630,8 @@ def test_successful_alternative_source_retry_updates_active_source_identity(temp
     - Old Wikipedia provenance still exists
     - SOURCE_WRONG history still exists
     """
-    from services.adapters.base import AdapterResult, CareerEntry
-    from services.adapters.wikidata import WikidataAdapter
+    from domains.players.adapters.base import AdapterResult, CareerEntry
+    from domains.players.adapters.wikidata import WikidataAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1723,9 +1718,9 @@ def test_successful_alternative_source_retry_updates_active_source_identity(temp
 
 def test_retry_without_override_after_recovery_resolves_updated_source(temp_env, monkeypatch):
     """After successful Wikidata recovery, retry_ingestion() with no override resolves Wikidata, NOT rejected Wikipedia."""
-    from services.adapters.base import AdapterResult, CareerEntry
-    from services.adapters.wikidata import WikidataAdapter
-    from services.adapters.wikipedia import WikipediaAdapter
+    from domains.players.adapters.base import AdapterResult, CareerEntry
+    from domains.players.adapters.wikidata import WikidataAdapter
+    from domains.players.adapters.wikipedia import WikipediaAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]

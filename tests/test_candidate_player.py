@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from services.candidate_player import (
+from domains.players.candidates.model import (
     CandidateError,
     CandidatePlayer,
     CandidateState,

@@ -13,8 +13,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from domains.referrals import service as referrals
 from services import firebase_service as fs
-from services import referrals
 from services.repos import bulk
 
 DAYS = [f"2026-09-{n:02}" for n in range(1, 8)]

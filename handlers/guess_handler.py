@@ -20,13 +20,14 @@ import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from domains.shop import service as shop
 from handlers.archive_handler import process_archive_answer
 from handlers.events_handler import process_event_answer
 from handlers.group_handler import process_group_answer
 from handlers.hint_handler import hint_keyboard
 from handlers.notify_handler import ENABLE_INLINE, notifications_enabled
 from handlers.training_handler import process_training_answer
-from services import firebase_service, game, shop, trophies
+from services import firebase_service, game, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number, get_today_challenge
 from services.guess_feedback import comparison_text
 from services.i18n import resolve_language, t

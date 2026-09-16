@@ -2,12 +2,9 @@
 import hashlib
 import os
 
-from services.candidate_finding import CandidateFinding, FindingCode, FindingSeverity
-from services.candidate_player import CandidatePlayer, CandidateState
-from services.candidate_validation import (
-    process_candidate,
-    validate_candidate,
-)
+from domains.players.candidates.finding import CandidateFinding, FindingCode, FindingSeverity
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.validation import process_candidate, validate_candidate
 
 _PLAYERS_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "players.json")
 

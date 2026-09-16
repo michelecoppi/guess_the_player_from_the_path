@@ -26,18 +26,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from services.adapters.base import AdapterResult, CareerEntry
-from services.adapters.candidate_integration import (
+from domains.players.adapters.base import AdapterResult, CareerEntry
+from domains.players.adapters.candidate_integration import (
     merge_adapter_result,
     populate_candidate_from_result,
 )
-from services.candidate_finding import FindingCode, FindingSeverity
-from services.candidate_normalization import normalize_candidate
-from services.candidate_player import (
-    CandidatePlayer,
-    CandidateState,
-)
-from services.candidate_provenance import (
+from domains.players.candidates.finding import FindingCode, FindingSeverity
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.normalization import normalize_candidate
+from domains.players.candidates.provenance import (
     CandidateProvenance,
     ConfidenceLevel,
     FieldProvenance,
@@ -45,11 +42,11 @@ from services.candidate_provenance import (
     SourceObservation,
     score_for_confidence_level,
 )
-from services.candidate_validation import validate_candidate_data
-from services.repos.candidates import (
+from domains.players.candidates.repository import (
     FileCandidatePlayerRepository,
     InMemoryCandidatePlayerRepository,
 )
+from domains.players.candidates.validation import validate_candidate_data
 
 _PLAYERS_JSON = Path(__file__).resolve().parents[1] / "data" / "players.json"
 

@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from domains.shop import service as shop
 from handlers import shop_handler
-from services import firebase_service, shop
+from services import firebase_service
 
 
 def user(*ids, **fields):

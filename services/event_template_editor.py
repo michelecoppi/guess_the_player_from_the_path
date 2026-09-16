@@ -1,6 +1,6 @@
 """Creazione e modifica dei template evento (`data/event_templates.json`) dalla dashboard (#31).
 
-Stesso schema di `services/shop_editor.py` e `services/dataset_editor.py`: la dashboard
+Stesso schema di `domains/shop/editor.py` e `services/dataset_editor.py`: la dashboard
 raccoglie il JSON del template, qui ci sono le regole. Niente arriva nel file se non passa
 la validazione di `services/event_config.py`, e prima di salvare si vede cosa produrrebbe il
 template: quanti candidati ha, un evento d'esempio, quando puo' partire.

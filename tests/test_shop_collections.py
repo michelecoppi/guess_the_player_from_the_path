@@ -1,7 +1,7 @@
 """The coordinated collections are complete outfits with usable cosmetic styles."""
 import pytest
 
-from services import shop
+from domains.shop import service as shop
 
 COLLECTIONS = [item["id"] for item in shop.bundles() if item.get("featured")]
 

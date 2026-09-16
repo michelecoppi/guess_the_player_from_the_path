@@ -14,16 +14,9 @@ from __future__ import annotations
 import copy
 from typing import Any, Optional
 
-from services.adapters.base import AdapterError, AdapterResult
-from services.candidate_player import (
-    CandidatePlayer,
-    CandidateState,
-)
-from services.candidate_provenance import (
-    ConfidenceLevel,
-    make_career_stop_id,
-    now_utc_iso,
-)
+from domains.players.adapters.base import AdapterError, AdapterResult
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.provenance import ConfidenceLevel, make_career_stop_id, now_utc_iso
 
 
 def _determine_confidence_level(source_name: str, phase: str = "default") -> ConfidenceLevel:
@@ -55,7 +48,7 @@ def _find_matching_career_stop(
     if not in_raw or not str(in_raw).strip():
         return None
 
-    from services.candidate_normalization import (
+    from domains.players.candidates.normalization import (
         FindingCode,
         FindingSeverity,
         clean_text,
@@ -184,7 +177,7 @@ def populate_candidate_from_result(
 
     # 2. Aliases
     if result.aliases:
-        from services.candidate_normalization import clean_text
+        from domains.players.candidates.normalization import clean_text
 
         for alias in result.aliases:
             if not alias or not str(alias).strip():

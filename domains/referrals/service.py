@@ -60,7 +60,7 @@ def credit_day(user_id, day):
 
     The history record is durable evidence. A retry or reconciliation can safely replay it.
     """
-    from services import shop
+    from domains.shop import service as shop
     ledger_ref = ref(user_id)
     # `commit` may run more than once under Firestore transaction contention, but only the
     # attempt that actually commits leaves anything behind - so it is the only attempt whose
@@ -158,7 +158,7 @@ def dashboard(user_id, lang="it", cursor=None, user=None):
 
     The caller already authenticated, and that cost it a read of the user document: passing
     it back in spares a second one for the counter and the reward cards."""
-    from services import shop
+    from domains.shop import service as shop
     query = fs.db.collection(COLLECTION).where("inviter_id", "==", user_id).order_by("__name__")
     if cursor and re.fullmatch(r"[a-f0-9]{64}", cursor):
         query = query.start_after({"__name__": fs.db.collection(COLLECTION).document(cursor)})

@@ -84,7 +84,7 @@ def save_user(user_id, first_name, language=DEFAULT_LANGUAGE, referral_code=None
         if not snapshot.exists:
             attribution = None
             if referral_code:
-                from services import referrals
+                from domains.referrals import service as referrals
                 attribution = referrals.prepare_attribution(transaction, user_id, first_name, referral_code)
                 if attribution:
                     transaction.set(referrals.ref(user_id), attribution)
@@ -144,8 +144,8 @@ def delete_user_data(user_id):
     Lo sgombero passa da `bulk.sweep` e non da un ciclo sullo stream della query: il perche'
     sta li'. Le sotto-collezioni di chi gioca da un anno sono centinaia di documenti.
     """
+    from domains.referrals import service as referrals
     from services import firebase_service as fs
-    from services import referrals
     from services.repos import bulk
     user_id = int(user_id)
     ref = fs.user_ref(user_id)
@@ -337,9 +337,9 @@ def take_daily_hint(user_id, day_iso, max_hints, max_attempts):
 def _newly_earned(data, **after):
     """I traguardi che scattano con questi contatori aggiornati e non sono ancora scritti.
 
-    L'import sta qui dentro e non in cima al modulo perche' services/shop.py importa questo:
+    L'import sta qui dentro e non in cima al modulo perche' domains/shop/service.py importa questo:
     al momento della chiamata sono caricati tutti e due, all'import no."""
-    from services import shop
+    from domains.shop import service as shop
     return shop.newly_earned({**(data or {}), **after})
 
 
@@ -497,7 +497,7 @@ def _public_user(data):
         "language": data.get("language", DEFAULT_LANGUAGE),
         # I cosmetici viaggiano con la classifica perche' e' li' che si vede il distintivo,
         # e il documento e' gia' stato letto per i punti: non costa una lettura in piu'.
-        # Qui restano gli id grezzi, il simbolo lo ricava chi disegna (services/shop.py):
+        # Qui restano gli id grezzi, il simbolo lo ricava chi disegna (domains/shop/service.py):
         # questo modulo non deve sapere niente del catalogo, o non potrebbe piu' essere
         # quello che il catalogo chiama per scrivere.
         "cosmetics": data.get("cosmetics") or {},

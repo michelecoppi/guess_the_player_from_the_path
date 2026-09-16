@@ -20,8 +20,9 @@ from sentry_sdk.transport import Transport
 
 import config
 from apps.api import miniapp
+from domains.shop import service as shop
 from handlers import daily_job, error_handler, shop_handler
-from services import observability, shop, task_queue, version, work_receipts
+from services import observability, task_queue, version, work_receipts
 from services.observability import REDACTED, Settings
 
 FAKE_DSN = "https://publickey@o0.ingest.example.invalid/1"
@@ -636,9 +637,9 @@ def test_enqueue_failure_is_reported_without_the_task_payload(sentry, monkeypatc
 # ---------------------------------------------------------------------------
 
 def test_candidate_source_failure_is_reported_with_ingestion_component(sentry, tmp_path):
-    from services.candidate_player import CandidatePlayer, CandidateState
-    from services.candidate_review import AdminIdentity, CandidateReviewService, ReviewStatus
-    from services.repos.candidates import FileCandidatePlayerRepository
+    from domains.players.candidates.model import CandidatePlayer, CandidateState
+    from domains.players.candidates.repository import FileCandidatePlayerRepository
+    from domains.players.candidates.review import AdminIdentity, CandidateReviewService, ReviewStatus
 
     players = tmp_path / "players.json"
     players.write_text(json.dumps({"players": []}), encoding="utf-8")

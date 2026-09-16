@@ -525,7 +525,7 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     Non dice mai chi era il calciatore, esattamente come la riga di testo: la si incolla in
     un gruppo dove qualcuno non ha ancora giocato.
 
-    `style` e' lo `style` del cosmetico `card` indossato (services/shop.py): tre colori e una
+    `style` e' lo `style` del cosmetico `card` indossato (domains/shop/service.py): tre colori e una
     finitura. Se manca, si ripiega sui colori del tema di partenza - una figurina mezza
     disegnata sarebbe peggio di una senza finitura.
 

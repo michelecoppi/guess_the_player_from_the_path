@@ -16,8 +16,9 @@ import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from domains.shop import service as shop
 from handlers.legend_handler import legend_keyboard
-from services import firebase_service, shop
+from services import firebase_service
 from services.daily_challenge import challenge_number
 from services.dates import to_display
 from services.difficulty import points_for_difficulty

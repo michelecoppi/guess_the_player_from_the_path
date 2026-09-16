@@ -7,8 +7,8 @@ and the league code from each member's user document in one batch, that
 `referrals.admin_overview` counts documents by status with real `where()`/`count()`
 aggregation queries.
 """
+from domains.referrals import service as referrals
 from services import firebase_service as fs
-from services import referrals
 
 CHAT_ID = -100777
 
