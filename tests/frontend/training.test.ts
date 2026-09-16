@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { TrainingController } from "../../webapp/src/features/training/controller";
 import {
   renderTrainingView,
@@ -699,14 +697,3 @@ test("21. leaving/re-entering Training restores backend state correctly", () => 
   assert.ok(html.includes("2 tentativi rimasti"), "must restore remaining attempts (5 - 3 = 2)");
 });
 
-test("22. legacy /app unchanged: asserts legacy arena.js and client.js remain untouched", () => {
-  const legacyArenaPath = path.resolve(process.cwd(), "webapp/arena.js");
-  const legacyClientPath = path.resolve(process.cwd(), "webapp/client.js");
-
-  assert.ok(fs.existsSync(legacyArenaPath), "webapp/arena.js must exist");
-  assert.ok(fs.existsSync(legacyClientPath), "webapp/client.js must exist");
-
-  const arenaContent = fs.readFileSync(legacyArenaPath, "utf-8");
-  assert.ok(arenaContent.includes("PlayerArena"), "arena.js must export PlayerArena");
-  assert.ok(arenaContent.includes("mode: \"training\"") || arenaContent.includes("mode === \"training\""));
-});

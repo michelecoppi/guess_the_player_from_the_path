@@ -4,7 +4,7 @@ import type { SquareSymbols } from "@/utils/game";
 export type * from "./types";
 
 export const DEFAULT_SQUARE_SYMBOLS: SquareSymbols = { correct: "🟩", wrong: "🟥", unused: "⬜" };
-export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-secondary", "--skin-pitch", "--skin-profile-surface", "--skin-profile-glow", "--skin-pattern"] as const;
+export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-text", "--skin-accent-secondary", "--skin-pitch", "--skin-profile-surface", "--skin-profile-glow", "--skin-pattern"] as const;
 export type SkinTokens = Partial<Record<typeof SKIN_TOKENS[number], string>>;
 const SLOTS: CosmeticSlot[] = ["theme", "frame", "title", "badge", "squares", "number", "celebration", "card"];
 const EFFECTS = new Set(["spotlight", "confetti", "dust", "flash", "paper", "snow", "mud", "fireworks"]);
@@ -34,7 +34,7 @@ export function parseResolvedAppearance(value: unknown): ResolvedAppearance {
     card: { finish: FINISHES.has(text(card.finish)) ? card.finish as string : "", ink: color(card.ink), paper: color(card.paper), glow: color(card.glow) },
   };
   // Structural colors are deliberately not forwarded to the presentation layer.
-  for (const key of ["accent", "edge", "track", "card"] as const) {
+  for (const key of ["accent", "accentText", "edge", "track", "card"] as const) {
     const valid = color(theme[key]);
     if (valid) result.theme![key] = valid;
   }
@@ -59,6 +59,7 @@ export function skinTokens(appearance: ResolvedAppearance): SkinTokens {
   const theme = appearance.theme || {};
   const tokens: SkinTokens = {};
   if (color(theme.accent)) tokens["--skin-accent"] = theme.accent!;
+  if (color(theme.accentText)) tokens["--skin-accent-text"] = theme.accentText!;
   if (color(theme.edge)) tokens["--skin-accent-secondary"] = theme.edge!;
   if (color(theme.track)) tokens["--skin-pitch"] = theme.track!;
   // The purchased surface must read as that theme, while product text stays legible:

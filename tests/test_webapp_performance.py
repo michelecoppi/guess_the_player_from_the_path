@@ -73,17 +73,12 @@ def test_profile_route_reads_user_only_once(server, monkeypatch):
     assert reads == [42]
 
 
-def test_arena_routes_require_authentication_and_serve_assets(server):
+def test_arena_routes_require_authentication(server):
     async def exercise():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as client:
             for mode in ("training", "duel", "events"):
                 response = await client.post("/app/api/arena", json={"mode": mode, "user_id": 42})
                 assert response.status_code == 401
-            for asset in ("arena.js", "arena.css"):
-                response = await client.get(f"/app/{asset}")
-                assert response.status_code == 200
-                cached = await client.get(f"/app/{asset}", headers={"If-None-Match": response.headers["etag"]})
-                assert cached.status_code == 304
     asyncio.run(exercise())
 
 

@@ -109,11 +109,16 @@ test("review navigation and fixture interactions never call an API", () => {
       "profile",
     );
     go("profile");
-    for (const tab of ["reports", "refunds", "privacy"]) {
+    for (const tab of ["refunds", "privacy"]) {
       go(tab);
       assert.ok(container.querySelector(`[data-support="${tab}"]`));
       assert.equal(container.querySelector("form"), null);
     }
+    // "Segnalazioni" is interactive (a real report form) - but the design-review tool never
+    // wires its submit to the API, matching this test's whole point.
+    go("reports");
+    assert.ok(container.querySelector('[data-support="reports"]'));
+    assert.ok(container.querySelector("[data-report-form]"));
     go("arena");
     container.querySelector<HTMLButtonElement>('[data-arena-nav="duels"]')!.click();
     container.querySelector<HTMLButtonElement>('[data-arena-nav="challenge"]')!.click();

@@ -17,6 +17,26 @@
 [data-cosmetic-profile] .trophy-tag,[data-cosmetic-profile] .distribution-bar-track,[data-cosmetic-profile] .mode-entry { background:color-mix(in srgb, #000 22%, transparent); }
 [data-cosmetic-profile] .distribution-bar-fill:not(.best) { background:color-mix(in srgb, var(--text) 16%, transparent); }
 [data-cosmetic-profile] .avatar { background:color-mix(in srgb, var(--skin-accent) 24%, var(--skin-profile-surface)); }
+/* The app shell (header, every tab's page content, behind the fixed nav bar): same surface,
+   glow and pattern as the profile card, but deliberately WITHOUT the profile-only overrides
+   above - .tile, .mode-entry, .trophy-tag etc. are reused by Arena/Events for unrelated
+   components, and forcing the profile look on them there would misfire. */
+[data-cosmetic-shell] {
+  position:relative; isolation:isolate; background-color:var(--skin-profile-surface);
+  box-shadow:0 0 0 100vmax var(--skin-profile-surface);
+  clip-path:inset(0 -100vmax);
+  /* The one skin token allowed to reach a product-owned variable: buttons/links/active
+     states (--accent, --accent-text) follow the purchased theme everywhere, not just the
+     profile card. The default theme's accent already equals the old stock green, so nothing
+     changes for anyone who hasn't bought a theme. --success/--danger/--warn/--focus stay
+     fixed on purpose (see vars.css) - a theme must never be able to make an error message
+     unreadable or a focus ring invisible. */
+  --accent:var(--skin-accent); --accent-text:var(--skin-accent-text);
+}
+[data-cosmetic-shell]::before {
+  content:""; position:absolute; z-index:-1; inset:0 calc(50% - 50vw); pointer-events:none;
+  background-image:var(--skin-profile-glow), var(--skin-pattern);
+}
 html { overflow-x:hidden; }
 @supports (overflow:clip) { html { overflow-x:clip; } }
 [data-cosmetic-profile] .profile-hero { background:transparent; border-left:0; }

@@ -120,7 +120,7 @@ def test_an_unreadable_date_explains_the_format(backend):
     asyncio.run(solution_handler.solution(update, context_with("il", "giorno", "prima")))
 
     assert message.photos == []
-    assert "/solution" in message.replies[0]
+    assert "Soluzione" in message.replies[0]
 
 
 def test_a_missing_day_says_so(backend):

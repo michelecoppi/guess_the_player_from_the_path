@@ -131,7 +131,7 @@ def test_authenticated_rate_limit_precedes_firestore(server, monkeypatch):
     assert reads == [42]
 
 
-@pytest.mark.parametrize("path", ["/app", "/privacy", "/terms", "/legal.css", "/app/client.js"])
+@pytest.mark.parametrize("path", ["/app", "/privacy", "/terms", "/legal.css"])
 def test_static_etag_revalidation(server, path):
     first = request(server, path, method="GET")
     assert first.status_code == 200

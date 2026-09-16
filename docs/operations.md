@@ -32,6 +32,7 @@ broadcast, trophies and monthly close do not happen until the job runs.
 | Grow the dataset | [player-data-pipeline.md](player-data-pipeline.md) (legacy import or Review Queue), then PR |
 | Manual events (father/son) | `/admin_fs_add`, `/admin_event_create`, Admin “Eventi” |
 | Payment support and refunds | `/paysupport` requests → `/admin_support_reply`; `/admin_refund <charge_id>` |
+| Bug/data reports from the Mini App menu | "Segnalazioni" screen → `POST /app/api/support/report` → `/admin_report_reply <telegram_id> <messaggio>` |
 | Reconcile `uncertain` updates or broadcast pages | Cloud Run logs + user history; never delete an uncertain receipt blindly ([runtime-hardening.md](runtime-hardening.md)) |
 | Prune old challenges | `scripts/cleanup_daily_paths.py` (manual on purpose, dry-run first) |
 | Backfill/migrate user documents | `scripts/backfill_users.py`, `scripts/migrate_firestore.py` (historical) |

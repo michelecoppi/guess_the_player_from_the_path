@@ -29,50 +29,38 @@ from handlers.admin_handler import (
     admin_next,
     admin_pool,
     admin_regen,
+    admin_report_reply,
     admin_review,
     admin_stats,
     admin_status,
     admin_support_reply,
     admin_unblock,
 )
-from handlers.archive_handler import archive, archive_callback, back_to_today
+from handlers.archive_handler import archive_callback
 from handlers.error_handler import on_error
-from handlers.events_handler import events, handle_event_navigation
-from handlers.group_handler import (
-    group_challenge,
-    group_new_round_callback,
-    group_standings,
-)
-from handlers.guess_handler import CARD_PREFIX, free_text_guess, guess, share_card_callback
+from handlers.events_handler import handle_event_navigation
+from handlers.guess_handler import CARD_PREFIX, free_text_guess, share_card_callback
 from handlers.help_handler import help
 from handlers.hint_handler import hint_callback
+from handlers.info_handler import info
 from handlers.keyboards import bot_commands
 from handlers.language_handler import language, language_callback
-from handlers.league_handler import (
-    league_callback,
-    league_create,
-    league_join,
-    league_leave,
-    leagues,
-)
-from handlers.legend_handler import legend, legend_callback
-from handlers.menu_handler import menu, menu_callback
+from handlers.league_handler import league_callback
+from handlers.legend_handler import legend_callback
+from handlers.menu_handler import menu_callback
 from handlers.notify_handler import notify, notify_callback
 from handlers.privacy_handler import forgetme
 from handlers.shop_handler import (
     admin_refund,
     precheckout_callback,
     shop_callback,
-    shop_command,
     successful_payment_callback,
 )
-from handlers.show_daily_path_handler import show
-from handlers.show_stats_handler import back_to_stats_callback, show_trophies_callback, stats
-from handlers.solution_handler import solution
+from handlers.show_stats_handler import back_to_stats_callback, show_trophies_callback
 from handlers.start_handler import start
 from handlers.support_handler import paysupport
-from handlers.top_users_handler import leaderboard_callback, top
-from handlers.training_handler import training, training_callback
+from handlers.top_users_handler import leaderboard_callback
+from handlers.training_handler import training_callback
 from services.i18n import SUPPORTED_LANGUAGES
 
 
@@ -93,34 +81,12 @@ def register_handlers(application):
     application.add_error_handler(on_error)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("app", start))
-    application.add_handler(CommandHandler("guess", guess))
-    application.add_handler(CommandHandler("events", events))
-    application.add_handler(CommandHandler("show", show))
-    # L'alias italiano vale come per gli altri comandi: il nome ufficiale resta l'inglese.
-    application.add_handler(CommandHandler(["solution", "soluzione"], solution))
-    application.add_handler(CommandHandler("stats", stats))
     application.add_handler(CommandHandler("help", help))
-    application.add_handler(CommandHandler("menu", menu))
-    # Il nome ufficiale e' quello inglese (e' quello che il bot suggerisce nel menu "/");
-    # l'alias italiano resta registrato per chi lo ha gia' imparato.
-    application.add_handler(CommandHandler(["archive", "archivio"], archive))
-    application.add_handler(CommandHandler(["today", "oggi"], back_to_today))
-    # Allenamento (privato) e partita di gruppo: due facce dello stesso motore, cioe' le
-    # sfide gia' passate riproposte senza toccare la classifica generale.
-    application.add_handler(CommandHandler(["training", "allenamento"], training))
-    application.add_handler(CommandHandler(["round", "sfida"], group_challenge))
-    application.add_handler(CommandHandler(["standings", "classifica"], group_standings))
-    application.add_handler(CommandHandler(["league", "lega"], leagues))
-    application.add_handler(CommandHandler(["league_create", "lega_crea"], league_create))
-    application.add_handler(CommandHandler(["league_join", "lega_entra"], league_join))
-    application.add_handler(CommandHandler(["league_leave", "lega_esci"], league_leave))
-    application.add_handler(CommandHandler(["shop", "negozio"], shop_command))
-    application.add_handler(CommandHandler("top", top))
+    application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("notify", notify))
     application.add_handler(CommandHandler("language", language))
     application.add_handler(CommandHandler("forgetme", forgetme))
     application.add_handler(CommandHandler("paysupport", paysupport))
-    application.add_handler(CommandHandler(["legend", "legenda"], legend))
     application.add_handler(CommandHandler("admin_help", admin_help))
     application.add_handler(CommandHandler("admin_status", admin_status))
     application.add_handler(CommandHandler("admin_stats", admin_stats))
@@ -138,6 +104,7 @@ def register_handlers(application):
     application.add_handler(CommandHandler("admin_event_create", admin_event_create))
     application.add_handler(CommandHandler("admin_refund", admin_refund))
     application.add_handler(CommandHandler("admin_support_reply", admin_support_reply))
+    application.add_handler(CommandHandler("admin_report_reply", admin_report_reply))
     # La foto della coppia padre/figlio arriva con il comando nella didascalia, non nel testo:
     # i CommandHandler non intercettano le didascalie, serve un MessageHandler dedicato.
     application.add_handler(MessageHandler(filters.PHOTO & filters.CaptionRegex(r"^/admin_fs_add"), admin_fs_add))
@@ -149,7 +116,6 @@ def register_handlers(application):
     application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_lang_"))
     application.add_handler(CallbackQueryHandler(legend_callback, pattern="^legend$"))
     application.add_handler(CallbackQueryHandler(training_callback, pattern="^trn_"))
-    application.add_handler(CallbackQueryHandler(group_new_round_callback, pattern="^grp_new$"))
     application.add_handler(CallbackQueryHandler(show_trophies_callback, pattern=r"^show_trophies_\d+$"))
     application.add_handler(CallbackQueryHandler(back_to_stats_callback, pattern="^back_to_stats$"))
     application.add_handler(CallbackQueryHandler(handle_event_navigation, pattern="^event_"))

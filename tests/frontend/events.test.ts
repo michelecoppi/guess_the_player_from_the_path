@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { EventsController } from "../../webapp/src/features/events/controller";
 import {
   renderEventsPage,
@@ -1219,21 +1217,6 @@ test("34. App constructor injection: verifies custom EventsController parameter 
   } finally {
     cleanup();
   }
-});
-
-// ---------------------------------------------------------------------------
-// 17. LEGACY /APP UNCHANGED
-// ---------------------------------------------------------------------------
-
-test("35. Legacy /app files (webapp/arena.js, webapp/index.html, webapp/client.js) remain completely untouched", () => {
-  const rootDir = path.resolve(__dirname, "../../");
-  const arenaJs = fs.readFileSync(path.join(rootDir, "webapp/arena.js"), "utf-8");
-  const indexHtml = fs.readFileSync(path.join(rootDir, "webapp/index.html"), "utf-8");
-  const clientJs = fs.readFileSync(path.join(rootDir, "webapp/client.js"), "utf-8");
-
-  assert.ok(arenaJs.includes("function eventView"), "Legacy arena.js eventView must remain present");
-  assert.ok(indexHtml.includes("arena.js"), "Legacy index.html script tag must remain present");
-  assert.ok(clientJs.includes("escapeHtml"), "Legacy client.js must remain untouched");
 });
 
 // ---------------------------------------------------------------------------

@@ -54,7 +54,8 @@ async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton(t(lang, "events.button_home") + " ✅", callback_data="event_home"),
             InlineKeyboardButton(t(lang, "events.button_player"), callback_data="event_player"),
             InlineKeyboardButton(t(lang, "events.button_leaderboard"), callback_data="event_leaderboard"),
-        ]
+        ],
+        [InlineKeyboardButton(t(lang, "events.button_exit"), callback_data="event_exit")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -83,6 +84,11 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
 
     data = query.data
     image_url = None
+
+    if data == "event_exit":
+        (await asyncio.to_thread(firebase_service.clear_event_key, update.effective_user.id))
+        await query.message.reply_text(t(lang, "events.exited"))
+        return
 
     if data == "event_home":
         message = get_event_home_message(event, lang)
@@ -114,6 +120,7 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         InlineKeyboardButton(t(lang, "events.button_player") + (" ✅" if active == "player" else ""), callback_data="event_player"),
         InlineKeyboardButton(t(lang, "events.button_leaderboard") + (" ✅" if active == "leaderboard" else ""), callback_data="event_leaderboard"),
     ]
+    exit_row = [InlineKeyboardButton(t(lang, "events.button_exit"), callback_data="event_exit")]
 
     # La legenda solo sulla scheda del giocatore, e solo quando l'immagine e' davvero un
     # percorso di carriera: sotto un banner o una foto di coppia non spiegherebbe niente.
@@ -121,7 +128,8 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         ((event.get("daily_data") or {}).get(today_iso()) or {}).get("career_path")
     )
     reply_markup = (
-        legend_keyboard(lang, extra_rows=[tabs]) if shows_career_path else InlineKeyboardMarkup([tabs])
+        legend_keyboard(lang, extra_rows=[tabs, exit_row]) if shows_career_path
+        else InlineKeyboardMarkup([tabs, exit_row])
     )
 
     await query.edit_message_media(

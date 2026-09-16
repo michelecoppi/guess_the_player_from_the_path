@@ -8,6 +8,8 @@ import {
 import { icon } from "@/components/Icon";
 import { v } from "@/i18n/visual";
 import type { NavTabId } from "@/components/NavBar";
+import type { SupportReportState } from "@/features/support/types";
+import type { SupportController } from "@/features/support/controller";
 import {
   duel,
   profile,
@@ -22,12 +24,12 @@ const disabled = (label: string) =>
   renderButton({ label, disabled: true, fullWidth: true });
 const section = (title: string, html: string) =>
   `<section class="prototype-section"><h3>${title}</h3>${html}</section>`;
-export function renderPrototype(id: PrototypeId): string {
+export function renderPrototype(id: PrototypeId, reportState?: SupportReportState): string {
   let title = "",
     kicker = "",
     body = "";
   if (["reports", "refunds", "privacy"].includes(id))
-    return renderSupport(id as "reports" | "refunds" | "privacy");
+    return renderSupport(id as "reports" | "refunds" | "privacy", reportState);
   switch (id) {
     case "arena":
       title = "Arena";
@@ -92,11 +94,35 @@ export function renderPrototype(id: PrototypeId): string {
   return `${back}<aside class="prototype-notice"><b>${v("preview")}</b><p>${v("previewNote")}</p></aside><article class="prototype" data-prototype="${id}"><p class="eyebrow">${kicker}</p><h2 class="page-title">${title}</h2>${body}</article>`;
 }
 
-function renderSupport(id: "reports" | "refunds" | "privacy"): string {
+function renderReportForm(state: SupportReportState): string {
+  const sending = state.status === "sending";
+  return `<form class="report-form" data-report-form>
+      <label class="guess-label" for="report-message">${v("reportLabel")}</label>
+      <textarea id="report-message" class="report-textarea" maxlength="1500" rows="5"
+        placeholder="${e(v("reportPlaceholder"))}" ${sending ? "disabled" : ""}
+      >${e(state.draft)}</textarea>
+      ${renderButton({ label: sending ? v("reportSending") : v("reportSubmit"), type: "submit", disabled: sending, fullWidth: true })}
+    </form>
+    ${state.status === "sent" ? `<p class="report-status success" role="status">${v("reportSent")}</p>` : ""}
+    ${state.status === "error" ? `<p class="report-status error" role="alert">${v("reportError")}</p>` : ""}`;
+}
+
+function renderSupport(id: "reports" | "refunds" | "privacy", reportState?: SupportReportState): string {
   const content = {
-    reports: `<p>Hai trovato un errore in una carriera o un problema nella Mini App?</p><div class="support-block"><h3>Cosa indicare</h3><p>Numero della Daily, club o stagione coinvolti e una breve descrizione. Se puoi, aggiungi uno screenshot.</p></div><p class="prototype-explanation">L’invio delle segnalazioni dal menu è in preparazione. Questa anteprima non invia messaggi al bot.</p>`,
+    reports: `<p>Hai trovato un errore in una carriera o un problema nella Mini App?</p><div class="support-block"><h3>Cosa indicare</h3><p>Numero della Daily, club o stagione coinvolti e una breve descrizione.</p></div>${renderReportForm(reportState || { status: "idle", draft: "" })}`,
     refunds: `<p>Per un acquisto in Stelle, contatta l’assistenza nella chat privata del bot.</p><div class="support-block"><h3>Richiedi assistenza</h3><code>/paysupport</code><p>Aggiungi la descrizione del problema e l’identificativo dell’acquisto. Il bot inoltrerà la richiesta all’assistenza.</p></div><p>La richiesta viene valutata dall’assistenza; aprire questa pagina non esegue un rimborso.</p>`,
     privacy: `<p>Puoi richiedere la cancellazione dei tuoi dati di gioco dalla chat privata del bot.</p><div class="support-block"><h3>Gestisci i tuoi dati</h3><code>/forgetme</code><p>Il bot ti mostrerà la richiesta di conferma prima di cancellare i dati.</p></div><p>Questa pagina è informativa e non avvia la cancellazione.</p>`,
   };
   return `<button class="back-link" data-tab="play">${icon("back")}${v("backDaily")}</button><article class="support-page" data-support="${id}"><span class="support-symbol">${icon(id)}</span><h2 class="page-title">${v(id)}</h2>${content[id]}</article>`;
+}
+
+/** Wires the "Segnalazioni" form's submit; a no-op on any other prototype screen. */
+export function attachSupportEventListeners(root: HTMLElement, controller: SupportController): void {
+  const form = root.querySelector<HTMLFormElement>("[data-report-form]");
+  if (!form) return;
+  form.onsubmit = (event) => {
+    event.preventDefault();
+    const textarea = form.querySelector<HTMLTextAreaElement>("#report-message");
+    if (textarea) void controller.submitReport(textarea.value);
+  };
 }

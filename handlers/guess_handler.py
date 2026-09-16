@@ -25,6 +25,8 @@ from handlers.archive_handler import process_archive_answer
 from handlers.events_handler import process_event_answer
 from handlers.group_handler import process_group_answer
 from handlers.hint_handler import hint_keyboard
+from handlers.league_handler import AWAITING_KEY as LEAGUE_AWAITING_KEY
+from handlers.league_handler import league_create, league_join
 from handlers.notify_handler import ENABLE_INLINE, notifications_enabled
 from handlers.training_handler import process_training_answer
 from services import firebase_service, game, trophies
@@ -69,6 +71,18 @@ async def free_text_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Qualsiasi messaggio di testo in chat privata e' un tentativo, se ne ha la forma."""
     message = update.effective_message
     text = (message.text or "").strip()
+
+    # Dopo "Crea lega"/"Entra in una lega" (handlers/league_handler.py) il prossimo messaggio
+    # libero e' il nome o il codice, non un tentativo sulla sfida di oggi. `user_data` non
+    # c'e' sempre nei test che passano un context minimale: senza, questo passo non vale.
+    user_data_ctx = getattr(context, "user_data", None)
+    awaiting = user_data_ctx.pop(LEAGUE_AWAITING_KEY, None) if user_data_ctx is not None else None
+    if awaiting == "create":
+        await league_create(update, context, name=text)
+        return
+    if awaiting == "join":
+        await league_join(update, context, code=text)
+        return
 
     if not looks_like_an_answer(text):
         await message.reply_text(t(_language_for(update), "guess.free_text_hint"))

@@ -119,7 +119,7 @@ def test_last_wrong_attempt_says_when_the_answer_will_be_revealed(firebase):
     asyncio.run(guess_handler.guess(update, None))
 
     assert "tentativi finiti" in message.replies[0].lower()
-    assert "/solution" in message.replies[0]
+    assert "Soluzione" in message.replies[0]
     assert "Messi" not in message.replies[0]
 
 

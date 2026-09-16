@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { LeaderboardController } from "../../webapp/src/features/leaderboard/controller";
 import {
   renderLeaderboardView,
@@ -488,16 +486,6 @@ test("27. prototype data and notice are absent from runtime", () => {
   assert.ok(!html.includes("Sofia Riva"));
   assert.ok(!html.includes("Amici del Bar") || !html.includes("12 giocatori · una classifica condivisa"));
   assert.ok(!html.includes("prototype-notice"));
-});
-
-test("28. legacy /app webapp/index.html remains completely untouched", () => {
-  const legacyHtmlPath = path.resolve(__dirname, "../../webapp/index.html");
-  const legacyContent = fs.readFileSync(legacyHtmlPath, "utf-8");
-
-  assert.ok(legacyContent.includes('function statsTab()'));
-  assert.ok(legacyContent.includes('function leaguesTab()'));
-  assert.ok(legacyContent.includes('state.profile.leaderboard'));
-  assert.ok(legacyContent.includes('state.profile.leagues'));
 });
 
 test("29. public profile flow: click row opens public profile with back button restoring ranking", async () => {

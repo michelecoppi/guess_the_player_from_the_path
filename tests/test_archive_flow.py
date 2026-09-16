@@ -199,4 +199,4 @@ def test_today_says_so_when_there_is_nothing_to_close(firebase):
 
     assert firebase.calls["closed"] == []
     assert firebase.calls["archive_day"] == []
-    assert "/archive" in message.replies[0]
+    assert "Archivio" in message.replies[0]

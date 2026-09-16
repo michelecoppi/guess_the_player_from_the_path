@@ -28,8 +28,11 @@
   --success: #46cc91;
   --focus: #84e2b2;
   --disabled-opacity: 0.5;
-  /* Decorative skin only. Do not use these for text or interactive states. */
+  /* Decorative skin. --skin-accent/--skin-accent-text are the one pair a theme is allowed to
+     push onto --accent/--accent-text (see [data-cosmetic-shell] in editorial.css) - every
+     other --skin-* value here stays purely decorative, never text or interactive states. */
   --skin-accent: #46cc91;
+  --skin-accent-text: #072d22;
   --skin-accent-secondary: #314253;
   --skin-pitch: #2a3c4b;
   --skin-profile-surface: #1a2734;
