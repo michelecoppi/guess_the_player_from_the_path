@@ -13,6 +13,7 @@ from services import content_admin as content_admin
 from services import dataset_editor as dataset_editor
 from services import firebase_service as firebase_service
 from services import observability
+from services import product_analytics_query as product_analytics_query
 from services import referrals as referrals
 from services import shop as shop
 from services import shop_editor as shop_editor
@@ -326,6 +327,11 @@ def cached_referral_overview():
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_referral_top_inviters(limit):
     return firebase_service.get_top_users("referral_qualified", limit)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_core_metrics(days):
+    return product_analytics_query.fetch_core_metrics(product_analytics_query.settings(), days)
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)

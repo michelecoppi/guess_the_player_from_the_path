@@ -58,6 +58,7 @@ if not credentials_path.exists():
 os.environ["FIREBASE_CREDENTIALS_PATH"] = str(credentials_path)
 
 from admin_pages import (
+    analytics,
     blocked,
     challenges,
     dataset,
@@ -90,6 +91,7 @@ PAGES = [
     "👥 Gruppi",
     "🏆 Leghe",
     "🛍️ Shop & Referral",
+    "📈 Analytics",
     "🩺 Salute sistema",
     "📚 Dataset",
     "🔎 Review giocatori",
@@ -127,6 +129,7 @@ RENDERERS = {
     '👥 Gruppi': groups.render,
     '🏆 Leghe': leagues.render,
     '🛍️ Shop & Referral': shop.render,
+    '📈 Analytics': analytics.render,
     '🩺 Salute sistema': system.render,
     '📚 Dataset': dataset.render,
     '🔎 Review giocatori': player_review.render,
