@@ -36,8 +36,9 @@ Both frontends call the same `POST /app/api/*` endpoints implemented in
   unpaid hints are never serialized; prices come from the server catalogue.
 - Endpoints: `me`, `profile/public`, `profile/search`, `referrals`, `guess`, `hint`,
   `arena` (`mode`: `training` | `duel` | `events`), `calendar`, `league`, `shop`,
-  `shop/buy`, `shop/equip`, `shop/look`, `shop/history`, `card`, `trophies/pin`. The
-  route list in `bot.py` is authoritative.
+  `shop/buy`, `shop/equip`, `shop/look`, `shop/history`, `card`, `trophies/pin`, and
+  `perf` (startup timing beacon: signature and rate limit only, no user document read, see
+  [performance.md](performance.md)). The route list in `bot.py` is authoritative.
 - Mutating moves in Training, duels and events carry a `revision`; the server answers
   409 when the state changed and the client reloads.
 - A feature switched off by a flag answers 403

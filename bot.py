@@ -22,6 +22,7 @@ from telegram.ext import (
     PreCheckoutQueryHandler,
     filters,
 )
+from telegram.request import HTTPXRequest
 
 from config import (
     BOT_TOKEN,
@@ -97,6 +98,7 @@ from services import (
     game,
     monthly_closure,
     observability,
+    performance,
     shop,
     task_queue,
     trophies,
@@ -132,7 +134,14 @@ observability.init("bot", web=True)
 # failures never reach here (init() swallows them and logs through observability).
 analytics.init()
 
-telegram_app = ApplicationBuilder().token(BOT_TOKEN).build()
+# Un solo client HTTP per le chiamate a Telegram e per getUpdates. Il bot riceve gli update
+# via webhook e non chiama mai getUpdates, ma PTB costruirebbe comunque un secondo client, e
+# ogni client carica da capo il bundle dei certificati CA: meta' del costo di build() e circa
+# un quinto dell'import di bot.py misurato in locale (#32, docs/performance.md).
+_telegram_request = HTTPXRequest(connection_pool_size=256)
+telegram_app = (
+    ApplicationBuilder().token(BOT_TOKEN).request(_telegram_request).get_updates_request(_telegram_request).build()
+)
 telegram_app.add_error_handler(on_error)
 api_limiter = TokenBucket()
 telegram_app.add_handler(CommandHandler("start", start))
@@ -235,12 +244,15 @@ async def lifespan(app: FastAPI):
     if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", WEBHOOK_SECRET):
         raise RuntimeError("WEBHOOK_SECRET must contain 32-256 URL-safe characters")
     task_queue.validate_configuration()
-    await telegram_app.initialize()
-    if WEBHOOK_URL:
-        await telegram_app.bot.set_webhook(WEBHOOK_URL, secret_token=WEBHOOK_SECRET)
-    else:
-        logging.warning("WEBHOOK_URL non configurato: webhook Telegram non registrato all'avvio.")
-    await _register_bot_commands()
+    # Quanto costa un cold start e dove (#32): prima del lifespan (interprete e import) e
+    # durante (inizializzazione Telegram e registrazione del webhook).
+    with performance.startup_phases():
+        await telegram_app.initialize()
+        if WEBHOOK_URL:
+            await telegram_app.bot.set_webhook(WEBHOOK_URL, secret_token=WEBHOOK_SECRET)
+        else:
+            logging.warning("WEBHOOK_URL non configurato: webhook Telegram non registrato all'avvio.")
+        await _register_bot_commands()
     try:
         yield
     finally:
@@ -302,7 +314,11 @@ async def observe_request(request: Request, call_next):
     started = perf_counter()
     fields = {"component": component or "api", "request_id": request_id, "method": request.method,
               **observability.cloud_task_fields(request.headers)}
-    with observability.bind(**fields):
+    # La prima richiesta servita da un'istanza ha pagato il cold start: la si marca invece di
+    # confonderla con la latenza normale della rotta (#32). Contano anche le pagine statiche,
+    # che sono spesso quelle che svegliano l'istanza quando si apre la mini app.
+    cold_start = performance.claim_first_request()
+    with observability.bind(**fields), performance.track() as usage:
         try:
             response = await call_next(request)
         except Exception as exc:
@@ -311,18 +327,32 @@ async def observe_request(request: Request, call_next):
                 "api.request.failed", logging.WARNING if reported else logging.ERROR,
                 exc_info=None if reported else exc, route=_route_path(request), status_code=500,
                 duration_ms=round((perf_counter() - started) * 1000, 1), error_type=type(exc).__name__,
+                **usage.fields(),
             )
             raise
         elapsed_ms = (perf_counter() - started) * 1000
         response.headers["X-Request-ID"] = request_id
         if path.startswith("/app/api/"):
-            response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+            response.headers["Server-Timing"] = _server_timing(elapsed_ms, usage)
         if component:
+            route = _route_path(request)
             observability.log_event(
                 "api.request.completed", logging.WARNING if response.status_code >= 500 else logging.INFO,
-                route=_route_path(request), status_code=response.status_code, duration_ms=round(elapsed_ms, 1),
+                route=route, status_code=response.status_code, duration_ms=round(elapsed_ms, 1),
+                cold_start=cold_start or None, **usage.fields(),
             )
+            if response.status_code < 500:
+                performance.check_budgets(route, elapsed_ms, usage, cold_start=cold_start)
     return response
+
+
+def _server_timing(elapsed_ms, usage):
+    """`app` e' la durata lato server; `fs` il tempo passato ad aspettare Firestore, con il numero
+    di letture come descrizione. Solo misure: nessun id, nessun dato dell'utente."""
+    timing = f"app;dur={elapsed_ms:.1f}"
+    if usage.reads or usage.commits:
+        timing += f', fs;dur={usage.rpc_ms:.1f};desc="reads={usage.reads}"'
+    return timing
 
 
 def _route_path(request):
@@ -506,6 +536,27 @@ def _webapp_user(payload, cost=1):
 
 def _webapp_language(user_data):
     return user_data.get("language") or DEFAULT_LANGUAGE
+
+
+@app.post("/app/api/perf")
+def webapp_startup_timing(payload: dict = Body(default={})):
+    """Quanto ci ha messo la mini app ad aprirsi, misurato dal telefono (#32).
+
+    Serve la firma di initData, ma non il documento utente: nessuna lettura Firestore per
+    una misura. Nel log finisce solo un insieme chiuso di numeri limitati
+    (`performance.miniapp_startup_fields`), senza id ne' testo del client."""
+    try:
+        user_id = user_id_from_init_data(payload.get("initData", ""), BOT_TOKEN)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from None
+    wait = api_limiter.retry_after(user_id, 1)
+    if wait:
+        raise HTTPException(status_code=429, detail="Troppe richieste", headers={"Retry-After": str(wait)})
+    fields = performance.miniapp_startup_fields(payload)
+    if fields is None:
+        raise HTTPException(status_code=422, detail="metriche non valide")
+    observability.log_event("miniapp.startup.measured", **fields)
+    return {"status": "ok"}
 
 
 @app.post("/app/api/me")
@@ -861,8 +912,16 @@ async def _consume_update(update):
         )
         return {"status": state}
     if state == "claimed":
+        started = perf_counter()
         async with asyncio.timeout(150):
             await telegram_app.process_update(update)
+        # La durata del solo handler, con i campi dell'update gia' legati (comando, tipo): la
+        # richiesta intera comprende anche ricevuta e coda, e non dice quale comando e' lento.
+        usage = performance.current_usage()
+        observability.log_event(
+            "telegram.update.completed", duration_ms=round((perf_counter() - started) * 1000, 1),
+            **(usage.fields() if usage else {}),
+        )
         await run_in_threadpool(work_receipts.finish, key)
     return {"status": "ok"}
 

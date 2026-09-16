@@ -26,6 +26,7 @@ def test_commands_table_has_all_required_tasks():
         "release-version",
         "release-check",
         "release-notes",
+        "perf-report",
     }
     assert expected.issubset(COMMANDS.keys())
 
@@ -44,6 +45,12 @@ def test_release_commands_delegate_to_tools_release():
 
         assert dev_main(["release-notes"]) == 0
         assert mock_run.call_args[0][0] == [sys.executable, "-m", "tools.release", "notes"]
+
+
+def test_perf_report_delegates_to_tools_perf_report():
+    with patch("tools.dev._run_cmd", return_value=0) as mock_run:
+        assert main(["perf-report", "--fetch", "--days", "7"]) == 0
+        assert mock_run.call_args[0][0] == [sys.executable, "-m", "tools.perf_report", "--fetch", "--days", "7"]
 
 
 def test_help_command_returns_zero(capsys):

@@ -92,7 +92,9 @@ class _LazyFirestoreClient:
                 if _LazyFirestoreClient._client is None:
                     if not firebase_admin._apps:
                         firebase_admin.initialize_app(_credentials())
-                    _LazyFirestoreClient._client = firestore.client()
+                    # Conta letture e scritture per richiesta (#32); non cambia nient'altro.
+                    from services import performance
+                    _LazyFirestoreClient._client = performance.instrument_firestore(firestore.client())
         return _LazyFirestoreClient._client
 
     def __getattr__(self, name):

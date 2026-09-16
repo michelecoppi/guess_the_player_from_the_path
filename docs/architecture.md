@@ -151,6 +151,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Operations | cross-cutting | [operations.md](operations.md) |
 | Feature flags (implemented, #51) | `services/feature_flags.py`, `services/repos/feature_flags.py`, `handlers/feature_gate.py`, `scripts/feature_flags.py`: `admin_settings/feature_flags`, server-side evaluation with TTL cache and last-known-good | [feature-flags.md](feature-flags.md) |
 | Observability (implemented, #18) | `services/observability.py`: structured JSON logs, optional Sentry, request/task correlation, redaction; `release` from `VERSION`, `revision` from Cloud Run | [observability.md](observability.md) |
+| Performance measurement (implemented, #32) | `services/performance.py` (Firestore accounting at the GAPIC layer, budgets, startup phases), `tools/perf_report.py`: all output is structured log fields on top of observability | [performance.md](performance.md) |
 | Product analytics (implemented, #29) | `services/product_analytics.py`: typed PostHog event capture, pseudonymous identity, off without `POSTHOG_API_KEY`; a strictly separate concern from observability above | [product-analytics.md](product-analytics.md) |
 
 ## 7. Deployment topology (summary)
@@ -184,7 +185,7 @@ code does not restore data.
 | [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Not implemented |
 | [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) | Automatic Daily planner | Implemented: `services/daily_planner.py` plans 7–90 days with eligibility, difficulty rotation, diversity and repetition rules, per-day audit, Admin review/apply ([game-modes.md](game-modes.md#daily-planner)); the nightly buffer uses the same rules |
 | [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31) | Data-driven, automatable events | Implemented: validated template schema v2 (filters, rules, rewards, rotation/fixed/manual schedule) in `services/event_config.py`, Admin template editor ([event-templates.md](event-templates.md)) |
-| [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | `Server-Timing` header and `api.request.completed` duration logs only ([observability.md](observability.md)) |
+| [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | Implemented: per-request Firestore cost, cold-start and handler timings, Mini App startup beacon, budgets, baseline/trend report ([performance.md](performance.md)). Further optimisations are decided there from data |
 | [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) sub-issues #33, #34, #36–#39 | Admin expansion | See [admin.md](admin.md) |
 | [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) | Final V2 review before switch | `/app` is still the default; see [miniapp.md](miniapp.md) |
 

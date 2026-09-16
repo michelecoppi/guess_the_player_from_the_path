@@ -57,8 +57,19 @@ new dated section below.
   preview and backup
   ([#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31),
   [event-templates.md](docs/event-templates.md)).
+- Performance measurement: Firestore reads/queries/writes per request (log fields and
+  `Server-Timing`), cold-start marking and startup phases, Telegram handler durations, a Mini
+  App startup beacon (`POST /app/api/perf`, no Firestore read), latency/read budgets with
+  `performance.budget.exceeded`, and `python -m tools.dev perf-report` for baseline and trend
+  from Cloud Logging, with the first production baseline in `docs/performance-baselines/`
+  ([#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32),
+  [performance.md](docs/performance.md)).
 
 ### Changed
+
+- The bot builds a single Telegram HTTP client instead of two (it never calls `getUpdates`),
+  halving `ApplicationBuilder().build()` at startup (298 ms → 149 ms measured locally)
+  ([#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32)).
 
 - Firestore backups use a typed, validated format v2 driven by one collection inventory; they
   now also cover `referrals`, `app_duels`, `group_rounds`, `monthly_closures`, `daily_jobs` and

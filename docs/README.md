@@ -47,7 +47,7 @@ English. Both are equally authoritative when listed as primary below.
 | Feature flags | [feature-flags.md](feature-flags.md) | `admin_settings/feature_flags` schema, supported keys and defaults, evaluation precedence, rollout bucketing, cache and last-known-good, operator CLI, emergency disable, runtime integration points |
 | Observability | [observability.md](observability.md) | Structured JSON logs, Sentry setup and env vars, component/event vocabulary, correlation ids, redaction policy |
 | Product analytics | [product-analytics.md](product-analytics.md) | PostHog integration, event taxonomy and semantics, pseudonymous identity, privacy review, server/client split, onboarding/referral/Shop funnels, metric definitions, dashboard reproduction, relationship with observability (#18), Admin Analytics (#39) and Experimentation (#52) |
-| Performance | [performance.md](performance.md) | Mini App API latency design, rate limiting, caching, `Server-Timing` |
+| Performance | [performance.md](performance.md) | What is measured (latency, cold start, Firestore reads, Telegram handlers, Mini App startup), production baseline, budgets, `perf-report` baseline/trend tool, optimisation decision log, Mini App API latency design |
 
 ## Historical and review evidence
 

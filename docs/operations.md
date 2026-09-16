@@ -79,8 +79,10 @@ which relies on the verified procedure in [backup-recovery.md](backup-recovery.m
   `component`/`route`/`request_id`/`task_name` fields, and optional Sentry error tracking
   enabled by `SENTRY_DSN` (#18). Records carry the formal `release` (`VERSION`) and, on
   Cloud Run, the exact build `revision`. No log-based metrics are defined in this repository.
-- `/app/api/*` requests also return a `Server-Timing: app;dur=<ms>` header. See
-  [performance.md](performance.md).
+- `/app/api/*` requests also return a `Server-Timing: app;dur=<ms>` header (plus `fs` when
+  Firestore was used). Cold starts, Firestore cost per request, Telegram handler durations,
+  Mini App startup and budget breaches are log fields/events; `python -m tools.dev
+  perf-report` turns them into a baseline and trend. See [performance.md](performance.md).
 - Telegram messages to admins (`ADMIN_TELEGRAM_IDS`) for: unhandled handler errors
   (`handlers/error_handler.py`), `uncertain` interrupted updates
   (`services/alerts.py`), broadcast completion summary and broadcast problems
@@ -91,8 +93,6 @@ which relies on the verified procedure in [backup-recovery.md](backup-recovery.m
 - No uptime checks, alert policies or dashboards are part of the codebase.
 
 **Planned evolution.**
-[#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) —
-performance measurement (soft dependency on #18, see [evolutive-tracking.md](evolutive-tracking.md)).
 [#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38) — Admin
 system health and logs.
 
