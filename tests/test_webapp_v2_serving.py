@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from starlette.testclient import TestClient
 
 import bot
+from apps.api import miniapp, static
 from services import firebase_service
 
 PREVIEW_MODULE = "scripts.preview_webapp"
@@ -24,7 +25,7 @@ def test_webapp_legacy_serving_unaffected():
 def test_webapp_v2_serving_and_revalidation():
     client = TestClient(bot.app)
     response = client.get("/app/v2")
-    if not os.path.exists(os.path.join(bot.DIST_DIR, "index.html")):
+    if not os.path.exists(os.path.join(static.DIST_DIR, "index.html")):
         assert response.status_code == 503
         return
 
@@ -40,7 +41,7 @@ def test_webapp_v2_serving_and_revalidation():
 
 def test_webapp_v2_assets_serving_and_security():
     client = TestClient(bot.app)
-    assets_dir = os.path.join(bot.DIST_DIR, "assets")
+    assets_dir = os.path.join(static.DIST_DIR, "assets")
     if not os.path.exists(assets_dir):
         return
 
@@ -64,7 +65,7 @@ def test_webapp_v2_assets_serving_and_security():
 def test_webapp_v2_assets_sibling_directory_containment():
     """Harden path containment: sibling directories sharing the same string prefix must not be accessible."""
     client = TestClient(bot.app)
-    dist_dir = Path(bot.DIST_DIR).resolve()
+    dist_dir = Path(static.DIST_DIR).resolve()
     sibling_dir = dist_dir / "assets_sibling"
     sibling_file = sibling_dir / "secret.txt"
 
@@ -78,7 +79,7 @@ def test_webapp_v2_assets_sibling_directory_containment():
 
         # 2. Direct route handler containment check (verifies Path.is_relative_to behavior)
         with pytest.raises(HTTPException) as exc_info:
-            bot.webapp_v2_assets("../assets_sibling/secret.txt", None)
+            static.webapp_v2_assets("../assets_sibling/secret.txt", None)
         assert exc_info.value.status_code == 403
     finally:
         if sibling_dir.exists():
@@ -112,9 +113,9 @@ def test_webapp_api_backend_contract_requires_body_initdata(monkeypatch):
             return 42
         raise ValueError("initData non valida")
 
-    monkeypatch.setattr(bot, "user_id_from_init_data", fake_user_id_from_init_data)
-    monkeypatch.setattr(bot.firebase_service, "get_user_data", lambda uid: {"first_name": "TestUser", "language": "it"})
-    monkeypatch.setattr(bot.firebase_service, "get_daily_path", lambda *args: None)
+    monkeypatch.setattr(miniapp, "user_id_from_init_data", fake_user_id_from_init_data)
+    monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: {"first_name": "TestUser", "language": "it"})
+    monkeypatch.setattr(firebase_service, "get_daily_path", lambda *args: None)
 
     valid_response = client.post(
         "/app/api/me",

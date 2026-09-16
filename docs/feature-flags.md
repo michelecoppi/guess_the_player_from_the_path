@@ -19,7 +19,7 @@ and the other Admin issues) and the `/app` → `/app/v2` switch
 | Registry, schema, evaluation, cache | [`services/feature_flags.py`](../services/feature_flags.py) | Supported keys and defaults (`Flag`, `REGISTRY`), validation (`parse_document`), pure evaluation (`evaluate`, `bucket`), `FeatureFlagService` (TTL cache + last-known-good), entry points `is_enabled`, `ensure_enabled`, `resolved_features` |
 | Firestore I/O | [`services/repos/feature_flags.py`](../services/repos/feature_flags.py) | `load_document` (bounded read), `update_flag` (transactional single-flag change), `plan_update` (pure planning) |
 | Telegram boundary | [`handlers/feature_gate.py`](../handlers/feature_gate.py) | `@feature_gate(Flag.X)` decorator and `flag_enabled` helper |
-| API boundary | [`bot.py`](../bot.py) | `_require_feature`, the `FeatureDisabled` exception handler, `/app/api/*` guards |
+| API boundary | [`apps/api/miniapp.py`](../apps/api/miniapp.py), [`apps/api/app.py`](../apps/api/app.py) | `_require_feature` and the `/app/api/*` guards; the `FeatureDisabled` exception handler |
 | Operator tool | [`scripts/feature_flags.py`](../scripts/feature_flags.py) | List, inspect and change flags |
 
 Mini App clients never read Firestore (see [`firestore.rules`](../firestore.rules)); they

@@ -38,7 +38,7 @@ line, `MAJOR.MINOR.PATCH`, no `v` prefix, no pre-release suffix. Nothing else de
 application's release version:
 
 - `services/version.py` reads it at runtime (`get_version()`), used today by the `/`
-  health endpoint (`bot.py`) so a running revision can report its own version without
+  health endpoint (`apps/api/static.py`) so a running revision can report its own version without
   redeploying. [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18)
   observability reads the same identifier for the Sentry/log `release`, and
   `get_build_revision()` for a separate `revision` field (see

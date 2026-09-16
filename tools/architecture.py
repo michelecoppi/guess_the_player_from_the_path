@@ -56,20 +56,24 @@ SHARED_CONFIG = "config"
 
 # Where Python modules live. `webapp/` is the Mini App frontend (TypeScript/JS) delivered by
 # the `api` app; it is outside this Python map.
-SOURCE_PACKAGES = ("services", "handlers", "admin_pages", "scripts", "tools")
+SOURCE_PACKAGES = ("apps", "services", "handlers", "admin_pages", "scripts", "tools")
 SOURCE_MODULES = ("bot", "admin_ui", "config")
 
 # Prefix -> component. The longest matching prefix wins, so a package can be assigned as a
 # whole and single modules inside it overridden.
 COMPONENTS: dict[str, str] = {
     # --- composition roots -------------------------------------------------------------------
-    # bot.py still also holds the HTTP routes, which are the `api` app in all but location
-    # (#110 moves them out and leaves bot.py a pure composition root).
+    # bot.py only builds the Telegram application and the HTTP app and wires them (#110).
     "bot": ROOT,
     "admin_ui": ROOT,
     "config": SHARED_CONFIG,
     # --- apps --------------------------------------------------------------------------------
+    # PTB application, handler registration and lifecycle; the handlers themselves.
+    "apps.bot": "bot",
     "handlers": "bot",
+    # FastAPI factory, middleware, webhook/workers, Mini App API and static routers. It reaches
+    # the bot only through the TelegramBridge injected by bot.py.
+    "apps.api": "api",
     "admin_pages": "admin",
     "scripts": "scripts",
     "tools": "tools",

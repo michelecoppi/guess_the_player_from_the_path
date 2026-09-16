@@ -11,7 +11,9 @@ from unittest.mock import AsyncMock
 import pytest
 from google.cloud.firestore_v1.base_query import FieldFilter
 
-from services import performance
+import config
+from apps.api import miniapp
+from services import firebase_service, performance, shop, work_receipts
 from tests.test_observability import by_event, call, clean_observability, records, server  # noqa: F401
 
 
@@ -187,8 +189,8 @@ def test_miniapp_report_keeps_only_known_bounded_numbers():
 def test_perf_endpoint_requires_a_signature_and_reads_nothing(server, monkeypatch, records):  # noqa: F811
     assert call(server, "/app/api/perf", json={"app": "v2", "metrics": {"ttfb_ms": 1}}).status_code == 401
 
-    monkeypatch.setattr(server, "user_id_from_init_data", lambda *args: 42)
-    monkeypatch.setattr(server.firebase_service, "get_user_data", lambda uid: pytest.fail("no user read for a metric"))
+    monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
+    monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: pytest.fail("no user read for a metric"))
     assert call(server, "/app/api/perf", json={"app": "v2", "metrics": {"x": 1}}).status_code == 422
 
     response = call(server, "/app/api/perf", json={
@@ -214,8 +216,8 @@ def test_request_records_carry_firestore_usage_server_timing_and_cold_start(serv
         list(gapic.run_query(request={}))
         return 42, {"language": "it"}
 
-    monkeypatch.setattr(server, "_webapp_user", shop_with_reads)
-    monkeypatch.setattr(server.shop, "catalogue_for", lambda *args: {"sections": []})
+    monkeypatch.setattr(miniapp, "_webapp_user", shop_with_reads)
+    monkeypatch.setattr(shop, "catalogue_for", lambda *args: {"sections": []})
     first = call(server, "/app/api/shop", json={})
     second = call(server, "/app/api/shop", json={})
 
@@ -234,12 +236,12 @@ def test_request_without_firestore_keeps_the_plain_server_timing(server, records
 
 
 def test_telegram_update_records_handler_duration(server, monkeypatch, records):  # noqa: F811
-    monkeypatch.setattr(server.work_receipts, "claim", lambda *args, **kwargs: "claimed")
-    monkeypatch.setattr(server.work_receipts, "finish", lambda *args, **kwargs: None)
+    monkeypatch.setattr(work_receipts, "claim", lambda *args, **kwargs: "claimed")
+    monkeypatch.setattr(work_receipts, "finish", lambda *args, **kwargs: None)
     monkeypatch.setattr(server.telegram_app, "process_update", AsyncMock())
     update = {"update_id": 7, "message": {"message_id": 1, "date": 0, "chat": {"id": 5, "type": "private"},
                                           "from": {"id": 5, "is_bot": False, "first_name": "A"}, "text": "/top"}}
-    response = call(server, "/internal/telegram-update", json=update, headers={"X-Task-Secret": server.TASK_SECRET})
+    response = call(server, "/internal/telegram-update", json=update, headers={"X-Task-Secret": config.TASK_SECRET})
     assert response.status_code == 200
     [line] = by_event(records(), "telegram.update.completed")
     assert line["command"] == "top" and line["duration_ms"] >= 0

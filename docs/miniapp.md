@@ -18,14 +18,14 @@ the backend and how the V2 rollout is gated. The V2 appearance contract is owned
 | Theme | follows Telegram theme variables | structurally dark-only (`color-scheme: dark`), see below |
 
 Both frontends call the same `POST /app/api/*` endpoints implemented in
-[`bot.py`](../bot.py) on top of `services/`. There is no V2-specific backend.
+[`apps/api/miniapp.py`](../apps/api/miniapp.py) on top of `services/`. There is no V2-specific backend.
 
 ## Backend contract and authentication
 
 **Current state.**
 
 - Every Mini App API call is a `POST` with a JSON body containing `initData` from
-  `Telegram.WebApp`. `bot.py::_webapp_user` verifies it with
+  `Telegram.WebApp`. `apps/api/miniapp.py::_webapp_user` verifies it with
   [`services/webapp_auth.py`](../services/webapp_auth.py) (HMAC-SHA256 keyed from the
   bot token, max age 24 h), applies the per-user token bucket
   ([`services/rate_limit.py`](../services/rate_limit.py)), and loads the user document
@@ -38,7 +38,7 @@ Both frontends call the same `POST /app/api/*` endpoints implemented in
   `arena` (`mode`: `training` | `duel` | `events`), `calendar`, `league`, `shop`,
   `shop/buy`, `shop/equip`, `shop/look`, `shop/history`, `card`, `trophies/pin`, and
   `perf` (startup timing beacon: signature and rate limit only, no user document read, see
-  [performance.md](performance.md)). The route list in `bot.py` is authoritative.
+  [performance.md](performance.md)). The route list in `apps/api/miniapp.py` is authoritative.
 - Mutating moves in Training, duels and events carry a `revision`; the server answers
   409 when the state changed and the client reloads.
 - A feature switched off by a flag answers 403

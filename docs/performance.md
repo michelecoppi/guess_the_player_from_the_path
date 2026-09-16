@@ -16,7 +16,7 @@ il codice sta in [`services/performance.py`](../services/performance.py).
 
 | Misura | Dove nasce | Record / campo |
 | --- | --- | --- |
-| Latenza di ogni richiesta API/interna | middleware in `bot.py` | `api.request.completed`: `route`, `status_code`, `duration_ms` |
+| Latenza di ogni richiesta API/interna | middleware in `apps/api/observe.py` | `api.request.completed`: `route`, `status_code`, `duration_ms` |
 | Cold start | prima richiesta servita da un processo | `cold_start: true` sullo stesso record (assente sulle richieste calde) |
 | Fasi di avvio del container | lifespan FastAPI | `app.startup.completed`: `before_lifespan_ms` (età del processo quando parte il lifespan: interprete, import, setup a livello di modulo; da `/proc`, quindi solo su Linux), `lifespan_ms` (inizializzazione Telegram, webhook, comandi), `startup_ms` |
 | Letture/scritture Firestore per richiesta | wrapper sui metodi GAPIC del client Firestore | `firestore_reads`, `firestore_gets`, `firestore_queries`, `firestore_writes`, `firestore_ms` su `api.request.completed`; header `Server-Timing: app;dur=…, fs;dur=…;desc="reads=N"` |

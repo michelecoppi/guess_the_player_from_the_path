@@ -116,3 +116,33 @@ def test_cli_reports_and_fails_on_violations(repo, capsys):
     assert "New boundary violations: 1" in capsys.readouterr().out
     assert architecture.main(["--module", "services.dates"], root=repo) == 0
     assert "services.dates: infrastructure" in capsys.readouterr().out
+
+
+def test_bot_py_stays_a_pure_composition_root():
+    """#110: bot.py wires apps together; routes, handler registration and rules live in apps/."""
+    import ast
+
+    tree = ast.parse((architecture.ROOT_DIR / "bot.py").read_text(encoding="utf-8"))
+    functions = [node.name for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    assert functions == [], f"bot.py must not define functions: {functions}"
+    calls = {node.func.attr for node in ast.walk(tree)
+             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)}
+    # Route decorators need a function, so "no functions" already excludes them; these catch the
+    # decorator-less forms of registering routes, handlers or middleware.
+    assert not calls & {"add_handler", "add_api_route", "middleware", "include_router", "exception_handler"}
+
+
+def test_composed_app_exposes_the_bot_bridge_to_the_http_app(monkeypatch):
+    import importlib.util
+
+    import config
+
+    monkeypatch.setattr(config, "BOT_TOKEN", "123456:test-token")
+    spec = importlib.util.spec_from_file_location("composed_bot", architecture.ROOT_DIR / "bot.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.app.state.telegram is module.bot_bridge
+    assert module.bot_bridge.application is module.telegram_app
+    paths = {route.path for route in module.app.routes}
+    assert {"/", "/webhook", "/internal/telegram-update", "/app/api/me", "/app/v2/assets/{file_path:path}"} <= paths
+    assert len(module.telegram_app.handlers[0]) > 50

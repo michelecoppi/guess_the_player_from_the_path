@@ -73,6 +73,12 @@ new dated section below.
 
 ### Changed
 
+- `bot.py` is now a pure composition root: the Telegram application and handler registration
+  live in `apps/bot/`, the FastAPI factory, middleware, webhook/workers, Mini App API and
+  static routes in `apps/api/`, connected by an injected `TelegramBridge`. Same routes, same
+  handlers in the same order, same responses
+  ([#110](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/110),
+  [architecture.md](docs/architecture.md#3-composition-root-and-domain-boundaries)).
 - The bot builds a single Telegram HTTP client instead of two (it never calls `getUpdates`),
   halving `ApplicationBuilder().build()` at startup (298 ms → 149 ms measured locally)
   ([#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32)).

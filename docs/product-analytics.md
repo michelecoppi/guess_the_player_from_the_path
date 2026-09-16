@@ -156,7 +156,7 @@ Guarantees, all covered by `tests/test_product_analytics.py`:
   point call sites use. Internally delegates the actual SDK call to `_call_capture`, split
   out on purpose so the real-SDK smoke test (§2) can exercise it directly, bypassing
   `capture()`'s own blanket exception handling.
-- `flush()` / `shutdown()` — best-effort, called once from `bot.py`'s FastAPI lifespan
+- `flush()` / `shutdown()` — best-effort, called once from the FastAPI lifespan (`apps/api/app.py`)
   teardown; never required for correctness (posthog-python flushes on its own).
 - `distinct_id_for_user(user_id)` / `distinct_id_for_anonymous(session_id)` — identity
   helpers (§7).
@@ -239,7 +239,7 @@ frontend tracking was added in this iteration.
 | `duel_created` | `POST /app/api/arena` `mode=duel action=create` | server | one event per successful creation | `surface` | completion (the duel document is created) |
 | `duel_joined` | Same endpoint, `action=join` | server | fires when the joining seat is actually added; a second `join` by the same user cannot happen (the seat already exists) | `surface` | completion |
 | `duel_started` | **Not a distinct event.** Joining *is* what starts a duel in the current code (both seats exist, the puzzles are already loaded) — there is no separate "ready" step to track. `duel_joined` doubles as this signal; adding a synthetic `duel_started` would track a state transition that does not exist. | — | — | — | — |
-| `duel_completed` | Same endpoint, any `action` that leaves both seats finished (`result["complete"]` becomes true) | server | fires exactly once per player: a finished seat rejects any further `guess`/`reveal` (`ArenaError("finished")`), so the completion branch in `bot.py::webapp_arena` cannot be reached twice for the same player, and polling with `action=get` never triggers it | `surface` | completion; no opponent identifier of any kind is sent (see §7) |
+| `duel_completed` | Same endpoint, any `action` that leaves both seats finished (`result["complete"]` becomes true) | server | fires exactly once per player: a finished seat rejects any further `guess`/`reveal` (`ArenaError("finished")`), so the completion branch in `apps/api/miniapp.py::webapp_arena` cannot be reached twice for the same player, and polling with `action=get` never triggers it | `surface` | completion; no opponent identifier of any kind is sent (see §7) |
 
 ### Events (thematic challenges)
 

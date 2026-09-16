@@ -13,9 +13,10 @@ import pytest
 from starlette.testclient import TestClient
 
 import bot
+from apps.api import miniapp
 from handlers import hint_handler, menu_handler, shop_handler, top_users_handler
 from services import feature_flags as ff
-from services import shop, webapp_api
+from services import firebase_service, game, shop, webapp_api
 from services.feature_flags import Flag
 
 USER = {"first_name": "Anna", "language": "en", "cosmetics": {"owned": [], "equipped": {}}}
@@ -34,7 +35,7 @@ def fail(name):
 
 @pytest.fixture
 def api(monkeypatch):
-    monkeypatch.setattr(bot, "_webapp_user", lambda payload, cost=1: (42, dict(USER)))
+    monkeypatch.setattr(miniapp, "_webapp_user", lambda payload, cost=1: (42, dict(USER)))
     return TestClient(bot.app, raise_server_exceptions=False)
 
 
@@ -49,15 +50,15 @@ def assert_disabled(response, feature):
 
 def test_shop_routes_refuse_with_a_stable_contract_when_disabled(api, monkeypatch):
     install({"shop": {"enabled": False}})
-    monkeypatch.setattr(bot.shop, "catalogue_for", fail("catalogue_for"))
-    monkeypatch.setattr(bot.shop, "equip", fail("equip"))
-    monkeypatch.setattr(bot.shop, "save_look", fail("save_look"))
+    monkeypatch.setattr(shop, "catalogue_for", fail("catalogue_for"))
+    monkeypatch.setattr(shop, "equip", fail("equip"))
+    monkeypatch.setattr(shop, "save_look", fail("save_look"))
     for route in ("/app/api/shop", "/app/api/shop/equip", "/app/api/shop/look"):
         assert_disabled(api.post(route, json={"initData": "x", "item": "neon", "action": "save", "name": "a"}), "shop")
 
 
 def test_shop_catalogue_is_unchanged_when_the_flag_is_absent(api, monkeypatch):
-    monkeypatch.setattr(bot.shop, "catalogue_for", lambda user, lang: {"sections": ["ok"]})
+    monkeypatch.setattr(shop, "catalogue_for", lambda user, lang: {"sections": ["ok"]})
     response = api.post("/app/api/shop", json={"initData": "x"})
     assert response.status_code == 200 and response.json() == {"sections": ["ok"]}
 
@@ -70,7 +71,7 @@ def test_no_invoice_link_is_created_while_the_shop_is_disabled(api, monkeypatch,
 
     monkeypatch.setattr(bot.telegram_app, "_bot", SimpleNamespace(create_invoice_link=create_invoice_link),
                         raising=False)
-    monkeypatch.setattr(bot.shop, "purchase_status", fail("purchase_status"))
+    monkeypatch.setattr(shop, "purchase_status", fail("purchase_status"))
     with caplog.at_level(logging.INFO):
         response = api.post("/app/api/shop/buy", json={"initData": "x", "item": "neon"})
     assert_disabled(response, "shop")
@@ -80,7 +81,7 @@ def test_no_invoice_link_is_created_while_the_shop_is_disabled(api, monkeypatch,
 
 def test_purchase_history_stays_reachable_for_refund_support_when_the_shop_is_disabled(api, monkeypatch):
     install({"shop": {"enabled": False}})
-    monkeypatch.setattr(bot.firebase_service, "get_user_purchases", lambda uid: [
+    monkeypatch.setattr(firebase_service, "get_user_purchases", lambda uid: [
         {"item_id": "neon", "day": "2026-09-01", "stars": 25, "charge_id": "ch_1"}])
     response = api.post("/app/api/shop/history", json={"initData": "x"})
     assert response.status_code == 200
@@ -89,14 +90,14 @@ def test_purchase_history_stays_reachable_for_refund_support_when_the_shop_is_di
 
 def test_hints_are_refused_without_consuming_anything(api, monkeypatch):
     install({"hints": {"enabled": False}})
-    monkeypatch.setattr(bot.game, "take_hint", fail("take_hint"))
+    monkeypatch.setattr(game, "take_hint", fail("take_hint"))
     assert_disabled(api.post("/app/api/hint", json={"initData": "x"}), "hints")
 
 
 def test_daily_ui_blocks_todays_guess_but_not_the_archive(api, monkeypatch):
     install({"daily_ui": {"enabled": False}})
     played = []
-    monkeypatch.setattr(bot, "play", lambda uid, user, answer, day=None, lang=None: played.append(day) or {"status": "wrong"})
+    monkeypatch.setattr(miniapp, "play", lambda uid, user, answer, day=None, lang=None: played.append(day) or {"status": "wrong"})
 
     assert_disabled(api.post("/app/api/guess", json={"initData": "x", "answer": "Messi"}), "daily_ui")
     today = webapp_api.today_iso()
@@ -135,10 +136,10 @@ def test_events_v2_flag_covers_only_the_mini_app_event_mode(api, monkeypatch):
 
 def test_a_rollout_is_evaluated_for_the_authenticated_user_only(api, monkeypatch):
     install({"hints": {"rollout_percentage": 0, "allow_users": ["42"]}})
-    monkeypatch.setattr(bot.game, "take_hint", lambda uid, lang, **kwargs: {"status": "ok", "user": uid})
+    monkeypatch.setattr(game, "take_hint", lambda uid, lang, **kwargs: {"status": "ok", "user": uid})
     assert api.post("/app/api/hint", json={"initData": "x", "user_id": 7}).json() == {"status": "ok", "user": 42}
 
-    monkeypatch.setattr(bot, "_webapp_user", lambda payload, cost=1: (7, dict(USER)))
+    monkeypatch.setattr(miniapp, "_webapp_user", lambda payload, cost=1: (7, dict(USER)))
     assert_disabled(api.post("/app/api/hint", json={"initData": "x"}), "hints")
 
 
@@ -390,7 +391,7 @@ def test_a_broken_flag_service_does_not_fail_requests_on_a_cold_process(api, mon
     ff.set_service(service)
     monkeypatch.setattr(service, "snapshot", _broken)
     monkeypatch.setattr(ff, "evaluate", _broken)
-    monkeypatch.setattr(bot.shop, "catalogue_for", lambda user, lang: {"sections": []})
+    monkeypatch.setattr(shop, "catalogue_for", lambda user, lang: {"sections": []})
     assert api.post("/app/api/shop", json={"initData": "x"}).status_code == 200
     me = api.post("/app/api/me", json={"initData": "x"})
     assert me.status_code == 200 and all(me.json()["features"].values())
@@ -402,7 +403,7 @@ def test_a_broken_flag_service_keeps_an_observed_shop_kill_switch(api, monkeypat
     assert service.is_enabled(Flag.SHOP, user_id=42) is False
     monkeypatch.setattr(service, "snapshot", _broken)
     monkeypatch.setattr(ff, "evaluate", _broken)
-    monkeypatch.setattr(bot.shop, "catalogue_for", fail("catalogue_for"))
+    monkeypatch.setattr(shop, "catalogue_for", fail("catalogue_for"))
 
     assert_disabled(api.post("/app/api/shop", json={"initData": "x"}), "shop")
     assert_disabled(api.post("/app/api/shop/buy", json={"initData": "x", "item": "neon"}), "shop")

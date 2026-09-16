@@ -172,7 +172,7 @@ never pass raw payloads.
 
 ## Correlation
 
-- **HTTP**: the middleware in `bot.py` generates `request_id` (uuid4) for every request and
+- **HTTP**: the middleware in `apps/api/observe.py` generates `request_id` (uuid4) for every request and
   returns it as `X-Request-ID`. A client-supplied `X-Request-ID` is ignored. Cloud Tasks and
   trace headers are recorded for correlation only and are never used for authorisation
   (internal endpoints are still protected by `X-Task-Secret` / `x-cron-secret`).

@@ -19,8 +19,9 @@ import sentry_sdk
 from sentry_sdk.transport import Transport
 
 import config
+from apps.api import miniapp
 from handlers import daily_job, error_handler, shop_handler
-from services import observability, shop, task_queue, version
+from services import observability, shop, task_queue, version, work_receipts
 from services.observability import REDACTED, Settings
 
 FAKE_DSN = "https://publickey@o0.ingest.example.invalid/1"
@@ -426,11 +427,11 @@ def call(server, path, **kwargs):
 
 
 def test_unexpected_api_exception_is_reported_once_with_route_and_request_id(sentry, server, monkeypatch, records):
-    monkeypatch.setattr(server, "_webapp_user", lambda payload, cost=1: (42, {"language": "it"}))
+    monkeypatch.setattr(miniapp, "_webapp_user", lambda payload, cost=1: (42, {"language": "it"}))
 
     def broken(*args, **kwargs):
         raise RuntimeError("catalogue exploded")
-    monkeypatch.setattr(server.shop, "catalogue_for", broken)
+    monkeypatch.setattr(shop, "catalogue_for", broken)
 
     response = call(server, "/app/api/shop", json={"initData": INIT_DATA, "note": "private"},
                     headers={"Authorization": "Bearer abc.def", "Cookie": "sid=1", "X-Task-Secret": "b" * 48})
@@ -455,9 +456,9 @@ def test_unexpected_api_exception_is_reported_once_with_route_and_request_id(sen
 def test_expected_client_errors_do_not_reach_sentry(sentry, server, monkeypatch, records):
     assert call(server, "/app/api/me", json={}).status_code == 401
     assert call(server, "/internal/broadcast", json={"day": "2026-09-14"}).status_code == 403
-    monkeypatch.setattr(server.work_receipts, "claim", lambda key, **kw: "busy")
+    monkeypatch.setattr(work_receipts, "claim", lambda key, **kw: "busy")
     busy = call(server, "/internal/telegram-update", json={"update_id": 7},
-                headers={"X-Task-Secret": server.TASK_SECRET})
+                headers={"X-Task-Secret": config.TASK_SECRET})
     assert busy.status_code == 503
     assert sentry.events == []
     statuses = {(line["route"], line["status_code"]) for line in by_event(records(), "api.request.completed")}
@@ -478,8 +479,8 @@ def test_root_keeps_version_and_revision_alongside_request_observability(server,
 
 
 def test_api_works_without_salt_and_logs_no_user_ref(server, monkeypatch, records):
-    monkeypatch.setattr(server, "_webapp_user", lambda payload, cost=1: (42, {"language": "it"}))
-    monkeypatch.setattr(server.shop, "catalogue_for", lambda user, lang: {"sections": []})
+    monkeypatch.setattr(miniapp, "_webapp_user", lambda payload, cost=1: (42, {"language": "it"}))
+    monkeypatch.setattr(shop, "catalogue_for", lambda user, lang: {"sections": []})
     response = call(server, "/app/api/shop", json={})
     assert response.status_code == 200 and response.json() == {"sections": []}
     assert all("user_ref" not in line for line in records())
@@ -495,9 +496,9 @@ def test_responses_carry_a_server_generated_request_id(server, records):
 
 
 def test_cloud_task_metadata_is_bound_to_the_request(server, monkeypatch, records):
-    monkeypatch.setattr(server, "broadcast_batch", AsyncMock(return_value={"sent": 0, "next_cursor": None}))
+    monkeypatch.setattr(server.bot_bridge, "broadcast_batch", AsyncMock(return_value={"sent": 0, "next_cursor": None}))
     response = call(server, "/internal/broadcast", json={"day": "2026-09-14"}, headers={
-        "X-Task-Secret": server.TASK_SECRET, "X-CloudTasks-TaskName": "abc123",
+        "X-Task-Secret": config.TASK_SECRET, "X-CloudTasks-TaskName": "abc123",
         "X-CloudTasks-TaskRetryCount": "2", "X-CloudTasks-QueueName": "broadcast",
     })
     assert response.status_code == 200

@@ -10,7 +10,9 @@ import threading
 import pytest
 from starlette.testclient import TestClient
 
+from apps.api import miniapp
 from services import feature_flags as ff
+from services import shop
 from services.feature_flags import Flag
 from services.repos import feature_flags as repo
 
@@ -134,8 +136,8 @@ def test_an_invalid_stored_document_is_kept_out_of_evaluation_and_writes(emulato
 
 def test_a_runtime_boundary_follows_the_stored_flag(emulator_db, monkeypatch):
     import bot
-    monkeypatch.setattr(bot, "_webapp_user", lambda payload, cost=1: (42, {"language": "en"}))
-    monkeypatch.setattr(bot.shop, "catalogue_for", lambda user, lang: {"sections": []})
+    monkeypatch.setattr(miniapp, "_webapp_user", lambda payload, cost=1: (42, {"language": "en"}))
+    monkeypatch.setattr(shop, "catalogue_for", lambda user, lang: {"sections": []})
     client = TestClient(bot.app)
 
     assert client.post("/app/api/shop", json={"initData": "x"}).status_code == 200
