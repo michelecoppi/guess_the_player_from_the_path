@@ -25,7 +25,7 @@ docs or tests.
 ### Telegram Stars payments
 
 - Invoices use currency `XTR` with an empty provider token; the price and granted
-  items always come from `services/shop.py` and `data/shop.json`, never from the client.
+  items always come from `domains/shop/service.py` and `data/shop.json`, never from the client.
 - `precheckout_callback` rejects unknown payloads, a payer different from the payload
   user, already-owned items, and any mismatch of currency, amount or quoted grants; it
   reserves the checkout in a transaction.
@@ -36,7 +36,7 @@ docs or tests.
 
 ### Referral integrity
 
-Referral codes are HMAC-signed with the bot token (`services/referrals.py`), self-referral
+Referral codes are HMAC-signed with the bot token (`domains/referrals/service.py`), self-referral
 and reuse are rejected, and qualification counts only server-recorded daily finishes.
 
 ### Personal data

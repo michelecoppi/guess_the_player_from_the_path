@@ -194,7 +194,7 @@ by `/league_*` commands and `/app/api/league`.
 
 ## Referral
 
-**Current state.** `services/referrals.py`: invite attribution via the `/start` payload,
+**Current state.** `domains/referrals/service.py`: invite attribution via the `/start` payload,
 qualification counted only from server-recorded daily finishes (`REQUIRED_DAYS`),
 cosmetic rewards at fixed thresholds, stored in `referrals/{key}`; Mini App dashboard at
 `/app/api/referrals` (higher rate-limit cost).

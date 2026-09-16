@@ -13,7 +13,8 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 
 import config
 from apps.api import miniapp
-from services import firebase_service, performance, shop, work_receipts
+from domains.shop import service as shop
+from services import firebase_service, performance, work_receipts
 from tests.test_observability import by_event, call, clean_observability, records, server  # noqa: F401
 
 

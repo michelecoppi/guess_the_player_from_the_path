@@ -119,10 +119,10 @@ stesso risultato. Non richiede bundler: `index.html` lo carica come `<script>` e
 `scripts/preview_webapp.py`: senza, la pagina si carica a meta'.
 
 ```bash
-pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70
+pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing --cov-fail-under=70
 node --test tests/client.test.cjs
 ruff check .
-mypy services/
+mypy services/ domains/
 ```
 
 I test non usano il database reale. Verificare in staging la configurazione IAM,

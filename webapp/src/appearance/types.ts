@@ -1,4 +1,4 @@
-/** Wire contract: services/shop.py::appearance, returned as /me.cosmetics.
+/** Wire contract: domains/shop/service.py::appearance, returned as /me.cosmetics.
  * Optional fields allow older responses. No ownership or catalog resolution here. */
 export type CosmeticSlot = "theme" | "frame" | "title" | "badge" | "squares" | "number" | "celebration" | "card";
 export type EquippedCosmetics = Partial<Record<CosmeticSlot, string | null>>;

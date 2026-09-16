@@ -18,7 +18,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-from services.candidate_player import CandidatePlayer, CandidateState
+from domains.players.candidates.model import CandidatePlayer, CandidateState
 from services.repos.file_lock import ProcessFileLock
 
 
@@ -190,7 +190,7 @@ class FileCandidatePlayerRepository(CandidatePlayerRepository):
     def _assert_storage_isolated(cls, resolved_dir: Path) -> None:
         """Verifica che la directory di storage non coincida né contenga il dataset di produzione."""
         # Percorso canonico di data/players.json
-        base_repo = Path(__file__).resolve().parents[2]
+        base_repo = Path(__file__).resolve().parents[3]  # repository root
         prod_file = (base_repo / "data" / "players.json").resolve()
 
         if resolved_dir == prod_file or resolved_dir.name.lower() == "players.json":

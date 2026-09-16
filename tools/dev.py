@@ -63,6 +63,7 @@ def cmd_test_cov(extra_args: list[str]) -> int:
         "pytest",
         "-q",
         "--cov=services",
+        "--cov=domains",
         "--cov=handlers",
         "--cov-report=term-missing",
     ] + extra_args
@@ -82,8 +83,8 @@ def cmd_lint(extra_args: list[str]) -> int:
 
 
 def cmd_typecheck(extra_args: list[str]) -> int:
-    """Esegue il type checker mypy su services/."""
-    cmd = [sys.executable, "-m", "mypy", "services/"] + extra_args
+    """Esegue il type checker mypy su services/ e domains/."""
+    cmd = [sys.executable, "-m", "mypy", "services/", "domains/"] + extra_args
     return _run_cmd(cmd)
 
 
@@ -97,6 +98,7 @@ def cmd_syntax(extra_args: list[str]) -> int:
         "bot.py",
         "config.py",
         "apps",
+        "domains",
         "services",
         "handlers",
         "scripts",
@@ -310,7 +312,7 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "test-cov": (cmd_test_cov, "Esegue i test con report di copertura del codice"),
     "test-node": (cmd_test_node, "Esegue i test client per la Mini App (richiede Node.js)"),
     "lint": (cmd_lint, "Controlla il codice con ruff"),
-    "typecheck": (cmd_typecheck, "Verifica i tipi con mypy su services/"),
+    "typecheck": (cmd_typecheck, "Verifica i tipi con mypy su services/ e domains/"),
     "syntax": (cmd_syntax, "Verifica la sintassi Python di tutti i moduli"),
     "dataset-check": (cmd_dataset_check, "Controlla salute ed integrita' del dataset calciatori"),
     "check": (cmd_check, "Suite standard di validazione locale (ambiente, syntax, lint, mypy, frontend, dataset, test)"),

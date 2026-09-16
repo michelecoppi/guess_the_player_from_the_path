@@ -4,7 +4,7 @@ Serve a **guardare** i cosmetici prima di venderli. Un tema, una cornice o una f
 giudicano solo addosso a una pagina vera: sulla scheda del negozio sono francobolli, e nel
 JSON sono sei stringhe esadecimali. Qui la pagina e' la stessa che vede un utente
 (`webapp/index.html`), servita dalle stesse funzioni del server vero
-(`services/webapp_api.py`, `services/shop.py`), con l'unica differenza che sotto non c'e'
+(`services/webapp_api.py`, `domains/shop/service.py`), con l'unica differenza che sotto non c'e'
 Firestore ma un dizionario in memoria.
 
     python scripts/preview_webapp.py        # poi http://localhost:8888/app
@@ -30,7 +30,8 @@ os.environ.setdefault("BOT_TOKEN", "preview-bot-token")
 from fastapi import Body, FastAPI  # noqa: E402
 from fastapi.responses import HTMLResponse, Response  # noqa: E402
 
-from services import firebase_service, shop, trophies  # noqa: E402
+from domains.shop import service as shop  # noqa: E402
+from services import firebase_service, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number  # noqa: E402
 from services.share import card_image  # noqa: E402
 
@@ -381,7 +382,7 @@ def referrals_style():
 
 @app.post("/app/api/referrals")
 def referrals_preview():
-    from services.referrals import REWARDS
+    from domains.referrals.service import REWARDS
     user = firebase_service.get_user_data(USER_ID)
     names = ["Giulia", "Sara", "Dario", "Elisa", "Paolo", "Davide", "Sofia", "Matteo", "Chiara", "Nico"]
     return {"qualified": user.get("referral_qualified", 0), "required_days": 5,

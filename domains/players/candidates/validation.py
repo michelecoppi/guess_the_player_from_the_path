@@ -18,17 +18,18 @@ import re
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from services.candidate_finding import CandidateFinding, FindingCode, FindingSeverity
-from services.candidate_normalization import (
+from domains.players.candidates.finding import CandidateFinding, FindingCode, FindingSeverity
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.normalization import (
     clean_text,
     get_canonical_club_index,
     normalize_candidate,
     parse_loan_flag,
 )
-from services.candidate_player import CandidatePlayer, CandidateState
 from services.career_order import order_career
 
-_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Repository root: domains/players/candidates/<module>.py -> parents[3].
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 _PLAYERS_PATH = os.path.join(_BASE_DIR, "data", "players.json")
 _CONFIG_PATH = os.path.join(_BASE_DIR, "data", "config.json")
 
@@ -223,7 +224,7 @@ def validate_candidate_data(
                 if cand_clean == owner_clean:
                     is_same = True
                 else:
-                    from services.candidate_player import _clean_slug
+                    from domains.players.candidates.model import _clean_slug
                     if _clean_slug(cand_name) == owner_id or _clean_slug(cand_name) == _clean_slug(owner_name):
                         is_same = True
 

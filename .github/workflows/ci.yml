@@ -42,13 +42,13 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Controllo sintassi
-        run: python -m compileall -q bot.py config.py apps services handlers scripts admin_pages admin_ui.py tools
+        run: python -m compileall -q bot.py config.py apps domains services handlers scripts admin_pages admin_ui.py tools
 
       - name: Lint (ruff)
         run: ruff check .
 
-      - name: Type check (mypy su services/)
-        run: mypy services/
+      - name: Type check (mypy su services/ e domains/)
+        run: mypy services/ domains/
 
       - name: Audit sicurezza e segreti (pip-audit, detect-secrets, npm-audit)
         run: python -m tools.security
@@ -101,4 +101,4 @@ jobs:
       - name: Esegui i test (con coverage)
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8571
-        run: pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70
+        run: pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing --cov-fail-under=70

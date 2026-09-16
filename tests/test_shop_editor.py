@@ -2,8 +2,9 @@ import json
 
 import pytest
 
-from services import shop, shop_editor
-from services.shop_editor import ShopEditError
+from domains.shop import editor as shop_editor
+from domains.shop import service as shop
+from domains.shop.editor import ShopEditError
 
 
 def _item(item_id="tema_base", kind="theme", price=15, name="Tema", **extra):

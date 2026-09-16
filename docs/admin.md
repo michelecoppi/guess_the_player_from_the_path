@@ -21,7 +21,7 @@ which reach production only through a PR and deploy.
   `services/content_admin.py` (challenge/event rules, e.g. today's challenge cannot be
   deleted, a running event is deactivated rather than deleted, moving an event moves
   its contents and trophy day), `services/dataset_editor.py` (validated dataset edits
-  with backups), `services/candidate_review.py` (Review Queue), plus the same
+  with backups), `domains/players/candidates/review.py` (Review Queue), plus the same
   generators, `firebase_service` and `manual_event_service` used by the bot.
 - New Admin features must add or reuse a service function and test it there; the
   Streamlit page should only collect input, confirm, call the service and render the

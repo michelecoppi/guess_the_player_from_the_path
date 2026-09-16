@@ -5,7 +5,7 @@ Authoritative map of **current** Firestore usage. The reasoning behind the data 
 is recorded in the historical review [firebase_review.md](firebase_review.md); the
 durable-work collections are explained in [runtime-hardening.md](runtime-hardening.md).
 Collection names below were verified against `services/firebase_service.py`,
-`services/repos/`, `services/arena.py`, `services/referrals.py`,
+`services/repos/`, `services/arena.py`, `domains/referrals/service.py`,
 `services/work_receipts.py`, `services/broadcast_store.py` and
 `services/monthly_closure.py`.
 
@@ -36,7 +36,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `group_rounds/{chat_id}` and `.../players/{telegram_id}` | chat id / user id | Current group round and in-group standings |
 | `purchases/{telegram_payment_charge_id}` | Telegram charge id | Stars purchase ledger; idempotent delivery and refunds |
 | `app_duels/{code}` | random code | Arena duels (two seats, five puzzles, `expires_at`) |
-| `referrals/{key}` | SHA-256 of a user id (`services/referrals.py::referral_key`) | Referral attribution (`inviter_id`) and qualification |
+| `referrals/{key}` | SHA-256 of a user id (`domains/referrals/service.py::referral_key`) | Referral attribution (`inviter_id`) and qualification |
 | `admin_settings/dataset_overrides` | fixed | Players blocked with `/admin_block` |
 | `admin_settings/daily_planner` | fixed | Players excluded from the Daily planner: `excluded.{player_id}` = `reason`, `until` (ISO day or null), `excluded_at` ([game-modes.md](game-modes.md#daily-planner)) |
 | `admin_settings/feature_flags` | fixed | Operational feature flags: schema version, revision, per-flag master switch, rollout and user/group targeting ([feature-flags.md](feature-flags.md)) |

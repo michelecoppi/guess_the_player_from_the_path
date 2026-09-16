@@ -14,9 +14,10 @@ from starlette.testclient import TestClient
 
 import bot
 from apps.api import miniapp
+from domains.shop import service as shop
 from handlers import hint_handler, menu_handler, shop_handler, top_users_handler
 from services import feature_flags as ff
-from services import firebase_service, game, shop, webapp_api
+from services import firebase_service, game, webapp_api
 from services.feature_flags import Flag
 
 USER = {"first_name": "Anna", "language": "en", "cosmetics": {"owned": [], "equipped": {}}}

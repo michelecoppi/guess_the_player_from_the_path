@@ -82,3 +82,30 @@ def test_events_page_previews_an_existing_template(monkeypatch):
     assert not at.exception
     assert "Candidati" in [metric.label for metric in at.metric]
     assert "Tentativi al giorno" in [metric.label for metric in at.metric]
+
+
+def test_every_name_imported_from_the_shared_admin_module_exists():
+    """Pages import their collaborators from admin_pages/shared.py; a re-export that disappears
+    (for example when a service moves to domains/, #111) would only break when the page opens."""
+    import ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    tree = ast.parse((root / "admin_pages" / "shared.py").read_text(encoding="utf-8"))
+    defined = set()
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            defined.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            defined.add(node.name)
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            defined.update(name.id for target in targets for name in ast.walk(target) if isinstance(name, ast.Name))
+    missing = {}
+    for path in [*sorted((root / "admin_pages").glob("*.py")), root / "admin_ui.py"]:
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, ast.ImportFrom) and node.module == "admin_pages.shared":
+                absent = [alias.name for alias in node.names if alias.name not in defined]
+                if absent:
+                    missing[path.name] = absent
+    assert not missing, missing

@@ -7,7 +7,7 @@ Adapters produce source-neutral results that can populate CandidatePlayer
 models without directly modifying the production dataset.
 """
 
-from services.adapters.base import (
+from domains.players.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
@@ -15,18 +15,13 @@ from services.adapters.base import (
     CareerEntry,
     PlayerSourceAdapter,
 )
-from services.adapters.candidate_integration import (
+from domains.players.adapters.candidate_integration import (
     populate_candidate_from_result,
     record_adapter_failure,
 )
-from services.adapters.http_client import (
-    HttpClient,
-    HttpError,
-    HttpResponse,
-    UrllibHttpClient,
-)
-from services.adapters.wikidata import WikidataAdapter
-from services.adapters.wikipedia import WikipediaAdapter
+from domains.players.adapters.http_client import HttpClient, HttpError, HttpResponse, UrllibHttpClient
+from domains.players.adapters.wikidata import WikidataAdapter
+from domains.players.adapters.wikipedia import WikipediaAdapter
 
 __all__ = [
     "AdapterError",

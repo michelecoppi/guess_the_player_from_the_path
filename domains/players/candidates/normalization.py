@@ -17,9 +17,9 @@ import re
 import unicodedata
 from typing import Any, Optional
 
-from services.candidate_finding import CandidateFinding, FindingCode, FindingSeverity
-from services.candidate_player import CandidatePlayer, CandidateState
-from services.candidate_provenance import (
+from domains.players.candidates.finding import CandidateFinding, FindingCode, FindingSeverity
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.provenance import (
     CandidateProvenance,
     NormalizationRecord,
     make_career_stop_id,
@@ -27,7 +27,8 @@ from services.candidate_provenance import (
 )
 from services.career_order import order_career
 
-_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Repository root: domains/players/candidates/<module>.py -> parents[3].
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 _PLAYERS_PATH = os.path.join(_BASE_DIR, "data", "players.json")
 
 # Regex to detect raw Wikidata QID tokens (e.g. Q1853, Q201625)

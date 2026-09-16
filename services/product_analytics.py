@@ -119,7 +119,7 @@ class Event(str, Enum):
 #    a key valid for one event is not automatically safe or meaningful for another.
 # 2. `PROPERTY_VALIDATORS[key]` says what a *legitimate value* of that key looks like: a
 #    fixed enum, a bool, a bounded int, or - for `item_id`/`item_kind` - a live check
-#    against the real Shop catalogue (`services/shop.py`), not just a shape/regex. A
+#    against the real Shop catalogue (`domains/shop/service.py`), not just a shape/regex. A
 #    property whose name is allowed but whose value fails its validator is dropped, exactly
 #    like an unknown key. This is what stops a malformed or attacker-shaped request (e.g. a
 #    Mini App payload with `item="anything"`) from ever turning into an analytics dimension:
@@ -160,13 +160,13 @@ def _int(minimum: int, maximum: int) -> Callable[[Any], bool]:
 def _catalog_item_id(value: Any) -> bool:
     """A real, currently-existing Shop catalogue id - never merely a well-shaped string.
 
-    Lazy import: `services/shop.py` never imports this module, so there is no cycle, but
+    Lazy import: `domains/shop/service.py` never imports this module, so there is no cycle, but
     importing it eagerly at module load would still be an unnecessary coupling for a check
     that only Shop-related events ever exercise."""
     if not isinstance(value, str) or not _CATALOG_ID.fullmatch(value):
         return False
     try:
-        from services import shop
+        from domains.shop import service as shop
         return shop.get_item(value) is not None
     except Exception:  # noqa: BLE001 - a catalogue import/lookup failure must reject, not raise
         return False
@@ -176,7 +176,7 @@ def _item_kind(value: Any) -> bool:
     if not isinstance(value, str):
         return False
     try:
-        from services import shop
+        from domains.shop import service as shop
         return value in shop.KINDS or value == "bundle"
     except Exception:  # noqa: BLE001
         return False
@@ -194,8 +194,8 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "reason": _enum(
         "not_registered", "already_guessed", "no_attempts",  # Daily / Events attempts
         "feature_disabled", "price_changed", "unknown_item", "not_for_sale",
-        "welcome_only", "checkout_busy",  # Shop refusals (services/shop.py::purchase_status,
-                                          # services/repos/shop.py::reserve_checkout)
+        "welcome_only", "checkout_busy",  # Shop refusals (domains/shop/service.py::purchase_status,
+                                          # domains/shop/repository.py::reserve_checkout)
     ),
     "attempt_index": _int(1, 1000),
     "attempts_used": _int(0, 1000),

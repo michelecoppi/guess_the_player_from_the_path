@@ -1,8 +1,8 @@
 """Bundle previews must describe exactly what the buyer receives."""
 import pytest
 
+from domains.shop import service as shop
 from handlers import keyboards, shop_handler
-from services import shop
 
 
 @pytest.mark.parametrize("lang", ["it", "es", "en"])

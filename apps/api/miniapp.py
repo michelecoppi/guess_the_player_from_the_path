@@ -11,15 +11,8 @@ from telegram import LabeledPrice
 
 import config
 from apps.api.bridge import telegram
-from services import (
-    feature_flags,
-    firebase_service,
-    game,
-    observability,
-    performance,
-    shop,
-    trophies,
-)
+from domains.shop import service as shop
+from services import feature_flags, firebase_service, game, observability, performance, trophies
 from services import leagues as league_rules
 from services import product_analytics as analytics
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
@@ -120,7 +113,7 @@ def webapp_public_profile(payload: dict = Body(default={})):
 
 @router.post("/app/api/referrals")
 def webapp_referrals(payload: dict = Body(default={})):
-    from services import referrals
+    from domains.referrals import service as referrals
     # Costa piu' di ogni altra chiamata: una pagina puo' riconciliare venti amici, e ognuno
     # e' una query sullo storico. La sezione ha un pulsante "Aggiorna", non un polling.
     user_id, user = _webapp_user(payload, cost=10)
@@ -260,7 +253,7 @@ def webapp_league(payload: dict = Body(default={})):
 
 @router.post("/app/api/shop")
 def webapp_shop(payload: dict = Body(default={})):
-    """La vetrina: la **stessa** che disegna il comando /shop (services/shop.py)."""
+    """La vetrina: la **stessa** che disegna il comando /shop (domains/shop/service.py)."""
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.SHOP, user_id)
     analytics.capture(analytics.Event.SHOP_VIEWED, user_id=user_id, properties={"surface": "miniapp"})
@@ -316,7 +309,7 @@ async def webapp_shop_buy(request: Request, payload: dict = Body(default={})):
 
 @router.post("/app/api/shop/equip")
 def webapp_shop_equip(payload: dict = Body(default={})):
-    """Indossa un oggetto gia' posseduto. La regola sta in services/shop.py: qui si passa
+    """Indossa un oggetto gia' posseduto. La regola sta in domains/shop/service.py: qui si passa
     solo l'utente autenticato dalla firma di initData, mai un id arrivato dal client."""
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.SHOP, user_id)

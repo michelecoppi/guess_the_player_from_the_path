@@ -70,7 +70,7 @@ def pin_trophies(user_id, codes):
 
 def equip_cosmetic(user_id, kind, item_id):
     """Cambia quello che l'utente ha addosso in uno slot. Non controlla se lo possiede: la
-    regola sta in services/shop.py, qui si scrive e basta."""
+    regola sta in domains/shop/service.py, qui si scrive e basta."""
     from services import firebase_service as fs
     fs.user_ref(user_id).set({"cosmetics": {"equipped": {kind: item_id}}}, merge=True)
 

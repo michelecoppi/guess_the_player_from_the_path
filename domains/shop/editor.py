@@ -12,7 +12,7 @@ oggetti nuovi restano nel file: cambiarli a mano una volta ogni tanto e' piu' si
 editor visivo per una struttura che varia da un `kind` all'altro.
 
 Come per il dataset dei calciatori: copia di sicurezza in `backup/` prima di scrivere,
-riscrittura atomica, e la cache in memoria di `services/shop.py` viene svuotata dopo,
+riscrittura atomica, e la cache in memoria di `domains/shop/service.py` viene svuotata dopo,
 altrimenti bot e dashboard continuerebbero a vedere i valori vecchi.
 """
 import json
@@ -21,9 +21,10 @@ import shutil
 import tempfile
 from datetime import datetime
 
-from services import shop
+from domains.shop import service as shop
 
-BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backup")
+# Repository root: domains/shop/editor.py -> parents[2].
+BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "backup")
 
 EDITABLE_FIELDS = ("price", "name", "locked")
 

@@ -4,8 +4,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from domains.referrals import service as referrals
+from domains.shop import service as shop
 from services import firebase_service as fs
-from services import referrals, shop
 
 
 @pytest.fixture

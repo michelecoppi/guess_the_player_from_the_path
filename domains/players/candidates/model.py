@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
 
-from services.candidate_provenance import CandidateProvenance
+from domains.players.candidates.provenance import CandidateProvenance
 
 
 def _now_utc_iso() -> str:

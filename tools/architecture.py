@@ -33,7 +33,7 @@ debt list can only shrink.
 Usage:
     python -m tools.architecture                    # summary, debt and any violation
     python -m tools.architecture --graph            # declared vs actual domain dependencies
-    python -m tools.architecture --module services.shop
+    python -m tools.architecture --module domains.shop.service
 """
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ SHARED_CONFIG = "config"
 
 # Where Python modules live. `webapp/` is the Mini App frontend (TypeScript/JS) delivered by
 # the `api` app; it is outside this Python map.
-SOURCE_PACKAGES = ("apps", "services", "handlers", "admin_pages", "scripts", "tools")
+SOURCE_PACKAGES = ("apps", "domains", "services", "handlers", "admin_pages", "scripts", "tools")
 SOURCE_MODULES = ("bot", "admin_ui", "config")
 
 # Prefix -> component. The longest matching prefix wins, so a package can be assigned as a
@@ -111,14 +111,8 @@ COMPONENTS: dict[str, str] = {
     "services.dataset_editor": "players",
     "services.dataset_health": "players",
     "services.dataset_regression": "players",
-    "services.candidate_finding": "players",
-    "services.candidate_normalization": "players",
-    "services.candidate_player": "players",
-    "services.candidate_provenance": "players",
-    "services.candidate_review": "players",
-    "services.candidate_validation": "players",
-    "services.adapters": "players",
-    "services.repos.candidates": "players",
+    # Domain packages (#111): a package maps as a whole. Candidate pipeline and source adapters.
+    "domains.players": "players",
     # --- daily: Daily Challenge lifecycle, planner, archive ----------------------------------
     "services.daily_challenge": "daily",
     "services.daily_generator": "daily",
@@ -155,11 +149,9 @@ COMPONENTS: dict[str, str] = {
     "services.monthly_closure": "users",
     "services.trophies": "users",
     # --- shop: cosmetics catalogue, purchases, looks -----------------------------------------
-    "services.shop": "shop",
-    "services.shop_editor": "shop",
-    "services.repos.shop": "shop",
+    "domains.shop": "shop",
     # --- referrals ---------------------------------------------------------------------------
-    "services.referrals": "referrals",
+    "domains.referrals": "referrals",
     # --- groups: group rounds (rules still partly in handlers/group_handler.py) -------------
     "services.repos.groups": "groups",
     # --- leagues -----------------------------------------------------------------------------
@@ -195,18 +187,21 @@ KNOWN_VIOLATIONS: dict[tuple[str, str], str] = {
     ("services.firebase_service", "services.repos.*"):
         "compatibility facade re-exporting domain repositories so old imports and test "
         "monkeypatches keep working; new code imports its domain's repository",
+    ("services.firebase_service", "domains.*.repository"):
+        "compatibility facade re-exporting domain repositories so old imports and test "
+        "monkeypatches keep working; new code imports its domain's repository",
     ("services.firebase_service", "services.streak"):
         "the facade still imports the streak rules the users repository uses",
-    ("services.repos.users", "services.shop"):
+    ("services.repos.users", "domains.shop.service"):
         "recording a counter harvests shop achievements (lazy import, users <-> shop); "
         "should become a hook registered by shop",
-    ("services.repos.users", "services.referrals"):
+    ("services.repos.users", "domains.referrals.service"):
         "a correct guess qualifies a referral directly (lazy import); should become a hook",
-    ("services.repos.archive", "services.referrals"):
+    ("services.repos.archive", "domains.referrals.service"):
         "an Archive solve qualifies a referral directly (lazy import); should become a hook",
-    ("services.share", "services.shop"):
+    ("services.share", "domains.shop.service"):
         "the result card looks up the player's cosmetics itself; callers should pass them in",
-    ("services.product_analytics", "services.shop"):
+    ("services.product_analytics", "domains.shop.service"):
         "event property validation checks item ids against the shop catalogue (lazy import)",
     ("services.dataset_health", "services.event_*"):
         "the dataset health report also checks event template feasibility; that part belongs "

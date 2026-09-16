@@ -47,7 +47,7 @@ GAVE_UP = "gave-up"
 
 
 def test_referral_fifth_finish_and_reward_are_atomic_under_retries(emulator_db, monkeypatch):
-    from services import referrals
+    from domains.referrals import service as referrals
 
     monkeypatch.setattr(referrals, "BOT_TOKEN", "test-secret")
     monkeypatch.setattr(referrals, "today_iso", lambda: "2026-09-01")
@@ -67,7 +67,7 @@ def test_referral_fifth_finish_and_reward_are_atomic_under_retries(emulator_db, 
 
 
 def test_referral_registration_only_one_inviter_wins(emulator_db, monkeypatch):
-    from services import referrals
+    from domains.referrals import service as referrals
 
     monkeypatch.setattr(referrals, "BOT_TOKEN", "test-secret")
     for uid in (1, 2):
@@ -82,7 +82,7 @@ def test_referral_registration_only_one_inviter_wins(emulator_db, monkeypatch):
 
 
 def test_referral_dashboard_pagination_recovery_and_erasure(emulator_db, monkeypatch):
-    from services import referrals
+    from domains.referrals import service as referrals
 
     monkeypatch.setattr(referrals, "BOT_TOKEN", "test-secret")
     monkeypatch.setattr(referrals, "today_iso", lambda: "2026-09-01")

@@ -2,7 +2,7 @@
 
 Perche' un negozio anche in chat, visto che c'e' la mini app: perche' meta' delle persone il
 bot lo usano solo in chat, e un negozio che si apre solo dentro la mini app sarebbe un
-negozio che quella meta' non vede mai. La vetrina e' la stessa (services/shop.py): qui si
+negozio che quella meta' non vede mai. La vetrina e' la stessa (domains/shop/service.py): qui si
 disegna con dei bottoni, li' con dell'HTML.
 
 Come funziona un pagamento in Stelle, nell'ordine:
@@ -27,9 +27,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, U
 from telegram.ext import ContextTypes
 
 from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
+from domains.shop import service as shop
 from handlers.feature_gate import feature_gate, flag_enabled
 from handlers.keyboards import language_for, legal_buttons
-from services import firebase_service, observability, shop
+from services import firebase_service, observability
 from services import product_analytics as analytics
 from services.feature_flags import Flag
 from services.i18n import t

@@ -274,7 +274,7 @@ screen with its own scope toggle), instrument that specific interaction then.
 | `referral_link_viewed` | **Not wired.** Viewing your own referral link/dashboard (`POST /app/api/referrals`) is a read of your own data, not evidence anyone acted on it, and the endpoint is already rate-limited/expensive (`cost=10`); it was judged not worth an event with no product decision behind it yet. | — | — | — | — |
 | `referral_invite_created` | **Not wired**, for the same reason: the link (`code_for(user_id)`) is deterministic and always available once `BOT_USERNAME`/`BOT_TOKEN` are configured — there is no discrete "created" moment to hook, it is not a stored, mutable resource. | — | — | — | — |
 | `referral_opened` | `/start ref_XXXX`, `handlers/start_handler.py` | server | fires once per `/start` call that carries a `ref_` argument; a friend re-clicking the same link fires it again by design (that is the actual product question — "how many times was this link opened" — separate from whether it *attached*, in `referral_attached`) | `referral_attached` | intent — the deep link was opened; `referral_attached` says whether the server actually recorded the attribution (it can fail, e.g. self-referral, already-attributed account) |
-| `referral_converted` | `services/referrals.py::credit_day`, the exact commit where the ledger's `days` count reaches `REQUIRED_DAYS` and its `status` flips `pending → qualified` | server | **fires exactly once per referral, ever.** `credit_day`'s own top-of-function guard (`entry.get("status") != "pending"`) makes every subsequent call for an already-qualified ledger a no-op before it reaches the write path — a Cloud Tasks retry, `reconcile()` replaying the same day, or a duplicate `record_completion` call cannot re-fire it. Covered by `tests/test_product_analytics.py::test_a_replayed_referral_credit_fires_the_conversion_event_only_once`. | `qualified_days` | completion — server-authoritative by construction (credit is tied to the same durable Daily-history record the game itself uses to decide the day counted) |
+| `referral_converted` | `domains/referrals/service.py::credit_day`, the exact commit where the ledger's `days` count reaches `REQUIRED_DAYS` and its `status` flips `pending → qualified` | server | **fires exactly once per referral, ever.** `credit_day`'s own top-of-function guard (`entry.get("status") != "pending"`) makes every subsequent call for an already-qualified ledger a no-op before it reaches the write path — a Cloud Tasks retry, `reconcile()` replaying the same day, or a duplicate `record_completion` call cannot re-fire it. Covered by `tests/test_product_analytics.py::test_a_replayed_referral_credit_fires_the_conversion_event_only_once`. | `qualified_days` | completion — server-authoritative by construction (credit is tied to the same durable Daily-history record the game itself uses to decide the day counted) |
 | `referral_reward_granted` | Same commit as `referral_converted` (the cosmetic reward is granted in the same transaction) | server | same guarantee as above | `reward_item_count` | completion |
 
 **Identity, precisely — this is the part an earlier draft of this document got wrong, and
@@ -284,7 +284,7 @@ it matters for funnel correctness:**
   etc.) are all captured under the **invitee's** `user_id` — the person who opened the
   referral link and is now playing.
 - `referral_converted` is *also* captured under the **invitee's** `user_id`
-  (`services/referrals.py::credit_day(user_id, day)` — `user_id` there already *is* the
+  (`domains/referrals/service.py::credit_day(user_id, day)` — `user_id` there already *is* the
   invitee; the function's own parameter, not a separate lookup). "This referred user
   fulfilled the referral qualification conditions" is a fact about the invitee, and a
   PostHog funnel is walked by ONE `distinct_id` through a sequence of steps — if
@@ -355,7 +355,7 @@ every event. Nothing else.
    `event_type`), a real `bool` (not `1`/`"true"`/anything merely truthy — Python's `bool`
    is an `int` subclass, and the validator explicitly rejects a bare `int` where a `bool` is
    expected), a bounded `int` range, or — for `item_id`/`item_kind` — a **live lookup
-   against the real Shop catalogue** (`services/shop.py::get_item`/`KINDS`), not a
+   against the real Shop catalogue** (`domains/shop/service.py::get_item`/`KINDS`), not a
    shape/regex check. This is the fix for a user-controlled request (e.g. the Mini App's
    `POST /app/api/shop/buy` body) turning an arbitrary string into an analytics dimension
    merely because the key name `item_id` is allowed: the value must be a catalogue id that
@@ -459,7 +459,7 @@ Every event automatically carries (never passed manually at a call site):
   (`referral_converted`/`referral_reward_granted`) are captured **after** the authoritative,
   idempotent operation has already committed — never before, and never inside a Firestore
   transaction body whose side effects could replay on contention (see the referral code
-  comment in `services/referrals.py::credit_day` for exactly how that is avoided: the
+  comment in `domains/referrals/service.py::credit_day` for exactly how that is avoided: the
   transactional closure records its outcome in a local variable, and the capture call
   happens once, after `commit(...)` returns, using that outcome).
 
@@ -472,7 +472,7 @@ decision, not an oversight:
   client-side as optional/secondary, "if time allows."
 - Server-side coverage alone already reaches both surfaces (chat and Mini App legacy `/app`)
   for every game mode, because the authoritative game logic (`services/game.py`,
-  `services/arena.py`, `services/referrals.py`, `services/shop.py`) is shared between them —
+  `services/arena.py`, `domains/referrals/service.py`, `domains/shop/service.py`) is shared between them —
   instrumenting it once covers both, with a `surface` property distinguishing them.
 - Adding a `posthog-js` adapter to the V2 frontend (`webapp/src/`) would only add coverage
   for genuinely UI-only moments (a Shop item preview animation starting, a tab becoming

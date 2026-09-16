@@ -45,7 +45,7 @@ Versioned in Git and baked into the image (read-only at runtime):
 Runs on a maintainer machine (files are copied into the image but never run by the service):
   admin_ui.py + admin_pages/ (Streamlit Admin Control Center)
   scripts/ (imports, reports, backups, migrations, previews)
-  Candidate ingestion pipeline (services/candidate_*.py, services/adapters/) → data/candidates/
+  Candidate ingestion pipeline (services/candidate_*.py, domains/players/adapters/) → data/candidates/
 
 GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly Firestore JSON export) ; restore-verification.yml (emulator restore drill)
 ```
@@ -60,7 +60,7 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 | Persistence | [`services/firebase_service.py`](../services/firebase_service.py) (client, collection names, facade/re-exports) + [`services/repos/`](../services/repos/) (per-area repositories) | All Firestore reads/writes and transactions |
 | Durable background work | [`services/task_queue.py`](../services/task_queue.py), [`services/work_receipts.py`](../services/work_receipts.py), [`services/broadcast_store.py`](../services/broadcast_store.py), [`handlers/daily_job.py`](../handlers/daily_job.py), [`services/monthly_closure.py`](../services/monthly_closure.py) | Cloud Tasks enqueueing with deterministic names, per-update receipts/locks, paged broadcast and monthly close |
 | Player datasets | [`data/`](../data/) | Curated production players, game tuning, event templates, shop catalogue, dataset regression baseline |
-| Candidate ingestion pipeline | `services/candidate_*.py`, [`services/adapters/`](../services/adapters/), [`services/repos/candidates.py`](../services/repos/candidates.py) | External-source acquisition, normalization, validation, provenance and human review before promotion to `data/players.json` |
+| Candidate ingestion pipeline | `services/candidate_*.py`, [`domains/players/adapters/`](../domains/players/adapters/), [`domains/players/candidates/repository.py`](../domains/players/candidates/repository.py) | External-source acquisition, normalization, validation, provenance and human review before promotion to `data/players.json` |
 | Admin Control Center | [`admin_ui.py`](../admin_ui.py), [`admin_pages/`](../admin_pages/) | Local Streamlit UI over the same services; see [admin.md](admin.md) |
 | Telegram admin commands | [`handlers/admin_handler.py`](../handlers/admin_handler.py), `/admin_refund` in [`handlers/shop_handler.py`](../handlers/shop_handler.py) | In-chat operations restricted to `ADMIN_TELEGRAM_IDS` |
 | Legacy Mini App (`/app`) | `webapp/index.html`, `webapp/client.js`, `webapp/strings.js`, `webapp/arena.*`, `webapp/referrals.*` | Current production Mini App, plain HTML/JS without bundler |
@@ -83,11 +83,14 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 - Game rules shared by chat and Mini App live in services — `services/game.py` is used
   by both `handlers/guess_handler.py` and `/app/api/guess`, so there is one scoring
   implementation. The same holds for leagues (`services/leagues.py`) and the shop
-  catalogue/prices (`services/shop.py`).
-- Files are still organized by technical layer (`handlers/`, `services/`, `admin_pages/`);
-  `services/` is a flat package. `services/repos/` was extracted from `firebase_service.py`,
-  which still re-exports repository functions so existing imports and test monkeypatches
-  keep working.
+  catalogue/prices (`domains/shop/service.py`).
+- Domain code is moving from the technical layers (`handlers/`, `services/`,
+  `admin_pages/`) into domain packages under `domains/`, one domain at a time. Already
+  moved (#111): the Candidate pipeline and its source adapters (`domains/players/`), the
+  shop (`domains/shop/`) and referrals (`domains/referrals/`). Everything else is still in
+  the flat `services/` package. `services/repos/` was extracted from `firebase_service.py`,
+  which still re-exports repository functions (including `domains/shop/repository.py`) so
+  existing imports and test monkeypatches keep working.
 - There is no dependency-injection container; modules import each other and tests
   replace collaborators with in-memory fakes or monkeypatching.
 
@@ -105,14 +108,14 @@ describes the components, not their files.
 | App | `admin` | Streamlit Admin pages | `admin_pages/` |
 | App | `scripts` | Operator command lines (imports, backups, migrations, previews) | `scripts/` |
 | App | `tools` | Developer tooling (dev runner, environment, release, security, reports, this check) | `tools/` |
-| Domain | `players` | Production dataset, player names and matching, career order, difficulty model, dataset health/regression, Candidate ingestion pipeline | `player_pool`, `matching`, `difficulty`, `dataset_*`, `candidate_*`, `adapters/`, `repos/candidates` |
+| Domain | `players` | Production dataset, player names and matching, career order, difficulty model, dataset health/regression, Candidate ingestion pipeline | `domains/players/candidates/` (`model`, `provenance`, `finding`, `normalization`, `validation`, `review`, `repository`), `domains/players/adapters/`; still in `services/`: `player_pool`, `matching`, `career_order`, `difficulty`, `dataset_*` |
 | Domain | `daily` | Daily Challenge lifecycle, generator and planner, archive, calibration, admin content | `daily_*`, `past_challenges`, `content_admin`, `repos/challenges`, `repos/archive`, `repos/admin` |
 | Domain | `analytics` | Product analytics (#29), not observability | `product_analytics*` |
 | Domain | `game` | Guessing and scoring, hints, guess feedback, Training and Arena, result card rendering | `game`, `hints`, `guess_feedback`, `arena`, `practice_content`, `path_image`, `share` |
 | Domain | `events` | Event templates, generation, rules, manual events, Mini App events | `event_*`, `manual_event_service`, `app_events`, `repos/events` |
 | Domain | `users` | User documents, streaks, leaderboards and seasons, monthly closure, trophies | `repos/users`, `repos/seasons`, `streak`, `monthly_closure`, `trophies` |
-| Domain | `shop` | Cosmetics catalogue, purchases, looks, shop editor | `shop`, `shop_editor`, `repos/shop` |
-| Domain | `referrals` | Referral links, qualification and rewards | `referrals` |
+| Domain | `shop` | Cosmetics catalogue, purchases, looks, shop editor | `domains/shop/` (`service`, `repository`, `editor`) |
+| Domain | `referrals` | Referral links, qualification and rewards | `domains/referrals/service.py` |
 | Domain | `groups` | Group rounds (rules still partly in `handlers/group_handler.py`) | `repos/groups` |
 | Domain | `leagues` | Private leagues | `leagues`, `repos/leagues` |
 | Infrastructure | — | Technical services without product rules: Firestore client and facade, feature flags, observability, performance, Cloud Tasks, receipts, backup, version, dates, i18n, fonts | `firebase_service`, `repos/bulk`, `repos/file_lock`, `feature_flags`, `observability`, `performance`, `task_queue`, `work_receipts`, `broadcast_store`, `alerts`, `backup_status`, `firestore_backup/`, `version`, `dates`, `i18n`, `content_i18n`, `fonts` |
@@ -147,8 +150,40 @@ so the list only shrinks. `python -m tools.dev architecture` prints the current 
 - A new cross-domain import either follows a declared edge or is a design decision: add
   the edge in the same PR only if it keeps the graph acyclic, and explain it.
 - Paying off a known violation means removing its entry in the same PR.
-- `python -m tools.architecture --module services.shop` shows a module's component, what
-  it imports and who imports it.
+- `python -m tools.architecture --module domains.shop.service` shows a module's component,
+  what it imports and who imports it.
+
+### Moving a domain into its package
+
+The procedure used by #111, to repeat for the next domain **when a PR already works in that
+area** (not as a standalone big-bang move):
+
+1. **Layout.** `domains/<domain>/__init__.py` holds only a docstring (no logic, no
+   re-exports: importing a submodule must not import the whole domain). Inside, one module
+   per role: `service.py` for the rules and use cases, `repository.py` for Firestore,
+   `editor.py` for Admin content editing; a larger domain groups a sub-area in a
+   subpackage (`domains/players/candidates/`, `domains/players/adapters/`). Name modules by
+   role, not by repeating the domain (`domains/shop/service.py`, not `shop/shop.py`).
+2. **Move with history.** `git mv` each file, then fix anything derived from the file's
+   depth (`Path(__file__).parents[...]`, `os.path.dirname` chains that locate `data/` or
+   `backup/`) and say in a comment which parent is the repository root.
+3. **Rewrite every importer; add no compatibility shims.** All importers live in this
+   repository, so update them in the same PR. Keep call sites unchanged with an alias:
+   `from domains.shop import service as shop`. A shim at the old path is allowed only for a
+   consumer outside this repository, must say so and must name the release that removes it.
+   `services/firebase_service.py` keeps re-exporting a moved repository only because it
+   already is the compatibility facade (tracked in `KNOWN_VIOLATIONS`).
+4. **Update path mentions** in comments, docstrings and current documentation. Historical
+   review records (for example [miniapp-61-review.md](miniapp-61-review.md)) are left as
+   they were written.
+5. **Map it.** Replace the per-module entries in `COMPONENTS` with one entry for the
+   package (`"domains.shop": "shop"`) and retarget `KNOWN_VIOLATIONS` keys to the new
+   module names. `python -m tools.architecture` must still report OK with the same debt.
+6. **Keep the checks equivalent.** `domains/` is compiled, type-checked (`mypy services/
+   domains/`) and counted in coverage (`--cov=domains`) exactly like `services/`, so
+   moving code never silently drops it from a check.
+7. **Behaviour.** The full suite passes without changing assertions; tests only change
+   import paths.
 
 **Planned evolution.** [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28)
 reorganizes the monorepo by domain incrementally, without a big-bang rewrite:
@@ -156,9 +191,11 @@ reorganizes the monorepo by domain incrementally, without a big-bang rewrite:
 its checks, done) →
 [#110](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/110) (`bot.py` as
 a pure composition root, done) →
-[#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111) (first domains
-moved into packages, with the migration procedure). Other domains move when they are next
-touched.
+[#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111) (players
+Candidate pipeline, shop and referrals moved into `domains/`, with the procedure above, done).
+The remaining domains (`game`, `daily`, `events`, `users`, `groups`, `leagues`, `analytics` and
+the rest of `players`) move with that procedure when a PR next works in them; the recorded
+debt in `KNOWN_VIOLATIONS` is paid down the same way.
 
 ## 4. Who reads and writes what
 
@@ -210,8 +247,8 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Events | `services/event_generator.py`, `services/event_rules.py`, `services/event_config.py`, `services/event_template_editor.py`, `services/app_events.py`, `services/manual_event_service.py`, `handlers/events_handler.py` | [game-modes.md](game-modes.md#events) |
 | Difficulty | `services/difficulty.py`, `services/difficulty_calibration.py`, `data/config.json` | [difficolta.md](difficolta.md) |
 | Leaderboard, seasons, private leagues | `services/repos/users.py`, `services/repos/seasons.py`, `services/leagues.py`, `services/monthly_closure.py`, `handlers/top_users_handler.py`, `handlers/league_handler.py` | [game-modes.md](game-modes.md#leaderboards-seasons-and-leagues) |
-| Shop, cosmetics, trophies | `services/shop.py`, `data/shop.json`, `services/trophies.py`, `handlers/shop_handler.py` | README “Negozio”, [miniapp-appearance.md](miniapp-appearance.md) |
-| Referral | `services/referrals.py`, `/app/api/referrals` | README “Mini app”, [game-modes.md](game-modes.md#referral) |
+| Shop, cosmetics, trophies | `domains/shop/service.py`, `data/shop.json`, `services/trophies.py`, `handlers/shop_handler.py` | README “Negozio”, [miniapp-appearance.md](miniapp-appearance.md) |
+| Referral | `domains/referrals/service.py`, `/app/api/referrals` | README “Mini app”, [game-modes.md](game-modes.md#referral) |
 | Player data | `data/players.json`, `services/player_pool.py`, candidate pipeline | [player-data-pipeline.md](player-data-pipeline.md) |
 | Mini App | `webapp/` | [miniapp.md](miniapp.md) |
 | Admin | `admin_ui.py`, `admin_pages/`, `handlers/admin_handler.py` | [admin.md](admin.md) |

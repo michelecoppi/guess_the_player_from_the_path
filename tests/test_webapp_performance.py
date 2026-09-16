@@ -9,7 +9,8 @@ import pytest
 
 import config
 from apps.api import miniapp
-from services import firebase_service, shop
+from domains.shop import service as shop
+from services import firebase_service
 
 
 @pytest.fixture

@@ -73,6 +73,13 @@ new dated section below.
 
 ### Changed
 
+- The Candidate pipeline and its source adapters moved to `domains/players/`, the shop to
+  `domains/shop/` (`service`, `repository`, `editor`) and referrals to
+  `domains/referrals/service.py`; all importers updated, no compatibility shims, and
+  `domains/` is compiled, type-checked and counted in coverage like `services/`. The
+  procedure for the remaining domains is documented
+  ([#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111),
+  [architecture.md](docs/architecture.md#moving-a-domain-into-its-package)).
 - `bot.py` is now a pure composition root: the Telegram application and handler registration
   live in `apps/bot/`, the FastAPI factory, middleware, webhook/workers, Mini App API and
   static routes in `apps/api/`, connected by an injected `TelegramBridge`. Same routes, same

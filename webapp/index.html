@@ -476,7 +476,7 @@ const state = {
 };
 
 // I simboli del risultato: quelli classici finche' non se ne compra un altro set
-// (services/shop.py). Non e' una costante proprio per questo.
+// (domains/shop/service.py). Non e' una costante proprio per questo.
 let SQUARES = { correct: "🟩", wrong: "🟥", unused: "⬜" };
 
 // Nome della variabile CSS per ogni colore del tema. La pagina nasce con la palette del bot
@@ -1031,7 +1031,7 @@ function shopTab() {
 }
 
 // Tre oggetti che cambiano ogni lunedi'. Sono gli stessi per tutti e si ricavano dalla
-// settimana (services/shop.py): non c'e' niente da scrivere e niente da far girare a
+// settimana (domains/shop/service.py): non c'e' niente da scrivere e niente da far girare a
 // mezzanotte, quindi non c'e' niente che possa restare indietro.
 function weeklyWindow() {
   const window_ = (state.shop || {}).showcase;
@@ -1101,7 +1101,7 @@ function shopSection(kind, items, heading = L.shopSections[kind] || kind, shelf 
 }
 
 // Tre fasce e un colore ciascuna. Non e' un dato in piu' da tenere allineato: il server la
-// ricava dal prezzo (services/shop.py), qui si sceglie solo come si vede.
+// ricava dal prezzo (domains/shop/service.py), qui si sceglie solo come si vede.
 const RARITY_COLOR = {free: "#8ea2b6", earned: "#38bd82", common: "#8ea2b6",
                       rare: "#4dc4ff", collector: "#f0c74e"};
 const CELEBRATION_GLYPH = {spotlight: "🔦", confetti: "🎊", dust: "💨", flash: "📷",

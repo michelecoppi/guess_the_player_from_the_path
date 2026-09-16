@@ -22,7 +22,7 @@ test:
 	@$(PYTHON) -m pytest -q
 
 test-cov:
-	@$(PYTHON) -m pytest -q --cov=services --cov=handlers --cov-report=term-missing
+	@$(PYTHON) -m pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing
 
 test-node:
 	node --test tests/client.test.cjs
@@ -31,10 +31,10 @@ lint:
 	@$(PYTHON) -m ruff check .
 
 typecheck:
-	@$(PYTHON) -m mypy services/
+	@$(PYTHON) -m mypy services/ domains/
 
 syntax:
-	@$(PYTHON) -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py tools
+	@$(PYTHON) -m compileall -q bot.py config.py apps domains services handlers scripts admin_pages admin_ui.py tools
 
 dataset-check:
 	@$(PYTHON) scripts/dataset_report.py --strict

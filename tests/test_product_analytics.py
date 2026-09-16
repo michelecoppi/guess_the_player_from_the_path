@@ -210,7 +210,7 @@ def test_unknown_surface_value_is_dropped(monkeypatch):
 
 def test_an_arbitrary_user_supplied_item_id_is_not_forwarded(monkeypatch):
     """The property NAME `item_id` is allowed for Shop events, but the VALUE must be a real,
-    currently-existing catalogue id (`services/shop.py::get_item`) - not merely a string
+    currently-existing catalogue id (`domains/shop/service.py::get_item`) - not merely a string
     that looks like one. This is the fix for a user-controlled payload (e.g. the Mini App's
     `POST /app/api/shop/buy` body) turning into an arbitrary analytics dimension."""
     client = enable(monkeypatch)
@@ -342,8 +342,8 @@ def test_a_duplicate_shop_payment_fires_the_completed_event_only_once(monkeypatc
     """Mirrors tests/test_shop.py::test_a_repeated_payment_delivers_only_once, but asserts
     on the analytics side effect instead of the Firestore one: Telegram resending the same
     `successful_payment` update must not produce a second `shop_purchase_completed`."""
+    from domains.shop import service as shop_service
     from handlers import shop_handler
-    from services import shop as shop_service
 
     client = enable(monkeypatch)
     state = {"user": {"cosmetics": {"owned": [], "equipped": {}}}, "delivered": {}}
@@ -398,9 +398,10 @@ def test_referral_funnel_stays_on_one_identity_end_to_end(monkeypatch):
     to a *different* distinct_id."""
     from copy import deepcopy
 
+    from domains.referrals import service as referrals
+    from domains.shop import service as shop_service
     from services import firebase_service as fs
-    from services import game, referrals
-    from services import shop as shop_service
+    from services import game
 
     INVITEE_ID, INVITER_ID = 2, 1
     client = enable(monkeypatch)
@@ -428,7 +429,7 @@ def test_referral_funnel_stays_on_one_identity_end_to_end(monkeypatch):
     monkeypatch.setattr(game.firebase_service, "record_daily_history", lambda *a, **k: None)
     game.play_daily(INVITEE_ID, {}, "Messi", challenge=challenge, surface="telegram_chat")
 
-    # Step 4: the referral itself qualifies - services/referrals.py::credit_day(INVITEE_ID, ...).
+    # Step 4: the referral itself qualifies - domains/referrals/service.py::credit_day(INVITEE_ID, ...).
     records = {"user/1": {"referral_qualified": 0}}
 
     class Ref:
@@ -476,15 +477,15 @@ def test_referral_funnel_stays_on_one_identity_end_to_end(monkeypatch):
 
 
 def test_a_replayed_referral_credit_fires_the_conversion_event_only_once(monkeypatch):
-    """Mirrors the referral idempotency guarantee in services/referrals.py: `credit_day`
+    """Mirrors the referral idempotency guarantee in domains/referrals/service.py: `credit_day`
     only ever flips a ledger from "pending" to "qualified" once, so calling it again for an
     already-qualified referral (a reconcile() replay, a retried Cloud Task) must not produce
     a second `referral_converted` / `referral_reward_granted` pair."""
     from copy import deepcopy
 
+    from domains.referrals import service as referrals
+    from domains.shop import service as shop_service
     from services import firebase_service as fs
-    from services import referrals
-    from services import shop as shop_service
 
     client = enable(monkeypatch)
     records = {"user/1": {"referral_qualified": 0}}
