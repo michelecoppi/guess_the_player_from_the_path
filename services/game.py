@@ -110,11 +110,13 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
             # `begin_guess_attempt` refuses a further attempt once attempts are spent.
             analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=user_id, properties={
                 "surface": surface, "status": "wrong", "attempts_used": attempt["attempts_used"],
-                "hints_used": hints_used,
+                "hints_used": hints_used, "difficulty_band": challenge.get("difficulty"),
             })
         return result
 
-    firebase_service.register_daily_outcome(day_iso, solved=True)
+    firebase_service.register_daily_outcome(
+        day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used
+    )
 
     # Gli indizi si pagano solo se si indovina: su una sfida persa non c'era niente da
     # togliere. Il bonus del primo non viene scalato, e' un premio a parte.
@@ -149,7 +151,7 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
     # only runs on the first correct attempt (`begin_guess_attempt` refuses a repeat).
     analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=user_id, properties={
         "surface": surface, "status": "correct", "attempts_used": attempt["attempts_used"],
-        "hints_used": hints_used,
+        "hints_used": hints_used, "difficulty_band": challenge.get("difficulty"),
     })
 
     return {

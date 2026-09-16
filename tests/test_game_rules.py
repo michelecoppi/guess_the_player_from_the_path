@@ -45,7 +45,11 @@ def firebase(monkeypatch):
     monkeypatch.setattr(fs, "begin_guess_attempt", lambda uid, day, mx: state["attempt"])
     monkeypatch.setattr(fs, "claim_daily_first_correct", claim)
     monkeypatch.setattr(fs, "register_correct_guess", register)
-    monkeypatch.setattr(fs, "register_daily_outcome", lambda day, solved: calls["outcomes"].append((day, solved)))
+    def outcome(day, solved, attempts=None, hints=None):
+        calls["outcomes"].append((day, solved))
+        calls.setdefault("outcome_counters", []).append({"attempts": attempts, "hints": hints})
+
+    monkeypatch.setattr(fs, "register_daily_outcome", outcome)
     monkeypatch.setattr(
         fs, "record_daily_history",
         lambda uid, day, solved, attempts, hints=0: calls["history"].append(
@@ -148,6 +152,15 @@ def test_without_a_challenge_nothing_happens(firebase):
 def test_the_first_attempt_counts_the_player_and_the_correct_one_counts_the_solve(firebase):
     play()
     assert firebase.calls["outcomes"] == [(DAY, False), (DAY, True)]
+
+
+def test_a_solve_adds_attempts_and_hints_to_the_observed_difficulty_counters(firebase):
+    """Tentativi e indizi di chi indovina finiscono sulla sfida: sono la difficolta' osservata
+    che #21 confronta con quella prevista."""
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 2, "attempts_left": 1, "hints_used": 1}
+    play()
+    assert firebase.calls["outcomes"] == [(DAY, True)]
+    assert firebase.calls["outcome_counters"] == [{"attempts": 2, "hints": 1}]
 
 
 def test_a_later_attempt_does_not_count_the_player_twice(firebase):

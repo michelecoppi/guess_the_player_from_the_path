@@ -11,8 +11,8 @@ from config import BOT_TOKEN as BOT_TOKEN
 from services import backup_status as backup_status
 from services import content_admin as content_admin
 from services import dataset_editor as dataset_editor
+from services import difficulty_calibration, observability
 from services import firebase_service as firebase_service
-from services import observability
 from services import product_analytics_query as product_analytics_query
 from services import referrals as referrals
 from services import shop as shop
@@ -33,6 +33,7 @@ from services.dates import to_display as to_display
 from services.dates import to_iso as to_iso
 from services.dates import today_iso as today_iso
 from services.difficulty import DIFFICULTY_ORDER as DIFFICULTY_ORDER
+from services.difficulty import band_cutoffs_100 as band_cutoffs_100
 from services.difficulty import compute_difficulty as compute_difficulty
 from services.difficulty import compute_difficulty_score as compute_difficulty_score
 from services.difficulty import explain_difficulty as explain_difficulty
@@ -332,6 +333,11 @@ def cached_referral_top_inviters(limit):
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_core_metrics(days):
     return product_analytics_query.fetch_core_metrics(product_analytics_query.settings(), days)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_difficulty_calibration(days, today):
+    return difficulty_calibration.load_report(days, today=today)
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)

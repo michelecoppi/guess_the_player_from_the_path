@@ -253,3 +253,116 @@ Nell'ordine, le tre cause possibili:
 rompono venti. Le soglie si toccano solo guardando la distribuzione dell'intero dataset, che
 deve restare grosso modo bilanciata sulle quattro fasce — la rotazione giornaliera le pesca a
 turno e una fascia quasi vuota si traduce in ripetizioni per gli utenti.
+
+---
+
+## 6. Previsione e realtà: la difficoltà basata sui dati
+
+La formula delle sezioni 2-3 è una **previsione**: dice quanto dovrebbe essere difficile un
+giocatore guardando la sua scheda. Dalla [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21)
+la previsione viene salvata su ogni sfida e confrontata con com'è andata davvero, così la
+taratura si rivede sui risultati e non a sensazione.
+
+### Punteggio 0-100 e fasce
+
+Il punteggio grezzo dipende dai pesi (con la taratura attuale va da 0 a 21.5) e quindi non si
+confronta fra tarature diverse. Accanto al grezzo c'è una **scala 0-100**
+(`to_score_100`): il grezzo diviso per il massimo che la taratura in vigore può produrre
+(`max_raw_score`, cioè ogni addendo al suo tetto). La scheda singola della dashboard mostra
+il punteggio su questa scala, la taratura mostra dove cadono le soglie (`band_cutoffs_100`).
+
+Le **fasce restano quattro e restano decise sul grezzo** con le soglie della sezione 2: la
+scala 0-100 serve a leggerle, non le ridefinisce. Le chiavi non cambiano (`easy`, `medium`,
+`hard`, `impossible`) perché stanno già sulle sfide salvate in Firestore e decidono i punti:
+la fascia che la #21 chiama *Extreme* è `impossible`.
+
+### La previsione fotografata sulla sfida
+
+Quando una sfida viene creata (generatore automatico, rigenerazione o scelta manuale
+dall'admin), `predict_difficulty` scrive sul documento `daily_path/{giorno}`:
+
+```python
+"difficulty_prediction": {
+    "score": 43.4,          # scala 0-100
+    "raw_score": 9.329,     # punteggio della formula
+    "band": "hard",         # fascia calcolata
+    "model": "23874ea1a8",  # impronta della taratura che l'ha prodotta
+}
+```
+
+- è **riproducibile**: stessa scheda e stessa taratura danno sempre lo stesso risultato, senza
+  dipendere dal resto del dataset;
+- è **spiegabile**: `explain_difficulty` scompone lo stesso punteggio nei suoi addendi;
+- `model` (`model_fingerprint`) cambia quando cambiano pesi, soglie o le liste
+  `top_leagues`/`known_leagues`, non quando cambia `obscure_leagues`, che non sposta nessun
+  punteggio. Due previsioni con impronte diverse sono state fatte con formule diverse;
+- `band` è quella calcolata: `difficulty` sulla sfida può essere diversa se l'admin l'ha
+  corretta a mano, ed è giusto che la differenza resti visibile.
+
+Le sfide create prima della #21 non hanno la foto: il confronto usa la previsione
+**ricalcolata** con la scheda e la taratura di oggi, e lo dice.
+
+### Cosa si osserva
+
+Sul documento della sfida, tutti `Increment` (nessuna lettura in più):
+
+| Campo | Quando cresce |
+|---|---|
+| `players_count` | primo tentativo di un utente nella giornata |
+| `solved_count` | risposta giusta |
+| `solved_attempts_total` | risposta giusta: + i tentativi usati |
+| `solved_hints_total` | risposta giusta: + gli indizi usati |
+
+Da qui [`services/difficulty_calibration.py`](../services/difficulty_calibration.py) ricava
+percentuale di chi ha indovinato, tentativi e indizi medi, e un **punteggio osservato 0-100**
+(100 = nessuno l'ha indovinata) che pesa la quota di chi non ha indovinato e i tentativi medi
+di chi ha indovinato. Le giornate precedenti ai contatori dei tentativi usano solo la
+percentuale. Sotto `min_players` partecipanti una giornata resta nell'elenco ma non entra nel
+confronto.
+
+### Il confronto (Dashboard → Dataset → *Prevista vs osservata*)
+
+Previsto e osservato non sono sulla stessa scala, quindi ogni giornata si confronta sul
+**percentile**: in che punto sta fra le giornate analizzate secondo la formula, e in che punto
+secondo i giocatori. Lo **scarto** è la differenza (positivo = più difficile del previsto).
+
+| Vista | Domanda a cui risponde |
+|---|---|
+| Correlazione di rango (Spearman) | La formula ordina le giornate come i giocatori? 1 = sì, 0 = nessuna relazione |
+| Per fascia prevista | Le fasce salgono in ordine? `impossible` deve avere la percentuale più bassa |
+| Scarto medio per dimensione | Dove sbaglia sempre allo stesso modo? |
+| Giornate fuori previsione | Quali giornate superano la tolleranza (`mismatch_tolerance`) |
+
+Le dimensioni della #21 sono valutate tutte qui, raggruppando le giornate: **notorietà**,
+**squadre** (numero di club), **paesi** (varietà), **campionati** (oscurità), **durata
+carriera** e **fine carriera** (recency). Le prime quattro sono già nella formula; durata e
+recency no, e non ci entrano finché i dati non mostrano uno scarto ricorrente. Due dimensioni
+sono state valutate e lasciate fuori di proposito:
+
+- **notorietà dei club**: il livello del campionato la approssima già, e una lista di "club
+  famosi" sarebbe un'altra decisione editoriale da mantenere;
+- **unicità del percorso**: dipende da tutti gli altri giocatori del dataset, quindi
+  aggiungere una scheda cambierebbe il punteggio delle altre e la previsione smetterebbe di
+  essere riproducibile.
+
+### Ricalibrare
+
+Il confronto non modifica niente da solo. La procedura:
+
+1. guarda la correlazione e la tabella per fascia su una finestra ampia (almeno qualche mese);
+2. cerca uno **scarto ricorrente** in *Scarto medio per dimensione*: un gruppo con molte
+   giornate e uno scarto medio stabilmente oltre la tolleranza. Una giornata isolata fuori
+   previsione è rumore (un giocatore in tendenza quel giorno) e si lascia stare;
+3. se lo scarto riguarda una dimensione già nella formula, cambia il peso relativo nella
+   scheda *Taratura difficoltà* e guarda la ridistribuzione prima di salvare (sezione 5); se
+   riguarda notorietà su pochi nomi, correggi le schede, non i pesi;
+4. dopo il salvataggio l'impronta cambia: le nuove sfide hanno il nuovo `model`, e la
+   dashboard avvisa quando la finestra mescola previsioni di tarature diverse.
+
+Tutti i parametri del confronto stanno in `data/config.json`, nessuno nel codice:
+
+| Chiave (`difficulty_calibration`) | Significato |
+|---|---|
+| `min_players` | partecipanti minimi perché una giornata entri nel confronto |
+| `failure_weight` / `attempts_weight` | peso di chi non indovina e dei tentativi medi nel punteggio osservato |
+| `mismatch_tolerance` | scarto in punti percentile oltre il quale una giornata è fuori previsione |

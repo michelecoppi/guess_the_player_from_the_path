@@ -69,3 +69,18 @@ def test_build_daily_path_doc_has_solvable_answers():
     doc = daily_generator.build_daily_path_doc(date_dt, set(), rotation_index=0)
     assert len(doc["correct_answers"]) > 0
     assert len(doc["career_path"]) >= 2
+
+
+def test_build_daily_path_doc_photographs_the_difficulty_prediction():
+    """#21: la previsione si salva alla generazione, con la taratura di quel momento, cosi'
+    lo storico resta confrontabile anche dopo una modifica a pesi o dataset."""
+    from services.difficulty import model_fingerprint, predict_difficulty
+    from services.player_pool import get_player_by_id
+
+    date_dt = datetime(2026, 5, 1, tzinfo=ITALY_TZ)
+    doc = daily_generator.build_daily_path_doc(date_dt, set(), rotation_index=2)
+    prediction = doc["difficulty_prediction"]
+    assert prediction == predict_difficulty(get_player_by_id(doc["player_id"]))
+    assert prediction["band"] == doc["difficulty"]
+    assert prediction["model"] == model_fingerprint()
+    assert 0 <= prediction["score"] <= 100

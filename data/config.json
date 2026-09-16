@@ -90,5 +90,11 @@
     "Al-Shabab": "due club diversi con lo stesso nome (Riad e Dubai)",
     "Vojvodina": "stesso club, il paese ha cambiato nome (Jugoslavia -> Serbia)"
   },
-  "unclassified_league_warning_min": 20
+  "unclassified_league_warning_min": 20,
+  "difficulty_calibration": {
+    "min_players": 10,
+    "failure_weight": 0.7,
+    "attempts_weight": 0.3,
+    "mismatch_tolerance": 25
+  }
 }

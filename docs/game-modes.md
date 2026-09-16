@@ -48,7 +48,9 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
    never serialized to the Mini App.
 5. **Per-user state.** Counters on `users/{id}` are anchored to `last_played_day`, so
    there is no nightly reset; the result of a finished day is written once to
-   `users/{id}/history/{day}`; `daily_path/{day}` keeps `players_count`/`solved_count`.
+   `users/{id}/history/{day}`; `daily_path/{day}` keeps `players_count`/`solved_count` and,
+   for solvers, `solved_attempts_total`/`solved_hints_total` (observed difficulty,
+   [difficolta.md §6](difficolta.md)).
 6. **Nightly side effects.** Broadcast to subscribed users, event trophies, and on the
    first of the month the season close ([operations.md](operations.md)).
 
@@ -60,9 +62,11 @@ such as “today's challenge cannot be deleted” live in the service, not the U
 **Planned evolution.** There is no long-horizon planner: the automatic 30–90-day Daily
 planner is [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)
 (open). Admin Daily management beyond the current page is
-[#34](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/34); a
-data-driven difficulty model is
-[#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21).
+[#34](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/34). Every
+generated or manually set Daily carries a `difficulty_prediction` snapshot that the Admin
+compares with observed results
+([#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21),
+[difficolta.md §6](difficolta.md)).
 
 ## Archive
 

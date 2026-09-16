@@ -110,7 +110,8 @@ separate system from the operational aggregates below and from
 Operational aggregates stored as part of game state (not analytics, must not be described
 as funnels):
 
-- `daily_path/{day}.players_count` and `solved_count` (Increment counters);
+- `daily_path/{day}.players_count`, `solved_count`, `solved_attempts_total` and
+  `solved_hints_total` (Increment counters; observed difficulty, [difficolta.md §6](difficolta.md));
 - `/admin_stats` (registered users, notifications enabled, solved today) and the
   Admin overview/leaderboards;
 - per-user attempt histogram `solved_in`, streaks and referral qualification counts;
