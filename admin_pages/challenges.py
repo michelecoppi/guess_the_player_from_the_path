@@ -115,6 +115,13 @@ def render(today, now_italy):
                 f"generata il {fmt_dt(row['generated_at'])} · "
                 f"scheda verificata: {fmt_bool(row['verified'])}"
             )
+            audit = row.get("planner_audit") or {}
+            if audit:
+                st.caption(
+                    f"Planner: fascia prevista `{audit.get('target_band')}`, "
+                    f"{audit.get('candidates')} candidati finali su {audit.get('pool')}"
+                    + (f" · regole allentate: {', '.join(audit['relaxed'])}" if audit.get("relaxed") else "")
+                )
             if not row["player_in_dataset"]:
                 st.warning(
                     f"Il giocatore `{row['player_id']}` non esiste più in data/players.json: "

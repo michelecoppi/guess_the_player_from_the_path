@@ -136,7 +136,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 
 | Area | Current implementation | Primary document |
 | --- | --- | --- |
-| Daily challenge, Archive | `services/daily_generator.py`, `services/daily_challenge.py`, `services/game.py`, `services/past_challenges.py`, `handlers/guess_handler.py`, `handlers/archive_handler.py` | [game-modes.md](game-modes.md) |
+| Daily challenge, Archive | `services/daily_generator.py`, `services/daily_planner.py`, `services/daily_challenge.py`, `services/game.py`, `services/past_challenges.py`, `handlers/guess_handler.py`, `handlers/archive_handler.py` | [game-modes.md](game-modes.md) |
 | Training, Arena duels, group rounds | `services/arena.py`, `services/practice_content.py`, `handlers/training_handler.py`, `handlers/group_handler.py` | [game-modes.md](game-modes.md) |
 | Events | `services/event_generator.py`, `services/event_rules.py`, `services/app_events.py`, `services/manual_event_service.py`, `handlers/events_handler.py` | [game-modes.md](game-modes.md#events) |
 | Difficulty | `services/difficulty.py`, `services/difficulty_calibration.py`, `data/config.json` | [difficolta.md](difficolta.md) |
@@ -182,7 +182,7 @@ code does not restore data.
 | [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25) | Dataset Health dashboard | A health report exists (`services/dataset_health.py`, `/admin_pool`, Admin “Dataset”); the dedicated dashboard does not |
 | [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Layered layout described in §3 |
 | [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Not implemented |
-| [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) | Automatic Daily planner | Rolling buffer of `buffer_days_ahead` days only |
+| [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) | Automatic Daily planner | Implemented: `services/daily_planner.py` plans 7–90 days with eligibility, difficulty rotation, diversity and repetition rules, per-day audit, Admin review/apply ([game-modes.md](game-modes.md#daily-planner)); the nightly buffer uses the same rules |
 | [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31) | Data-driven, automatable events | Template rotation + manual creation |
 | [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | `Server-Timing` header and `api.request.completed` duration logs only ([observability.md](observability.md)) |
 | [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) sub-issues #33, #34, #36–#39 | Admin expansion | See [admin.md](admin.md) |

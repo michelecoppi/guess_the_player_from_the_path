@@ -17,20 +17,17 @@ Le funzioni che modificano qualcosa alzano `ContentAdminError` con un messaggio 
 leggibile: la dashboard lo mostra cosi' com'e'.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from services import firebase_service
+from services import daily_planner, firebase_service
 from services.daily_challenge import challenge_number
-from services.daily_generator import pick_player_for_date
-from services.dates import ITALY_TZ, normalize_day, parse_iso, shift_iso, to_display, to_iso, today_iso
+from services.dates import normalize_day, parse_iso, shift_iso, to_display, to_iso, today_iso
 from services.difficulty import (
     DIFFICULTY_ORDER,
-    compute_difficulty,
     compute_difficulty_score,
     points_for_difficulty,
-    predict_difficulty,
 )
-from services.player_pool import get_answer_aliases, get_player_by_id, load_config
+from services.player_pool import get_player_by_id, load_config
 
 WEEKDAYS_IT = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
 
@@ -103,6 +100,7 @@ def describe_daily(day_iso, doc, today=None):
         "generated_at": None,
         "first_correct_taken": None,
         "locked": False,
+        "planner_audit": None,
     }
     if not doc:
         return info
@@ -127,6 +125,7 @@ def describe_daily(day_iso, doc, today=None):
         "generated_at": doc.get("generated_at"),
         "first_correct_taken": bool(doc.get("first_correct_user")),
         "locked": bool(doc.get("locked", False)),
+        "planner_audit": doc.get("planner_audit"),
     })
     return info
 
@@ -171,23 +170,6 @@ def buffer_health(today=None):
     }
 
 
-def _daily_doc_for_player(player, difficulty=None, source="manual", keep=None):
-    keep = keep or {}
-    return {
-        "player_id": player["id"],
-        "correct_answers": get_answer_aliases(player),
-        "difficulty": difficulty or compute_difficulty(player),
-        "difficulty_prediction": predict_difficulty(player),
-        "career_path": player["career"],
-        # il bonus gia' assegnato non si riapre da solo cambiando il giocatore: sarebbe un
-        # secondo bonus per lo stesso giorno.
-        "first_correct_user": bool(keep.get("first_correct_user", False)),
-        "generated_at": datetime.now(ITALY_TZ),
-        "source": source,
-        "locked": bool(keep.get("locked", False)),
-    }
-
-
 def _ensure_unlocked(day_iso, existing):
     """Una sfida bloccata (`set_daily_locked`) e' protetta da modifiche accidentali:
     va sbloccata esplicitamente prima di sostituire, rigenerare, correggere o eliminare
@@ -212,39 +194,32 @@ def set_daily_player(day_iso, player_id):
 
     existing = firebase_service.get_daily_path(day_iso) or {}
     _ensure_unlocked(day_iso, existing)
-    doc = _daily_doc_for_player(player, source="manual", keep=existing)
+    doc = daily_planner.challenge_doc(player, source="manual", keep=existing)
     firebase_service.save_daily_path(day_iso, doc)
     logging.info(f"[ADMIN] Sfida del {day_iso} impostata a mano su '{player['id']}'")
     return describe_daily(day_iso, doc)
 
 
 def regenerate_daily(day_iso, avoid_current=True):
-    """Rigenera un giorno con le stesse regole del generatore automatico.
+    """Rigenera un giorno con le stesse regole del planner (services/daily_planner.py):
+    anti-ripetizione in entrambe le direzioni, rotazione della fascia, club e nazionalita'
+    diversi dai giorni vicini, sospesi ed esclusi fuori.
 
     La scelta e' deterministica sulla data: senza escludere il giocatore attuale si
     rigenererebbe sempre lo stesso. Per questo `avoid_current` e' il comportamento di
     default - chi clicca "rigenera" vuole un'altra sfida."""
     day_iso = _require_iso(normalize_day(day_iso))
-    config = load_config()
 
-    recent = set(firebase_service.get_recent_player_ids(config.get("history_days_no_repeat", 60)))
     existing = firebase_service.get_daily_path(day_iso) or {}
     _ensure_unlocked(day_iso, existing)
-    if avoid_current and existing.get("player_id"):
-        recent.add(existing["player_id"])
+    avoid = {existing["player_id"]} if avoid_current and existing.get("player_id") else set()
 
-    date_dt = parse_iso(day_iso)
     try:
-        player, difficulty = pick_player_for_date(
-            date_dt,
-            recent,
-            rotation_index=date_dt.timetuple().tm_yday,
-            blocked_ids=firebase_service.get_blocked_player_ids(),
-        )
-    except ValueError as e:
+        player, difficulty, audit = daily_planner.choose_single_day(day_iso, avoid_ids=avoid)
+    except daily_planner.PlannerError as e:
         raise ContentAdminError(str(e))
 
-    doc = _daily_doc_for_player(player, difficulty=difficulty, source="auto", keep=existing)
+    doc = daily_planner.challenge_doc(player, difficulty=difficulty, source="auto", keep=existing, audit=audit)
     firebase_service.save_daily_path(day_iso, doc)
     logging.info(f"[ADMIN] Sfida del {day_iso} rigenerata su '{player['id']}'")
     return describe_daily(day_iso, doc)

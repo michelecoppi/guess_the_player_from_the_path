@@ -5,7 +5,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 
-@pytest.mark.parametrize("page", ["overview", "challenges", "events", "users", "leagues", "dataset", "player_review", "blocked", "father_son"])
+@pytest.mark.parametrize("page", ["overview", "challenges", "planner", "events", "users", "leagues", "dataset", "player_review", "blocked", "father_son"])
 def test_admin_page_renders_with_unavailable_database(page):
     module = importlib.import_module(f"admin_pages.{page}")
     assert callable(module.render)
@@ -19,30 +19,53 @@ render("2026-09-09", datetime(2026, 9, 9, tzinfo=ZoneInfo("Europe/Rome")))
     assert not result.exception
 
 
-def test_dataset_calibration_tab_renders_a_real_report_without_firestore():
-    """#21: la scheda "Prevista vs osservata" su giornate finte, senza toccare Firestore."""
-    script = '''
+RENDER = '''
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from services import firebase_service
-from admin_pages.dataset import render
-
-def fake_range(start, end, limit=180):
-    ids = ["totti", "forlan", "jankto", "kevin_constant", "delpiero"]
-    return [
-        {"day": f"2026-08-{10 + i:02d}", "player_id": pid, "difficulty": "easy",
-         "players_count": 40, "solved_count": 35 - 7 * i, "solved_attempts_total": 50,
-         "difficulty_prediction": {"score": 10.0 * i, "band": "easy", "model": "vecchia"} if i % 2 else None}
-        for i, pid in enumerate(ids)
-    ]
-
-firebase_service.get_daily_paths_range = fake_range
-firebase_service.get_blocked_player_ids = lambda: []
+from admin_pages.{page} import render
 render("2026-09-09", datetime(2026, 9, 9, tzinfo=ZoneInfo("Europe/Rome")))
 '''
-    result = AppTest.from_string(script).run(timeout=30)
+
+
+def test_dataset_calibration_tab_renders_a_real_report_without_firestore(monkeypatch):
+    """#21: la scheda "Prevista vs osservata" su giornate finte, senza toccare Firestore.
+
+    I finti si installano con monkeypatch e non dentro lo script: AppTest gira nello stesso
+    processo, e un'assegnazione nello script resterebbe attiva per i test successivi."""
+    from services import firebase_service
+
+    def fake_range(start, end, limit=180):
+        ids = ["totti", "forlan", "jankto", "kevin_constant", "delpiero"]
+        return [
+            {"day": f"2026-08-{10 + i:02d}", "player_id": pid, "difficulty": "easy",
+             "players_count": 40, "solved_count": 35 - 7 * i, "solved_attempts_total": 50,
+             "difficulty_prediction": {"score": 10.0 * i, "band": "easy", "model": "vecchia"} if i % 2 else None}
+            for i, pid in enumerate(ids)
+        ]
+
+    monkeypatch.setattr(firebase_service, "get_daily_paths_range", fake_range)
+    monkeypatch.setattr(firebase_service, "get_blocked_player_ids", lambda: [])
+    result = AppTest.from_string(RENDER.format(page="dataset")).run(timeout=30)
     assert not result.exception
     assert not result.error
     labels = [metric.label for metric in result.metric]
     assert "Correlazione di rango" in labels
     assert any("taratura diversa" in warning.value for warning in result.warning)
+
+
+def test_planner_page_renders_a_plan_without_firestore(monkeypatch):
+    """#30: la pagina del planner su un Firestore finto, senza scrivere niente."""
+    from services import firebase_service
+
+    monkeypatch.setattr(firebase_service, "get_daily_paths_range", lambda start, end, limit=180: [
+        {"day": "2026-09-12", "player_id": "messi", "difficulty": "easy", "career_path": [], "locked": True},
+    ])
+    monkeypatch.setattr(firebase_service, "get_blocked_player_ids", lambda: [])
+    monkeypatch.setattr(firebase_service, "get_planner_exclusions",
+                        lambda: {"totti": {"reason": "in tendenza", "until": None}})
+    result = AppTest.from_string(RENDER.format(page="planner")).run(timeout=30)
+    assert not result.exception
+    assert not result.error
+    labels = {metric.label: metric.value for metric in result.metric}
+    assert labels["Restano come sono"] == "1"
+    assert int(labels["Da creare"]) == 29

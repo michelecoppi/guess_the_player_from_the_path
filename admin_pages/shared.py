@@ -10,6 +10,7 @@ from config import ADMIN_TELEGRAM_IDS as ADMIN_TELEGRAM_IDS
 from config import BOT_TOKEN as BOT_TOKEN
 from services import backup_status as backup_status
 from services import content_admin as content_admin
+from services import daily_planner as daily_planner
 from services import dataset_editor as dataset_editor
 from services import difficulty_calibration, observability
 from services import firebase_service as firebase_service
@@ -29,6 +30,7 @@ from services.daily_generator import ensure_daily_buffer as ensure_daily_buffer
 from services.dataset_editor import DatasetEditError as DatasetEditError
 from services.dataset_health import build_report
 from services.dates import ITALY_TZ as ITALY_TZ
+from services.dates import parse_iso as parse_iso
 from services.dates import to_display as to_display
 from services.dates import to_iso as to_iso
 from services.dates import today_iso as today_iso
@@ -106,6 +108,8 @@ def guarded(action, success_message):
     except DatasetEditError as e:
         st.error(str(e))
     except ShopEditError as e:
+        st.error(str(e))
+    except daily_planner.PlannerError as e:
         st.error(str(e))
     except Exception as e:  # noqa: BLE001 - in dashboard l'errore va mostrato, non nascosto
         # Gli errori di dominio sopra sono rifiuti attesi; questo e' un guasto da guardare.
@@ -273,6 +277,17 @@ def cached_daily_window(days_back, days_ahead, today):
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_buffer_health(today):
     return content_admin.buffer_health(today=today)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_daily_plan(start_day, days, mode, variants, today):
+    """La proposta del planner: `variants` e' una tupla di (giorno, intero) per restare hashable."""
+    return daily_planner.plan_calendar(days=days, start_day=start_day, mode=mode, today=today, variants=dict(variants))
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_planner_exclusions():
+    return firebase_service.get_planner_exclusions()
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)

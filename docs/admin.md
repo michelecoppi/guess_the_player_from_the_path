@@ -37,6 +37,7 @@ which reach production only through a PR and deploy.
 | Page | Shows | Can change |
 | --- | --- | --- |
 | 📊 Stato generale (`overview.py`) | Today's challenge with solution, buffer coverage, current event, dataset health, users | Generate missing challenges/events |
+| 🗓️ Planner sfide (`planner.py`) | Proposed 7–90-day calendar with actions, bands, relaxed rules, per-day candidate funnel, planner exclusions | Another player for a day (preview), exclude/readmit players, lock/unlock future days, apply the plan ([game-modes.md](game-modes.md#daily-planner)) |
 | 📅 Sfide giornaliere (`challenges.py`) | Every day in a window including gaps, solution, difficulty, career, origin, bonus state, image preview | Replace player, regenerate, accepted answers, difficulty, bonus, delete, schedule on a date |
 | 🎊 Eventi (`events.py`) | Status, per-day content, missing days, participants ranking | Activate/deactivate, move dates, answers, bonus, delete, create manual event |
 | 👤 Utenti (`users.py`) | Leaderboards, search, full user sheet | Points, streak, language, notifications, reset today's attempts |

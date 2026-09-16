@@ -43,6 +43,13 @@ new dated section below.
   `data/config.json`, and `difficulty_band` on `daily_completed`
   ([#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21),
   [difficolta.md](docs/difficolta.md)).
+- Daily planner: 7–90-day calendar proposals with eligibility, difficulty rotation and streak
+  limit, no-repeat in both directions, club/nationality diversity, recorded relaxations and a
+  per-day `planner_audit`; Admin “Planner sfide” page to review, re-roll a day, exclude players
+  (reason and expiry in `admin_settings/daily_planner`), lock days and apply; the nightly
+  buffer and “Rigenera” use the same rules
+  ([#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30),
+  [game-modes.md](docs/game-modes.md#daily-planner)).
 
 ### Changed
 
