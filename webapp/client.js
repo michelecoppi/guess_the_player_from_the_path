@@ -84,7 +84,34 @@ function weekNumber(week) {
   return String(week || "").split("W")[1] || "";
 }
 
-const api = { escapeHtml, initials, mergeProfile, squares, histogram, cabinetCounts, languageFromCode, weekNumber };
+/*
+  Quanto ci ha messo la mini app a diventare usabile, letto dalla timeline di Performance nel
+  momento in cui i dati sono a schermo (#32). Solo numeri: il server tiene un insieme chiuso
+  di metriche e le registra senza id. La stessa misura della V2 (webapp/src/telemetry/startup.ts).
+*/
+function startupMetrics(perf, firstDataAt) {
+  const round = value => Math.round(value * 10) / 10;
+  const metrics = { first_data_ms: round(firstDataAt) };
+  const navigation = (perf.getEntriesByType("navigation") || [])[0];
+  let transfer = 0;
+  if (navigation) {
+    if (navigation.responseStart > 0) metrics.ttfb_ms = round(navigation.responseStart);
+    if (navigation.domContentLoadedEventEnd > 0) metrics.dom_ready_ms = round(navigation.domContentLoadedEventEnd);
+    transfer += navigation.transferSize || 0;
+  }
+  const resources = perf.getEntriesByType("resource") || [];
+  resources.forEach(entry => { transfer += entry.transferSize || 0; });
+  const me = resources.filter(entry => /\/app\/api\/me$/.test(entry.name))[0];
+  if (me) {
+    metrics.api_me_ms = round(me.duration);
+    const server = (me.serverTiming || []).filter(timing => timing.name === "app")[0];
+    if (server) metrics.api_me_server_ms = round(server.duration);
+  }
+  if (transfer > 0) metrics.transfer_kb = round(transfer / 1024);
+  return metrics;
+}
+
+const api = { escapeHtml, initials, mergeProfile, squares, histogram, cabinetCounts, languageFromCode, weekNumber, startupMetrics };
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.PlayerClient = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

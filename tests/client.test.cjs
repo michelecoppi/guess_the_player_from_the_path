@@ -176,3 +176,20 @@ for (const [name, table] of Object.entries(strings)) {
     }
   });
 }
+
+test("startupMetrics derives the Mini App startup report from the Performance timeline", () => {
+  const client = require("../webapp/client.js");
+  const perf = {
+    getEntriesByType: type => ({
+      navigation: [{ responseStart: 200, domContentLoadedEventEnd: 640.26, transferSize: 512 }],
+      resource: [
+        { name: "https://bot.example/app/client.js", duration: 20, transferSize: 0 },
+        { name: "https://bot.example/app/api/me", duration: 410.04, transferSize: 1536, serverTiming: [{ name: "app", duration: 150 }] },
+      ],
+    })[type],
+  };
+  assert.deepEqual(client.startupMetrics(perf, 1100.55), {
+    first_data_ms: 1100.6, ttfb_ms: 200, dom_ready_ms: 640.3, api_me_ms: 410, api_me_server_ms: 150, transfer_kb: 2,
+  });
+  assert.deepEqual(client.startupMetrics({ getEntriesByType: () => [] }, 90), { first_data_ms: 90 });
+});

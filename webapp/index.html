@@ -1652,6 +1652,15 @@ async function loadProfile(options) {
   render();
 }
 
+// Una misura per apertura, mai bloccante e mai un errore visibile (#32, docs/performance.md).
+function reportStartup(outcome) {
+  try {
+    if (!window.performance || !performance.getEntriesByType) return;
+    const metrics = PlayerClient.startupMetrics(performance, performance.now());
+    api("/app/api/perf", { app: "legacy", outcome, metrics }).catch(() => {});
+  } catch (e) { /* non essenziale */ }
+}
+
 async function start() {
   if (!(tg && tg.initData)) { showMessage((T[clientLanguage()] || T.en).error); return; }
   // Il bottone di sistema non lo usiamo (vedi guessBox): se un'apertura precedente
@@ -1661,8 +1670,10 @@ async function start() {
     await loadProfile();
   } catch (e) {
     showMessage(e.status === 404 ? L.notRegistered : L.error);
+    reportStartup("error");
     return;
   }
+  reportStartup("ok");
   const duelCode = new URLSearchParams(window.location.search).get("duel") ||
     ((tg.initDataUnsafe || {}).start_param || "").replace(/^duel_/, "");
   if (/^[a-f0-9]{24}$/.test(duelCode)) PlayerArena.open("duel", duelCode);

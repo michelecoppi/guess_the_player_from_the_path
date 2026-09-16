@@ -148,6 +148,12 @@ def cmd_release_notes(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
+def cmd_perf_report(extra_args: list[str]) -> int:
+    """Report di baseline/trend delle prestazioni dai log Cloud Logging (#32, sola lettura)."""
+    cmd = [sys.executable, "-m", "tools.perf_report"] + extra_args
+    return _run_cmd(cmd)
+
+
 def _npm_cmd() -> str:
     import shutil
     return shutil.which("npm") or "npm"
@@ -315,6 +321,7 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "release-version": (cmd_release_version, "Stampa la versione corrente dell'applicazione (file VERSION)"),
     "release-check": (cmd_release_check, "Verifica coerenza VERSION/CHANGELOG.md prima di un rilascio (sola lettura)"),
     "release-notes": (cmd_release_notes, "Stampa le note di release da CHANGELOG.md (default: Unreleased)"),
+    "perf-report": (cmd_perf_report, "Baseline e trend delle prestazioni dai log Cloud Logging (sola lettura, --fetch o --input)"),
 }
 
 

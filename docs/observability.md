@@ -132,7 +132,7 @@ also attached to the Sentry event as the sanitised `observability` context.
 
 | Event | Level | Where |
 | --- | --- | --- |
-| `api.request.completed` | INFO (WARNING for 5xx) | Every `/app/api/*`, `/internal/*` and `/webhook` request: route, status, duration. |
+| `api.request.completed` | INFO (WARNING for 5xx) | Every `/app/api/*`, `/internal/*` and `/webhook` request: route, status, duration; `cold_start` on the first request of a process and `firestore_*` counters when Firestore was used ([performance.md](performance.md)). |
 | `api.request.failed` | ERROR (WARNING if already reported) | Unhandled exception in a request. |
 | `telegram.update.failed` | ERROR (WARNING if already reported) | PTB error handler. |
 | `telegram.update.uncertain` | ERROR | Interrupted update (receipt `uncertain`), needs manual reconciliation; admins are also messaged. |
@@ -156,6 +156,10 @@ also attached to the Sentry event as the sanitised `observability` context.
 | `candidate.approval.persistence_failed` / `.rolled_back` / `.rollback_failed` | ERROR / WARNING / CRITICAL | Approval write path. |
 | `backup.export.completed` / `.failed`, `backup.export.collection`, `backup.export.unclassified_collection`, `backup.export.written` / `.invalid` | INFO / ERROR, INFO, WARNING, INFO / ERROR | Firestore export (`scripts/backup_firestore.py`): collection names, document counts, `complete`; never ids or values. |
 | `backup.validate.completed`, `backup.restore.completed` / `.failed`, `backup.restore.real_target`, `backup.restore.quality_override`, `backup.verify.completed` | INFO, INFO / ERROR, WARNING, WARNING, INFO | Validation and restore (`scripts/restore_firestore.py`): mode, target project, planned/written/verified counts. See [backup-recovery.md](backup-recovery.md). |
+| `telegram.update.completed` | INFO | Handler duration of one Telegram update (`duration_ms`, Firestore counters), with the bound `command`/`update_type`. |
+| `app.startup.completed` | INFO | Once per process: `before_lifespan_ms`, `lifespan_ms`, `startup_ms`. |
+| `performance.budget.exceeded` / `firestore.query.slow` | WARNING | A warm request over its latency budget or any request over its read budget (`route`, `metric`, `value`, `budget`); a single Firestore call over 500 ms (`kind`, `collection`, `documents`). See [performance.md](performance.md). |
+| `miniapp.startup.measured` | INFO | Mini App startup timing from the device (`app`, `outcome` and a closed set of bounded `*_ms`/`transfer_kb` numbers; no ids). |
 | `feature_flags.config.loaded`, `feature_flags.refresh.failed`, `feature_flags.config.rejected`, `feature_flags.config.invalid`, `feature_flags.change.applied`, `feature_flags.evaluation.fallback` | INFO / WARNING / ERROR (fallback, once per distinct failure) | Feature flag cache, internal-failure fallback and operator tool; never target ids. See [feature-flags.md § Observability](feature-flags.md#observability). |
 
 Existing plain `logging.exception(...)` calls (for example inside `/admin_*` commands or
@@ -251,7 +255,7 @@ this repository.
 
 ## Known limitations
 
-- No performance tracing or metrics: `duration_ms` fields and `Server-Timing` only (#32).
+- No distributed tracing: performance is measured with log fields (`duration_ms`, Firestore counters, startup phases) and `Server-Timing`, summarised by `tools/perf_report.py` ([performance.md](performance.md), #32).
 - No alert policies or dashboards are defined in the repository.
 - Many older plain log lines (`[ADMIN]`, `[SHOP]`, `[LEAGUE]`, …) still include raw Telegram
   user ids and are not event-named; they are formatted, context-enriched and scrubbed, but

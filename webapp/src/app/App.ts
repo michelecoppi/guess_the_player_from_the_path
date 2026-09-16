@@ -59,6 +59,7 @@ export class App {
   private referralController: ReferralController;
   private eventsController: EventsController;
   private lastArenaSubview: ArenaSubview;
+  private firstLoad: Promise<void> = Promise.resolve();
 
   constructor(
     rootElement: HTMLElement,
@@ -232,7 +233,7 @@ export class App {
     }
 
     this.render();
-    this.dailyController.init();
+    this.firstLoad = Promise.resolve(this.dailyController.init());
     this.arenaController.init();
     if (this.activeTab === "leaderboard") {
       void this.leaderboardController.init();
@@ -249,6 +250,11 @@ export class App {
     if (this.activeTab === "events") {
       void this.eventsController.load();
     }
+  }
+
+  /** Settles when the first Daily load of `init()` is done (startup timing, #32). */
+  public whenFirstLoaded(): Promise<void> {
+    return this.firstLoad;
   }
 
   public setTab(tab: NavTabId): void {

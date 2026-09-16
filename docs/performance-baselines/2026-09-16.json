@@ -1,0 +1,630 @@
+{
+  "version": 1,
+  "generated_at": "2026-09-16T14:25:58+00:00",
+  "window": {
+    "from": "2026-09-07T20:09:24.183489Z",
+    "to": "2026-09-16T14:04:43.863442Z"
+  },
+  "edge": {
+    "POST /webhook": {
+      "count": 229,
+      "p50": 199.7,
+      "p95": 6681.3,
+      "p99": 7593.6,
+      "max": 7955.5,
+      "cold_count": 37,
+      "warm": {
+        "count": 192,
+        "p50": 195.1,
+        "p95": 625.0,
+        "p99": 2227.4,
+        "max": 2653.9
+      }
+    },
+    "POST /app/api/arena": {
+      "count": 151,
+      "p50": 158.1,
+      "p95": 384.9,
+      "p99": 598.6,
+      "max": 600.4,
+      "cold_count": 0,
+      "warm": {
+        "count": 151,
+        "p50": 158.1,
+        "p95": 384.9,
+        "p99": 598.6,
+        "max": 600.4
+      }
+    },
+    "POST /internal/telegram-update": {
+      "count": 124,
+      "p50": 662.1,
+      "p95": 1290.0,
+      "p99": 1564.9,
+      "max": 1682.4,
+      "cold_count": 0,
+      "warm": {
+        "count": 124,
+        "p50": 662.1,
+        "p95": 1290.0,
+        "p99": 1564.9,
+        "max": 1682.4
+      }
+    },
+    "GET /app": {
+      "count": 112,
+      "p50": 5.9,
+      "p95": 6357.4,
+      "p99": 7089.5,
+      "max": 7519.8,
+      "cold_count": 35,
+      "warm": {
+        "count": 77,
+        "p50": 3.3,
+        "p95": 16.0,
+        "p99": 538.7,
+        "max": 538.7
+      }
+    },
+    "POST /app/api/me": {
+      "count": 110,
+      "p50": 287.8,
+      "p95": 762.6,
+      "p99": 791.8,
+      "max": 880.2,
+      "cold_count": 0,
+      "warm": {
+        "count": 110,
+        "p50": 287.8,
+        "p95": 762.6,
+        "p99": 791.8,
+        "max": 880.2
+      }
+    },
+    "GET /favicon.ico": {
+      "count": 93,
+      "p50": 3.2,
+      "p95": 639.2,
+      "p99": 761.4,
+      "max": 761.4,
+      "cold_count": 0,
+      "warm": {
+        "count": 93,
+        "p50": 3.2,
+        "p95": 639.2,
+        "p99": 761.4,
+        "max": 761.4
+      }
+    },
+    "GET /app/strings.js": {
+      "count": 67,
+      "p50": 10.7,
+      "p95": 35.2,
+      "p99": 53.1,
+      "max": 53.1,
+      "cold_count": 0,
+      "warm": {
+        "count": 67,
+        "p50": 10.7,
+        "p95": 35.2,
+        "p99": 53.1,
+        "max": 53.1
+      }
+    },
+    "GET /app/arena.js": {
+      "count": 67,
+      "p50": 10.4,
+      "p95": 35.7,
+      "p99": 53.7,
+      "max": 53.7,
+      "cold_count": 0,
+      "warm": {
+        "count": 67,
+        "p50": 10.4,
+        "p95": 35.7,
+        "p99": 53.7,
+        "max": 53.7
+      }
+    },
+    "GET /app/client.js": {
+      "count": 65,
+      "p50": 9.3,
+      "p95": 34.5,
+      "p99": 53.6,
+      "max": 53.6,
+      "cold_count": 0,
+      "warm": {
+        "count": 65,
+        "p50": 9.3,
+        "p95": 34.5,
+        "p99": 53.6,
+        "max": 53.6
+      }
+    },
+    "GET /app/arena.css": {
+      "count": 64,
+      "p50": 7.8,
+      "p95": 30.1,
+      "p99": 52.7,
+      "max": 52.7,
+      "cold_count": 0,
+      "warm": {
+        "count": 64,
+        "p50": 7.8,
+        "p95": 30.1,
+        "p99": 52.7,
+        "max": 52.7
+      }
+    },
+    "GET /app/referrals.js": {
+      "count": 62,
+      "p50": 10.2,
+      "p95": 35.2,
+      "p99": 53.0,
+      "max": 53.0,
+      "cold_count": 1,
+      "warm": {
+        "count": 61,
+        "p50": 10.5,
+        "p95": 35.2,
+        "p99": 53.0,
+        "max": 53.0
+      }
+    },
+    "GET /app/referrals.css": {
+      "count": 62,
+      "p50": 7.2,
+      "p95": 32.1,
+      "p99": 53.8,
+      "max": 53.8,
+      "cold_count": 0,
+      "warm": {
+        "count": 62,
+        "p50": 7.2,
+        "p95": 32.1,
+        "p99": 53.8,
+        "max": 53.8
+      }
+    },
+    "POST /app/api/calendar": {
+      "count": 60,
+      "p50": 141.0,
+      "p95": 379.2,
+      "p99": 6838.1,
+      "max": 6838.1,
+      "cold_count": 1,
+      "warm": {
+        "count": 59,
+        "p50": 141.0,
+        "p95": 379.2,
+        "p99": 646.6,
+        "max": 646.6
+      }
+    },
+    "POST /app/api/shop": {
+      "count": 43,
+      "p50": 96.1,
+      "p95": 149.8,
+      "p99": 213.6,
+      "max": 213.6,
+      "cold_count": 0,
+      "warm": {
+        "count": 43,
+        "p50": 96.1,
+        "p95": 149.8,
+        "p99": 213.6,
+        "max": 213.6
+      }
+    },
+    "GET /": {
+      "count": 25,
+      "p50": 2.4,
+      "p95": 5079.4,
+      "p99": 6143.4,
+      "max": 6143.4,
+      "cold_count": 10,
+      "warm": {
+        "count": 15,
+        "p50": 2.0,
+        "p95": 73.6,
+        "p99": 73.6,
+        "max": 73.6
+      }
+    },
+    "POST /app/api/profile/public": {
+      "count": 17,
+      "p50": 87.9,
+      "p95": 117.9,
+      "p99": 117.9,
+      "max": 117.9,
+      "cold_count": 0,
+      "warm": {
+        "count": 17,
+        "p50": 87.9,
+        "p95": 117.9,
+        "p99": 117.9,
+        "max": 117.9
+      }
+    },
+    "POST /app/api/guess": {
+      "count": 16,
+      "p50": 287.1,
+      "p95": 838.3,
+      "p99": 838.3,
+      "max": 838.3,
+      "cold_count": 0,
+      "warm": {
+        "count": 16,
+        "p50": 287.1,
+        "p95": 838.3,
+        "p99": 838.3,
+        "max": 838.3
+      }
+    },
+    "POST /app/api/players": {
+      "count": 14,
+      "p50": 33.1,
+      "p95": 59.8,
+      "p99": 59.8,
+      "max": 59.8,
+      "cold_count": 0,
+      "warm": {
+        "count": 14,
+        "p50": 33.1,
+        "p95": 59.8,
+        "p99": 59.8,
+        "max": 59.8
+      }
+    },
+    "POST /internal/daily-job": {
+      "count": 10,
+      "p50": 4844.1,
+      "p95": 8284.9,
+      "p99": 8284.9,
+      "max": 8284.9,
+      "cold_count": 7,
+      "warm": {
+        "count": 3,
+        "p50": 1081.2,
+        "p95": 1279.5,
+        "p99": 1279.5,
+        "max": 1279.5
+      }
+    },
+    "POST /app/api/shop/history": {
+      "count": 10,
+      "p50": 82.8,
+      "p95": 240.0,
+      "p99": 240.0,
+      "max": 240.0,
+      "cold_count": 0,
+      "warm": {
+        "count": 10,
+        "p50": 82.8,
+        "p95": 240.0,
+        "p99": 240.0,
+        "max": 240.0
+      }
+    },
+    "POST /app/api/referrals": {
+      "count": 8,
+      "p50": 83.0,
+      "p95": 146.5,
+      "p99": 146.5,
+      "max": 146.5,
+      "cold_count": 0,
+      "warm": {
+        "count": 8,
+        "p50": 83.0,
+        "p95": 146.5,
+        "p99": 146.5,
+        "max": 146.5
+      }
+    },
+    "POST /app/api/shop/buy": {
+      "count": 7,
+      "p50": 204.1,
+      "p95": 269.0,
+      "p99": 269.0,
+      "max": 269.0,
+      "cold_count": 0,
+      "warm": {
+        "count": 7,
+        "p50": 204.1,
+        "p95": 269.0,
+        "p99": 269.0,
+        "max": 269.0
+      }
+    },
+    "POST /internal/broadcast": {
+      "count": 7,
+      "p50": 2714.9,
+      "p95": 2863.0,
+      "p99": 2863.0,
+      "max": 2863.0,
+      "cold_count": 0,
+      "warm": {
+        "count": 7,
+        "p50": 2714.9,
+        "p95": 2863.0,
+        "p99": 2863.0,
+        "max": 2863.0
+      }
+    },
+    "POST /app/api/shop/equip": {
+      "count": 5,
+      "p50": 124.4,
+      "p95": 317.0,
+      "p99": 317.0,
+      "max": 317.0,
+      "cold_count": 0,
+      "warm": {
+        "count": 5,
+        "p50": 124.4,
+        "p95": 317.0,
+        "p99": 317.0,
+        "max": 317.0
+      }
+    },
+    "GET /terms": {
+      "count": 4,
+      "p50": 2.3,
+      "p95": 5961.2,
+      "p99": 5961.2,
+      "max": 5961.2,
+      "cold_count": 1,
+      "warm": {
+        "count": 3,
+        "p50": 2.3,
+        "p95": 5.9,
+        "p99": 5.9,
+        "max": 5.9
+      }
+    },
+    "POST /app/api/card": {
+      "count": 4,
+      "p50": 82.7,
+      "p95": 165.6,
+      "p99": 165.6,
+      "max": 165.6,
+      "cold_count": 0,
+      "warm": {
+        "count": 4,
+        "p50": 82.7,
+        "p95": 165.6,
+        "p99": 165.6,
+        "max": 165.6
+      }
+    },
+    "GET /webhook": {
+      "count": 3,
+      "p50": 1828.6,
+      "p95": 2218.9,
+      "p99": 2218.9,
+      "max": 2218.9,
+      "cold_count": 2,
+      "warm": {
+        "count": 1,
+        "p50": 1.7,
+        "p95": 1.7,
+        "p99": 1.7,
+        "max": 1.7
+      }
+    },
+    "POST /app/api/hint": {
+      "count": 3,
+      "p50": 378.9,
+      "p95": 394.8,
+      "p99": 394.8,
+      "max": 394.8,
+      "cold_count": 0,
+      "warm": {
+        "count": 3,
+        "p50": 378.9,
+        "p95": 394.8,
+        "p99": 394.8,
+        "max": 394.8
+      }
+    },
+    "HEAD /ping": {
+      "count": 2,
+      "p50": 2.1,
+      "p95": 2.4,
+      "p99": 2.4,
+      "max": 2.4,
+      "cold_count": 0,
+      "warm": {
+        "count": 2,
+        "p50": 2.1,
+        "p95": 2.4,
+        "p99": 2.4,
+        "max": 2.4
+      }
+    },
+    "GET /legal.css": {
+      "count": 2,
+      "p50": 1.5,
+      "p95": 4.8,
+      "p99": 4.8,
+      "max": 4.8,
+      "cold_count": 0,
+      "warm": {
+        "count": 2,
+        "p50": 1.5,
+        "p95": 4.8,
+        "p99": 4.8,
+        "max": 4.8
+      }
+    },
+    "GET /privacy": {
+      "count": 1,
+      "p50": 6.7,
+      "p95": 6.7,
+      "p99": 6.7,
+      "max": 6.7,
+      "cold_count": 0,
+      "warm": {
+        "count": 1,
+        "p50": 6.7,
+        "p95": 6.7,
+        "p99": 6.7,
+        "max": 6.7
+      }
+    },
+    "POST /app/api/profile/search": {
+      "count": 1,
+      "p50": 81.9,
+      "p95": 81.9,
+      "p99": 81.9,
+      "max": 81.9,
+      "cold_count": 0,
+      "warm": {
+        "count": 1,
+        "p50": 81.9,
+        "p95": 81.9,
+        "p99": 81.9,
+        "max": 81.9
+      }
+    },
+    "GET /ping": {
+      "count": 1,
+      "p50": 3.0,
+      "p95": 3.0,
+      "p99": 3.0,
+      "max": 3.0,
+      "cold_count": 1,
+      "warm": {
+        "count": 0,
+        "p50": null,
+        "p95": null,
+        "p99": null,
+        "max": null
+      }
+    }
+  },
+  "app": {
+    "/webhook": {
+      "warm": {
+        "count": 16,
+        "p50": 193.1,
+        "p95": 555.9,
+        "p99": 555.9,
+        "max": 555.9
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 1000,
+      "over_budget": 0
+    },
+    "/internal/telegram-update": {
+      "warm": {
+        "count": 15,
+        "p50": 696.5,
+        "p95": 1480.7,
+        "p99": 1480.7,
+        "max": 1480.7
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 2500,
+      "over_budget": 0
+    },
+    "/app/api/me": {
+      "warm": {
+        "count": 9,
+        "p50": 280,
+        "p95": 760.6,
+        "p99": 760.6,
+        "max": 760.6
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 1200,
+      "over_budget": 0
+    },
+    "/app/api/guess": {
+      "warm": {
+        "count": 3,
+        "p50": 539.7,
+        "p95": 679.6,
+        "p99": 679.6,
+        "max": 679.6
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 1500,
+      "over_budget": 0
+    },
+    "/app/api/shop": {
+      "warm": {
+        "count": 1,
+        "p50": 106.3,
+        "p95": 106.3,
+        "p99": 106.3,
+        "max": 106.3
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 1000.0,
+      "over_budget": 0
+    },
+    "/app/api/calendar": {
+      "warm": {
+        "count": 1,
+        "p50": 171.2,
+        "p95": 171.2,
+        "p99": 171.2,
+        "max": 171.2
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 1000.0,
+      "over_budget": 0
+    },
+    "/internal/daily-job": {
+      "warm": {
+        "count": 1,
+        "p50": 1276.3,
+        "p95": 1276.3,
+        "p99": 1276.3,
+        "max": 1276.3
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 20000,
+      "over_budget": 0
+    },
+    "/internal/broadcast": {
+      "warm": {
+        "count": 1,
+        "p50": 2777.1,
+        "p95": 2777.1,
+        "p99": 2777.1,
+        "max": 2777.1
+      },
+      "cold_count": 0,
+      "latency_budget_ms": 10000,
+      "over_budget": 0
+    }
+  },
+  "telegram": {},
+  "container_startup": {
+    "before_app_ms": {
+      "count": 30,
+      "p50": 4515.5,
+      "p95": 6595.8,
+      "p99": 6973.4,
+      "max": 6973.4
+    },
+    "lifespan_ms": {
+      "count": 30,
+      "p50": 299.7,
+      "p95": 810.6,
+      "p99": 892.7,
+      "max": 892.7
+    },
+    "total_ms": {
+      "count": 30,
+      "p50": 4835.8,
+      "p95": 7038.7,
+      "p99": 7239.8,
+      "max": 7239.8
+    }
+  },
+  "app_startup": {},
+  "miniapp": {},
+  "budget_exceeded": {}
+}
