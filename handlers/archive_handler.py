@@ -40,6 +40,11 @@ def _lang_for(update: Update, user_data=None):
     return resolve_language(getattr(update.effective_user, "language_code", None))
 
 
+def _today_keyboard(lang):
+    """Il bottone per uscire da una sfida d'archivio aperta: prima c'era solo /today."""
+    return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "archive.button_today"), callback_data=BACK_TO_TODAY)]])
+
+
 def _keyboard(days, solved_days, lang):
     buttons = []
     row = []
@@ -99,7 +104,7 @@ async def archive_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     result = (await asyncio.to_thread(firebase_service.get_archive_result, user_id, day_iso))
     if result and result.get("solved"):
-        await query.message.reply_text(t(lang, "archive.already_solved"))
+        await query.message.reply_text(t(lang, "archive.already_solved"), reply_markup=_today_keyboard(lang))
         return
 
     (await asyncio.to_thread(firebase_service.set_archive_day, user_id, day_iso))
@@ -111,11 +116,14 @@ async def _send_challenge(message, challenge, day_iso, lang):
     caption = t(lang, "archive.opened", date=to_display(day_iso))
 
     if not career_path:
-        await message.reply_text(caption)
+        await message.reply_text(caption, reply_markup=_today_keyboard(lang))
         return
 
     photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty_label(lang, challenge.get("difficulty")).upper(), footer=f"{to_display(day_iso)}  ({points_for_difficulty(challenge.get('difficulty'))})", lang=lang))
-    await message.reply_photo(photo=photo, caption=caption, reply_markup=legend_keyboard(lang))
+    await message.reply_photo(
+        photo=photo, caption=caption,
+        reply_markup=legend_keyboard(lang, extra_rows=[[InlineKeyboardButton(t(lang, "archive.button_today"), callback_data=BACK_TO_TODAY)]]),
+    )
 
 
 async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -165,7 +173,7 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
     attempt = (await asyncio.to_thread(firebase_service.begin_archive_attempt, user_id, day_iso, MAX_ARCHIVE_ATTEMPTS))
     if not attempt["ok"]:
         key = "archive.already_solved" if attempt["reason"] == "already_solved" else "archive.no_attempts"
-        await message.reply_text(t(lang, key))
+        await message.reply_text(t(lang, key), reply_markup=_today_keyboard(lang))
         return
 
     if find_match(user_answer, challenge.get("correct_answers", [])):

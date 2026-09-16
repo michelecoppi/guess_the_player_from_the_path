@@ -145,4 +145,4 @@ def test_composed_app_exposes_the_bot_bridge_to_the_http_app(monkeypatch):
     assert module.bot_bridge.application is module.telegram_app
     paths = {route.path for route in module.app.routes}
     assert {"/", "/webhook", "/internal/telegram-update", "/app/api/me", "/app/v2/assets/{file_path:path}"} <= paths
-    assert len(module.telegram_app.handlers[0]) > 50
+    assert len(module.telegram_app.handlers[0]) > 40

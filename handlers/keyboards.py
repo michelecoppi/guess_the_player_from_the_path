@@ -3,11 +3,15 @@
 Prima l'unico modo di sapere cosa sapeva fare il bot era leggere il muro di testo di
 `/help` e ricopiare i comandi a mano. Qui ci sono le due cose che lo evitano:
 
-- `menu_keyboard()`: la tastiera inline che accompagna /start, /menu e /help. I bottoni
-  richiamano gli stessi handler dei comandi, quindi non esiste una seconda versione della
-  logica da tenere allineata;
+- `menu_keyboard()`: la tastiera inline che accompagna /start, /info e /help. I bottoni
+  richiamano gli stessi handler che un tempo erano comandi, quindi non esiste una seconda
+  versione della logica da tenere allineata. Non e' piu' un comando Telegram: /menu e' stato
+  rimosso, /start e /help mandano gia' questa tastiera;
 - `bot_commands()`: la lista per `set_my_commands`, cioe' il menu "/" che Telegram mostra
-  accanto alla casella di scrittura, tradotto per lingua.
+  accanto alla casella di scrittura, tradotto per lingua. Elenca solo i punti di ingresso
+  rimasti come comandi veri (start/info/help/notify/language/forgetme/paysupport); tutto il
+  resto (gioca, soluzione, statistiche, eventi, archivio, allenamento, leghe, negozio,
+  leggenda) si raggiunge solo dai bottoni della tastiera inline.
 """
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 
@@ -20,29 +24,19 @@ CALLBACK_PREFIX = "menu_"
 # Comando -> chiave della descrizione mostrata nel menu "/" di Telegram.
 #
 # I nomi sono in **inglese**, anche nel menu italiano: la descrizione accanto e' tradotta,
-# il comando no. Un bot che parla tre lingue con tre serie di comandi diversi obbligherebbe
-# a scriverne una versione per lingua in ogni messaggio ("torna a oggi con /oggi" per un
-# italiano, "con /today" per un inglese), e chi cambia lingua si ritroverebbe i comandi che
-# ha imparato a non funzionare piu'.
+# il comando no.
 #
-# Gli alias italiani restano registrati in bot.py (/archivio, /oggi, /lega...): chi li ha
-# imparati continua a usarli, semplicemente non sono piu' quelli che il bot suggerisce.
+# Questo e' l'elenco completo dei comandi rimasti: tutto il resto del gioco (gioca,
+# soluzione, statistiche, top, eventi, archivio, allenamento, leghe, negozio, leggenda) non
+# e' piu' un comando Telegram, si raggiunge solo dai bottoni di `menu_keyboard()`.
 COMMAND_KEYS = (
     ("start", "cmd.start"),
-    ("show", "cmd.show"),
-    ("solution", "cmd.solution"),
-    ("stats", "cmd.stats"),
-    ("top", "cmd.top"),
-    ("events", "cmd.events"),
-    ("archive", "cmd.archive"),
-    ("training", "cmd.training"),
-    ("league", "cmd.league"),
-    ("shop", "cmd.shop"),
+    ("info", "cmd.info"),
+    ("help", "cmd.help"),
     ("notify", "cmd.notify"),
     ("language", "cmd.language"),
     ("forgetme", "cmd.forgetme"),
     ("paysupport", "cmd.paysupport"),
-    ("help", "cmd.help"),
 )
 
 

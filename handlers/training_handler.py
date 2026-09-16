@@ -33,6 +33,7 @@ MAX_TRAINING_ATTEMPTS = 5
 
 NEXT = "trn_next"
 REVEAL = "trn_reveal"
+EXIT = "trn_exit"
 
 
 def _lang_for(update: Update, user_data=None):
@@ -42,9 +43,10 @@ def _lang_for(update: Update, user_data=None):
 
 
 def _keyboard(lang, with_reveal=True):
-    rows = [[InlineKeyboardButton(t(lang, "training.button_next"), callback_data=NEXT)]]
+    top_row = [InlineKeyboardButton(t(lang, "training.button_next"), callback_data=NEXT)]
     if with_reveal:
-        rows[0].append(InlineKeyboardButton(t(lang, "training.button_reveal"), callback_data=REVEAL))
+        top_row.append(InlineKeyboardButton(t(lang, "training.button_reveal"), callback_data=REVEAL))
+    rows = [top_row, [InlineKeyboardButton(t(lang, "training.button_exit"), callback_data=EXIT)]]
     return legend_keyboard(lang, extra_rows=rows)
 
 
@@ -94,6 +96,11 @@ async def training_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id)) or {}
     lang = _lang_for(update, user_data)
+
+    if query.data == EXIT:
+        (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
+        await query.message.reply_text(t(lang, "training.exited"))
+        return
 
     if query.data == NEXT:
         await _serve_new_challenge(query.message, user_id, user_data.get("training_key"), lang)
