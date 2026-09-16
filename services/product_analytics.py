@@ -45,6 +45,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from services import observability, version
+from services.difficulty import DIFFICULTY_ORDER
 
 _logger = logging.getLogger("gtp.analytics")
 
@@ -213,16 +214,19 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "item_id": _catalog_item_id,
     "price_stars": _int(0, 1_000_000),
     "success": _bool,
+    # The band the Daily was played at (`daily_path.difficulty`, the one that sets the points),
+    # i.e. the stable band concept defined by #21 in services/difficulty.py.
+    "difficulty_band": _enum(*DIFFICULTY_ORDER),
 }
 
 # Exactly which of the properties above a given event may carry. An event not listed here
 # (or a key not in its set) carries no extra properties at all - only the automatic
 # enrichment (`environment`, `app_version`, `app_revision`, `$process_person_profile`).
 #
-# `hint_type`, `difficulty_band`, `source` and `game_mode` are deliberately absent from
-# every set below: nothing in the current bot/Mini App code emits them (see
-# docs/product-analytics.md §6/§16 - `difficulty_band` in particular is reserved for #21,
-# not invented ahead of it). A property with no event that allows it can never be sent.
+# `hint_type`, `source` and `game_mode` are deliberately absent from every set below:
+# nothing in the current bot/Mini App code emits them (see docs/product-analytics.md §6/§16).
+# `difficulty_band` arrived with #21 and is allowed only on `daily_completed`, the one
+# terminal event per user per day. A property with no event that allows it can never be sent.
 EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
     Event.BOT_STARTED: frozenset({"language", "is_new_user"}),
     Event.MINIAPP_OPENED: frozenset({"language"}),
@@ -231,7 +235,7 @@ EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
         "surface", "status", "reason", "attempts_used", "attempts_left", "hints_used", "typo",
     }),
     Event.DAILY_GUESS_CORRECT: frozenset({"surface", "attempts_used", "hints_used", "streak", "bonus_awarded"}),
-    Event.DAILY_COMPLETED: frozenset({"surface", "status", "attempts_used", "hints_used"}),
+    Event.DAILY_COMPLETED: frozenset({"surface", "status", "attempts_used", "hints_used", "difficulty_band"}),
     Event.DAILY_ARCHIVE_VIEWED: frozenset({"surface"}),
     Event.HINT_REQUESTED: frozenset({"surface"}),
     Event.HINT_USED: frozenset({"surface", "hint_index", "hints_used"}),

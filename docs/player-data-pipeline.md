@@ -120,4 +120,5 @@ document.
   Health dashboard. Today: `services/dataset_health.py`, `/admin_pool`,
   `scripts/dataset_report.py` and the Admin “Dataset” health tab.
 - [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) —
-  data-driven difficulty model (today: rule-based, [difficolta.md](difficolta.md)).
+  data-driven difficulty model: rule-based prediction compared with observed Daily results
+  ([difficolta.md §6](difficolta.md)).

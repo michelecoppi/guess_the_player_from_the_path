@@ -36,6 +36,13 @@ new dated section below.
   kill switch, deterministic percentage rollout and user/group targeting, a TTL cache with
   last-known-good, `FEATURE_DISABLED` API responses and an operator CLI; every flag defaults to
   the current behaviour ([#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51), [feature-flags.md](docs/feature-flags.md)).
+- Data-driven difficulty: a 0-100 difficulty score with a tuning fingerprint, a
+  `difficulty_prediction` snapshot on every new Daily, observed attempt/hint counters on
+  `daily_path`, an Admin “Prevista vs osservata” comparison (rank correlation, per-band
+  results, recurring deviations per career dimension) with its parameters in
+  `data/config.json`, and `difficulty_band` on `daily_completed`
+  ([#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21),
+  [difficolta.md](docs/difficolta.md)).
 
 ### Changed
 

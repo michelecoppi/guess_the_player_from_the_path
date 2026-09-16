@@ -558,6 +558,18 @@ def test_daily_completed_fires_exactly_once_for_a_correct_guess(monkeypatch):
                 if c.kwargs.get("event") == analytics.Event.DAILY_COMPLETED.value]
     assert len(completed) == 1
     assert completed[0].kwargs["properties"]["surface"] == "telegram_chat"
+    assert completed[0].kwargs["properties"]["difficulty_band"] == "easy"
+
+
+@pytest.mark.parametrize("band, kept", [("impossible", True), ("extreme", False), (3, False), (None, False)])
+def test_difficulty_band_accepts_only_the_bands_of_the_difficulty_model(monkeypatch, band, kept):
+    """#21: the band is the one from services/difficulty.py - anything else never leaves."""
+    client = enable(monkeypatch)
+    analytics.capture(analytics.Event.DAILY_COMPLETED, user_id=1, properties={
+        "surface": "miniapp", "status": "correct", "attempts_used": 1, "difficulty_band": band,
+    })
+    sent_props = client.capture.call_args.kwargs["properties"]
+    assert ("difficulty_band" in sent_props) is kept
 
 
 def test_hint_used_carries_the_surface_the_caller_declares(monkeypatch):

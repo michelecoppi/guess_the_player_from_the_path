@@ -205,7 +205,7 @@ frontend tracking was added in this iteration.
 | `daily_viewed` | Same call as `miniapp_opened` (the Daily card is part of the same bundle) | server | same as above | `surface`, `language` | intent (viewing) |
 | `daily_guess_submitted` | Every accepted or refused attempt, `services/game.py::play_daily` (shared by chat and Mini App — the single authoritative implementation) | server | one event per attempt, by construction (`begin_guess_attempt` is itself transactional) | `surface`, `status` (`correct`/`wrong`/`refused`), `reason` (on refusal), `attempts_used`, `attempts_left`, `hints_used`, `typo` | intent per attempt |
 | `daily_guess_correct` | The attempt in `play_daily` that matches | server | fires once, at the same transaction outcome that awards points | `surface`, `attempts_used`, `hints_used`, `streak`, `bonus_awarded` | completion signal for this sub-metric |
-| `daily_completed` | Terminal outcome of `play_daily` — either the correct guess, or the wrong guess that exhausts attempts (`attempts_left == 0`) | server | fires **exactly once per user per day**: `begin_guess_attempt` refuses any further attempt once the day is closed for that user, so the terminal branch cannot re-run | `surface`, `status` (`correct`/`wrong`), `attempts_used`, `hints_used` | completion |
+| `daily_completed` | Terminal outcome of `play_daily` — either the correct guess, or the wrong guess that exhausts attempts (`attempts_left == 0`) | server | fires **exactly once per user per day**: `begin_guess_attempt` refuses any further attempt once the day is closed for that user, so the terminal branch cannot re-run | `surface`, `status` (`correct`/`wrong`), `attempts_used`, `hints_used`, `difficulty_band` (`easy`/`medium`/`hard`/`impossible`, the band the Daily was played at) | completion |
 | `daily_archive_viewed` | `services/webapp_api.build_archive_challenge` (Mini App opens a specific past day) | server | not idempotency-sensitive (a view, not a completion) | `surface` | intent |
 | `daily_abandoned` | **Not implemented.** There is no reliable signal in the current code for "opened the Daily and never attempted it" versus "never opened it" — adding one would mean inventing a new tracked action, which the issue explicitly says not to do. | — | — | — | — |
 
@@ -693,9 +693,9 @@ and makes no network call — same fail-closed posture as `product_analytics.py`
   that — the per-area refusal events (`shop_purchase_refused`,
   `daily_guess_submitted{status=refused}`) already carry this information with real product
   context, so a separate bounded event would be redundant.
-- **#21 Difficulty** — `services/difficulty.py` has a difficulty *value* per challenge
-  (`challenge["difficulty"]`) but no stable, named "difficulty band" concept yet in the
-  codebase today. No `difficulty_band` property is invented, and none of the per-event
-  schemas in `EVENT_PROPERTIES`/`PROPERTY_VALIDATORS` (§7) include one; when #21 actually
-  defines a stable band concept, add a validator and the relevant event(s)' allowed-key
-  entry at that point, without any other taxonomy change.
+- **#21 Difficulty** — #21 defines the stable band concept (`DIFFICULTY_ORDER` in
+  `services/difficulty.py`, [difficolta.md §6](difficolta.md)). `difficulty_band` is
+  validated against those bands and allowed only on `daily_completed`, the one terminal
+  event per user per day, carrying the band the Daily was played at
+  (`challenge["difficulty"]`). No other taxonomy change. The predicted-vs-observed
+  comparison itself reads the Firestore counters on `daily_path`, not PostHog.

@@ -28,6 +28,7 @@ from services.difficulty import (
     compute_difficulty,
     compute_difficulty_score,
     points_for_difficulty,
+    predict_difficulty,
 )
 from services.player_pool import get_answer_aliases, get_player_by_id, load_config
 
@@ -176,6 +177,7 @@ def _daily_doc_for_player(player, difficulty=None, source="manual", keep=None):
         "player_id": player["id"],
         "correct_answers": get_answer_aliases(player),
         "difficulty": difficulty or compute_difficulty(player),
+        "difficulty_prediction": predict_difficulty(player),
         "career_path": player["career"],
         # il bonus gia' assegnato non si riapre da solo cambiando il giocatore: sarebbe un
         # secondo bonus per lo stesso giorno.

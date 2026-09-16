@@ -66,7 +66,7 @@ def firebase(monkeypatch):
     monkeypatch.setattr(guess_handler.firebase_service, "get_user_data", lambda uid: state["user"])
     monkeypatch.setattr(
         guess_handler.firebase_service, "register_daily_outcome",
-        lambda day, solved: calls.setdefault("outcomes", []).append((day, solved)),
+        lambda day, solved, **counters: calls.setdefault("outcomes", []).append((day, solved)),
     )
     monkeypatch.setattr(
         guess_handler.firebase_service, "record_daily_history",

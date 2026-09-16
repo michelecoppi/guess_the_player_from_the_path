@@ -41,7 +41,7 @@ which reach production only through a PR and deploy.
 | 🎊 Eventi (`events.py`) | Status, per-day content, missing days, participants ranking | Activate/deactivate, move dates, answers, bonus, delete, create manual event |
 | 👤 Utenti (`users.py`) | Leaderboards, search, full user sheet | Points, streak, language, notifications, reset today's attempts |
 | 🏆 Leghe (`leagues.py`) | Leagues, members, rankings | — |
-| 📚 Dataset (`dataset.py`) | Health, full player list with difficulty breakdown, single player, tuning | Popularity, verified, practice-only, career-stop league, difficulty weights (with preview of band changes) |
+| 📚 Dataset (`dataset.py`) | Health, full player list with difficulty breakdown, single player (0-100 score), tuning, predicted vs observed difficulty per closed Daily ([difficolta.md §6](difficolta.md)) | Popularity, verified, practice-only, career-stop league, difficulty weights (with preview of band changes) |
 | 🔎 Review giocatori (`player_review.py`) | Candidate queue with filters, validation findings, provenance/conflicts, duplicates, history | Edit, approve, reject, merge, mark source wrong, retry ingestion (see [player-data-pipeline.md](player-data-pipeline.md)) |
 | 🚫 Giocatori sospesi (`blocked.py`) | Blocked players | Block / unblock |
 | 👨‍👦 Coppie padre/figlio (`father_son.py`) | Saved pairs and their use | Delete (photos are added via the bot) |

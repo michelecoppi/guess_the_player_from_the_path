@@ -6,7 +6,7 @@ from google.api_core.exceptions import GoogleAPICallError
 
 from services import firebase_service
 from services.dates import ITALY_TZ, to_iso
-from services.difficulty import DIFFICULTY_ORDER, group_players_by_difficulty
+from services.difficulty import DIFFICULTY_ORDER, group_players_by_difficulty, predict_difficulty
 from services.player_pool import get_all_players, get_answer_aliases, load_config
 
 
@@ -54,6 +54,9 @@ def build_daily_path_doc(date_dt, recent_player_ids, rotation_index, blocked_ids
         "player_id": player["id"],
         "correct_answers": get_answer_aliases(player),
         "difficulty": difficulty,
+        # La previsione fotografata ora, con la taratura di oggi: e' il termine di paragone
+        # per com'e' andata davvero la giornata (services/difficulty_calibration.py).
+        "difficulty_prediction": predict_difficulty(player),
         "career_path": player["career"],
         "first_correct_user": False,
         "generated_at": datetime.now(ITALY_TZ),

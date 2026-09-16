@@ -1,6 +1,23 @@
+import hashlib
+import json
+
 from services.player_pool import load_config
 
 DIFFICULTY_ORDER = ["easy", "medium", "hard", "impossible"]
+
+# Il punteggio grezzo (0..21.5 con la taratura attuale) dipende dai pesi: cambiando un peso
+# cambia anche la scala, e "9.3" non si confronta piu' con "9.3" di un mese prima. La scala
+# 0-100 divide per il massimo che la taratura in vigore puo' produrre, cosi' resta leggibile
+# ("73/100") e confrontabile fra tarature diverse. I tetti di ogni addendo sono gli stessi di
+# `_score_components`.
+COMPONENT_CAPS = {
+    "popularity": 4,          # (5 - popularity), popularity 1..5
+    "minor_leagues": 1,       # media dei pesi di campionato, 0..1
+    "extra_countries": 3,     # paesi oltre i primi due, al massimo 3
+    "extra_teams": 5,         # squadre oltre le prime cinque, al massimo 5
+}
+DEFAULT_WEIGHTS = {"popularity": 4.0, "minor_leagues": 3.0, "extra_countries": 0.5, "extra_teams": 0.2}
+DEFAULT_THRESHOLDS = {"easy": 5, "medium": 9, "hard": 13}
 
 # Scala di notorieta' usata in tutto il dataset. La definizione discorsiva, con gli esempi
 # e i criteri per assegnarla, sta in docs/difficolta.md: e' il documento di riferimento,
@@ -68,11 +85,14 @@ def _score_components(player, config=None):
         else 0.0
     )
 
+    caps = COMPONENT_CAPS
     components = {
-        "popularity": (POPULARITY_MAX - popularity) * weights.get("popularity", 4.0),
-        "minor_leagues": league_obscurity * weights.get("minor_leagues", 3.0),
-        "extra_countries": min(max(len(countries) - 2, 0), 3) * weights.get("extra_countries", 0.5),
-        "extra_teams": min(max(len(career) - 5, 0), 5) * weights.get("extra_teams", 0.2),
+        "popularity": (POPULARITY_MAX - popularity) * weights.get("popularity", DEFAULT_WEIGHTS["popularity"]),
+        "minor_leagues": league_obscurity * weights.get("minor_leagues", DEFAULT_WEIGHTS["minor_leagues"]),
+        "extra_countries": min(max(len(countries) - 2, 0), caps["extra_countries"])
+        * weights.get("extra_countries", DEFAULT_WEIGHTS["extra_countries"]),
+        "extra_teams": min(max(len(career) - 5, 0), caps["extra_teams"])
+        * weights.get("extra_teams", DEFAULT_WEIGHTS["extra_teams"]),
     }
     return components, league_obscurity, countries
 
@@ -87,7 +107,7 @@ def compute_difficulty_score(player, config=None):
 
 def bucket_for_score(score, thresholds=None, config=None):
     config = config or load_config()
-    thresholds = thresholds or config.get("difficulty_thresholds", {"easy": 5, "medium": 9, "hard": 13})
+    thresholds = thresholds or config.get("difficulty_thresholds", DEFAULT_THRESHOLDS)
 
     if score < thresholds["easy"]:
         return "easy"
@@ -102,6 +122,65 @@ def compute_difficulty(player, config=None):
     return bucket_for_score(compute_difficulty_score(player, config=config), config=config)
 
 
+def max_raw_score(config=None):
+    """Il punteggio grezzo piu' alto che la taratura in vigore puo' produrre."""
+    config = config or load_config()
+    weights = config.get("difficulty_weights", {})
+    return sum(cap * weights.get(key, DEFAULT_WEIGHTS[key]) for key, cap in COMPONENT_CAPS.items())
+
+
+def to_score_100(raw_score, config=None):
+    """Punteggio grezzo -> scala 0-100 (una cifra decimale). 0 se la taratura azzera tutto."""
+    top = max_raw_score(config)
+    if top <= 0:
+        return 0.0
+    return round(min(max(raw_score / top, 0.0), 1.0) * 100, 1)
+
+
+def band_cutoffs_100(config=None):
+    """Le soglie delle fasce riportate sulla scala 0-100: servono solo a leggerle, le fasce si
+    decidono sempre sul grezzo (`bucket_for_score`), cosi' la scala non introduce arrotondamenti."""
+    config = config or load_config()
+    thresholds = config.get("difficulty_thresholds", DEFAULT_THRESHOLDS)
+    return {level: to_score_100(thresholds[level], config) for level in ("easy", "medium", "hard")}
+
+
+def model_fingerprint(config=None):
+    """Impronta breve della taratura che ha prodotto una previsione.
+
+    Due previsioni con la stessa impronta sono state calcolate con gli stessi pesi, soglie e
+    liste di campionati: e' cio' che permette di dire, rileggendo lo storico, se una sfida di
+    tre mesi fa va confrontata con le altre o se nel frattempo la formula e' cambiata."""
+    config = config or load_config()
+    relevant = {
+        "weights": {key: float(config.get("difficulty_weights", {}).get(key, DEFAULT_WEIGHTS[key]))
+                    for key in COMPONENT_CAPS},
+        "thresholds": {key: float(value) for key, value in
+                       config.get("difficulty_thresholds", DEFAULT_THRESHOLDS).items()},
+        "top_leagues": sorted(config.get("top_leagues", [])),
+        "known_leagues": sorted(config.get("known_leagues", [])),
+    }
+    digest = hashlib.sha256(json.dumps(relevant, sort_keys=True).encode("utf-8")).hexdigest()
+    return digest[:10]
+
+
+def predict_difficulty(player, config=None):
+    """La previsione da fotografare sul documento della sfida (`daily_path.difficulty_prediction`).
+
+    Si salva al momento della generazione perche' dataset e taratura cambiano: senza la foto,
+    confrontare la previsione con com'e' andata davvero vorrebbe dire confrontare la giornata
+    di mesi fa con la formula di oggi. La fascia qui e' quella **calcolata**: `difficulty` sul
+    documento puo' differire se l'admin l'ha corretta a mano, ed e' giusto che resti visibile."""
+    config = config or load_config()
+    raw = compute_difficulty_score(player, config=config)
+    return {
+        "score": to_score_100(raw, config),
+        "raw_score": round(raw, 3),
+        "band": bucket_for_score(raw, config=config),
+        "model": model_fingerprint(config),
+    }
+
+
 def explain_difficulty(player, config=None):
     """Scompone il punteggio nei suoi quattro addendi.
 
@@ -109,11 +188,13 @@ def explain_difficulty(player, config=None):
     impossibile?"): mostra subito se a pesare e' la notorieta' o il percorso, senza dover
     rifare i conti a mano. La procedura completa e' in docs/difficolta.md, sezione 5.
     """
+    config = config or load_config()
     career = player.get("career", [])
     components, league_obscurity, countries = _score_components(player, config=config)
     score = sum(components.values())
     return {
         "score": score,
+        "score_100": to_score_100(score, config),
         "difficulty": bucket_for_score(score, config=config),
         "components": components,
         "popularity": player.get("popularity", DEFAULT_POPULARITY),

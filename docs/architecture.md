@@ -139,7 +139,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Daily challenge, Archive | `services/daily_generator.py`, `services/daily_challenge.py`, `services/game.py`, `services/past_challenges.py`, `handlers/guess_handler.py`, `handlers/archive_handler.py` | [game-modes.md](game-modes.md) |
 | Training, Arena duels, group rounds | `services/arena.py`, `services/practice_content.py`, `handlers/training_handler.py`, `handlers/group_handler.py` | [game-modes.md](game-modes.md) |
 | Events | `services/event_generator.py`, `services/event_rules.py`, `services/app_events.py`, `services/manual_event_service.py`, `handlers/events_handler.py` | [game-modes.md](game-modes.md#events) |
-| Difficulty | `services/difficulty.py`, `data/config.json` | [difficolta.md](difficolta.md) |
+| Difficulty | `services/difficulty.py`, `services/difficulty_calibration.py`, `data/config.json` | [difficolta.md](difficolta.md) |
 | Leaderboard, seasons, private leagues | `services/repos/users.py`, `services/repos/seasons.py`, `services/leagues.py`, `services/monthly_closure.py`, `handlers/top_users_handler.py`, `handlers/league_handler.py` | [game-modes.md](game-modes.md#leaderboards-seasons-and-leagues) |
 | Shop, cosmetics, trophies | `services/shop.py`, `data/shop.json`, `services/trophies.py`, `handlers/shop_handler.py` | README “Negozio”, [miniapp-appearance.md](miniapp-appearance.md) |
 | Referral | `services/referrals.py`, `/app/api/referrals` | README “Mini app”, [game-modes.md](game-modes.md#referral) |
@@ -177,7 +177,7 @@ code does not restore data.
 | Issue | Topic | Status of the capability today |
 | --- | --- | --- |
 | [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20) / [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49) / [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50) | Release management, backup recovery | Versioning/checklist (#49) and validated weekly backup with emulator-verified restore (#50) exist; adoption of tagged releases is opt-in |
-| [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Rule-based difficulty from popularity + career path |
+| [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Implemented: rule-based prediction (0-100 score, bands) snapshotted on each Daily and compared with observed completion/attempts in Admin “Dataset” ([difficolta.md §6](difficolta.md)); weights are recalibrated by hand from that comparison |
 | [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Operational flags implemented (#51, [feature-flags.md](feature-flags.md)); experiments/variants (#52) not implemented |
 | [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25) | Dataset Health dashboard | A health report exists (`services/dataset_health.py`, `/admin_pool`, Admin “Dataset”); the dedicated dashboard does not |
 | [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Layered layout described in §3 |

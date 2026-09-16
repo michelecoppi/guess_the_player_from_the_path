@@ -390,3 +390,10 @@ def test_unknown_event_code_is_a_readable_error(fake_db):
     with pytest.raises(ContentAdminError) as excinfo:
         content_admin.set_event_active("non_esiste", False)
     assert "non_esiste" in str(excinfo.value)
+
+
+def test_a_manual_challenge_also_photographs_the_prediction(fake_db):
+    content_admin.set_daily_player(TODAY, "jankto")
+    prediction = fake_db["daily"][TODAY]["difficulty_prediction"]
+    assert prediction["band"] == "hard"
+    assert prediction["band"] == fake_db["daily"][TODAY]["difficulty"]

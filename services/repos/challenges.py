@@ -67,7 +67,7 @@ def claim_daily_first_correct(day_iso):
     return _claim(fs.db.transaction())
 
 
-def register_daily_outcome(day_iso, solved):
+def register_daily_outcome(day_iso, solved, attempts=None, hints=None):
     """Tiene il conto di quanti hanno **giocato** e quanti hanno **indovinato** una giornata.
 
     Serve alla riga "l'ha indovinato il 41%" che compare nella soluzione e nel messaggio di
@@ -81,12 +81,22 @@ def register_daily_outcome(day_iso, solved):
     sta la sfida, e vale per sempre.
 
     `solved=None` conta solo il giocatore (primo tentativo della giornata), `solved=True`
-    conta anche la risposta giusta. Sono due `Increment`: nessuna lettura, e due risposte
-    nello stesso istante non si sovrascrivono."""
+    conta anche la risposta giusta. Sono tutti `Increment`: nessuna lettura, e due risposte
+    nello stesso istante non si sovrascrivono.
+
+    Con la risposta giusta si sommano anche `attempts` e `hints` di chi ha indovinato
+    (`solved_attempts_total`, `solved_hints_total`): divisi per `solved_count` danno i
+    tentativi e gli indizi medi, cioe' la difficolta' **osservata** che
+    `services/difficulty_calibration.py` confronta con quella prevista (#21). Le giornate
+    precedenti a questi due contatori hanno solo la percentuale."""
     from services import firebase_service as fs
     fields = {}
     if solved:
         fields["solved_count"] = firestore.Increment(1)
+        if attempts:
+            fields["solved_attempts_total"] = firestore.Increment(int(attempts))
+        if hints is not None:
+            fields["solved_hints_total"] = firestore.Increment(int(hints))
     else:
         fields["players_count"] = firestore.Increment(1)
     try:
