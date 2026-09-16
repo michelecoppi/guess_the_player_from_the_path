@@ -1,6 +1,7 @@
 """Localized event cards and transactional mini app event attempts."""
 from firebase_admin import firestore
 
+from services import event_config
 from services import firebase_service as fs
 from services.arena import ArenaError
 from services.career_order import order_career
@@ -11,10 +12,10 @@ from services.guess_feedback import build_comparison
 from services.i18n import content_text, t
 
 
-def _progress(participant, day):
+def _progress(participant, day, max_attempts):
     same = normalize_day(participant.get("last_played_day")) == day
     return {"attempts": participant.get("daily_attempts", 0) if same else 0,
-            "finished": bool(same and (participant.get("has_guessed_today") or participant.get("daily_attempts", 0) >= 3)),
+            "finished": bool(same and (participant.get("has_guessed_today") or participant.get("daily_attempts", 0) >= max_attempts)),
             "solved": bool(same and participant.get("has_guessed_today")),
             "points": participant.get("points", 0)}
 
@@ -25,6 +26,7 @@ def list_events(user_id, lang):
     for event in fs.get_active_events(day):
         data = (event.get("daily_data") or {}).get(day) or {}
         kind = event.get("type", "path")
+        max_attempts = event_config.event_rules(event)["attempts"]
         participant = fs.get_event_participant(event["code"], user_id) or {}
         cards.append({
             "code": event["code"], "day": day, "type": kind,
@@ -32,12 +34,15 @@ def list_events(user_id, lang):
             "description": content_text(event, "description", lang),
             "dates": event.get("dates", []), "available": bool(data),
             "rules": t(lang, "app.event." + kind if kind in ("path", "career", "father_son", "transfer_guess") else "app.event.default"),
-            "player_name": data.get("player_name", "") if kind == "career" else "",
-            "min_correct": data.get("min_correct", len(data.get("correct_answers", []))) if kind == "career" else 1,
+            "player_name": data.get("player_name", "") if event_config.is_multi_answer(kind) else "",
+            "min_correct": data.get("min_correct", len(data.get("correct_answers", []))) if event_config.is_multi_answer(kind) else 1,
             "career_path": localize_career(order_career(data.get("career_path")), lang),
             "image_url": data.get("image_url") if not data.get("career_path") else None,
-            "points": data.get("points", 1), "bonus_available": not data.get("first_correct_user", False),
-            "progress": _progress(participant, day),
+            "points": data.get("points", 1),
+            "bonus_available": event_config.event_rewards(event)["first_correct_bonus"] > 0
+            and not data.get("first_correct_user", False),
+            "max_attempts": max_attempts,
+            "progress": _progress(participant, day, max_attempts),
             "leaderboard": [{"name": row.get("name", "?"), "points": row.get("points", 0)}
                             for row in fs.get_event_leaderboard(event["code"], limit=10)],
         })
@@ -63,16 +68,18 @@ def guess(user_id, name, code, day, answer, revision):
         data = (event.get("daily_data") or {}).get(day)
         if day not in event.get("dates", []) or not data:
             raise ArenaError("expired")
-        progress = _progress(player, day)
+        max_attempts = event_config.event_rules(event)["attempts"]
+        progress = _progress(player, day, max_attempts)
         if type(revision) is not int or revision != progress["attempts"]:
             raise ArenaError("stale")
         if progress["finished"]:
             raise ArenaError("finished")
         kind = event.get("type", "path")
-        if kind == "career" and len([p for p in answer.split(",") if p.strip()]) > 5:
+        if event_config.is_multi_answer(kind) and len([p for p in answer.split(",") if p.strip()]) > event_config.MAX_ANSWERS_PER_ATTEMPT:
             raise ArenaError("max_answers")
         correct, matched, _ = evaluate_event_guess(kind, answer.strip().lower(), data)
-        bonus = int(correct and not data.get("first_correct_user"))
+        bonus_value = event_config.event_rewards(event)["first_correct_bonus"]
+        bonus = bonus_value if correct and bonus_value > 0 and not data.get("first_correct_user") else 0
         points = data.get("points", 1) + bonus if correct else 0
         transaction.set(player_ref, {"telegram_id": user_id, "name": name,
                                     "last_played_day": day, "daily_attempts": progress["attempts"] + 1,
@@ -80,5 +87,5 @@ def guess(user_id, name, code, day, answer, revision):
         if bonus:
             transaction.update(event_ref, {f"daily_data.{day}.first_correct_user": True})
         return {"status": "correct" if correct else "wrong", "points": points, "matched": matched,
-                "comparison": build_comparison(answer, data.get("player_id")) if not correct and kind in ("path", "transfer_guess") else None}
+                "comparison": build_comparison(answer, data.get("player_id")) if not correct and event_config.answers_with_player(kind) else None}
     return commit(fs.db.transaction())

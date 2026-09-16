@@ -17,10 +17,9 @@ si vuole decidere quando parte invece di aspettare la rotazione.
 import logging
 from datetime import datetime, timedelta
 
-from services import firebase_service
+from services import event_config, firebase_service
 from services.dates import ITALY_TZ, to_iso
-from services.event_generator import build_event_doc, load_templates
-from services.player_pool import load_config
+from services.event_generator import build_event_doc, event_doc_base, load_templates, overlapping_event
 
 
 class ManualEventError(Exception):
@@ -45,7 +44,7 @@ def get_template(template_id):
         if template["id"] == template_id:
             return template
     raise ManualEventError(
-        f"Template '{template_id}' inesistente. Disponibili: "
+        f"Template '{template_id}' inesistente o non valido. Disponibili: "
         + ", ".join(t["id"] for t in load_templates())
     )
 
@@ -59,10 +58,11 @@ def build_father_son_event(pairs, start_date, template, duration_days=None):
             "/admin_fs_add <risposte accettate separate da virgola>."
         )
 
-    requested = duration_days or template.get("duration_days", 4)
+    template = event_config.resolved(template)
+    requested = duration_days or template["duration_days"]
     days = min(requested, len(pairs))
     dates = [to_iso(start_date + timedelta(days=i)) for i in range(days)]
-    points_per_day = template.get("points_per_day", 1)
+    points_per_day = template["rewards"]["points_per_day"]
 
     daily_data = {}
     used_pair_ids = []
@@ -82,23 +82,7 @@ def build_father_son_event(pairs, start_date, template, duration_days=None):
         used_pair_ids.append(pair.get("id"))
 
     code = f"{template['id']}_{start_date.strftime('%Y%m%d')}"
-    doc = {
-        "template_id": template["id"],
-        "name": template["name"],
-        "description": template["description"],
-        "name_i18n": template.get("name_i18n", {}),
-        "description_i18n": template.get("description_i18n", {}),
-        "type": template["type"],
-        "category": template.get("category"),
-        "difficulty": template.get("difficulty"),
-        "dates": dates,
-        "daily_data": daily_data,
-        "trophy_day": dates[-1],
-        "generated_at": datetime.now(ITALY_TZ),
-        "source": "manual",
-        "active": True,
-    }
-    return code, doc, used_pair_ids
+    return code, event_doc_base(template, dates, daily_data, "manual"), used_pair_ids
 
 
 def create_manual_event(template_id, start_date=None, duration_days=None, allow_overlap=False):
@@ -106,12 +90,11 @@ def create_manual_event(template_id, start_date=None, duration_days=None, allow_
     start_date = start_date or datetime.now(ITALY_TZ)
     template = get_template(template_id)
 
-    if template["type"] == "father_son":
+    if event_config.EVENT_TYPES[template["type"]]["content"] == "father_son_pairs":
         pairs = firebase_service.list_father_son_pairs(only_unused=True)
         code, doc, used_pair_ids = build_father_son_event(pairs, start_date, template, duration_days)
     else:
-        code, doc = build_event_doc(template, start_date)
-        doc["source"] = "manual"
+        code, doc = build_event_doc(template, start_date, source="manual")
         used_pair_ids = []
         if not doc["daily_data"]:
             raise ManualEventError(
@@ -121,14 +104,14 @@ def create_manual_event(template_id, start_date=None, duration_days=None, allow_
             # taglia o rifiuta: meglio essere espliciti che generare giorni senza contenuto
             raise ManualEventError(
                 "La durata personalizzata e' supportata solo per gli eventi manuali padre/figlio; "
-                f"'{template_id}' usa la durata del template ({template.get('duration_days')} giorni)."
+                f"'{template_id}' usa la durata del template ({template['duration_days']} giorni)."
             )
 
     if firebase_service.event_exists(code):
         raise ManualEventError(f"Esiste gia' un evento con codice '{code}' (stesso template e stessa data di inizio).")
 
     if not allow_overlap:
-        overlapping = _overlapping_event(doc["dates"], code)
+        overlapping = overlapping_event(doc["dates"], code)
         if overlapping:
             raise ManualEventError(
                 f"L'evento si sovrappone a '{overlapping}'. Scegli una data di inizio successiva "
@@ -150,17 +133,6 @@ def create_manual_event(template_id, start_date=None, duration_days=None, allow_
     }
 
 
-def _overlapping_event(dates, own_code):
-    """Due eventi contemporaneamente attivi si contenderebbero /events: si controlla la
-    sovrapposizione sulle date del nuovo evento, non solo su oggi, cosi' si puo' programmare
-    un evento futuro mentre uno e' in corso."""
-    for day in dates:
-        for event in firebase_service.get_active_events(day):
-            if event.get("code") != own_code:
-                return event.get("name") or event.get("code")
-    return None
-
-
 def parse_start_date(text):
     """Accetta gg/mm/aa (lo stesso formato usato in tutto il bot) e ritorna una data
     nel fuso italiano; senza argomento, oggi."""
@@ -171,7 +143,3 @@ def parse_start_date(text):
     except ValueError:
         raise ManualEventError(f"Data '{text}' non valida: usa il formato gg/mm/aa (es. 01/12/26).")
     return naive.replace(tzinfo=ITALY_TZ)
-
-
-def default_event_duration():
-    return load_config().get("event_default_duration_days", 5)

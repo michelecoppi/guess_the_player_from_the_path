@@ -29,7 +29,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `users/{id}/history/{day}` | ISO day | One result per finished daily challenge (calendar) |
 | `users/{id}/archive/{day}` | ISO day | Archive replay results |
 | `daily_path/{day}` | ISO day | Daily challenge content, accepted answers, difficulty, `difficulty_prediction` snapshot, `planner_audit` (planned days), first-solver bonus state, `players_count`/`solved_count`/`solved_attempts_total`/`solved_hints_total` ([difficolta.md §6](difficolta.md)) |
-| `events/{code}` | event code | Event definition and per-day `daily_data` |
+| `events/{code}` | event code | Event definition copied from its template (texts, type, `rules`, `rewards`) and per-day `daily_data` ([event-templates.md](event-templates.md)) |
 | `events/{code}/participants/{telegram_id}` | user id | Event points and attempts |
 | `seasons/{id}` | season | Monthly seasons |
 | `leagues/{code}` and `leagues/{code}/members/{telegram_id}` | invite code / user id | Private leagues and member points |

@@ -7,6 +7,7 @@ non hanno abbastanza candidati.
 
 Usato da `scripts/dataset_report.py` (CI e riga di comando) e dal comando Telegram /admin_pool.
 """
+from services import event_config
 from services.difficulty import DIFFICULTY_ORDER, compute_difficulty
 from services.player_pool import (
     _load_raw_players,
@@ -23,6 +24,17 @@ def _load_templates():
     from services.event_generator import load_templates
 
     return load_templates()
+
+
+def _template_errors():
+    """Gli errori di schema di data/event_templates.json, una riga per errore (#31)."""
+    from services.event_generator import load_payload
+
+    return [
+        f"template '{key}': {error}"
+        for key, errors in event_config.validate_payload(load_payload()).items()
+        for error in errors
+    ]
 
 
 def unclassified_leagues(players, config):
@@ -72,16 +84,20 @@ def build_report(exclude_ids=None):
 
     templates = []
     for template in _load_templates():
-        candidates = filter_players(selectable, template.get("rules", {}))
-        duration = template.get("duration_days", config.get("event_default_duration_days", 5))
+        manual = event_config.is_manual(template)
+        uses_dataset = event_config.uses_dataset(template["type"])
+        candidates = filter_players(selectable, template["filters"]) if uses_dataset else []
+        duration = template["duration_days"]
         templates.append({
             "id": template["id"],
             "name": template["name"],
-            "manual_only": bool(template.get("manual_only")),
+            "manual_only": manual,
+            "schedule": event_config.schedule_label(template),
             "candidates": len(candidates),
             "duration_days": duration,
-            "ok": template.get("manual_only") or len(candidates) >= duration,
+            "ok": manual or not uses_dataset or len(candidates) >= duration,
         })
+    template_errors = _template_errors()
 
     dataset_problems = validate_dataset(raw_players, config=config)
     unclassified = unclassified_leagues(raw_players, config)
@@ -133,6 +149,7 @@ def build_report(exclude_ids=None):
         "autonomy_days": len(selectable),
         "by_difficulty": by_difficulty,
         "templates": templates,
+        "template_problems": template_errors,
         "dataset_problems": dataset_problems,
         "warnings": warnings,
     }
@@ -158,7 +175,15 @@ def format_report_text(report):
     lines.append("Eventi tematici:")
     for template in report["templates"]:
         flag = "manuale" if template["manual_only"] else ("ok" if template["ok"] else "POCHI CANDIDATI")
-        lines.append(f"  {template['id']}: {template['candidates']} candidati / {template['duration_days']} giorni [{flag}]")
+        lines.append(
+            f"  {template['id']}: {template['candidates']} candidati / {template['duration_days']} giorni "
+            f"[{flag}] - {template['schedule']}"
+        )
+    if report["template_problems"]:
+        lines.append("")
+        lines.append("Template evento non validi (non partiranno):")
+        for problem in report["template_problems"]:
+            lines.append(f"  - {problem}")
 
     if report["warnings"]:
         lines.append("")

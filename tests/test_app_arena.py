@@ -364,3 +364,18 @@ def test_list_duels_shows_pending_and_active_and_drops_recorded_matches(emulator
     listing = arena.list_duels(1)
     assert {row["code"] for row in listing["open"]} == {pending, active}
     assert listing["ledger"]["matches"][0]["code"] == finished
+
+
+def test_event_attempts_and_bonus_come_from_the_event_document(store, event):
+    """#31: tentativi e bonus del primo sono copiati dal template sul documento evento."""
+    store["events/week"]["rules"] = {"attempts": 5}
+    store["events/week"]["rewards"] = {"first_correct_bonus": 0}
+    card = app_events.list_events(1, "en")["events"][0]
+    assert card["max_attempts"] == 5
+    assert card["bonus_available"] is False
+    for revision in range(4):
+        app_events.guess(1, "Anna", "week", event, "Lionel Messi", revision)
+    assert not app_events.list_events(1, "en")["events"][0]["progress"]["finished"]
+    result = app_events.guess(1, "Anna", "week", event, "Paolo Maldini", 4)
+    assert result["points"] == 2  # niente bonus: il template lo ha messo a 0
+    assert "first_correct_user" not in store["events/week"]["daily_data"][event]

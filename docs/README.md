@@ -30,6 +30,7 @@ English. Both are equally authoritative when listed as primary below.
 | Player data pipeline | [player-data-pipeline.md](player-data-pipeline.md) | Production dataset invariant, legacy import, Candidate pipeline FSM, approval boundary, SOURCE_WRONG/retry, #13 audit |
 | Provenance | [provenance.md](provenance.md) | Field-level lineage model and public/internal boundary |
 | Difficulty and popularity | [difficolta.md](difficolta.md) | Popularity scale, difficulty formula, checklist before adding players |
+| Event templates | [event-templates.md](event-templates.md) | Template schema v2 (filters, rules, rewards, schedule), event types, validation in CI/Admin/runtime, what is copied onto an event, creating or editing a template |
 | Daily and game modes | [game-modes.md](game-modes.md) | Daily lifecycle, Archive, Training, Arena duels, group rounds, Events, leaderboards/leagues, referral |
 | Player-facing rules and commands | [README](../README.md) | How to play, commands, shop, dataset schema, admin commands |
 | Mini App | [miniapp.md](miniapp.md) | Legacy `/app` vs V2 `/app/v2`, API contract and auth, V2 structure, rollout gate (#81) |

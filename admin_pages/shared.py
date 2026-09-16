@@ -13,6 +13,8 @@ from services import content_admin as content_admin
 from services import daily_planner as daily_planner
 from services import dataset_editor as dataset_editor
 from services import difficulty_calibration, observability
+from services import event_config as event_config
+from services import event_template_editor as event_template_editor
 from services import firebase_service as firebase_service
 from services import product_analytics_query as product_analytics_query
 from services import referrals as referrals
@@ -108,6 +110,8 @@ def guarded(action, success_message):
     except DatasetEditError as e:
         st.error(str(e))
     except ShopEditError as e:
+        st.error(str(e))
+    except event_template_editor.TemplateEditError as e:
         st.error(str(e))
     except daily_planner.PlannerError as e:
         st.error(str(e))

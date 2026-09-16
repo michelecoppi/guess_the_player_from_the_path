@@ -7,8 +7,9 @@ import type { CareerStop } from "@/components/CareerPath";
 import type { DailyComparison } from "@/features/daily/types";
 
 /**
- * Canonical Event daily attempts limit enforced by the backend in services/app_events.py:
- * `participant.get("daily_attempts", 0) >= 3`.
+ * Fallback daily attempts limit for events served before #31. The authoritative value is
+ * `EventCard.max_attempts`, copied from the event template (`rules.attempts`) and enforced
+ * by the backend in services/app_events.py.
  */
 export const EVENT_MAX_ATTEMPTS = 3;
 
@@ -56,6 +57,8 @@ export interface EventCard {
   image_url: string | null;
   points: number;
   bonus_available: boolean;
+  /** Attempts per day for this event (`rules.attempts` of its template). */
+  max_attempts?: number;
   progress: EventProgress;
   leaderboard: EventLeaderboardRow[];
 }

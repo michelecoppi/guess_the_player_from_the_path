@@ -149,3 +149,37 @@ def test_leaderboard_message_uses_the_participants_query():
     assert "Anna" in message and "Bruno" in message
 
     assert "Nessun partecipante" in events_handler.get_event_leaderboard_message([])
+
+
+def test_attempts_and_bonus_follow_the_event_template(firebase):
+    """#31: un evento con 5 tentativi e senza bonus del primo, in chat."""
+    event = path_event()
+    event["rules"] = {"attempts": 5}
+    event["rewards"] = {"first_correct_bonus": 0}
+    max_attempts_seen = []
+    original = events_handler.firebase_service.begin_event_attempt
+
+    def begin(code, user_id, name, day, max_attempts):
+        max_attempts_seen.append(max_attempts)
+        return original(code, user_id, name, day, max_attempts)
+
+    events_handler.firebase_service.begin_event_attempt = begin
+    try:
+        update, message = make_update()
+        asyncio.run(events_handler.process_event_guess(update, SimpleNamespace(args=["messi"], user_data={}), event))
+    finally:
+        events_handler.firebase_service.begin_event_attempt = original
+
+    assert max_attempts_seen == [5]
+    assert firebase.calls["registered"][0]["points"] == 2  # nessun bonus
+    assert firebase.state["first_free"] is True  # il bonus non viene nemmeno reclamato
+    text, _ = events_handler.get_today_player_message(event, "it")
+    assert "5" in text
+
+
+def test_a_wrong_answer_reports_the_template_attempts(firebase):
+    event = path_event()
+    event["rules"] = {"attempts": 7}
+    update, message = make_update()
+    asyncio.run(events_handler.process_event_guess(update, SimpleNamespace(args=["totti"], user_data={}), event))
+    assert "7" in message.replies[0]

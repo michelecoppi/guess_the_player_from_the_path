@@ -146,7 +146,7 @@ export function renderEventsPage(controller: EventsController): string {
     ? `<img class="event-image" src="${escapeHtml(event.image_url)}" alt="${escapeHtml(t("events.imageAlt", { name: event.name }))}" referrerpolicy="no-referrer">`
     : "";
 
-  const remaining = Math.max(0, EVENT_MAX_ATTEMPTS - event.progress.attempts);
+  const remaining = Math.max(0, (event.max_attempts ?? EVENT_MAX_ATTEMPTS) - event.progress.attempts);
 
   // Type-specific hint / guidance
   let hintHtml = "";
