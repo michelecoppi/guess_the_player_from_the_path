@@ -64,6 +64,12 @@ new dated section below.
   from Cloud Logging, with the first production baseline in `docs/performance-baselines/`
   ([#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32),
   [performance.md](docs/performance.md)).
+- Domain map and dependency boundaries: every Python module assigned to a composition root,
+  app, domain or infrastructure in `tools/architecture.py`, with the dependency rules checked
+  in CI on the real import graph and existing violations recorded as explicit debt
+  (`python -m tools.dev architecture`)
+  ([#109](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/109),
+  [architecture.md](docs/architecture.md#3-composition-root-and-domain-boundaries)).
 
 ### Changed
 

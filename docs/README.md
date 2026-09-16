@@ -22,7 +22,7 @@ English. Both are equally authoritative when listed as primary below.
 
 | Topic | Primary document | Covers |
 | --- | --- | --- |
-| Architecture | [architecture.md](architecture.md) | Components, responsibility boundaries, composition root, who reads/writes what, deployment topology summary, roadmap items that change the picture |
+| Architecture | [architecture.md](architecture.md) | Components, responsibility boundaries, composition root, domain map and enforced dependency rules (`tools/architecture.py`), who reads/writes what, deployment topology summary, roadmap items that change the picture |
 | Agent process | [agent-protocol.md](agent-protocol.md) | Never trust stale state, choosing work, work sequence, parallel agents, documentation update policy, decision traceability |
 | GitHub / product workflow | [evolutive-tracking.md](evolutive-tracking.md) | Project #2 fields, status flow, WIP limit, creating/splitting issues, dependency modeling, roadmap index |
 | Git mechanics | [github-workflow.md](github-workflow.md) | Branch naming, commits, `Closes`/`Refs`, review, merge, templates |

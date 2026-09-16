@@ -154,6 +154,12 @@ def cmd_perf_report(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
+def cmd_architecture(extra_args: list[str]) -> int:
+    """Mappa dei domini e confini di dipendenza (#28): stato, debito e violazioni."""
+    cmd = [sys.executable, "-m", "tools.architecture"] + extra_args
+    return _run_cmd(cmd)
+
+
 def _npm_cmd() -> str:
     import shutil
     return shutil.which("npm") or "npm"
@@ -321,6 +327,7 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "release-version": (cmd_release_version, "Stampa la versione corrente dell'applicazione (file VERSION)"),
     "release-check": (cmd_release_check, "Verifica coerenza VERSION/CHANGELOG.md prima di un rilascio (sola lettura)"),
     "release-notes": (cmd_release_notes, "Stampa le note di release da CHANGELOG.md (default: Unreleased)"),
+    "architecture": (cmd_architecture, "Mappa dei domini e confini di dipendenza: debito e violazioni (--graph, --module)"),
     "perf-report": (cmd_perf_report, "Baseline e trend delle prestazioni dai log Cloud Logging (sola lettura, --fetch o --input)"),
 }
 

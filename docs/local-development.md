@@ -99,6 +99,7 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | `make dataset-check` | `python -m tools.dev dataset-check`<br>`.\dev.ps1 dataset-check` | Controlla integrità e salute del dataset calciatori (`scripts/dataset_report.py --strict`) |
 | — | `python -m tools.dev dataset-regression-check` | Verifica che le metriche del dataset non peggiorino rispetto a `data/dataset_baseline.json` |
 | — | `python -m tools.dev dataset-baseline-update` | Aggiorna la baseline: modifica da committare esplicitamente e motivare nella PR |
+| — | `python -m tools.dev architecture` | Mappa dei domini e confini di dipendenza (#28): componenti, debito registrato, violazioni; `--graph`, `--module <modulo>` (vedi [architecture.md § 3](architecture.md#3-composition-root-and-domain-boundaries)) |
 | — | `python -m tools.dev perf-report --fetch --days 7` | Report di baseline/trend delle prestazioni dai log Cloud Logging (sola lettura; `--input`, `--save`, `--compare`, vedi [performance.md](performance.md)) |
 | — | `python -m tools.dev security-check` | Audit di sicurezza come in CI: pip-audit, detect-secrets, npm audit (vedi [security.md](security.md)) |
 | `make check` | `python -m tools.dev check`<br>`.\dev.ps1 check` | Esegue la **suite standard di validazione locale**: ambiente, sintassi, ruff, mypy, typecheck/build/test frontend, test client legacy, integrità e regressione dataset, pytest |

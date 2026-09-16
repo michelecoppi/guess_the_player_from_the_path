@@ -66,30 +66,94 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 | Tooling | [`tools/`](../tools/), [`Makefile`](../Makefile), [`dev.ps1`](../dev.ps1) | Environment validator, dev runner, security audit |
 | CI/CD | [`.github/workflows/`](../.github/workflows/) | See [ci_cd_pipeline.md](ci_cd_pipeline.md) and [deploy.md](deploy.md) |
 
-## 3. Composition root and service boundaries
+## 3. Composition root and domain boundaries
 
 **Current state.**
 
 - `bot.py` is the single process entrypoint (`CMD ["python", "bot.py"]`). It is a
   composition root *and* an HTTP adapter: route functions authenticate, rate-limit and
   delegate, but some small behaviors are still inline (for example the `/app/api/arena`
-  mode dispatch and `/app/api/shop/look` delete branch).
+  mode dispatch and `/app/api/shop/look` delete branch). `admin_ui.py` is the composition
+  root of the Streamlit Admin.
 - Game rules shared by chat and Mini App live in services — `services/game.py` is used
   by both `handlers/guess_handler.py` and `/app/api/guess`, so there is one scoring
   implementation. The same holds for leagues (`services/leagues.py`) and the shop
   catalogue/prices (`services/shop.py`).
-- The code is organized by technical layer (`handlers/`, `services/`, `admin_pages/`),
-  not by domain. `services/` is a flat package of several dozen modules; `services/repos/` was
-  extracted from `firebase_service.py`, which still re-exports repository functions so
-  existing imports and test monkeypatches keep working. Handlers may call
-  `firebase_service` directly.
+- Files are still organized by technical layer (`handlers/`, `services/`, `admin_pages/`);
+  `services/` is a flat package. `services/repos/` was extracted from `firebase_service.py`,
+  which still re-exports repository functions so existing imports and test monkeypatches
+  keep working.
 - There is no dependency-injection container; modules import each other and tests
   replace collaborators with in-memory fakes or monkeypatching.
 
+### Domain map
+
+Every Python module belongs to exactly one component. The authoritative module → component
+map is [`tools/architecture.py`](../tools/architecture.py) (`COMPONENTS`); this table
+describes the components, not their files.
+
+| Kind | Component | Responsibility | Lives in today |
+| --- | --- | --- | --- |
+| Composition root | — | Build and wire an application; may import anything, imported by nothing | `bot.py`, `admin_ui.py` |
+| App | `bot` | Telegram adapters: commands, callbacks, payments, jobs triggered from chat | `handlers/` |
+| App | `api` | HTTP adapter: webhook, Cloud Tasks workers, Mini App API and its projections, `initData` auth, rate limiting | routes in `bot.py`; `services/webapp_api.py`, `webapp_auth.py`, `rate_limit.py`. The Mini App frontend (`webapp/`) is delivered by this app |
+| App | `admin` | Streamlit Admin pages | `admin_pages/` |
+| App | `scripts` | Operator command lines (imports, backups, migrations, previews) | `scripts/` |
+| App | `tools` | Developer tooling (dev runner, environment, release, security, reports, this check) | `tools/` |
+| Domain | `players` | Production dataset, player names and matching, career order, difficulty model, dataset health/regression, Candidate ingestion pipeline | `player_pool`, `matching`, `difficulty`, `dataset_*`, `candidate_*`, `adapters/`, `repos/candidates` |
+| Domain | `daily` | Daily Challenge lifecycle, generator and planner, archive, calibration, admin content | `daily_*`, `past_challenges`, `content_admin`, `repos/challenges`, `repos/archive`, `repos/admin` |
+| Domain | `analytics` | Product analytics (#29), not observability | `product_analytics*` |
+| Domain | `game` | Guessing and scoring, hints, guess feedback, Training and Arena, result card rendering | `game`, `hints`, `guess_feedback`, `arena`, `practice_content`, `path_image`, `share` |
+| Domain | `events` | Event templates, generation, rules, manual events, Mini App events | `event_*`, `manual_event_service`, `app_events`, `repos/events` |
+| Domain | `users` | User documents, streaks, leaderboards and seasons, monthly closure, trophies | `repos/users`, `repos/seasons`, `streak`, `monthly_closure`, `trophies` |
+| Domain | `shop` | Cosmetics catalogue, purchases, looks, shop editor | `shop`, `shop_editor`, `repos/shop` |
+| Domain | `referrals` | Referral links, qualification and rewards | `referrals` |
+| Domain | `groups` | Group rounds (rules still partly in `handlers/group_handler.py`) | `repos/groups` |
+| Domain | `leagues` | Private leagues | `leagues`, `repos/leagues` |
+| Infrastructure | — | Technical services without product rules: Firestore client and facade, feature flags, observability, performance, Cloud Tasks, receipts, backup, version, dates, i18n, fonts | `firebase_service`, `repos/bulk`, `repos/file_lock`, `feature_flags`, `observability`, `performance`, `task_queue`, `work_receipts`, `broadcast_store`, `alerts`, `backup_status`, `firestore_backup/`, `version`, `dates`, `i18n`, `content_i18n`, `fonts` |
+
+### Dependency rules
+
+Checked on the real import graph, imports inside functions included, by
+`tests/test_architecture_boundaries.py` (so in CI) and on demand with
+`python -m tools.dev architecture`:
+
+1. Nothing imports a composition root.
+2. Domains and infrastructure never import an app.
+3. An app never imports another app (`config` is shared configuration).
+4. Infrastructure never imports a domain.
+5. A domain imports another domain only along a declared edge, and the declared graph is
+   acyclic. Bottom to top: `players` → `daily`, `analytics` → `game` → `events` → `users` →
+   `shop` → `referrals`; `groups` and `leagues` depend on no other domain. An arrow reads
+   "is used by": `game` may import `players`, `daily` and `analytics`, never the reverse.
+
+Existing violations are recorded, with the reason, in `KNOWN_VIOLATIONS` instead of being
+hidden: the `firebase_service` compatibility facade over domain repositories, direct calls
+from the users/archive repositories into referral qualification and shop achievements
+(which should become hooks), the result card reading cosmetics, analytics validating shop
+item ids, the dataset health report checking event templates, and the local Mini App
+preview script. The check fails on a new violation and also when a recorded one disappears,
+so the list only shrinks. `python -m tools.dev architecture` prints the current debt.
+
+**Working with the map.**
+
+- A new module must be added to `COMPONENTS`, otherwise the test fails.
+- New domain logic goes into its domain, never into `bot.py`, handlers or Admin pages.
+- A new cross-domain import either follows a declared edge or is a design decision: add
+  the edge in the same PR only if it keeps the graph acyclic, and explain it.
+- Paying off a known violation means removing its entry in the same PR.
+- `python -m tools.architecture --module services.shop` shows a module's component, what
+  it imports and who imports it.
+
 **Planned evolution.** [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28)
-(Horizon: Later) will reorganize the monorepo by domain. Until it lands, follow the
-existing layer layout and keep new domain logic in `services/`, not in `bot.py`,
-handlers or Admin pages.
+reorganizes the monorepo by domain incrementally, without a big-bang rewrite:
+[#109](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/109) (this map and
+its checks) →
+[#110](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/110) (`bot.py` as
+a pure composition root, routes and handler registration moved into the `api` and `bot` apps) →
+[#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111) (first domains
+moved into packages, with the migration procedure). Other domains move when they are next
+touched.
 
 ## 4. Who reads and writes what
 
@@ -181,7 +245,7 @@ code does not restore data.
 | [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Implemented: rule-based prediction (0-100 score, bands) snapshotted on each Daily and compared with observed completion/attempts in Admin “Dataset” ([difficolta.md §6](difficolta.md)); weights are recalibrated by hand from that comparison |
 | [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Operational flags implemented (#51, [feature-flags.md](feature-flags.md)); experiments/variants (#52) not implemented |
 | [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25) | Dataset Health dashboard | A health report exists (`services/dataset_health.py`, `/admin_pool`, Admin “Dataset”); the dedicated dashboard does not |
-| [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Layered layout described in §3 |
+| [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Domain map and dependency rules enforced in CI (#109); files still in the layered layout, moving incrementally (#110, #111) — see §3 |
 | [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Not implemented |
 | [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) | Automatic Daily planner | Implemented: `services/daily_planner.py` plans 7–90 days with eligibility, difficulty rotation, diversity and repetition rules, per-day audit, Admin review/apply ([game-modes.md](game-modes.md#daily-planner)); the nightly buffer uses the same rules |
 | [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31) | Data-driven, automatable events | Implemented: validated template schema v2 (filters, rules, rewards, rotation/fixed/manual schedule) in `services/event_config.py`, Admin template editor ([event-templates.md](event-templates.md)) |
