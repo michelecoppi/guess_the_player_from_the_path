@@ -950,19 +950,6 @@ test("Referral Feature Test Suite (#46 Parity & Hardening)", async (t) => {
   );
 
   await t.test(
-    "49. Legacy /app files untouched and legacy client tests intact",
-    () => {
-      const indexPath = path.resolve(__dirname, "../../webapp/index.html");
-      const referralsJsPath = path.resolve(
-        __dirname,
-        "../../webapp/referrals.js",
-      );
-      assert.ok(fs.existsSync(indexPath));
-      assert.ok(fs.existsSync(referralsJsPath));
-    },
-  );
-
-  await t.test(
     "50. Pagination race: loadMore A pending -> refresh B -> B resolves -> A resolves -> B remains authoritative & loadingMore false & next loadMore works",
     async () => {
       let resolveMoreA: (val: any) => void = () => {};

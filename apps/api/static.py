@@ -1,10 +1,10 @@
-"""Static pages and assets: service root, health check, legacy Mini App, V2 bundle, legal pages."""
+"""Static pages and assets: service root, health check, Mini App bundle, legal pages."""
 import hashlib
 import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from services import version
 
@@ -52,11 +52,6 @@ def _static_response(name, request, media_type="text/html"):
     return Response(content, media_type=media_type, headers=headers)
 
 
-@router.get("/app", response_class=HTMLResponse)
-def webapp_page(request: Request):
-    return _static_response("index.html", request)
-
-
 @router.get("/terms", response_class=HTMLResponse)
 def terms_page(request: Request):
     return _static_response("terms.html", request)
@@ -72,45 +67,15 @@ def legal_css(request: Request):
     return _static_response("legal.css", request, "text/css")
 
 
-@router.get("/app/client.js")
-def client_logic(request: Request):
-    return _static_response("client.js", request, "text/javascript")
-
-
-@router.get("/app/strings.js")
-def client_strings(request: Request):
-    return _static_response("strings.js", request, "text/javascript")
-
-
-@router.get("/app/arena.js")
-def client_arena(request: Request):
-    return _static_response("arena.js", request, "text/javascript")
-
-
-@router.get("/app/arena.css")
-def client_arena_style(request: Request):
-    return _static_response("arena.css", request, "text/css")
-
-
-@router.get("/app/referrals.js")
-def client_referrals(request: Request):
-    return _static_response("referrals.js", request, "text/javascript")
-
-
-@router.get("/app/referrals.css")
-def client_referrals_style(request: Request):
-    return _static_response("referrals.css", request, "text/css")
-
-
 DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
 
 
-@router.get("/app/v2", response_class=HTMLResponse)
-def webapp_v2_page(request: Request):
+@router.get("/app", response_class=HTMLResponse)
+def webapp_page(request: Request):
     dist_index = os.path.join(DIST_DIR, "index.html")
     if not os.path.exists(dist_index):
         return HTMLResponse(
-            "<h2>Mini App V2 non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
+            "<h2>Mini App non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
             status_code=503,
         )
     with open(dist_index, encoding="utf-8") as f:
@@ -123,8 +88,15 @@ def webapp_v2_page(request: Request):
     return Response(content, media_type="text/html", headers=headers)
 
 
-@router.get("/app/v2/assets/{file_path:path}")
-def webapp_v2_assets(file_path: str, request: Request):
+@router.get("/app/v2")
+def webapp_v2_redirect():
+    """La V2 e' diventata /app (#81/#115): un vecchio link o preferito porta comunque alla
+    mini app vera, non a una pagina morta."""
+    return RedirectResponse("/app", status_code=308)
+
+
+@router.get("/app/assets/{file_path:path}")
+def webapp_assets(file_path: str, request: Request):
     base_assets = Path(DIST_DIR).resolve() / "assets"
     try:
         target = (base_assets / file_path).resolve()

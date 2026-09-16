@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [tailwindcss()],
-  base: "/app/v2/",
+  base: "/app/",
   build: {
     outDir: "webapp/dist",
     emptyOutDir: true,

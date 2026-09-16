@@ -14,17 +14,10 @@ from services import firebase_service
 PREVIEW_MODULE = "scripts.preview_webapp"
 
 
-def test_webapp_legacy_serving_unaffected():
+def test_webapp_serving_and_revalidation():
+    """/app is the mini app itself now (#81/#115 rollout): the V2 bundle, not a legacy page."""
     client = TestClient(bot.app)
     response = client.get("/app")
-    assert response.status_code == 200
-    assert "Guess the Player" in response.text
-    assert "webapp/client.js" in response.text or "/app/client.js" in response.text
-
-
-def test_webapp_v2_serving_and_revalidation():
-    client = TestClient(bot.app)
-    response = client.get("/app/v2")
     if not os.path.exists(os.path.join(static.DIST_DIR, "index.html")):
         assert response.status_code == 503
         return
@@ -35,11 +28,19 @@ def test_webapp_v2_serving_and_revalidation():
     etag = response.headers["ETag"]
 
     # Revalidation returns 304
-    revalidated = client.get("/app/v2", headers={"If-None-Match": etag})
+    revalidated = client.get("/app", headers={"If-None-Match": etag})
     assert revalidated.status_code == 304
 
 
-def test_webapp_v2_assets_serving_and_security():
+def test_webapp_v2_redirects_to_app():
+    """The old /app/v2 preview path still lands on the real mini app, not a dead link."""
+    client = TestClient(bot.app, follow_redirects=False)
+    response = client.get("/app/v2")
+    assert response.status_code == 308
+    assert response.headers["location"] == "/app"
+
+
+def test_webapp_assets_serving_and_security():
     client = TestClient(bot.app)
     assets_dir = os.path.join(static.DIST_DIR, "assets")
     if not os.path.exists(assets_dir):
@@ -49,20 +50,20 @@ def test_webapp_v2_assets_serving_and_security():
     assert len(asset_files) > 0, "Build artifacts missing in webapp/dist/assets"
 
     sample_asset = asset_files[0]
-    response = client.get(f"/app/v2/assets/{sample_asset}")
+    response = client.get(f"/app/assets/{sample_asset}")
     assert response.status_code == 200
     assert "public, max-age=31536000, immutable" in response.headers["cache-control"]
 
     # Traversal security check via HTTP (percent-encoded traversal reaches route handler)
-    bad_encoded = client.get("/app/v2/assets/%2e%2e/%2e%2e/bot.py")
+    bad_encoded = client.get("/app/assets/%2e%2e/%2e%2e/bot.py")
     assert bad_encoded.status_code == 403
 
     # Client-side normalized traversal
-    bad_normalized = client.get("/app/v2/assets/../../bot.py")
+    bad_normalized = client.get("/app/assets/../../bot.py")
     assert bad_normalized.status_code in (403, 404)
 
 
-def test_webapp_v2_assets_sibling_directory_containment():
+def test_webapp_assets_sibling_directory_containment():
     """Harden path containment: sibling directories sharing the same string prefix must not be accessible."""
     client = TestClient(bot.app)
     dist_dir = Path(static.DIST_DIR).resolve()
@@ -74,12 +75,12 @@ def test_webapp_v2_assets_sibling_directory_containment():
         sibling_file.write_text("sensitive_data", encoding="utf-8")
 
         # 1. HTTP percent-encoded traversal targeting sibling directory
-        response = client.get("/app/v2/assets/%2e%2e/assets_sibling/secret.txt")
+        response = client.get("/app/assets/%2e%2e/assets_sibling/secret.txt")
         assert response.status_code == 403
 
         # 2. Direct route handler containment check (verifies Path.is_relative_to behavior)
         with pytest.raises(HTTPException) as exc_info:
-            static.webapp_v2_assets("../assets_sibling/secret.txt", None)
+            static.webapp_assets("../assets_sibling/secret.txt", None)
         assert exc_info.value.status_code == 403
     finally:
         if sibling_dir.exists():

@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { App } from "../../webapp/src/app/App";
 import { ArenaController } from "../../webapp/src/features/arena/controller";
 import { renderArenaPage, attachArenaEventListeners } from "../../webapp/src/pages/ArenaPage";
@@ -1289,14 +1287,4 @@ test("Arena + Training coexistence: 14. no duplicate event submission after navi
   }
 });
 
-test("Arena + Training coexistence: 15. legacy /app unchanged", () => {
-  const legacyArenaPath = path.resolve(process.cwd(), "webapp/arena.js");
-  const legacyClientPath = path.resolve(process.cwd(), "webapp/client.js");
-
-  assert.ok(fs.existsSync(legacyArenaPath), "webapp/arena.js must exist");
-  assert.ok(fs.existsSync(legacyClientPath), "webapp/client.js must exist");
-
-  const arenaContent = fs.readFileSync(legacyArenaPath, "utf-8");
-  assert.ok(arenaContent.includes("PlayerArena"), "arena.js must export PlayerArena");
-});
 

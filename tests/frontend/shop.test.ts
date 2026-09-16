@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { ShopController, mapShopError, SHOP_ERROR_KEYS } from "../../webapp/src/features/shop/controller";
 import {
   renderShopPage,
@@ -1097,10 +1095,10 @@ test("80 to 86. Full localization across IT, EN, ES and accessible controls", as
 });
 
 // ---------------------------------------------------------------------------
-// 87-95. Regressions: Legacy untouched, no prototype runtime
+// 95. Regression: no prototype runtime
 // ---------------------------------------------------------------------------
 
-test("87 to 95. Legacy /app untouched, no shop prototype in runtime", async () => {
+test("95. Authenticated Shop no longer renders prototype screens", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();
   const catalogue = createMockShopCatalogue();
@@ -1113,15 +1111,8 @@ test("87 to 95. Legacy /app untouched, no shop prototype in runtime", async () =
 
     container.innerHTML = renderShopPage(app.getShopController().getState());
 
-    // 95. Authenticated Shop no longer renders prototype screens
     assert.ok(!container.textContent?.includes("SHOP / IL TUO STILE"));
     assert.ok(!container.textContent?.includes("prototype-screen"));
-
-    // 94. Legacy /app index.html remains untouched
-    const legacyPath = path.resolve(__dirname, "../../webapp/index.html");
-    const legacyContent = fs.readFileSync(legacyPath, "utf-8");
-    assert.ok(legacyContent.includes("function shopTab()"));
-    assert.ok(legacyContent.includes("function loadShop()"));
   } finally {
     restoreFetch();
     cleanupDom();

@@ -2,8 +2,8 @@
 
 Serve a **guardare** i cosmetici prima di venderli. Un tema, una cornice o una figurina si
 giudicano solo addosso a una pagina vera: sulla scheda del negozio sono francobolli, e nel
-JSON sono sei stringhe esadecimali. Qui la pagina e' la stessa che vede un utente
-(`webapp/index.html`), servita dalle stesse funzioni del server vero
+JSON sono sei stringhe esadecimali. Qui la pagina e' il bundle Vite vero (`webapp/dist/`,
+`npm run build` per compilarlo), servita dalle stesse funzioni del server vero
 (`services/webapp_api.py`, `domains/shop/service.py`), con l'unica differenza che sotto non c'e'
 Firestore ma un dizionario in memoria.
 
@@ -197,8 +197,8 @@ def _lang():
 # Il finto Telegram. La pagina si rifiuta di disegnare senza `initData` firmato - ed e'
 # giusto cosi', e' quello che impedisce di chiedere i dati di un altro - quindi in anteprima
 # gliene diamo uno finto insieme alle poche funzioni che chiama davvero. Si inietta qui e non
-# in webapp/index.html: la pagina servita in produzione non deve sapere che esiste
-# un'anteprima, e cosi' quello che si guarda e' il file vero, non una sua variante.
+# nel bundle: la pagina servita in produzione non deve sapere che esiste un'anteprima, e cosi'
+# quello che si guarda e' il file vero, non una sua variante.
 TELEGRAM_SHIM = """<script>
 window.Telegram = { WebApp: {
   initData: "preview",
@@ -230,66 +230,9 @@ window.addEventListener("load", function () {
 
 
 
-@app.get("/", response_class=HTMLResponse)
-@app.get("/app", response_class=HTMLResponse)
-async def page(lang: str | None = None, referrals: int | None = None, scenario: str | None = None):
-    if scenario == "solved":
-        from services.dates import today_iso
-        STATE["user"]["last_played_day"] = today_iso()
-        STATE["user"]["has_guessed_today"] = True
-        STATE["user"]["daily_attempts"] = 2
-    elif scenario == "wrong":
-        from services.dates import today_iso
-        STATE["user"]["last_played_day"] = today_iso()
-        STATE["user"]["has_guessed_today"] = False
-        STATE["user"]["daily_attempts"] = 1
-    elif scenario == "reset":
-        STATE["user"]["last_played_day"] = None
-        STATE["user"]["has_guessed_today"] = False
-        STATE["user"]["daily_attempts"] = 0
-    if lang in ("it", "en", "es"):
-        STATE["user"]["language"] = lang
-    if referrals is not None:
-        STATE["user"]["referral_qualified"] = max(0, min(referrals, 10))
-    with open(os.path.join(WEBAPP_DIR, "index.html"), encoding="utf-8") as f:
-        html = f.read()
-    shim = TELEGRAM_SHIM % (USER_ID, _lang())
-    return HTMLResponse(html.replace("<body>", "<body>" + shim, 1))
-
-
 def _page(name):
     with open(os.path.join(WEBAPP_DIR, name), encoding="utf-8") as f:
         return HTMLResponse(f.read())
-
-
-def _script(name):
-    with open(os.path.join(WEBAPP_DIR, name), encoding="utf-8") as f:
-        return Response(f.read(), media_type="text/javascript")
-
-
-@app.get("/app/client.js")
-async def client_logic():
-    """La stessa rotta del server vero (bot.py): senza, la pagina si carica a meta' perche'
-    `index.html` cerca qui le funzioni pure che usa gia' nella prima riga di script."""
-    return _script("client.js")
-
-
-@app.get("/app/strings.js")
-async def client_strings():
-    """Come sopra per le stringhe nelle tre lingue: senza, `L` resta indefinita e la
-    pagina non disegna niente."""
-    return _script("strings.js")
-
-
-@app.get("/app/arena.js")
-async def client_arena():
-    return _script("arena.js")
-
-
-@app.get("/app/arena.css")
-async def client_arena_css():
-    with open(os.path.join(WEBAPP_DIR, "arena.css"), encoding="utf-8") as f:
-        return Response(f.read(), media_type="text/css")
 
 
 @app.get("/privacy", response_class=HTMLResponse)
@@ -311,8 +254,9 @@ async def legal_css():
 DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
 
 
-@app.get("/app/v2", response_class=HTMLResponse)
-async def webapp_v2_page(lang: str | None = None, scenario: str | None = None):
+@app.get("/", response_class=HTMLResponse)
+@app.get("/app", response_class=HTMLResponse)
+async def webapp_page(lang: str | None = None, referrals: int | None = None, scenario: str | None = None):
     if scenario == "solved":
         from services.dates import today_iso
         STATE["user"]["last_played_day"] = today_iso()
@@ -329,10 +273,12 @@ async def webapp_v2_page(lang: str | None = None, scenario: str | None = None):
         STATE["user"]["daily_attempts"] = 0
     if lang in ("it", "en", "es"):
         STATE["user"]["language"] = lang
+    if referrals is not None:
+        STATE["user"]["referral_qualified"] = max(0, min(referrals, 10))
     dist_index = os.path.join(DIST_DIR, "index.html")
     if not os.path.exists(dist_index):
         return HTMLResponse(
-            "<h2>Mini App V2 non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
+            "<h2>Mini App non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
             status_code=503,
         )
     with open(dist_index, encoding="utf-8") as f:
@@ -343,8 +289,8 @@ async def webapp_v2_page(lang: str | None = None, scenario: str | None = None):
     return HTMLResponse(html + shim)
 
 
-@app.get("/app/v2/assets/{file_path:path}")
-async def webapp_v2_assets(file_path: str):
+@app.get("/app/assets/{file_path:path}")
+async def webapp_assets(file_path: str):
     base_assets = Path(DIST_DIR).resolve() / "assets"
     try:
         target = (base_assets / file_path).resolve()
@@ -368,16 +314,6 @@ async def webapp_v2_assets(file_path: str):
 @app.post("/app/api/me")
 async def me(payload: dict = Body(default={})):
     return build_profile(USER_ID, lang=_lang())
-
-
-@app.get("/app/referrals.js")
-def referrals_script():
-    return _script("referrals.js")
-
-
-@app.get("/app/referrals.css")
-def referrals_style():
-    return Response(open(os.path.join(WEBAPP_DIR, "referrals.css"), encoding="utf-8").read(), media_type="text/css")
 
 
 @app.post("/app/api/referrals")
