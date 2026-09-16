@@ -651,9 +651,9 @@ primo utilizzo. Gli eventi `manual_only` (es. padre/figlio) si creano solo a man
 Il dettaglio architetturale (Daily, Archivio, Allenamento, duelli, eventi) è in
 [`docs/game-modes.md`](docs/game-modes.md), compreso il planner delle sfide su 7–90 giorni
 (dashboard → *Planner sfide*,
-[#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)). Gli eventi
-completamente data-driven **non esistono ancora**: è l'issue
-[#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31).
+[#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)). Gli eventi si
+definiscono in `data/event_templates.json` (filtri, regole, premi, calendario), validati in CI e
+modificabili dalla dashboard: vedi [`docs/event-templates.md`](docs/event-templates.md).
 
 ### Difficoltà
 

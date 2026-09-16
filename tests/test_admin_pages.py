@@ -69,3 +69,16 @@ def test_planner_page_renders_a_plan_without_firestore(monkeypatch):
     labels = {metric.label: metric.value for metric in result.metric}
     assert labels["Restano come sono"] == "1"
     assert int(labels["Da creare"]) == 29
+
+
+def test_events_page_previews_an_existing_template(monkeypatch):
+    """#31: l'editor dei template mostra l'anteprima di un template valido senza scrivere niente."""
+    from services import firebase_service
+
+    monkeypatch.setattr(firebase_service, "get_recent_events", lambda limit=5: [])
+    at = AppTest.from_string(RENDER.format(page="events")).run(timeout=30)
+    assert not at.exception
+    at.selectbox(key="tpl_pick").set_value("giramondo").run(timeout=30)
+    assert not at.exception
+    assert "Candidati" in [metric.label for metric in at.metric]
+    assert "Tentativi al giorno" in [metric.label for metric in at.metric]

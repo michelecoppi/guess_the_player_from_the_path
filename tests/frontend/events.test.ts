@@ -540,6 +540,21 @@ test("19. Authoritative attempts: tied to canonical EVENT_MAX_ATTEMPTS = 3 and n
   assert.match(html, /Tentativi rimasti:\s*2|Attempts left:\s*2/);
 });
 
+test("19b. Attempts follow the event template when the backend sends max_attempts (#31)", async () => {
+  const card = createTestCard({
+    max_attempts: 5,
+    progress: { attempts: 1, finished: false, solved: false, points: 0 },
+  });
+  const client = mockClient([{ events: [card] }]);
+  const controller = new EventsController(client);
+  await controller.load();
+  controller.select("champions_cup");
+
+  const html = renderEventsPage(controller);
+  // 5 - 1 = 4 attempts left, not the pre-#31 fallback of 3
+  assert.match(html, /Tentativi rimasti:\s*4|Attempts left:\s*4/);
+});
+
 test("20. Terminal states: distinct rendering for solved vs exhausted", async () => {
   setLanguage("it");
 

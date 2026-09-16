@@ -16,7 +16,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.ext import ContextTypes
 
 from handlers.legend_handler import legend_keyboard
-from services import firebase_service
+from services import event_config, firebase_service
 from services import product_analytics as analytics
 from services.dates import to_display, today_iso
 from services.event_rules import evaluate_event_guess
@@ -24,14 +24,12 @@ from services.guess_feedback import build_comparison, comparison_text
 from services.i18n import content_text, resolve_language, t
 from services.path_image import render_career_path_image, render_event_banner
 
-MAX_EVENT_ATTEMPTS = 3
-MAX_CAREER_ANSWERS_PER_ATTEMPT = 5
-
-# I tipi di evento in cui la risposta e' un **calciatore del dataset**: solo per questi ha
-# senso il confronto per nazionalita'/ruolo/eta' dopo un tentativo sbagliato. Negli eventi
-# "career" si risponde con delle squadre, e nei "father_son" con una coppia che nel dataset
-# non c'e': li' il confronto non avrebbe niente su cui lavorare.
-PLAYER_ANSWER_TYPES = ("path", "transfer_guess")
+# Tentativi, bonus del primo e posti del podio stanno sul documento dell'evento, copiati dal
+# template (services/event_config.py, #31). Il confronto per nazionalita'/ruolo/eta' dopo un
+# tentativo sbagliato ha senso solo dove la risposta e' un calciatore del dataset
+# (`event_config.answers_with_player`): negli eventi "career" si risponde con delle squadre,
+# nei "father_son" con una coppia che nel dataset non c'e'.
+MAX_CAREER_ANSWERS_PER_ATTEMPT = event_config.MAX_ANSWERS_PER_ATTEMPT
 
 
 async def events(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -201,7 +199,10 @@ def get_today_player_message(event, lang="it"):
 
     points = today_data.get("points", 1)
     first_correct_user = today_data.get("first_correct_user", False)
-    bonus_msg = t(lang, "events.bonus_available") if not first_correct_user else t(lang, "events.bonus_taken")
+    if event_config.event_rewards(event)["first_correct_bonus"] <= 0:
+        bonus_msg = ""  # evento senza bonus del primo: non se ne parla
+    else:
+        bonus_msg = t(lang, "events.bonus_available") if not first_correct_user else t(lang, "events.bonus_taken")
 
     event_type = event.get("type", "path")
 
@@ -216,7 +217,7 @@ def get_today_player_message(event, lang="it"):
         lang, key,
         points=points,
         bonus_msg=bonus_msg,
-        attempts=MAX_EVENT_ATTEMPTS,
+        attempts=event_config.event_rules(event)["attempts"],
         max_answers=MAX_CAREER_ANSWERS_PER_ATTEMPT,
         min_correct=today_data.get("min_correct", 1),
         player_name=today_data.get("player_name"),
@@ -289,30 +290,33 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
         return
 
     event_type = event.get("type", "path")
+    max_attempts = event_config.event_rules(event)["attempts"]
 
-    if event_type == "career" and len([p for p in guess.split(",") if p.strip()]) > MAX_CAREER_ANSWERS_PER_ATTEMPT:
+    if event_config.is_multi_answer(event_type) and len([p for p in guess.split(",") if p.strip()]) > MAX_CAREER_ANSWERS_PER_ATTEMPT:
         await update.effective_message.reply_text(t(lang, "events.max_answers", max_answers=MAX_CAREER_ANSWERS_PER_ATTEMPT))
         return
 
-    attempt = (await asyncio.to_thread(firebase_service.begin_event_attempt, event_code, user.id, user.first_name, day_iso, MAX_EVENT_ATTEMPTS))
+    attempt = (await asyncio.to_thread(firebase_service.begin_event_attempt, event_code, user.id, user.first_name, day_iso, max_attempts))
     if not attempt["ok"]:
-        await update.effective_message.reply_text(_event_attempt_error(lang, attempt["reason"]))
+        await update.effective_message.reply_text(_event_attempt_error(lang, attempt["reason"], max_attempts))
         return
 
     is_correct, matched, total_answers = evaluate_event_guess(event_type, guess, today_data)
 
     if not is_correct:
-        feedback = t(lang, "events.wrong", used=attempt["attempts_used"], max_attempts=MAX_EVENT_ATTEMPTS)
-        if event_type == "career":
+        feedback = t(lang, "events.wrong", used=attempt["attempts_used"], max_attempts=max_attempts)
+        if event_config.is_multi_answer(event_type):
             feedback += t(lang, "events.wrong_career_extra", matched=matched, total=total_answers)
         # Lo stesso confronto della sfida del giorno, dove la risposta e' un calciatore:
         # senza, un tentativo sbagliato dentro un evento lascia meno di uno fuori.
-        if event_type in PLAYER_ANSWER_TYPES:
+        if event_config.answers_with_player(event_type):
             feedback += comparison_text(lang, build_comparison(guess, today_data.get("player_id")))
         await update.effective_message.reply_text(feedback)
         return
 
-    bonus = 1 if (await asyncio.to_thread(firebase_service.claim_event_first_correct, event_code, day_iso)) else 0
+    first_correct_bonus = event_config.event_rewards(event)["first_correct_bonus"]
+    claimed = first_correct_bonus > 0 and (await asyncio.to_thread(firebase_service.claim_event_first_correct, event_code, day_iso))
+    bonus = first_correct_bonus if claimed else 0
     earned_points = today_data.get("points", 1) + bonus
     (await asyncio.to_thread(firebase_service.register_event_correct_guess, event_code, user.id, earned_points, day_iso))
     # Authoritative and exactly once per event/day: `begin_event_attempt` above already
@@ -331,11 +335,11 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
     await update.effective_message.reply_text(t(lang, "events.correct", points=earned_points, bonus_tag=bonus_tag))
 
 
-def _event_attempt_error(lang, reason):
+def _event_attempt_error(lang, reason, max_attempts=event_config.DEFAULT_RULES["attempts"]):
     key = {
         "already_guessed": "events.error.already_guessed",
         "no_attempts": "events.error.no_attempts",
     }.get(reason, "events.error.default")
     if reason == "no_attempts":
-        return t(lang, key, max_attempts=MAX_EVENT_ATTEMPTS)
+        return t(lang, key, max_attempts=max_attempts)
     return t(lang, key)

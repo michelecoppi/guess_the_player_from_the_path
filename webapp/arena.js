@@ -232,7 +232,7 @@ function eventView() {
   return `<article><span class="arena-eyebrow">${esc(tr("eventsTag"))}</span><h2 class="arena-event-title">${esc(active.name)}</h2><p class="muted">${esc(active.description)}</p><p>${esc(active.rules)}</p>
     <div class="arena-round"><span class="pill">${esc(tr("eventPoints",{n:active.points}))}</span>${active.bonus_available ? `<span class="arena-small">${esc(tr("bonus"))}</span>` : ""}</div>
     ${active.player_name ? `<h3>${esc(active.player_name)}</h3>` : ""}${careerPath(active.career_path)}${image}
-    ${!active.available ? `<p>${esc(tr("eventEmpty"))}</p>` : p.finished ? `<div class="arena-result"><h3>${esc(tr(p.solved ? "correct" : "ended"))}</h3><p>${esc(tr("eventWait"))}</p></div>` : `<p class="arena-attempts">${esc(tr("attempts",{n:3-p.attempts}))}</p>${form(hint)}`}
+    ${!active.available ? `<p>${esc(tr("eventEmpty"))}</p>` : p.finished ? `<div class="arena-result"><h3>${esc(tr(p.solved ? "correct" : "ended"))}</h3><p>${esc(tr("eventWait"))}</p></div>` : `<p class="arena-attempts">${esc(tr("attempts",{n:(active.max_attempts||3)-p.attempts}))}</p>${form(hint)}`}
     ${alerts()}${feedback(data.feedback)}
     <div class="arena-leaderboard"><h3>${esc(tr("table"))}</h3><p class="arena-small">${esc(tr("eventScore",{n:p.points}))}</p>${active.leaderboard.length ? active.leaderboard.map((row,i)=>`<div class="row"><span class="pos">${i+1}</span><span class="name">${esc(row.name)}</span><span class="pts">${row.points}</span></div>`).join("") : `<p class="muted">${esc(tr("emptyTable"))}</p>`}</div>${button("get","refresh",true)}</article>`;
 }

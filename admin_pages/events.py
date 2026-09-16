@@ -7,6 +7,8 @@ from admin_pages.shared import (
     confirm_button,
     content_admin,
     create_manual_event,
+    event_config,
+    event_template_editor,
     fmt_bool,
     fmt_dt,
     guarded,
@@ -213,10 +215,9 @@ def render(today, now_italy):
     template = template_by_id[template_id]
     st.caption(
         f"**{template['name']}** — {template['description']}\n\n"
-        f"tipo `{template['type']}` · durata {template.get('duration_days', 5)} giorni · "
-        f"{template.get('points_per_day', 1)} punti/giorno · "
-        f"regole: {template.get('rules') or 'nessuna'}"
-        + (" · **solo manuale**" if template.get("manual_only") else "")
+        f"tipo `{template['type']}` · durata {template['duration_days']} giorni · "
+        f"{template['rewards']['points_per_day']} punti/giorno · "
+        f"filtri: {template['filters'] or 'nessuno'} · calendario: {event_config.schedule_label(template)}"
     )
 
     col1, col2 = st.columns(2)
@@ -234,4 +235,100 @@ def render(today, now_italy):
                 f"Evento creato: {s['name']} [{s['code']}] — {s['days']} giorni "
                 f"({to_display(s['dates'][0])} → {to_display(s['dates'][-1])}), trofei il {to_display(s['trophy_day'])}."
             ),
+        )
+
+    st.divider()
+    _render_templates(now_italy)
+
+
+def _render_templates(now_italy):
+    st.subheader("📐 Template eventi")
+    st.caption(
+        "Un evento nuovo si crea scrivendo un template, non codice: tipo di gioco, filtri sul pool, "
+        "regole della partita, premi e calendario. Schema ed esempi in `docs/event-templates.md`. "
+        "Si salva solo un template valido, con copia di sicurezza in `backup/`; la modifica cambia "
+        "`data/event_templates.json` in **questa copia locale**: per portarla in produzione va "
+        "committata e rilasciata. Gli eventi già creati non cambiano."
+    )
+    try:
+        rows = event_template_editor.list_templates()
+    except Exception as e:  # noqa: BLE001 - in dashboard l'errore va mostrato
+        st.error(f"Errore leggendo i template: {e}")
+        return
+    show_table(
+        [
+            {
+                "id": row["id"],
+                "nome": row["name"],
+                "tipo": row["type"],
+                "calendario": row["schedule"],
+                "giorni": row["duration_days"],
+                "punti/giorno": row.get("points_per_day", "—"),
+                "candidati": row["candidates"] if row["candidates"] is not None else "—",
+                "valido": "sì" if row["valid"] else "NO: " + "; ".join(row["errors"]),
+            }
+            for row in rows
+        ],
+        "Nessun template.",
+    )
+
+    new_label = "➕ Nuovo template"
+    choice = st.selectbox("Template da modificare", [new_label] + [row["id"] for row in rows], key="tpl_pick")
+    original_id = None if choice == new_label else choice
+    text_key = f"tpl_text_{choice}"
+    if text_key not in st.session_state:
+        st.session_state[text_key] = event_template_editor.template_text(original_id)
+    text = st.text_area("JSON del template", key=text_key, height=420)
+
+    try:
+        template = event_template_editor.parse_template(text)
+        preview = event_template_editor.preview_template(template, original_id=original_id, today=now_italy)
+    except event_template_editor.TemplateEditError as e:
+        st.error(str(e))
+        return
+
+    if not preview["valid"]:
+        st.error("Template non valido:\n\n" + "\n".join(f"- {error}" for error in preview["errors"]))
+        return
+
+    resolved = preview["resolved"]
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Candidati", preview["candidates"] if preview["candidates"] is not None else "—")
+    m2.metric("Tentativi al giorno", resolved["rules"]["attempts"])
+    m3.metric("Punti + bonus primo", f"{resolved['rewards']['points_per_day']} + {resolved['rewards']['first_correct_bonus']}")
+    m4.metric("Trofei", f"primi {resolved['rewards']['podium_trophies']}" if resolved["rewards"]["podium_trophies"] else "nessuno")
+    st.caption(
+        f"Calendario: {event_config.schedule_label(resolved)}"
+        + (f" · prossime partenze possibili: {', '.join(to_display(d) for d in preview['next_starts'])}"
+           if preview["next_starts"] else "")
+    )
+    for warning in preview["warnings"]:
+        st.warning(warning)
+    if preview["sample_days"]:
+        st.markdown("**Evento d'esempio** (non salvato)")
+        show_table(
+            [
+                {
+                    "giorno": to_display(day["day"]),
+                    "risposta": day["answer"],
+                    "risposte accettate": day["answers"],
+                    "minimo giuste": day["min_correct"] or "—",
+                    "tappe mostrate": day["stops_shown"],
+                    "punti": day["points"],
+                }
+                for day in preview["sample_days"]
+            ]
+        )
+
+    label = "💾 Crea il template" if original_id is None else f"💾 Salva le modifiche a '{original_id}'"
+    if confirm_button(label, f"save_tpl_{choice}", "Scrive data/event_templates.json (con copia di sicurezza)."):
+        def _save():
+            result = event_template_editor.save_template(template, original_id=original_id)
+            st.session_state.pop(text_key, None)
+            return result
+
+        guarded(
+            _save,
+            lambda r: f"Template '{r['id']}' {'creato' if r['created'] else 'aggiornato'} "
+            f"(copia di sicurezza: {r['backup']}).",
         )

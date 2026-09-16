@@ -50,6 +50,13 @@ new dated section below.
   buffer and “Rigenera” use the same rules
   ([#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30),
   [game-modes.md](docs/game-modes.md#daily-planner)).
+- Data-driven events: event template schema v2 (`filters`, `rules`, `rewards`, `schedule` with
+  rotation windows/weekdays, fixed dates and manual mode) validated in CI, Admin and at runtime;
+  attempts, first-solver bonus and podium trophies come from the event instead of constants in
+  chat, Mini App and trophies; fixed-date events are created ahead; Admin template editor with
+  preview and backup
+  ([#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31),
+  [event-templates.md](docs/event-templates.md)).
 
 ### Changed
 

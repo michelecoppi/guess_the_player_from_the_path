@@ -76,7 +76,6 @@
     "hard": 13
   },
   "event_min_gap_days": 10,
-  "event_default_duration_days": 5,
   "event_history_no_repeat_templates": 3,
   "difficulty_weights": {
     "popularity": 4.0,

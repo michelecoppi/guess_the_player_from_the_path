@@ -1,4 +1,5 @@
 """Shared answer evaluation for bot and mini app events."""
+from services.event_config import is_multi_answer
 from services.matching import find_match, normalize
 
 
@@ -11,7 +12,7 @@ def evaluate_event_guess(event_type, guess, today_data):
     parole scritte: elencare due volte la stessa squadra non fa punteggio."""
     correct_answers = today_data.get("correct_answers", [])
 
-    if event_type != "career":
+    if not is_multi_answer(event_type):
         return find_match(guess, correct_answers) is not None, None, len(correct_answers)
 
     matched_answers = set()

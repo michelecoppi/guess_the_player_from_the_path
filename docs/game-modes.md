@@ -143,34 +143,45 @@ Points stay inside the group. Rules still live in the handler plus
 
 **Current state.**
 
-- **Definition.** Event types are templates in
-  [`data/event_templates.json`](../data/event_templates.json) (`path`, `career`,
-  `transfer_guess`, `father_son`) with pool filters, duration, points and translated
-  name/description; tuning keys (`event_min_gap_days`,
-  `event_history_no_repeat_templates`, `event_default_duration_days`) are in
-  `data/config.json`.
+- **Definition.** Every event is a template in
+  [`data/event_templates.json`](../data/event_templates.json) (schema v2): type, pool
+  `filters`, game `rules` (attempts, `career` ratio), `rewards` (points per day,
+  first-solver bonus, podium trophies), `schedule` and translated name/description.
+  Schema, validation and examples: [event-templates.md](event-templates.md)
+  ([#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31)). Type
+  behaviour is a registry in `services/event_config.py` (`EVENT_TYPES`), not branches per
+  handler. Rotation tuning keys (`event_min_gap_days`, `event_history_no_repeat_templates`)
+  are in `data/config.json`.
+- **Validation.** `scripts/dataset_report.py --strict` (CI) and
+  `tests/test_event_config.py` reject an invalid template file; at runtime an invalid
+  template is skipped and logged, never fatal.
 - **Generation.** `services/event_generator.py::maybe_generate_event`, called by the
-  nightly job, rotates templates not used recently, respects the minimum gap and
-  `weekend_only`, and writes an `events/{code}` document with per-day `daily_data`.
-  Translated `name_i18n`/`description_i18n` are copied onto the event at generation time
-  (Italian `name`/`description` stay as fallback), so a running event does not change if
-  the template does; `tests/test_event_translations.py` fails if a template lacks
-  translations. `career` events never store a career image, to avoid revealing the answer.
-- **Manual events.** Templates marked `manual_only` (father/son pairs, which need a
-  photo) are never generated automatically; admins create them with `/admin_fs_add` +
+  nightly job, first creates `fixed`-schedule events up to 7 days ahead (no minimum gap;
+  skipped with an error if they would overlap an existing event), then, only when no event
+  is active, rotates `rotation` templates that are allowed today (`start_weekdays`,
+  recurring `window`), not used recently, past the minimum gap and not overlapping an
+  upcoming fixed event. It writes `events/{code}` with per-day `daily_data` and copies
+  texts, translations, `rules` and `rewards` onto the event, so a running event does not
+  change if the template does. `career` events never store a career image, to avoid
+  revealing the answer.
+- **Manual events.** `manual`-schedule templates (father/son pairs, which need a photo)
+  are never generated automatically; admins create them with `/admin_fs_add` +
   `/admin_event_create` or from the Admin “Eventi” page
   (`services/manual_event_service.py`). `/admin_event_create` can also force any
-  template to start on a chosen date.
+  template to start on a chosen date. Templates are created and edited, with validation,
+  preview and backup, in Admin “Eventi → Template eventi”.
 - **Playing.** Answer evaluation is shared (`services/event_rules.py`). Chat:
   `handlers/events_handler.py`. Mini App: `/app/api/arena` with `mode: "events"` →
-  `services/app_events.py` (transactional, revision-checked). Participants are
-  `events/{code}/participants/{user_id}` documents; trophies are assigned by the
-  nightly job the day after an event ends.
+  `services/app_events.py` (transactional, revision-checked; the card exposes
+  `max_attempts`). Attempts and the first-solver bonus come from the event's `rules` and
+  `rewards` (defaults 3 and +1 for events created before #31). Participants are
+  `events/{code}/participants/{user_id}` documents; trophies for the top
+  `rewards.podium_trophies` positions are assigned by the nightly job the day after an
+  event ends.
 
-**Planned evolution.** Fully data-driven, automatable event configuration and
-scheduling is [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31)
-(open). Today scheduling is template rotation plus manual creation; the Mini App does
-not change event scheduling.
+**Planned evolution.** None tracked for event configuration; new filters, rules or event
+types still need code (a filter in `player_pool.filter_players` and `event_config.FILTERS`,
+a type in `EVENT_TYPES` plus its chat/Mini App rendering).
 
 ## Leaderboards, seasons and leagues
 
