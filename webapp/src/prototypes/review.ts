@@ -48,6 +48,7 @@ function renderThemeGallery(): string {
 
 export const REVIEW_PAGES=['Temi profilo','Daily','Arena','Duelli','Cerca utenti','Duello','Allenamento','Profilo','Trofei','Classifica','Archivio','Sfida archivio','Shop','Guardaroba','Traguardi','Acquisti','Referral','Eventi','Dettaglio evento'] as const;
 export function startReview(root:HTMLElement):void {
+  root.setAttribute('data-cosmetic-shell','');
   window.Telegram={WebApp:createMockTelegramWebApp()};
   let page:string='Daily', state:ReviewState='ready', outfit:AppearanceFixtureName='default', language:'it'|'en'|'es'='it', eventIndex=0;
   const requestedPage=new URLSearchParams(window.location.search).get('view');

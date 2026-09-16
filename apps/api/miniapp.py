@@ -4,6 +4,7 @@ Routes authenticate, rate-limit, check feature flags and delegate to services; t
 live in the domains (docs/architecture.md). Moved verbatim from bot.py by #110.
 """
 import base64
+import logging
 
 from fastapi import APIRouter, Body, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
@@ -358,6 +359,34 @@ def webapp_shop_history(payload: dict = Body(default={})):
                      "day": purchase.get("day", ""), "stars": purchase.get("stars", 0),
                      "refunded": bool(purchase.get("refunded")), "charge_id": purchase.get("charge_id", "")})
     return {"purchases": rows, "support_url": f"https://t.me/{config.BOT_USERNAME}" if config.BOT_USERNAME else ""}
+
+
+@router.post("/app/api/support/report")
+async def webapp_report(request: Request, payload: dict = Body(default={})):
+    """Segnala un errore in una carriera o nella mini app: stesso canale di /paysupport (un
+    messaggio agli admin), ma per bug e dati, non per acquisti - vedi /admin_report_reply."""
+    user_id, user_data = await run_in_threadpool(_webapp_user, payload, 5)
+    body = (payload.get("message") or "").strip()
+    if not body:
+        raise HTTPException(status_code=400, detail="messaggio vuoto")
+    if not config.ADMIN_TELEGRAM_IDS:
+        observability.log_event("support.report.unavailable", logging.ERROR)
+        raise HTTPException(status_code=503, detail="assistenza non disponibile")
+
+    name = user_data.get("first_name") or "—"
+    text = (
+        "🛠 Segnalazione dalla mini app\n"
+        f"Utente: {name}\nTelegram ID: {user_id}\n\n{body[:3500]}\n\n"
+        f"Rispondi: /admin_report_reply {user_id} <messaggio>"
+    )
+    bot = telegram(request).application.bot
+    try:
+        for admin_id in config.ADMIN_TELEGRAM_IDS:
+            await bot.send_message(chat_id=admin_id, text=text)
+    except Exception as exc:
+        observability.log_event("support.report.failed", logging.ERROR, exc_info=exc)
+        raise HTTPException(status_code=502, detail="invio non riuscito") from None
+    return {"status": "ok"}
 
 
 @router.post("/app/api/card")

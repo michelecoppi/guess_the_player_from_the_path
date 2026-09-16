@@ -1,4 +1,5 @@
-import { renderPrototype } from "@/prototypes/screens";
+import { renderPrototype, attachSupportEventListeners } from "@/prototypes/screens";
+import { SupportController } from "@/features/support/controller";
 import { connectTheme } from "@/telegram/theme";
 import { renderHeader } from "@/components/Header";
 import { renderNavBar, type NavTabId } from "@/components/NavBar";
@@ -58,6 +59,7 @@ export class App {
   private shopController: ShopController;
   private referralController: ReferralController;
   private eventsController: EventsController;
+  private supportController: SupportController;
   private lastArenaSubview: ArenaSubview;
   private firstLoad: Promise<void> = Promise.resolve();
 
@@ -72,8 +74,14 @@ export class App {
     shopController?: ShopController,
     referralController?: ReferralController,
     eventsController?: EventsController,
+    supportController?: SupportController,
   ) {
     this.rootElement = rootElement;
+    // The purchased theme's surface/glow/pattern now show behind every tab and the header,
+    // not just the profile card - see [data-cosmetic-shell] in editorial.css. It's a plain
+    // attribute (no inline style): the tokens already live on <html> from applyResolvedAppearance,
+    // so nothing here needs to know the current appearance or re-set this on every render.
+    this.rootElement.setAttribute("data-cosmetic-shell", "");
     this.dailyController = dailyController || new DailyController();
     this.arenaController = arenaController || new ArenaController();
     this.trainingController = trainingController || new TrainingController();
@@ -84,6 +92,7 @@ export class App {
     this.shopController = shopController || new ShopController();
     this.referralController = referralController || new ReferralController();
     this.eventsController = eventsController || new EventsController();
+    this.supportController = supportController || new SupportController();
     this.referralController.setEquipHandler((itemId: string) => {
       return this.shopController.equip(itemId);
     });
@@ -172,6 +181,12 @@ export class App {
     this.eventsController.subscribe(() => {
       if (this.activeTab === "events") {
         this.renderEventsContent();
+      }
+    });
+
+    this.supportController.subscribe(() => {
+      if (this.activeTab === "reports") {
+        this.renderReportsContent();
       }
     });
   }
@@ -264,6 +279,7 @@ export class App {
         this.profileController.invalidateInventory();
       }
       if (this.activeTab === "leaderboard") this.leaderboardController.cancelSearch();
+      if (this.activeTab === "reports") this.supportController.reset();
       this.activeTab = tab;
 
       if (tab === "arena") {
@@ -485,6 +501,14 @@ export class App {
     }
   }
 
+  private renderReportsContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "reports") {
+      mainEl.innerHTML = renderPrototype("reports", this.supportController.getState());
+      attachSupportEventListeners(this.rootElement, this.supportController);
+    }
+  }
+
   private renderEventsContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.activeTab === "events") {
@@ -587,7 +611,10 @@ export class App {
         pageHtml = renderEventsPage(this.eventsController);
         break;
       default:
-        pageHtml = renderPrototype(this.activeTab);
+        pageHtml = renderPrototype(
+          this.activeTab,
+          this.activeTab === "reports" ? this.supportController.getState() : undefined,
+        );
     }
 
     const mockBannerHtml =
@@ -681,6 +708,8 @@ export class App {
           },
         },
       );
+    } else if (this.activeTab === "reports") {
+      attachSupportEventListeners(this.rootElement, this.supportController);
     }
   }
 }

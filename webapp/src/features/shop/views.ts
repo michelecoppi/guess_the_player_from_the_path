@@ -318,8 +318,9 @@ export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string
   const isPartial =
     kind === "bundle" && item.price > 0 && item.price < item.full_price;
 
+  // Trying on what's already worn would just show what's already on screen - no button.
   const previewTrigger =
-    kind !== "bundle" || item.equippable
+    !item.equipped && (kind !== "bundle" || item.equippable)
       ? `<button type="button" class="shop-preview-trigger" data-try="${escapeHtml(item.id)}" aria-label="${escapeHtml(t("shop.tryOn") + " · " + item.name)}">${escapeHtml(t("shop.tryOn"))} <span aria-hidden="true">↗</span></button>`
       : "";
 

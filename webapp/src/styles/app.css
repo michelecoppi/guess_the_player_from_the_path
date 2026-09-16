@@ -2104,6 +2104,42 @@ nav.app-nav button[aria-current="page"] > .icon {
   line-height: 1.6;
   color: var(--muted);
 }
+.report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.report-textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--text);
+  padding: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  resize: vertical;
+}
+.report-textarea::placeholder {
+  color: var(--muted);
+}
+.report-status {
+  margin-top: 12px;
+  border-left: 3px solid var(--edge);
+  border-radius: 0 8px 8px 0;
+  padding: 12px;
+  font-size: 13px;
+}
+.report-status.success {
+  border-color: var(--success);
+  background: var(--success-bg);
+}
+.report-status.error {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
 .scoreboard .text-secondary {
   color: #c1ddcf;
 }
