@@ -809,5 +809,55 @@
         "glow": "#38bd82"
       }
     }
+  },
+  "traguardo_anni_90_perfetto": {
+    "name": "VHS anni '90",
+    "description": "Guadagna tutte le 7 stelline del capitolo Anni '90, senza mai sbagliare un livello.",
+    "price": 0,
+    "rarity": "earned",
+    "appearance": {
+      "equipped": {
+        "theme": "traguardo_anni_90_perfetto",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#1a0b2e",
+        "bg2": "#241041",
+        "card": "#2d1454",
+        "edge": "#4a2a7a",
+        "text": "#f5e8ff",
+        "muted": "#b79ddb",
+        "accent": "#00e5ff",
+        "accentText": "#00131a",
+        "track": "#3a1f66"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
   }
 }

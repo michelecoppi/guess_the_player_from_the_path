@@ -84,6 +84,29 @@ def test_events_page_previews_an_existing_template(monkeypatch):
     assert "Tentativi al giorno" in [metric.label for metric in at.metric]
 
 
+def test_users_page_shows_story_mode_progress(monkeypatch):
+    """The Utenti tab surfaces each user's Story Mode checkpoint/stars without a real Firestore."""
+    from services import firebase_service
+
+    fake_user = {
+        "telegram_id": 42, "first_name": "Anna", "points_totali": 10,
+        "app_story": {"anni_90": {"level": 2, "step": 0, "attempts": 0, "revision": 3,
+                                   "level_perfect": True, "finished": False,
+                                   "history": [], "stars": [True, False]}},
+        "story_chapters_cleared": 0, "story_perfect_chapters": 0,
+    }
+    monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: fake_user if str(uid) == "42" else None)
+    monkeypatch.setattr(firebase_service, "get_archive_days", lambda uid: [])
+    at = AppTest.from_string(RENDER.format(page="users")).run(timeout=30)
+    at.text_input[0].set_value("42").run(timeout=30)
+    assert not at.exception
+    rows = at.dataframe[0].value.to_dict("records")
+    assert rows[0]["episodio"] == "Anni '90"
+    assert rows[0]["livello"] == "2 / 7"
+    assert rows[0]["stelline"] == "⭐ 1 / 7"
+    assert rows[0]["completato"] == "no"
+
+
 def test_every_name_imported_from_the_shared_admin_module_exists():
     """Pages import their collaborators from admin_pages/shared.py; a re-export that disappears
     (for example when a service moves to domains/, #111) would only break when the page opens."""

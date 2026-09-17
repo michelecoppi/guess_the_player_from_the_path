@@ -2697,6 +2697,275 @@ nav.app-nav button[aria-current="page"] > .icon {
   letter-spacing: 0.04em;
 }
 
+/* Story Mode: era chapters, one level lost at a time (#story) */
+.story-entry .mode-icon {
+  background: rgba(239, 181, 104, 0.15);
+  color: var(--warn);
+}
+.story-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 32px;
+}
+.story-intro {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-top: -4px;
+}
+.story-node-number {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Episode menu: one card per chapter in data/story.json */
+.story-chapter-list,
+.story-level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.story-chapter-card,
+.story-level-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  text-align: left;
+  width: 100%;
+}
+.story-chapter-card:disabled,
+.story-level-card:disabled {
+  cursor: default;
+}
+.story-chapter-mark,
+.story-level-mark {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-secondary);
+  color: var(--muted);
+  border: 1px solid var(--edge);
+}
+.story-chapter-mark .icon,
+.story-level-mark .icon {
+  width: 18px;
+  height: 18px;
+}
+.story-chapter-copy,
+.story-level-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.story-chapter-copy b,
+.story-level-copy b {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.story-chapter-copy small {
+  font-size: 13px;
+  color: var(--muted);
+}
+.story-level-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.story-chapter-stars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--warn);
+  flex: 0 0 auto;
+}
+.story-chapter-stars .icon {
+  width: 14px;
+  height: 14px;
+}
+.story-chapter-card.cleared .story-chapter-mark,
+.story-level-card.cleared .story-level-mark {
+  background: var(--warn-bg);
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.story-level-card.current .story-level-mark {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+.story-chapter-card.locked,
+.story-level-card.locked {
+  opacity: 0.55;
+}
+.story-chapter-card.locked .story-chapter-mark,
+.story-level-card.locked .story-level-mark {
+  color: var(--muted);
+}
+.story-level-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 4px;
+}
+.story-theme-title {
+  font-size: 19px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+.story-step-dots {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0 4px;
+}
+.story-step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--track);
+  border: 1px solid var(--edge);
+}
+.story-step-dot.done {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.story-step-dot.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--success-bg);
+}
+.story-career-container {
+  margin: 8px 0 4px;
+}
+.story-lives {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.story-life {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--success);
+  background: var(--success-bg);
+}
+.story-life .icon {
+  width: 12px;
+  height: 12px;
+}
+.story-life.spent {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+.story-lives-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+.story-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.story-cleared-card {
+  padding: 24px 20px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--edge);
+  text-align: center;
+}
+.story-cleared-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  display: grid;
+  place-items: center;
+  margin: 0 auto 16px;
+}
+.story-cleared-mark .icon {
+  width: 28px;
+  height: 28px;
+}
+.story-cleared-title {
+  font-size: 20px;
+  font-weight: 750;
+  margin-bottom: 8px;
+}
+.story-cleared-desc {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.story-cleared-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+.story-cleared-stat {
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  text-align: center;
+}
+.story-cleared-stat strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 750;
+  color: var(--warn);
+}
+.story-cleared-stat span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.story-reward-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 14px;
+  font-weight: 650;
+  margin-top: 8px;
+}
+.story-reward-card .icon {
+  width: 20px;
+  height: 20px;
+}
+.story-reward-card.perfect {
+  background: linear-gradient(135deg, var(--warn-bg), var(--success-bg));
+  color: var(--text);
+}
+
 /* Leaderboard & Private Leagues V2 Styles (#43) */
 .leaderboard-section {
   display: flex;

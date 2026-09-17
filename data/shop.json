@@ -2690,6 +2690,60 @@
         "ink": "#f2ffe4",
         "glow": "#c8f48b"
       }
+    },
+    {
+      "id": "traguardo_anni_90",
+      "kind": "badge",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Anni '90",
+      "name_i18n": {
+        "en": "The 90s",
+        "es": "Los 90"
+      },
+      "description": "Completa tutti i livelli del capitolo Anni '90 nella Modalita' Storia. Non si compra.",
+      "description_i18n": {
+        "en": "Clear every level of the 90s Story Mode chapter. Not for sale.",
+        "es": "Completa todos los niveles del capitulo Anos 90 en el Modo Historia. No se vende."
+      },
+      "style": {
+        "emoji": "📼"
+      },
+      "achievement": {
+        "field": "story_chapters_cleared",
+        "target": 1
+      }
+    },
+    {
+      "id": "traguardo_anni_90_perfetto",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "VHS anni '90",
+      "name_i18n": {
+        "en": "90s VHS",
+        "es": "VHS anos 90"
+      },
+      "description": "Guadagna tutte le 7 stelline del capitolo Anni '90, senza mai sbagliare un livello.",
+      "description_i18n": {
+        "en": "Earn all 7 stars in the 90s chapter without ever failing a level.",
+        "es": "Consigue las 7 estrellas del capitulo Anos 90 sin fallar nunca un nivel."
+      },
+      "style": {
+        "bg": "#1a0b2e",
+        "bg2": "#241041",
+        "card": "#2d1454",
+        "edge": "#4a2a7a",
+        "text": "#f5e8ff",
+        "muted": "#b79ddb",
+        "accent": "#00e5ff",
+        "accentText": "#00131a",
+        "track": "#3a1f66"
+      },
+      "achievement": {
+        "field": "story_perfect_chapters",
+        "target": 1
+      }
     }
   ]
 }

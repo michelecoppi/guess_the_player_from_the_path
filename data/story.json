@@ -1,0 +1,56 @@
+{
+  "_comment": "Modalita' Storia della mini app: capitoli a tema, ognuno una sequenza fissa di livelli. Ogni livello raggruppa 5 calciatori legati da un evento/epoca in comune (non solo difficolta'), player_ids devono esistere e avere 'verified': true in data/players.json. Curato a mano, non generato.",
+  "chapters": [
+    {
+      "id": "anni_90",
+      "title": "Anni '90",
+      "title_i18n": { "en": "The 90s", "es": "Los 90" },
+      "reward_item": "traguardo_anni_90",
+      "perfect_reward_item": "traguardo_anni_90_perfetto",
+      "levels": [
+        {
+          "id": 1,
+          "theme": "Il Pallone d'Oro dei '90",
+          "theme_i18n": { "en": "The 90s Ballon d'Or", "es": "El Balon de Oro de los 90" },
+          "player_ids": ["baggio", "zidane", "weah", "stoichkov", "matthaus"]
+        },
+        {
+          "id": 2,
+          "theme": "USA '94 - La finale mondiale",
+          "theme_i18n": { "en": "USA '94 - The World Cup final", "es": "USA '94 - La final del Mundial" },
+          "player_ids": ["giuseppe_signori", "dino_baggio", "dunga", "romario", "careca"]
+        },
+        {
+          "id": 3,
+          "theme": "Francia '98 campione del mondo",
+          "theme_i18n": { "en": "France '98 world champions", "es": "Francia '98 campeona del mundo" },
+          "player_ids": ["barthez", "desailly", "henry", "karembeu", "djorkaeff"]
+        },
+        {
+          "id": 4,
+          "theme": "La scuola olandese: Ajax e oltre",
+          "theme_i18n": { "en": "The Dutch school: Ajax and beyond", "es": "La escuela holandesa: Ajax y mas alla" },
+          "player_ids": ["bergkamp", "seedorf", "kluivert", "overmars", "edgar_davids"]
+        },
+        {
+          "id": 5,
+          "theme": "Serie A, il campionato piu' forte del mondo",
+          "theme_i18n": { "en": "Serie A, the strongest league in the world", "es": "La Serie A, la liga mas fuerte del mundo" },
+          "player_ids": ["batistuta", "shevchenko", "klinsmann", "van_basten", "zvonimir_boban"]
+        },
+        {
+          "id": 6,
+          "theme": "Il Milan della vecchia guardia",
+          "theme_i18n": { "en": "AC Milan's old guard", "es": "El Milan de la vieja guardia" },
+          "player_ids": ["maldini", "baresi", "gullit", "dejan_savicevic", "marco_simone"]
+        },
+        {
+          "id": 7,
+          "theme": "I fenomeni emergenti di fine decennio",
+          "theme_i18n": { "en": "Rising stars of the late 90s", "es": "Los fenomenos emergentes de fin de decada" },
+          "player_ids": ["totti", "delpiero", "nesta", "ronaldinho", "michael_owen"]
+        }
+      ]
+    }
+  ]
+}

@@ -39,6 +39,7 @@ import { exposeLegacyBridge } from "@/utils/legacy-bridge";
 import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
 import { TrainingController } from "@/features/training/controller";
+import { StoryController } from "@/features/story/controller";
 import { LeaderboardController } from "@/features/leaderboard/controller";
 import { ArchiveController } from "@/features/archive/controller";
 import { ProfileController } from "@/features/profile/controller";
@@ -53,6 +54,7 @@ export class App {
   private dailyController: DailyController;
   private arenaController: ArenaController;
   private trainingController: TrainingController;
+  private storyController: StoryController;
   private leaderboardController: LeaderboardController;
   private archiveController: ArchiveController;
   private profileController: ProfileController;
@@ -75,6 +77,7 @@ export class App {
     referralController?: ReferralController,
     eventsController?: EventsController,
     supportController?: SupportController,
+    storyController?: StoryController,
   ) {
     this.rootElement = rootElement;
     // The purchased theme's surface/glow/pattern now show behind every tab and the header,
@@ -85,6 +88,7 @@ export class App {
     this.dailyController = dailyController || new DailyController();
     this.arenaController = arenaController || new ArenaController();
     this.trainingController = trainingController || new TrainingController();
+    this.storyController = storyController || new StoryController();
     this.leaderboardController =
       leaderboardController || new LeaderboardController();
     this.archiveController = archiveController || new ArchiveController();
@@ -137,6 +141,12 @@ export class App {
             }
             this.renderArenaContent();
           }
+        } else if (state.subview === "story") {
+          if (subviewChanged) {
+            // Re-enters at the episode menu every time, so progress made elsewhere shows up.
+            void this.storyController.init();
+            this.renderArenaContent();
+          }
         } else {
           this.renderArenaContent();
         }
@@ -149,6 +159,15 @@ export class App {
       if (
         this.isArenaTab(this.activeTab) &&
         this.arenaController.getState().subview === "training"
+      ) {
+        this.renderArenaContent();
+      }
+    });
+
+    this.storyController.subscribe(() => {
+      if (
+        this.isArenaTab(this.activeTab) &&
+        this.arenaController.getState().subview === "story"
       ) {
         this.renderArenaContent();
       }
@@ -201,6 +220,10 @@ export class App {
 
   public getTrainingController(): TrainingController {
     return this.trainingController;
+  }
+
+  public getStoryController(): StoryController {
+    return this.storyController;
   }
 
   public getLeaderboardController(): LeaderboardController {
@@ -349,17 +372,19 @@ export class App {
     if (mainEl && this.isArenaTab(this.activeTab)) {
       const arenaState = this.arenaController.getState();
       const trainingState = this.trainingController.getState();
+      const storyState = this.storyController.getState();
 
       if (arenaState.subview === "training") {
         const hadInputFocus =
           typeof document !== "undefined" &&
           document.activeElement?.id === "training-answer";
 
-        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
         attachArenaEventListeners(
           this.rootElement,
           this.arenaController,
           this.trainingController,
+          this.storyController,
         );
         this.attachTabButtons(mainEl as HTMLElement);
 
@@ -370,6 +395,31 @@ export class App {
         }
 
         if (trainingState.data?.feedback) {
+          mainEl
+            .querySelector(".feedback")
+            ?.scrollIntoView?.({ block: "nearest" });
+        }
+      } else if (arenaState.subview === "story") {
+        const hadInputFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "story-answer";
+
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
+        attachArenaEventListeners(
+          this.rootElement,
+          this.arenaController,
+          this.trainingController,
+          this.storyController,
+        );
+        this.attachTabButtons(mainEl as HTMLElement);
+
+        if (hadInputFocus && storyState.status !== "loading") {
+          mainEl
+            .querySelector<HTMLInputElement>("#story-answer")
+            ?.focus({ preventScroll: true });
+        }
+
+        if (storyState.lastFeedback) {
           mainEl
             .querySelector(".feedback")
             ?.scrollIntoView?.({ block: "nearest" });
@@ -386,11 +436,12 @@ export class App {
             ? (document.activeElement as HTMLInputElement).selectionStart
             : null;
 
-        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
         attachArenaEventListeners(
           this.rootElement,
           this.arenaController,
           this.trainingController,
+          this.storyController,
         );
         this.attachTabButtons(mainEl as HTMLElement);
 
@@ -580,6 +631,7 @@ export class App {
         pageHtml = renderArenaPage(
           this.arenaController.getState(),
           this.trainingController.getState(),
+          this.storyController.getState(),
         );
         break;
       case "profile":
@@ -669,6 +721,7 @@ export class App {
         this.rootElement,
         this.arenaController,
         this.trainingController,
+        this.storyController,
       );
     } else if (this.activeTab === "leaderboard") {
       attachLeaderboardEventListeners(

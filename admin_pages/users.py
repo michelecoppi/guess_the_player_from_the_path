@@ -11,6 +11,7 @@ from admin_pages.shared import (
     st,
     to_display,
 )
+from services import story
 
 
 def render(today, now_italy):
@@ -125,6 +126,31 @@ def render(today, now_italy):
                     )
                 except Exception as e:
                     st.error(f"Errore: {e}")
+
+            with st.expander("📖 Modalità Storia", expanded=bool(user.get("app_story"))):
+                try:
+                    progress = story.chapters_progress(user)
+                except Exception as e:
+                    progress = []
+                    st.error(f"Errore: {e}")
+                show_table(
+                    [
+                        {
+                            "episodio": p["title"],
+                            "livello": f"{p['levels_cleared']} / {p['total_levels']}"
+                            if not p["locked"]
+                            else "🔒 bloccato",
+                            "stelline": f"⭐ {p['stars_earned']} / {p['total_levels']}",
+                            "completato": fmt_bool(p["finished"]),
+                        }
+                        for p in progress
+                    ],
+                    "Non ha ancora iniziato la Modalità Storia.",
+                )
+                st.caption(
+                    f"capitoli completati: {user.get('story_chapters_cleared') or 0} · "
+                    f"capitoli con run perfetta: {user.get('story_perfect_chapters') or 0}"
+                )
 
             st.markdown("---")
             st.markdown("**Modifica**")

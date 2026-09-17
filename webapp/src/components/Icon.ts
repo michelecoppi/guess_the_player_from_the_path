@@ -29,6 +29,10 @@ const paths = {
   events: '<path d="M5 21V3m0 1h14l-3 5 3 5H5"/>',
   training:
     '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4"/>',
+  story:
+    '<path d="M12 7c-2-1.4-5-1.8-8-1v13c3-.8 6-.4 8 1 2-1.4 5-1.8 8-1V6c-3-.8-6-.4-8 1Zm0 0v13"/>',
+  star: '<path d="M12 3.5 14.6 9l6.1.8-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2L9.4 9 12 3.5Z"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
 } as const;
 export type IconName = keyof typeof paths;
 export function icon(name: IconName): string {

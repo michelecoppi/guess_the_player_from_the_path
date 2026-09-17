@@ -131,6 +131,7 @@ COMPONENTS: dict[str, str] = {
     "services.hints": "game",
     "services.guess_feedback": "game",
     "services.arena": "game",
+    "services.story": "game",
     "services.practice_content": "game",
     "services.path_image": "game",
     "services.share": "game",
