@@ -3,13 +3,13 @@
 Prima l'unico modo di sapere cosa sapeva fare il bot era leggere il muro di testo di
 `/help` e ricopiare i comandi a mano. Qui ci sono le due cose che lo evitano:
 
-- `menu_keyboard()`: la tastiera inline che accompagna /start, /info e /help. I bottoni
-  richiamano gli stessi handler che un tempo erano comandi, quindi non esiste una seconda
-  versione della logica da tenere allineata. Non e' piu' un comando Telegram: /menu e' stato
-  rimosso, /start e /help mandano gia' questa tastiera;
+- `menu_keyboard()`: la tastiera inline che accompagna /start. I bottoni richiamano gli
+  stessi handler che un tempo erano comandi, quindi non esiste una seconda versione della
+  logica da tenere allineata. Non e' piu' un comando Telegram: /menu e' stato rimosso, e
+  /help non la manda piu' (spiega il gioco e apre la mini app, niente sotto-menu);
 - `bot_commands()`: la lista per `set_my_commands`, cioe' il menu "/" che Telegram mostra
   accanto alla casella di scrittura, tradotto per lingua. Elenca solo i punti di ingresso
-  rimasti come comandi veri (start/info/help/notify/language/forgetme/paysupport); tutto il
+  rimasti come comandi veri (start/help/notify/language/forgetme/paysupport); tutto il
   resto (gioca, soluzione, statistiche, eventi, archivio, allenamento, leghe, negozio,
   leggenda) si raggiunge solo dai bottoni della tastiera inline.
 """
@@ -31,7 +31,6 @@ CALLBACK_PREFIX = "menu_"
 # e' piu' un comando Telegram, si raggiunge solo dai bottoni di `menu_keyboard()`.
 COMMAND_KEYS = (
     ("start", "cmd.start"),
-    ("info", "cmd.info"),
     ("help", "cmd.help"),
     ("notify", "cmd.notify"),
     ("language", "cmd.language"),
@@ -93,9 +92,6 @@ def menu_keyboard(lang, *, include_app=True):
 
 
 def bot_commands(lang):
-    keys = list(COMMAND_KEYS)
-    if WEBAPP_URL:
-        keys.insert(1, ("app", "cmd.app"))
-    return [BotCommand(command, t(lang, key)) for command, key in keys]
+    return [BotCommand(command, t(lang, key)) for command, key in COMMAND_KEYS]
 
 

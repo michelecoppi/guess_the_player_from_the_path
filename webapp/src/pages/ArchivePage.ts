@@ -8,12 +8,20 @@ import type { ArchiveController } from "@/features/archive/controller";
 import type { ArchiveState } from "@/features/archive/types";
 import { renderArchiveViews } from "@/features/archive/views";
 import { t } from "@/i18n";
+import { v } from "@/i18n/visual";
+import { icon } from "@/components/Icon";
 import { escapeHtml } from "@/utils/format";
 
 /**
  * Renders the full archive page (calendar or challenge view, depending on state).
  */
 export function renderArchivePage(state: ArchiveState): string {
+  // Archive is reached from the Arena hub, so the calendar links back there; an open day
+  // has its own "back to archive" button instead (see renderChallengeView).
+  const backToArena =
+    state.view === "challenge"
+      ? ""
+      : `<button type="button" class="back-link" data-tab="arena">${icon("back")}${escapeHtml(v("backArena"))}</button>`;
   const heading = `
     <header class="page-heading">
       <p class="eyebrow">${escapeHtml(t("archive.kicker"))}</p>
@@ -21,7 +29,7 @@ export function renderArchivePage(state: ArchiveState): string {
     </header>
   `.trim();
 
-  return `${heading}\n${renderArchiveViews(state)}`;
+  return `${backToArena}${heading}\n${renderArchiveViews(state)}`;
 }
 
 /**

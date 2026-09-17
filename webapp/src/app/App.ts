@@ -454,6 +454,7 @@ export class App {
         document.activeElement?.id === "archive-answer";
       mainEl.innerHTML = renderArchivePage(this.archiveController.getState());
       attachArchiveEventListeners(this.rootElement, this.archiveController);
+      this.attachTabButtons(mainEl as HTMLElement);
       if (hadInputFocus && this.archiveController.getState().status !== "submitting") {
         mainEl
           .querySelector<HTMLInputElement>("#archive-answer")
@@ -526,6 +527,7 @@ export class App {
           },
         },
       );
+      this.attachTabButtons(mainEl as HTMLElement);
       const state = this.eventsController.getState();
       const event = this.eventsController.selected();
       if (

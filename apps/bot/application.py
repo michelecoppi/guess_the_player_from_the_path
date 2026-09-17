@@ -42,7 +42,6 @@ from handlers.events_handler import handle_event_navigation
 from handlers.guess_handler import CARD_PREFIX, free_text_guess, share_card_callback
 from handlers.help_handler import help
 from handlers.hint_handler import hint_callback
-from handlers.info_handler import info
 from handlers.keyboards import bot_commands
 from handlers.language_handler import language, language_callback
 from handlers.league_handler import league_callback
@@ -80,9 +79,7 @@ def register_handlers(application):
     """Order matters: PTB tries handlers in registration order, and the free-text guess is last."""
     application.add_error_handler(on_error)
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("app", start))
     application.add_handler(CommandHandler("help", help))
-    application.add_handler(CommandHandler("info", info))
     application.add_handler(CommandHandler("notify", notify))
     application.add_handler(CommandHandler("language", language))
     application.add_handler(CommandHandler("forgetme", forgetme))

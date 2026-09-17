@@ -99,6 +99,40 @@ test("Arena hub's 'Eventi'/'Archivio' still navigate after the async duel-list l
   }
 });
 
+test("Events and Archive link back to the Arena hub, also after their async load re-renders the page", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const { restore: restoreFetch } = captureFetchRequests({
+    ...createTestDuelData(),
+    days: [],
+    events: [],
+  });
+
+  try {
+    const app = new App(container);
+
+    app.setTab("events");
+    // The load resolves after setTab()'s full render, so the back link clicked here comes
+    // from renderEventsContent()'s partial re-render.
+    await app.getEventsController().load();
+    const eventsBack = container.querySelector<HTMLButtonElement>('#app-content .back-link[data-tab="arena"]');
+    assert.ok(eventsBack, "Events must render a back link to the Arena hub");
+    eventsBack.click();
+    assert.equal(app.getActiveTab(), "arena");
+
+    app.setTab("archive");
+    await app.getArchiveController().init();
+    const archiveBack = container.querySelector<HTMLButtonElement>('#app-content .back-link[data-tab="arena"]');
+    assert.ok(archiveBack, "Archive calendar must render a back link to the Arena hub");
+    archiveBack.click();
+    assert.equal(app.getActiveTab(), "arena");
+  } finally {
+    restoreFetch();
+    cleanupDom();
+    restoreTg();
+  }
+});
+
 test("query-string values (?view=wrong, ?view=solved) cannot trigger a Daily submission in production App", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();
