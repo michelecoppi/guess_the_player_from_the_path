@@ -9,6 +9,8 @@ import { EVENT_MAX_ATTEMPTS } from "@/features/events/types";
 import type { EventsController } from "@/features/events/controller";
 import type { DailyComparison } from "@/features/daily/types";
 import { t } from "@/i18n";
+import { v } from "@/i18n/visual";
+import { icon } from "@/components/Icon";
 
 const CLUES: Record<string, (args: Record<string, any>) => string> = {
   "feedback.nationality_same": () => t("daily.sameNat"),
@@ -71,15 +73,19 @@ function renderComparison(data?: DailyComparison | null): string {
 export function renderEventsPage(controller: EventsController): string {
   const state = controller.getState();
   const selectedEvent = state.events.find((x) => x.code === state.selectedCode);
+  // Events is reached from the Arena hub, so every list-level state links back there; an open
+  // event has its own "back" to the list instead.
+  const backToArena = `<button type="button" class="back-link" data-tab="arena">${icon("back")}${escapeHtml(v("backArena"))}</button>`;
 
   // Initial loading state
   if (state.status === "loading" && !state.events.length) {
-    return renderLoadingState({ message: t("events.title") });
+    return `${backToArena}${renderLoadingState({ message: t("events.title") })}`;
   }
 
   // Initial error state
   if (state.status === "error" && !state.events.length) {
     return `
+      ${backToArena}
       ${renderErrorState({ message: getErrorMessage(state.error) })}
       <button class="btn" id="events-retry">${t("events.refresh")}</button>
     `.trim();
@@ -88,6 +94,7 @@ export function renderEventsPage(controller: EventsController): string {
   // Events list view (no event selected or selected event disappeared)
   if (!selectedEvent) {
     const heading = `
+      ${backToArena}
       <header class="page-heading">
         <h2>${t("events.title")}</h2>
         <button class="btn ghost" id="events-refresh">${t("events.refresh")}</button>

@@ -1,6 +1,12 @@
 /* Sports-first Mini App: career timeline, compact match data and mode navigation. */
 #root {
   max-width: 1080px;
+  /* At least one screen tall: [data-cosmetic-shell] puts a clip-path on #root, and a clip-path
+     also clips position:fixed descendants. On a short page (Daily with no feedback yet) #root
+     ended above the viewport bottom, so the fixed nav bar's labels were cut off and a strip of
+     bare body background showed below them. */
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: auto;
   display: flex;
   flex-direction: column;
