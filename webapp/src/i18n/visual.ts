@@ -37,6 +37,61 @@ const copy = {
     "Reembolsos y compras",
   ],
   privacy: ["Elimina i miei dati", "Delete my data", "Eliminar mis datos"],
+  terms: ["Termini di servizio", "Terms of service", "Términos del servicio"],
+  privacyPolicy: ["Informativa privacy", "Privacy policy", "Política de privacidad"],
+  reportsIntro: [
+    "Hai trovato un errore in una carriera o un problema nella Mini App?",
+    "Found a mistake in a career or a problem in the Mini App?",
+    "¿Has encontrado un error en una carrera o un problema en la Mini App?",
+  ],
+  reportsWhatTitle: ["Cosa indicare", "What to include", "Qué indicar"],
+  reportsWhatBody: [
+    "Numero della Daily, club o stagione coinvolti e una breve descrizione.",
+    "The Daily number, the club or season involved and a short description.",
+    "Número de la Daily, club o temporada afectados y una breve descripción.",
+  ],
+  refundsIntro: [
+    "Per un acquisto in Stelle, contatta l’assistenza nella chat privata del bot.",
+    "For a purchase made with Stars, contact support in the bot's private chat.",
+    "Para una compra con Estrellas, contacta con el soporte en el chat privado del bot.",
+  ],
+  refundsHowTitle: ["Richiedi assistenza", "Ask for support", "Solicita asistencia"],
+  refundsHowBody: [
+    "Aggiungi la descrizione del problema e l’identificativo dell’acquisto. Il bot inoltrerà la richiesta all’assistenza.",
+    "Add a description of the problem and the purchase ID. The bot will forward your request to support.",
+    "Añade una descripción del problema y el identificador de la compra. El bot enviará la solicitud al soporte.",
+  ],
+  refundsNote: [
+    "La richiesta viene valutata dall’assistenza; aprire questa pagina non esegue un rimborso.",
+    "Support reviews each request; opening this page does not issue a refund.",
+    "El soporte evalúa cada solicitud; abrir esta página no realiza ningún reembolso.",
+  ],
+  privacyIntro: [
+    "Puoi richiedere la cancellazione dei tuoi dati di gioco dalla chat privata del bot.",
+    "You can ask for your game data to be deleted from the bot's private chat.",
+    "Puedes solicitar la eliminación de tus datos de juego desde el chat privado del bot.",
+  ],
+  privacyHowTitle: ["Gestisci i tuoi dati", "Manage your data", "Gestiona tus datos"],
+  privacyHowBody: [
+    "Il bot ti mostrerà la richiesta di conferma prima di cancellare i dati.",
+    "The bot will ask you to confirm before deleting your data.",
+    "El bot te pedirá confirmación antes de eliminar tus datos.",
+  ],
+  privacyNote: [
+    "Questa pagina è informativa e non avvia la cancellazione.",
+    "This page is for information only and does not start the deletion.",
+    "Esta página es solo informativa y no inicia la eliminación.",
+  ],
+  refundsTermsLink: [
+    "Leggi le regole sui rimborsi nei termini di servizio",
+    "Read the refund rules in the terms of service",
+    "Lee las reglas de reembolso en los términos del servicio",
+  ],
+  privacyPolicyLink: [
+    "Leggi l’informativa privacy: quali dati conserviamo e perché",
+    "Read the privacy policy: what data we keep and why",
+    "Lee la política de privacidad: qué datos guardamos y por qué",
+  ],
   reportLabel: ["Cosa è successo", "What happened", "Qué ha pasado"],
   reportPlaceholder: [
     "Es. Giornata #462, Milan 2011-2015: le presenze sembrano sbagliate",

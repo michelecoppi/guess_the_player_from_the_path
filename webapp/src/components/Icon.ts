@@ -14,6 +14,8 @@ const paths = {
   refunds: '<path d="M7 4h13v16H7M4 7l-3 3 3 3m-3-3h10m0 6h5"/>',
   privacy:
     '<path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6l9-4Zm-3 8 6 6m0-6-6 6"/>',
+  terms: '<path d="M14 3H6v18h12V7l-4-4Zm0 0v4h4M9 12h6m-6 4h6"/>',
+  policy: '<path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6l9-4Zm-4 10 3 3 5-6"/>',
   back: '<path d="M20 12H4m6-6-6 6 6 6"/>',
   more: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   arrow: '<path d="M4 12h16m-6-6 6 6-6 6"/>',

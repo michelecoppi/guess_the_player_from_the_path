@@ -1,8 +1,9 @@
 import { renderStyleInventory } from "@/components/StyleInventory";
 import { escapeHtml, weekNumber } from "@/utils/format";
-import { t, getLanguage } from "@/i18n";
+import { t } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
 import { icon } from "@/components/Icon";
+import { legalHref } from "@/components/LegalLinks";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
 import { DEFAULT_SQUARE_SYMBOLS, parseResolvedAppearance, skinTokens } from "@/appearance";
 import { getTelegramUser } from "@/telegram/webapp";
@@ -61,11 +62,10 @@ export function itemMatches(
 }
 
 export function legalLinks(): string {
-  const lang = encodeURIComponent(getLanguage());
   return `
     <footer class="shop-legal-links">
-      <a href="/privacy?lang=${lang}" target="_blank" rel="noopener">${escapeHtml(t("shop.privacy"))}</a>
-      <a href="/terms?lang=${lang}#refunds" target="_blank" rel="noopener">${escapeHtml(t("shop.refunds"))}</a>
+      <a href="${legalHref("privacy")}" target="_blank" rel="noopener">${escapeHtml(t("shop.privacy"))}</a>
+      <a href="${legalHref("terms", "refunds")}" target="_blank" rel="noopener">${escapeHtml(t("shop.refunds"))}</a>
     </footer>
   `;
 }

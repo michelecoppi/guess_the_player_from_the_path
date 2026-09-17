@@ -109,8 +109,11 @@
   width: 260px;
   padding: 6px;
 }
-.more-menu button {
+.more-menu button,
+.more-menu a {
   width: 100%;
+  box-sizing: border-box;
+  text-decoration: none;
   text-align: left;
   display: flex;
   align-items: center;
@@ -121,8 +124,13 @@
   min-height: 48px;
   padding: 8px;
 }
-.more-menu button:hover {
+.more-menu button:hover,
+.more-menu a:hover {
   background: var(--bg-secondary);
+}
+.more-menu .more-menu-legal {
+  border-top: 1px solid var(--edge);
+  margin-top: 6px;
 }
 .environment-note {
   color: var(--muted);
@@ -2086,6 +2094,17 @@ nav.app-nav button[aria-current="page"] > .icon {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
+}
+.support-legal-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 650;
+  text-underline-offset: 4px;
 }
 .support-block {
   background: var(--card);

@@ -6,6 +6,7 @@ import {
   renderButton,
 } from "@/components";
 import { icon } from "@/components/Icon";
+import { legalHref } from "@/components/LegalLinks";
 import { v } from "@/i18n/visual";
 import type { NavTabId } from "@/components/NavBar";
 import type { SupportReportState } from "@/features/support/types";
@@ -109,9 +110,9 @@ function renderReportForm(state: SupportReportState): string {
 
 function renderSupport(id: "reports" | "refunds" | "privacy", reportState?: SupportReportState): string {
   const content = {
-    reports: `<p>Hai trovato un errore in una carriera o un problema nella Mini App?</p><div class="support-block"><h3>Cosa indicare</h3><p>Numero della Daily, club o stagione coinvolti e una breve descrizione.</p></div>${renderReportForm(reportState || { status: "idle", draft: "" })}`,
-    refunds: `<p>Per un acquisto in Stelle, contatta l’assistenza nella chat privata del bot.</p><div class="support-block"><h3>Richiedi assistenza</h3><code>/paysupport</code><p>Aggiungi la descrizione del problema e l’identificativo dell’acquisto. Il bot inoltrerà la richiesta all’assistenza.</p></div><p>La richiesta viene valutata dall’assistenza; aprire questa pagina non esegue un rimborso.</p>`,
-    privacy: `<p>Puoi richiedere la cancellazione dei tuoi dati di gioco dalla chat privata del bot.</p><div class="support-block"><h3>Gestisci i tuoi dati</h3><code>/forgetme</code><p>Il bot ti mostrerà la richiesta di conferma prima di cancellare i dati.</p></div><p>Questa pagina è informativa e non avvia la cancellazione.</p>`,
+    reports: `<p>${v("reportsIntro")}</p><div class="support-block"><h3>${v("reportsWhatTitle")}</h3><p>${v("reportsWhatBody")}</p></div>${renderReportForm(reportState || { status: "idle", draft: "" })}`,
+    refunds: `<p>${v("refundsIntro")}</p><div class="support-block"><h3>${v("refundsHowTitle")}</h3><code>/paysupport</code><p>${v("refundsHowBody")}</p></div><p>${v("refundsNote")}</p><a class="support-legal-link" href="${legalHref("terms", "refunds")}" target="_blank" rel="noopener">${icon("terms")}${v("refundsTermsLink")}</a>`,
+    privacy: `<p>${v("privacyIntro")}</p><div class="support-block"><h3>${v("privacyHowTitle")}</h3><code>/forgetme</code><p>${v("privacyHowBody")}</p></div><p>${v("privacyNote")}</p><a class="support-legal-link" href="${legalHref("privacy")}" target="_blank" rel="noopener">${icon("policy")}${v("privacyPolicyLink")}</a>`,
   };
   return `<button class="back-link" data-tab="play">${icon("back")}${v("backDaily")}</button><article class="support-page" data-support="${id}"><span class="support-symbol">${icon(id)}</span><h2 class="page-title">${v(id)}</h2>${content[id]}</article>`;
 }
