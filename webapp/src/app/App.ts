@@ -361,6 +361,7 @@ export class App {
           this.arenaController,
           this.trainingController,
         );
+        this.attachTabButtons(mainEl as HTMLElement);
 
         if (hadInputFocus && trainingState.status !== "loading") {
           mainEl
@@ -391,6 +392,7 @@ export class App {
           this.arenaController,
           this.trainingController,
         );
+        this.attachTabButtons(mainEl as HTMLElement);
 
         if (hadAnswerFocus && arenaState.status !== "submitting") {
           mainEl
@@ -474,17 +476,7 @@ export class App {
         this.rootElement,
         this.profileController,
       );
-      mainEl
-        .querySelectorAll<HTMLButtonElement>("button[data-tab]")
-        .forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            const tab = btn.dataset.tab as NavTabId;
-            if (tab) {
-              this.setTab(tab);
-            }
-          });
-        });
+      this.attachTabButtons(mainEl as HTMLElement);
       const heading = mainEl.querySelector<HTMLElement>("#profile-heading");
       if (heading) {
         heading.tabIndex = -1;
@@ -506,6 +498,7 @@ export class App {
     if (mainEl && this.activeTab === "reports") {
       mainEl.innerHTML = renderPrototype("reports", this.supportController.getState());
       attachSupportEventListeners(this.rootElement, this.supportController);
+      this.attachTabButtons(mainEl as HTMLElement);
     }
   }
 
@@ -634,18 +627,29 @@ export class App {
     this.attachEventListeners();
   }
 
-  private attachEventListeners(): void {
-    const navButtons =
-      this.rootElement.querySelectorAll<HTMLButtonElement>("button[data-tab]");
-    navButtons.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const tab = btn.dataset.tab as NavTabId;
-        if (tab) {
-          this.setTab(tab);
-        }
+  /**
+   * Any button[data-tab] inside `scope` navigates via setTab() - the header, nav bar and
+   * every page that links elsewhere (profile -> referral, arena -> events/archive, the
+   * support screens' back link...) relies on this. A partial re-render of a single page
+   * (renderXContent()) replaces that page's DOM, so its data-tab buttons need rewiring here
+   * too, not just the header/nav bar that a full render() already covers.
+   */
+  private attachTabButtons(scope: HTMLElement): void {
+    scope
+      .querySelectorAll<HTMLButtonElement>("button[data-tab]")
+      .forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const tab = btn.dataset.tab as NavTabId;
+          if (tab) {
+            this.setTab(tab);
+          }
+        });
       });
-    });
+  }
+
+  private attachEventListeners(): void {
+    this.attachTabButtons(this.rootElement);
 
     const details =
       this.rootElement.querySelector<HTMLDetailsElement>(".more-nav");

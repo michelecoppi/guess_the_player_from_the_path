@@ -8,6 +8,7 @@ import {
   captureFetchRequests,
   createTestDailyChallenge,
   createTestFullProfile,
+  createTestDuelData,
 } from "./helpers";
 
 test("App mounts into DOM and renders shared components with real Daily feature data", async () => {
@@ -59,6 +60,38 @@ test("App mounts into DOM and renders shared components with real Daily feature 
     assert.ok(playTabBtn);
     playTabBtn.click();
     assert.ok(container.querySelector(".path"));
+  } finally {
+    restoreFetch();
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("Arena hub's 'Eventi'/'Archivio' still navigate after the async duel-list load re-renders the hub (regression)", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const { restore: restoreFetch } = captureFetchRequests(createTestDuelData());
+
+  try {
+    const app = new App(container);
+    app.setTab("arena");
+    // setTab("arena") already kicks off an async loadDuelList(); waiting for it (and firing
+    // it again directly) reproduces the real-world case where that request resolves AFTER
+    // the initial render and re-renders the hub, which used to leave its data-tab buttons
+    // unwired.
+    await app.getArenaController().loadDuelList();
+
+    const eventsBtn = container.querySelector<HTMLButtonElement>('[data-tab="events"]');
+    assert.ok(eventsBtn, "Eventi button must be rendered in the arena hub");
+    eventsBtn.click();
+    assert.equal(app.getActiveTab(), "events");
+
+    app.setTab("arena");
+    await app.getArenaController().loadDuelList();
+    const archiveBtn = container.querySelector<HTMLButtonElement>('[data-tab="archive"]');
+    assert.ok(archiveBtn, "Archivio button must be rendered in the arena hub");
+    archiveBtn.click();
+    assert.equal(app.getActiveTab(), "archive");
   } finally {
     restoreFetch();
     cleanupDom();
