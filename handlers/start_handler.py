@@ -4,7 +4,7 @@ from html import escape
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import ContextTypes
 
-from handlers.keyboards import app_invitation, menu_keyboard
+from handlers.keyboards import app_keyboard
 from handlers.league_handler import league_join
 from services import product_analytics as analytics
 from services.firebase_service import save_user
@@ -51,13 +51,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [InlineKeyboardButton(label, web_app=WebAppInfo(url=f"{WEBAPP_URL}?duel={code}"))]
                 ]))
             return
-    # Il menu arriva subito insieme al benvenuto: prima l'unico modo di scoprire i comandi
-    # era leggere /help e ricopiarli a mano.
+    # Solo il bottone della mini app: tutto il resto del gioco si raggiunge da li', non
+    # serve piu' ripetere l'intera tastiera dei comandi al benvenuto.
     await update.effective_message.reply_text(
         "\n\n".join(filter(None, [t(lang, key, name=escape(user.first_name)),
-                                  t(lang, "start.referral_attached") if result.get("referral_attached") else "",
-                                  app_invitation(lang), t(lang, "menu.title")])),
-        reply_markup=menu_keyboard(lang),
+                                  t(lang, "start.referral_attached") if result.get("referral_attached") else ""])),
+        reply_markup=app_keyboard(lang),
         parse_mode="HTML",
     )
 

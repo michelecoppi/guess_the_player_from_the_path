@@ -80,9 +80,24 @@ def test_start_promotes_app_without_losing_league_invites(monkeypatch):
                              effective_message=SimpleNamespace(reply_text=reply))
     context = SimpleNamespace(args=[start_handler.DEEP_LINK_PREFIX + "ABC23X"])
     asyncio.run(start_handler.start(update, context))
-    assert t("it", "app.intro") in reply.call_args.args[0]
     assert "A&amp;B" in reply.call_args.args[0]
+    button = reply.call_args.kwargs["reply_markup"].inline_keyboard[0][0]
+    assert button.web_app.url == APP_URL
     join.assert_awaited_once_with(update, context, code="ABC23X")
+
+
+def test_start_shows_only_the_app_button(monkeypatch):
+    monkeypatch.setattr(keyboards, "WEBAPP_URL", APP_URL)
+    monkeypatch.setattr(start_handler, "save_user", lambda *a, **kw: {"language": "it", "created": True})
+    reply = AsyncMock()
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=42, first_name="Gio", language_code="it"),
+                             effective_chat=SimpleNamespace(type="private"),
+                             effective_message=SimpleNamespace(reply_text=reply))
+    asyncio.run(start_handler.start(update, SimpleNamespace(args=[])))
+    keyboard = reply.call_args.kwargs["reply_markup"]
+    assert len(keyboard.inline_keyboard) == 1
+    assert len(keyboard.inline_keyboard[0]) == 1
+    assert keyboard.inline_keyboard[0][0].web_app.url == APP_URL
 
 
 def test_daily_notification_contains_app_invitation(monkeypatch):
