@@ -97,6 +97,9 @@ new dated section below.
 
 ### Fixed
 
+- Mini App: on short pages (Daily before any guess) the bottom nav bar was cut off by a dark
+  strip on mobile; Events and Archive now have a back link to the Arena hub.
+
 ### Security
 
 - Observability redaction of tokens, secrets, cookies, Authorization and Telegram `initData`;
