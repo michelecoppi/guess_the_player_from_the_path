@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from handlers import daily_job, help_handler, keyboards, menu_handler, start_handler
+from handlers import daily_job, keyboards, menu_handler, start_handler
 from services.i18n import SUPPORTED_LANGUAGES, t
 
 APP_URL = "https://example.com/app"
@@ -42,7 +42,7 @@ def test_app_is_first_and_chat_actions_remain_available(monkeypatch, lang):
     assert rows[0][0].web_app.url == APP_URL
     assert rows[0][0].text == t(lang, "menu.app")
     assert any(button.callback_data == "menu_play" for row in rows for button in row)
-    assert [command.command for command in keyboards.bot_commands(lang)][:2] == ["start", "app"]
+    assert [command.command for command in keyboards.bot_commands(lang)][0] == "start"
 
 
 def test_unconfigured_app_has_no_invites_or_buttons(monkeypatch):
@@ -53,7 +53,7 @@ def test_unconfigured_app_has_no_invites_or_buttons(monkeypatch):
     assert all(not b.web_app for row in keyboards.menu_keyboard("it").inline_keyboard for b in row)
 
 
-@pytest.mark.parametrize("handler", [menu_handler.menu, help_handler.help])
+@pytest.mark.parametrize("handler", [menu_handler.menu])
 @pytest.mark.parametrize("chat_type", ["private", "group"])
 def test_invitation_is_only_shown_in_private_chat(monkeypatch, handler, chat_type):
     monkeypatch.setattr(keyboards, "WEBAPP_URL", APP_URL)

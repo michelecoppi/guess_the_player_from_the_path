@@ -30,9 +30,10 @@ python -m tools.dev check
 
 ### Transizione alla mini app Telegram
 
-Con `PUBLIC_BASE_URL` configurato, `/start`, `/menu` e `/help` invitano ad aprire
-la mini app nelle chat private. `/app` registra anche chi arriva per la prima volta
-e mostra il pulsante per giocare; all'avvio il bot configura inoltre il pulsante
+Con `PUBLIC_BASE_URL` configurato, `/start` invita ad aprire la mini app nelle chat
+private (primo bottone del menu, anche per chi arriva per la prima volta), e `/help`
+spiega il gioco con il solo bottone della mini app (niente menu). `/app` e `/info` non
+esistono piu': facevano lo stesso di `/start` e `/help`. All'avvio il bot configura inoltre il pulsante
 fisso **Play** di Telegram. Le notifiche giornaliere degli utenti che le hanno
 attivate includono lo stesso accesso diretto. I testi sono disponibili in IT/ES/EN.
 
@@ -103,6 +104,7 @@ due versioni del punteggio da tenere allineate.
 |---|---|
 | `/start` | registrazione e menu; apre anche i link d'invito alle leghe |
 | `/menu` | la tastiera con tutto quello che si puo' fare |
+| `/help` | come si gioca, con il bottone per aprire la mini app |
 | `/show` | la sfida di oggi |
 | `/solution` (`/soluzione`) | chi era il calciatore di una giornata gia' chiusa |
 | `/guess <risposta>` | il modo classico di rispondere |

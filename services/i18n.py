@@ -114,18 +114,19 @@ TRANSLATIONS = {
         "start.referral_attached": "Invito collegato! Completa 5 sfide daily in giorni diversi, vincendo o esaurendo i tentativi. Chi ti ha invitato vedrà il tuo nome e il progresso fino a 5/5 e potrà sbloccare premi esclusivi.",
 
         "help.message": (
-            "🛠️ Come si gioca:\n\n"
-            "Ogni giorno un percorso di carriera da indovinare. In chat privata ti basta scrivere il nome del calciatore: non serve nessun comando, e hai 3 tentativi.\n\n"
-            "📋 Comandi rimasti:\n"
-            "/start (o /app) - Registrati e apri il menu.\n"
-            "/info - App e informazioni sul gioco.\n"
-            "/help - Questo messaggio.\n"
-            "/notify - Attiva o disattiva le notifiche.\n"
-            "/language - Cambia la lingua del bot.\n"
-            "/forgetme - Cancella account e dati di gioco.\n"
-            "/paysupport - Assistenza per gli acquisti.\n\n"
-            "Tutto il resto - giocare, la soluzione, le statistiche, la classifica, gli eventi, l'archivio, l'allenamento, le leghe, il negozio e la leggenda dell'immagine - si trova nel menu che vedi qui sotto (lo stesso che apre /start)."
+            "⚽ <b>Guess the Player: come si gioca</b>\n\n"
+            "Ogni giorno c'è un calciatore misterioso. Vedi solo la sua carriera, squadra per squadra, con stagioni, presenze e gol: devi indovinare chi è.\n\n"
+            "🎯 <b>La sfida del giorno</b>\n"
+            "• Hai 3 tentativi. Dopo una risposta sbagliata scopri se il calciatore che hai scritto ha la stessa nazionalità e lo stesso ruolo, e se è più giovane o più vecchio.\n"
+            "• Puoi chiedere fino a 2 indizi (nazionalità e ruolo): se poi indovini, ognuno costa 1 punto.\n"
+            "• La sfida vale da 1 a 4 punti in base alla difficoltà, e chi indovina per primo prende 1 punto bonus.\n"
+            "• Indovina più giorni di fila per la striscia: +1 punto dal 3° giorno, +2 dal 7°, +3 dal 30°.\n"
+            "• A mezzanotte la sfida si chiude e si scopre la soluzione.\n\n"
+            "📱 <b>Nella mini app</b>\n"
+            "• Arena: duelli con gli amici, allenamento, eventi speciali e l'archivio per recuperare le sfide passate (senza punti).\n"
+            "• Classifica, il tuo profilo con le statistiche e il negozio."
         ),
+        "help.open_app": "👇 Apri la mini app e inizia a giocare.",
 
         "language.prompt": "🌐 Scegli la lingua del bot:",
         "language.confirm": "✅ Lingua impostata su Italiano.",
@@ -308,18 +309,15 @@ TRANSLATIONS = {
         "app.event.default": "Segui le istruzioni della sfida di oggi.",
         "app.intro": "Apri la mini app per giocare la sfida di oggi, allenarti, sfidare gli amici e partecipare agli eventi. Ritrovi lo stesso profilo, classifiche e archivio. Tutto il resto si trova nel menu qui sotto.",
         "app.daily_invite": "La sfida di oggi ti aspetta nella mini app: tocca il pulsante qui sotto per giocare.",
-        "cmd.app": "Apri la mini app e gioca",
         "menu.back": "⬅️ Menu",
 
         # --- descrizioni dei comandi nel menu di Telegram (set_my_commands) ---
-        "cmd.start": "Registrati e apri il menu",
-        "cmd.info": "App e informazioni",
+        "cmd.start": "Registrati e apri la mini app",
         "cmd.notify": "Attiva o disattiva le notifiche",
         "cmd.language": "Cambia lingua",
         "cmd.forgetme": "Cancella account e dati di gioco",
         "cmd.paysupport": "Assistenza per gli acquisti",
         "cmd.help": "Come si gioca",
-        "info.message": "⚽ <b>Guess the Player</b>\nOgni giorno un percorso di carriera da indovinare, più eventi, allenamento, leghe private e classifiche. Apri la mini app per giocare, allenarti, sfidare gli amici e vedere il tuo profilo.",
 
         # --- risposta libera (senza /guess) ---
         "guess.free_text_hint": "💬 Scrivimi il nome del calciatore per tentare la sfida di oggi, oppure apri /start per rivederla dal menu.",
@@ -540,18 +538,19 @@ TRANSLATIONS = {
         "start.referral_attached": "¡Invitación vinculada! Completa 5 retos diarios en días distintos, ganando o agotando los intentos. Quien te invitó verá tu nombre y el progreso hasta 5/5 y podrá desbloquear recompensas exclusivas.",
 
         "help.message": (
-            "🛠️ Cómo se juega:\n\n"
-            "Cada día una trayectoria que adivinar. En el chat privado basta con escribir el nombre del futbolista: no hace falta ningún comando, y tienes 3 intentos.\n\n"
-            "📋 Comandos que quedan:\n"
-            "/start (o /app) - Regístrate y abre el menú.\n"
-            "/info - App e información sobre el juego.\n"
-            "/help - Este mensaje.\n"
-            "/notify - Activa o desactiva las notificaciones.\n"
-            "/language - Cambia el idioma del bot.\n"
-            "/forgetme - Borra tu cuenta y datos de juego.\n"
-            "/paysupport - Ayuda con las compras.\n\n"
-            "Todo lo demás - jugar, la solución, las estadísticas, la clasificación, los eventos, el archivo, el entrenamiento, las ligas, la tienda y la leyenda de la imagen - está en el menú que ves aquí abajo (el mismo que abre /start)."
+            "⚽ <b>Guess the Player: cómo se juega</b>\n\n"
+            "Cada día hay un futbolista misterioso. Solo ves su trayectoria, equipo por equipo, con temporadas, partidos y goles: tienes que adivinar quién es.\n\n"
+            "🎯 <b>El reto del día</b>\n"
+            "• Tienes 3 intentos. Tras una respuesta incorrecta sabrás si el futbolista que escribiste tiene la misma nacionalidad y la misma posición, y si es más joven o mayor.\n"
+            "• Puedes pedir hasta 2 pistas (nacionalidad y posición): si luego aciertas, cada una cuesta 1 punto.\n"
+            "• El reto vale de 1 a 4 puntos según la dificultad, y quien acierta primero gana 1 punto extra.\n"
+            "• Acierta varios días seguidos para sumar racha: +1 punto desde el 3.er día, +2 desde el 7.º, +3 desde el 30.º.\n"
+            "• A medianoche el reto se cierra y se revela la solución.\n\n"
+            "📱 <b>En la mini app</b>\n"
+            "• Arena: duelos con amigos, entrenamiento, eventos especiales y el archivo para recuperar retos pasados (sin puntos).\n"
+            "• Clasificación, tu perfil con las estadísticas y la tienda."
         ),
+        "help.open_app": "👇 Abre la mini app y empieza a jugar.",
 
         "language.prompt": "🌐 Elige el idioma del bot:",
         "language.confirm": "✅ Idioma configurado en Español.",
@@ -732,18 +731,15 @@ TRANSLATIONS = {
         "app.event.default": "Sigue las instrucciones del reto de hoy.",
         "app.intro": "Abre la mini app para jugar el reto de hoy, entrenar, retar a tus amigos y participar en eventos. Encontrarás el mismo perfil, las clasificaciones y el archivo. Todo lo demás está en el menú de abajo.",
         "app.daily_invite": "El reto de hoy te espera en la mini app: toca el botón de abajo para jugar.",
-        "cmd.app": "Abre la mini app y juega",
         "menu.back": "⬅️ Menú",
 
         # --- descripciones de los comandos (set_my_commands) ---
-        "cmd.start": "Regístrate y abre el menú",
-        "cmd.info": "App e información",
+        "cmd.start": "Regístrate y abre la mini app",
         "cmd.notify": "Activa o desactiva las notificaciones",
         "cmd.language": "Cambiar idioma",
         "cmd.forgetme": "Borra tu cuenta y datos de juego",
         "cmd.paysupport": "Ayuda con las compras",
         "cmd.help": "Cómo se juega",
-        "info.message": "⚽ <b>Guess the Player</b>\nCada día una trayectoria que adivinar, además de eventos, entrenamiento, ligas privadas y clasificaciones. Abre la mini app para jugar, entrenar, retar a tus amigos y ver tu perfil.",
 
         # --- respuesta libre (sin /guess) ---
         "guess.free_text_hint": "💬 Escríbeme el nombre del futbolista para intentar el desafío de hoy, o abre /start para volver a verlo desde el menú.",
@@ -964,18 +960,19 @@ TRANSLATIONS = {
         "start.referral_attached": "Invite linked! Complete 5 daily challenges on different days, by winning or using all attempts. Your inviter will see your name and progress up to 5/5 and can unlock exclusive rewards.",
 
         "help.message": (
-            "🛠️ How to play:\n\n"
-            "Every day there's a career path to guess. In a private chat just type the player's name: no command needed, and you get 3 attempts.\n\n"
-            "📋 Commands left:\n"
-            "/start (or /app) - Sign up and open the menu.\n"
-            "/info - App and info about the game.\n"
-            "/help - This message.\n"
-            "/notify - Turn notifications on or off.\n"
-            "/language - Change the bot's language.\n"
-            "/forgetme - Delete your account and game data.\n"
-            "/paysupport - Help with purchases.\n\n"
-            "Everything else - playing, the solution, stats, the leaderboard, events, the archive, training, leagues, the shop and the legend for the picture - lives in the menu you see below (the same one /start opens)."
+            "⚽ <b>Guess the Player: how to play</b>\n\n"
+            "Every day there's a mystery footballer. You only see their career, club by club, with seasons, appearances and goals: guess who it is.\n\n"
+            "🎯 <b>The daily challenge</b>\n"
+            "• You get 3 attempts. After a wrong answer you find out whether the player you typed shares their nationality and position, and whether they're younger or older.\n"
+            "• You can ask for up to 2 hints (nationality and position): if you then guess right, each one costs 1 point.\n"
+            "• A challenge is worth 1 to 4 points depending on difficulty, and the first to guess it gets 1 bonus point.\n"
+            "• Guess on consecutive days to build a streak: +1 point from day 3, +2 from day 7, +3 from day 30.\n"
+            "• At midnight the challenge closes and the answer is revealed.\n\n"
+            "📱 <b>In the mini app</b>\n"
+            "• Arena: duels with friends, training, special events and the archive to catch up on past challenges (no points).\n"
+            "• Leaderboard, your profile with stats, and the shop."
         ),
+        "help.open_app": "👇 Open the mini app and start playing.",
 
         "language.prompt": "🌐 Choose the bot's language:",
         "language.confirm": "✅ Language set to English.",
@@ -1156,18 +1153,15 @@ TRANSLATIONS = {
         "app.event.default": "Follow the instructions for today’s challenge.",
         "app.intro": "Open the mini app to play today’s challenge, train, challenge friends and join events. Your profile, leaderboards and archive are all there. Everything else lives in the menu below.",
         "app.daily_invite": "Today’s challenge is waiting in the mini app: tap the button below to play.",
-        "cmd.app": "Open the mini app and play",
         "menu.back": "⬅️ Menu",
 
         # --- command descriptions (set_my_commands) ---
-        "cmd.start": "Sign up and open the menu",
-        "cmd.info": "App and info",
+        "cmd.start": "Sign up and open the mini app",
         "cmd.notify": "Turn notifications on or off",
         "cmd.language": "Change language",
         "cmd.forgetme": "Delete your account and game data",
         "cmd.paysupport": "Help with purchases",
         "cmd.help": "How to play",
-        "info.message": "⚽ <b>Guess the Player</b>\nEvery day there's a career path to guess, plus events, training, private leagues and leaderboards. Open the mini app to play, train, challenge friends and see your profile.",
 
         # --- free-text answers (no /guess) ---
         "guess.free_text_hint": "💬 Just type the player's name to try today's challenge, or open /start to see it again from the menu.",
