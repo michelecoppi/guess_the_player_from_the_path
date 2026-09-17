@@ -477,6 +477,7 @@ def _fake_story_firestore():
     semplici stub sopra: si dà allo stesso modo dei test (tests/test_story_flow.py), cosi'
     la logica che gira qui e' quella vera e non una sua imitazione."""
     from firebase_admin import firestore as firestore_module
+
     from services import story
 
     class MemoryRef:

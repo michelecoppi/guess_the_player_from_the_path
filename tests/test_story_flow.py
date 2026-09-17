@@ -140,13 +140,13 @@ def test_stale_revision_is_rejected(store):
 def test_levels_array_reports_locked_current_and_cleared_state(store):
     started = story.chapter(1, "anni_90")
     levels = started["chapter"]["levels"]
-    assert [l["state"] for l in levels] == ["current", "locked"]
+    assert [entry["state"] for entry in levels] == ["current", "locked"]
     assert levels[0]["theme"] == "Livello 1"
 
     rev = started["chapter"]["revision"]
     step1 = _guess("Player One", rev)
     step2 = _guess("Player Two", step1["chapter"]["revision"])
-    assert [l["state"] for l in step2["chapter"]["levels"]] == ["cleared", "current"]
+    assert [entry["state"] for entry in step2["chapter"]["levels"]] == ["cleared", "current"]
     assert step2["chapter"]["levels"][0]["starred"] is True
 
 
