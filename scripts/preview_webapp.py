@@ -22,12 +22,13 @@ import json
 import os
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("BOT_TOKEN", "preview-bot-token")
 
-from fastapi import Body, FastAPI  # noqa: E402
+from fastapi import Body, FastAPI, HTTPException  # noqa: E402
 from fastapi.responses import HTMLResponse, Response  # noqa: E402
 
 from domains.shop import service as shop  # noqa: E402
@@ -67,6 +68,8 @@ def _new_user():
         "best_streak": 31,
         "archive_solved": 63,
         "training_solved": 44,
+        "story_chapters_cleared": 1,
+        "story_perfect_chapters": 1,
         "solved_in": {"1": 41, "2": 68, "3": 45},
         "last_played_day": None,
         "has_guessed_today": False,
@@ -467,6 +470,48 @@ async def preview_hint(payload: dict = Body(default={})):
         "hints_left": max(0, 3 - STATE["user"]["daily_hints"]),
     }
 
+
+
+def _fake_story_firestore():
+    """Modalita' Storia usa transazioni Firestore vere (services/story.py::_run), non i
+    semplici stub sopra: si dà allo stesso modo dei test (tests/test_story_flow.py), cosi'
+    la logica che gira qui e' quella vera e non una sua imitazione."""
+    from firebase_admin import firestore as firestore_module
+    from services import story
+
+    class MemoryRef:
+        def get(self, transaction=None):
+            return SimpleNamespace(exists=True, to_dict=lambda: STATE["user"])
+
+    class MemoryTransaction:
+        def set(self, ref, data, merge=False):
+            STATE["user"] = data
+
+    story.fs.user_ref = lambda uid: MemoryRef()
+    story.fs.db = SimpleNamespace(transaction=lambda: MemoryTransaction())
+    firestore_module.transactional = lambda fn: fn
+
+
+_fake_story_firestore()
+
+
+@app.post("/app/api/arena")
+async def preview_arena(payload: dict = Body(default={})):
+    from services import story
+
+    mode, action = payload.get("mode"), payload.get("action", "get")
+    if mode != "story":
+        raise HTTPException(status_code=409, detail="invalid")
+    try:
+        if action == "list":
+            return story.list_chapters(USER_ID, _lang())
+        chapter_id = payload.get("chapter_id")
+        if not chapter_id:
+            raise story.StoryError("invalid")
+        return story.chapter(USER_ID, chapter_id, action, payload.get("answer"),
+                              payload.get("revision"), _lang())
+    except story.StoryError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
 
 
 @app.post("/app/api/preview/reset")

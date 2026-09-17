@@ -145,7 +145,7 @@ export interface OpponentProfile {
   trophies: number;
 }
 
-export type ArenaSubview = "hub" | "duels" | "challenge" | "duel" | "invitation" | "training";
+export type ArenaSubview = "hub" | "duels" | "challenge" | "duel" | "invitation" | "training" | "story";
 
 export interface ArenaState {
   subview: ArenaSubview;

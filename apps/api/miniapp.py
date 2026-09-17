@@ -45,7 +45,7 @@ def _require_feature(flag, user_id):
 
 # Le modalita' di /app/api/arena e il flag che le governa. `events` e' l'esperienza eventi
 # della mini app (services/app_events.py), non gli eventi in chat ne' la loro generazione.
-_ARENA_MODE_FLAGS = {"training": Flag.ARENA, "duel": Flag.ARENA, "events": Flag.EVENTS_V2}
+_ARENA_MODE_FLAGS = {"training": Flag.ARENA, "duel": Flag.ARENA, "events": Flag.EVENTS_V2, "story": Flag.ARENA}
 
 
 def _webapp_user(payload, cost=1):
@@ -164,7 +164,7 @@ def webapp_hint(payload: dict = Body(default={})):
 
 @router.post("/app/api/arena")
 def webapp_arena(payload: dict = Body(default={})):
-    from services import app_events, arena
+    from services import app_events, arena, story
     user_id, user = _webapp_user(payload, cost=2)
     lang = _webapp_language(user)
     mode, action = payload.get("mode"), payload.get("action", "get")
@@ -212,8 +212,15 @@ def webapp_arena(payload: dict = Body(default={})):
             elif action != "get":
                 raise arena.ArenaError("invalid")
             return {**app_events.list_events(user_id, lang), "feedback": feedback}
+        if mode == "story":
+            if action == "list":
+                return story.list_chapters(user_id, lang)
+            chapter_id = payload.get("chapter_id")
+            if not isinstance(chapter_id, str) or not chapter_id:
+                raise story.StoryError("invalid")
+            return story.chapter(user_id, chapter_id, action, payload.get("answer"), payload.get("revision"), lang)
         raise arena.ArenaError("invalid")
-    except arena.ArenaError as exc:
+    except (arena.ArenaError, story.StoryError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from None
 
 

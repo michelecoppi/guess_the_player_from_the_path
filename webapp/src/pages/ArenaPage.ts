@@ -1,9 +1,12 @@
 import { renderArenaPage as renderArenaView } from "@/features/arena/views";
 import { renderTrainingView } from "@/features/training/views";
+import { renderStoryView } from "@/features/story/views";
 import type { ArenaState, ArenaSubview } from "@/features/arena/types";
 import type { ArenaController } from "@/features/arena/controller";
 import type { TrainingState } from "@/features/training/types";
 import type { TrainingController } from "@/features/training/controller";
+import type { StoryState } from "@/features/story/types";
+import type { StoryController } from "@/features/story/controller";
 
 export type { ArenaSubview };
 
@@ -11,21 +14,26 @@ export interface ArenaPageOptions {
   subview?: ArenaSubview;
   arenaState?: ArenaState;
   trainingState?: TrainingState;
+  storyState?: StoryState;
 }
 
 export function renderArenaPage(
   stateOrOptions?: ArenaState | ArenaPageOptions,
   maybeTrainingState?: TrainingState,
+  maybeStoryState?: StoryState,
 ): string {
   if (!stateOrOptions) {
     return renderArenaView();
   }
 
   // Handle options object e.g. { subview: "training", trainingState }
-  if ("trainingState" in stateOrOptions || ("subview" in stateOrOptions && !("status" in stateOrOptions))) {
+  if ("trainingState" in stateOrOptions || "storyState" in stateOrOptions || ("subview" in stateOrOptions && !("status" in stateOrOptions))) {
     const opts = stateOrOptions as ArenaPageOptions;
     if (opts.subview === "training" && opts.trainingState) {
       return renderTrainingView(opts.trainingState);
+    }
+    if (opts.subview === "story" && opts.storyState) {
+      return renderStoryView(opts.storyState);
     }
     const arenaState: ArenaState = opts.arenaState || {
       subview: opts.subview || "hub",
@@ -50,6 +58,9 @@ export function renderArenaPage(
   if (arenaState.subview === "training" && maybeTrainingState) {
     return renderTrainingView(maybeTrainingState);
   }
+  if (arenaState.subview === "story" && maybeStoryState) {
+    return renderStoryView(maybeStoryState);
+  }
   return renderArenaView(arenaState);
 }
 
@@ -57,6 +68,7 @@ export function attachArenaEventListeners(
   container: HTMLElement,
   arenaController?: ArenaController,
   trainingController?: TrainingController,
+  storyController?: StoryController,
 ): void {
   // Navigation between Arena subviews (e.g. back to hub, open challenge, open training)
   container
@@ -116,6 +128,85 @@ export function attachArenaEventListeners(
     trainingRevealBtn.onclick = (e) => {
       e.preventDefault();
       trainingController?.reveal();
+    };
+  }
+
+  // Back from story view: one level up (play -> levels -> chapters -> Arena hub)
+  const storyBackBtn = container.querySelector<HTMLButtonElement>("[data-story-back]");
+  if (storyBackBtn) {
+    storyBackBtn.onclick = (e) => {
+      e.preventDefault();
+      const mode = storyController?.getState().mode;
+      if (mode === "play") {
+        storyController?.cancelConfirm();
+        storyController?.backToLevels();
+      } else if (mode === "levels") {
+        void storyController?.backToChapters();
+      } else {
+        arenaController?.setSubview("hub");
+      }
+    };
+  }
+
+  // Episode menu: open a chapter's level map
+  container
+    .querySelectorAll<HTMLButtonElement>("[data-story-chapter]")
+    .forEach((btn) => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const chapterId = btn.dataset.storyChapter;
+        if (chapterId) {
+          void storyController?.openChapter(chapterId);
+        }
+      };
+    });
+
+  // Level map: enter the current (unlocked) level
+  container
+    .querySelectorAll<HTMLButtonElement>("[data-story-level]")
+    .forEach((btn) => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        storyController?.enterPlay();
+      };
+    });
+
+  // Story controls
+  const storyRetryBtn = container.querySelector<HTMLButtonElement>("#story-retry");
+  if (storyRetryBtn) {
+    storyRetryBtn.onclick = (e) => {
+      e.preventDefault();
+      storyController?.init();
+    };
+  }
+
+  const storyRevealBtn = container.querySelector<HTMLButtonElement>("#story-reveal");
+  if (storyRevealBtn) {
+    storyRevealBtn.onclick = (e) => {
+      e.preventDefault();
+      storyController?.reveal();
+    };
+  }
+
+  const storyAnswerInput = container.querySelector<HTMLInputElement>("#story-answer");
+  if (storyAnswerInput) {
+    storyAnswerInput.oninput = () => {
+      storyController?.setDraftAnswer(storyAnswerInput.value);
+    };
+    storyAnswerInput.onkeydown = (event: KeyboardEvent) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        storyController?.submitGuess(storyAnswerInput.value);
+      }
+    };
+  }
+
+  const storySubmitBtn = container.querySelector<HTMLButtonElement>("#story-submit");
+  if (storySubmitBtn) {
+    storySubmitBtn.onclick = (e) => {
+      e.preventDefault();
+      const val = storyAnswerInput ? storyAnswerInput.value : "";
+      storyController?.submitGuess(val);
     };
   }
 

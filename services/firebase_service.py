@@ -144,6 +144,11 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
     "training_attempts": 0,
     "training_solved": 0,
     "event_key": None,
+    # Modalita' Storia (services/story.py): progresso per capitolo (livello raggiunto,
+    # stelline, checkpoint) e i due contatori che ne guadagnano i cosmetici.
+    "app_story": {},
+    "story_chapters_cleared": 0,
+    "story_perfect_chapters": 0,
     "leagues": [],
     # Cosmetici comprati in Stelle, traguardi guadagnati giocando, trofei appesi al profilo,
     # e cosa ha addosso adesso.
@@ -178,6 +183,7 @@ HARVESTED_FIELDS = frozenset({
     "referral_qualified",
     "points_totali", "monthly_points", "players_guessed", "current_streak", "best_streak",
     "bonus_first_guessed", "archive_solved", "training_solved",
+    "story_chapters_cleared", "story_perfect_chapters",
 })
 
 

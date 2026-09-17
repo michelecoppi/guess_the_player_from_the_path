@@ -202,6 +202,7 @@ export function renderHubView(_state: ArenaState): string {
       <button class="mode-entry" data-tab="events" type="button">${icon("events")}<span><b>${escapeHtml(t("arena.eventsTitle"))}</b><small>${escapeHtml(t("arena.eventsDesc"))}</small></span>${icon("arrow")}</button>
       <button class="mode-entry" data-tab="archive" type="button">${icon("archive")}<span><b>${escapeHtml(t("arena.archiveTitle"))}</b><small>${escapeHtml(t("arena.archiveDesc"))}</small></span>${icon("arrow")}</button>
       <button class="mode-entry training-entry" data-arena-nav="training" type="button">${icon("training")}<span><b>${escapeHtml(t("training.title"))}</b><small>${escapeHtml(t("training.desc"))}</small></span>${icon("arrow")}</button>
+      <button class="mode-entry story-entry" data-arena-nav="story" type="button">${icon("story")}<span><b>${escapeHtml(t("story.title"))}</b><small>${escapeHtml(t("story.desc"))}</small></span>${icon("arrow")}</button>
     </nav>
   </div>`;
 }
