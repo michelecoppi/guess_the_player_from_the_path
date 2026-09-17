@@ -240,11 +240,13 @@ def _move(user, chapter, session, action, answer, revision):
     return result
 
 
-def list_chapters(user_id, lang="it"):
-    """Il menu degli episodi: uno per capitolo in data/story.json, con il progresso di questo
-    utente se ne ha gia' uno. Una sola lettura, niente transazione: non si muove nulla."""
-    user = fs.get_user_data(user_id) or {}
-    progress = user.get("app_story") or {}
+def chapters_progress(user, lang="it"):
+    """Il progresso di un utente in ogni capitolo, dal documento che ha gia' in mano.
+
+    Pura: non legge Firestore. E' quello che serve sia al menu degli episodi (via
+    `list_chapters`, che aggiunge la lettura) sia alla dashboard admin, che il documento
+    lo ha gia' letto e non deve rifarne una copia solo per contare le stelline."""
+    progress = (user or {}).get("app_story") or {}
     result = []
     previous_finished = True
     for definition in chapters():
@@ -264,7 +266,14 @@ def list_chapters(user_id, lang="it"):
             "locked": not previous_finished,
         })
         previous_finished = finished
-    return {"chapters": result}
+    return result
+
+
+def list_chapters(user_id, lang="it"):
+    """Il menu degli episodi: uno per capitolo in data/story.json, con il progresso di questo
+    utente se ne ha gia' uno. Una sola lettura, niente transazione: non si muove nulla."""
+    user = fs.get_user_data(user_id) or {}
+    return {"chapters": chapters_progress(user, lang)}
 
 
 def _is_locked(user, chapter_id):
