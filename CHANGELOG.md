@@ -73,6 +73,10 @@ new dated section below.
 
 ### Changed
 
+- Bot: `/info` is merged into `/help`, which now only explains the game (daily challenge,
+  attempts, hints, points, streak, what's in the mini app) in IT/ES/EN and shows a single
+  button to open the mini app, without the full menu keyboard or the command list. `/app`
+  is removed too: `/start` already registers the user and shows the mini app button.
 - The Candidate pipeline and its source adapters moved to `domains/players/`, the shop to
   `domains/shop/` (`service`, `repository`, `editor`) and referrals to
   `domains/referrals/service.py`; all importers updated, no compatibility shims, and
