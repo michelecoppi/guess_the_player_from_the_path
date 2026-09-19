@@ -932,6 +932,19 @@ class CandidateReviewService:
                 clean_career.append(entry)
             clean_career = order_career(clean_career)
 
+            source_metadata = candidate.raw_data.get("source_metadata", {})
+            if not isinstance(source_metadata, dict):
+                source_metadata = {}
+            career_end = source_metadata.get("career_end")
+            if candidate.metadata.get("is_retired_auto") is False and "is_retired" in candidate.metadata:
+                active = not bool(candidate.metadata["is_retired"])
+            else:
+                active = infer_active_status(
+                    clean_career,
+                    self._current_year_provider() if self._current_year_provider else None,
+                    career_end=career_end,
+                )
+
             new_player: dict[str, Any] = {
                 "id": target_id,
                 "full_name": candidate.full_name,
@@ -942,9 +955,13 @@ class CandidateReviewService:
                 "popularity": candidate.popularity if candidate.popularity in (1, 2, 3, 4, 5) else 3,
                 "verified": True,
                 "career": clean_career,
-                "active": infer_active_status(clean_career, self._current_year_provider() if self._current_year_provider else None),
+                "active": active,
                 "career_last_checked_at": _now_utc_iso(),
             }
+            if career_end:
+                new_player["source_career_end"] = career_end
+            if candidate.metadata.get("one_club_career") is True:
+                new_player["one_club_career"] = True
             if candidate.source:
                 new_player["source"] = candidate.source
             if candidate.source_id:

@@ -62918,6 +62918,1705 @@
       "activity_checked_at": "2026-09-19T13:20:46Z",
       "source_revision_id": 148918411,
       "wikidata_id": "Q201860"
+    },
+    {
+      "id": "alexander_isak",
+      "full_name": "Alexander Isak",
+      "aliases": [
+        "alexander isak"
+      ],
+      "nationality": "Svezia",
+      "position": "Attaccante",
+      "birth_year": 1999,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "AIK",
+          "country": "Svezia",
+          "league": "Allsvenskan",
+          "start_year": 2016,
+          "end_year": 2017,
+          "loan": false,
+          "apps": 24,
+          "goals": 10
+        },
+        {
+          "team": "Borussia Dortmund II",
+          "country": "Germania",
+          "league": "Regionalliga West",
+          "start_year": 2017,
+          "end_year": 2018,
+          "loan": false,
+          "apps": 12,
+          "goals": 5
+        },
+        {
+          "team": "Borussia Dortmund",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 2018,
+          "end_year": 2019,
+          "loan": false,
+          "apps": 5,
+          "goals": 0
+        },
+        {
+          "team": "Willem II",
+          "country": "Olanda",
+          "league": "Eredivisie",
+          "start_year": 2019,
+          "end_year": 2019,
+          "loan": true,
+          "apps": 16,
+          "goals": 13
+        },
+        {
+          "team": "Real Sociedad",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2019,
+          "end_year": 2022,
+          "loan": false,
+          "apps": 105,
+          "goals": 33
+        },
+        {
+          "team": "Newcastle",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2022,
+          "end_year": 2025,
+          "loan": false,
+          "apps": 86,
+          "goals": 54
+        },
+        {
+          "team": "Liverpool",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2025,
+          "loan": false,
+          "apps": 19,
+          "goals": 6
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:01Z",
+      "source": "wikipedia",
+      "source_id": "Alexander Isak"
+    },
+    {
+      "id": "alfredo_di_stefano",
+      "full_name": "Alfredo Di Stéfano",
+      "aliases": [
+        "alfredo di stéfano laulhé",
+        "alfredo di stefano",
+        "alfredo di stéfano"
+      ],
+      "nationality": "Argentina",
+      "position": "Attaccante",
+      "birth_year": 1926,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "River Plate",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1944,
+          "end_year": 1945,
+          "loan": false,
+          "apps": 1,
+          "goals": 0
+        },
+        {
+          "team": "Huracan",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1946,
+          "end_year": 1947,
+          "loan": true,
+          "apps": 25,
+          "goals": 10
+        },
+        {
+          "team": "River Plate",
+          "country": "Argentina",
+          "league": "Liga Profesional",
+          "start_year": 1947,
+          "end_year": 1949,
+          "loan": false,
+          "apps": 65,
+          "goals": 49
+        },
+        {
+          "team": "Millonarios",
+          "country": "Colombia",
+          "league": "Categoria Primera A",
+          "start_year": 1949,
+          "end_year": 1953,
+          "loan": false,
+          "apps": 101,
+          "goals": 90
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1953,
+          "end_year": 1964,
+          "loan": false,
+          "apps": 282,
+          "goals": 216
+        },
+        {
+          "team": "Espanyol",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1964,
+          "end_year": 1966,
+          "loan": false,
+          "apps": 47,
+          "goals": 11
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:01Z",
+      "source": "wikipedia",
+      "source_id": "Alfredo Di Stéfano"
+    },
+    {
+      "id": "bobby_moore",
+      "full_name": "Bobby Moore",
+      "aliases": [
+        "bobby moore"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Difensore",
+      "birth_year": 1941,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "West Ham",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 1958,
+          "end_year": 1974,
+          "loan": false,
+          "apps": 544,
+          "goals": 24
+        },
+        {
+          "team": "Fulham",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 1974,
+          "end_year": 1976,
+          "loan": false,
+          "apps": 85,
+          "goals": 1
+        },
+        {
+          "team": "San Antonio Thunder",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1976,
+          "end_year": 1976,
+          "loan": true,
+          "apps": 24,
+          "goals": 1
+        },
+        {
+          "team": "Fulham",
+          "country": "Inghilterra",
+          "league": "Championship",
+          "start_year": 1976,
+          "end_year": 1977,
+          "loan": false,
+          "apps": 40,
+          "goals": 0
+        },
+        {
+          "team": "Seattle Sounders",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1978,
+          "end_year": 1978,
+          "loan": false,
+          "apps": 7,
+          "goals": 0
+        },
+        {
+          "team": "Herning Fremad",
+          "country": "Danimarca",
+          "league": "Danish 1st Division",
+          "start_year": 1978,
+          "end_year": 1978,
+          "loan": false,
+          "apps": 9,
+          "goals": 0
+        },
+        {
+          "team": "Charlotte Gold",
+          "country": "USA",
+          "league": "American Soccer League",
+          "start_year": 1983,
+          "end_year": 1983,
+          "loan": false,
+          "apps": 8,
+          "goals": 0
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:01Z",
+      "source": "wikipedia",
+      "source_id": "Bobby Moore"
+    },
+    {
+      "id": "carlos_alberto_torres",
+      "full_name": "Carlos Alberto Torres",
+      "aliases": [
+        "carlos alberto torres"
+      ],
+      "nationality": "Brasile",
+      "position": "Difensore",
+      "birth_year": 1944,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Fluminense",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1963,
+          "end_year": 1966,
+          "loan": false,
+          "apps": 98,
+          "goals": 9
+        },
+        {
+          "team": "Santos",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1966,
+          "end_year": 1971,
+          "loan": false,
+          "apps": 373,
+          "goals": 36
+        },
+        {
+          "team": "Botafogo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1971,
+          "end_year": 1971,
+          "loan": true,
+          "apps": 22,
+          "goals": 0
+        },
+        {
+          "team": "Santos",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1971,
+          "end_year": 1976,
+          "loan": false,
+          "apps": 72,
+          "goals": 4
+        },
+        {
+          "team": "Fluminense",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1976,
+          "end_year": 1977,
+          "loan": false,
+          "apps": 53,
+          "goals": 4
+        },
+        {
+          "team": "Flamengo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1977,
+          "end_year": 1977,
+          "loan": false,
+          "apps": 28,
+          "goals": 3
+        },
+        {
+          "team": "New York Cosmos",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1977,
+          "end_year": 1980,
+          "loan": false,
+          "apps": 80,
+          "goals": 6
+        },
+        {
+          "team": "California Surf",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1981,
+          "end_year": 1981,
+          "loan": false,
+          "apps": 19,
+          "goals": 2
+        },
+        {
+          "team": "New York Cosmos",
+          "country": "USA",
+          "league": "NASL",
+          "start_year": 1982,
+          "end_year": 1982,
+          "loan": false,
+          "apps": 20,
+          "goals": 0
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:01Z",
+      "source": "wikipedia",
+      "source_id": "Carlos Alberto Torres"
+    },
+    {
+      "id": "cole_palmer",
+      "full_name": "Cole Palmer",
+      "aliases": [
+        "cole jermaine palmer",
+        "cole palmer"
+      ],
+      "nationality": "Inghilterra",
+      "position": "Centrocampista",
+      "birth_year": 2002,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Manchester City",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2020,
+          "end_year": 2023,
+          "loan": false,
+          "apps": 19,
+          "goals": 0
+        },
+        {
+          "team": "Chelsea",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2023,
+          "loan": false,
+          "apps": 96,
+          "goals": 47
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:01Z",
+      "source": "wikipedia",
+      "source_id": "Cole Palmer"
+    },
+    {
+      "id": "declan_rice",
+      "full_name": "Declan Rice",
+      "aliases": [
+        "declan rice"
+      ],
+      "nationality": "Irlanda",
+      "position": "Difensore",
+      "birth_year": 1999,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "West Ham",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2017,
+          "end_year": 2023,
+          "loan": false,
+          "apps": 204,
+          "goals": 10
+        },
+        {
+          "team": "Arsenal",
+          "country": "Inghilterra",
+          "league": "Premier League",
+          "start_year": 2023,
+          "loan": false,
+          "apps": 110,
+          "goals": 15
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:01Z",
+      "source": "wikipedia",
+      "source_id": "Declan Rice"
+    },
+    {
+      "id": "desire_doue",
+      "full_name": "Désiré Doué",
+      "aliases": [
+        "désiré nonka-maho doué",
+        "desire doue",
+        "désiré doué"
+      ],
+      "nationality": "Francia",
+      "position": "Centrocampista",
+      "birth_year": 2005,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Rennes 2",
+          "country": "Francia",
+          "league": "Championnat National 3",
+          "start_year": 2021,
+          "end_year": 2022,
+          "loan": false,
+          "apps": 11,
+          "goals": 1
+        },
+        {
+          "team": "Rennes",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2022,
+          "end_year": 2024,
+          "loan": false,
+          "apps": 57,
+          "goals": 7
+        },
+        {
+          "team": "Paris Saint-Germain",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2024,
+          "loan": false,
+          "apps": 57,
+          "goals": 13
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:02Z",
+      "source": "wikipedia",
+      "source_id": "Désiré Doué"
+    },
+    {
+      "id": "dino_zoff",
+      "full_name": "Dino Zoff",
+      "aliases": [
+        "dino zoff"
+      ],
+      "nationality": "Italia",
+      "position": "Portiere",
+      "birth_year": 1942,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Udinese",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1961,
+          "end_year": 1963,
+          "loan": false,
+          "apps": 40
+        },
+        {
+          "team": "Mantova",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1963,
+          "end_year": 1967,
+          "loan": false,
+          "apps": 131
+        },
+        {
+          "team": "Napoli",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1967,
+          "end_year": 1972,
+          "loan": false,
+          "apps": 143
+        },
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1972,
+          "end_year": 1983,
+          "loan": false,
+          "apps": 330
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:02Z",
+      "source": "wikipedia",
+      "source_id": "Dino Zoff"
+    },
+    {
+      "id": "endrick",
+      "full_name": "Endrick",
+      "aliases": [
+        "endrick felipe moreira de sousa",
+        "endrick"
+      ],
+      "nationality": "Brasile",
+      "position": "Attaccante",
+      "birth_year": 2006,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Palmeiras",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 2022,
+          "end_year": 2024,
+          "loan": false,
+          "apps": 66,
+          "goals": 18
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2024,
+          "end_year": 2026,
+          "loan": false,
+          "apps": 23,
+          "goals": 1
+        },
+        {
+          "team": "Olympique Lione",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2026,
+          "end_year": 2026,
+          "loan": true,
+          "apps": 16,
+          "goals": 5
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2026,
+          "loan": false,
+          "apps": 0,
+          "goals": 0
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:02Z",
+      "source": "wikipedia",
+      "source_id": "Endrick"
+    },
+    {
+      "id": "federico_valverde",
+      "full_name": "Federico Valverde",
+      "aliases": [
+        "federico santiago valverde dipetta",
+        "federico valverde"
+      ],
+      "nationality": "Uruguay",
+      "position": "Centrocampista",
+      "birth_year": 1998,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Penarol",
+          "country": "Uruguay",
+          "league": "Uruguayan Primera Division",
+          "start_year": 2015,
+          "end_year": 2016,
+          "loan": false,
+          "apps": 11,
+          "goals": 0
+        },
+        {
+          "team": "Real Madrid Castilla",
+          "country": "Spagna",
+          "league": "Segunda Division B",
+          "start_year": 2016,
+          "end_year": 2017,
+          "loan": false,
+          "apps": 30,
+          "goals": 3
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2018,
+          "loan": false,
+          "apps": 244,
+          "goals": 25
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:02Z",
+      "source": "wikipedia",
+      "source_id": "Federico Valverde"
+    },
+    {
+      "id": "ferenc_puskas",
+      "full_name": "Ferenc Puskás",
+      "aliases": [
+        "ferenc puskás"
+      ],
+      "nationality": "Ungheria",
+      "position": "Attaccante",
+      "birth_year": 1927,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Honved",
+          "country": "Ungheria",
+          "league": "NB I",
+          "start_year": 1943,
+          "end_year": 1956,
+          "loan": false,
+          "apps": 350,
+          "goals": 358
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 1958,
+          "end_year": 1966,
+          "loan": false,
+          "apps": 180,
+          "goals": 156
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:02Z",
+      "source": "wikipedia",
+      "source_id": "Ferenc Puskás"
+    },
+    {
+      "id": "gaetano_scirea",
+      "full_name": "Gaetano Scirea",
+      "aliases": [
+        "gaetano scirea"
+      ],
+      "nationality": "Italia",
+      "position": "Difensore",
+      "birth_year": 1953,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Atalanta",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1972,
+          "end_year": 1974,
+          "loan": false,
+          "apps": 58,
+          "goals": 1
+        },
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1974,
+          "end_year": 1988,
+          "loan": false,
+          "apps": 377,
+          "goals": 24
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:02Z",
+      "source": "wikipedia",
+      "source_id": "Gaetano Scirea"
+    },
+    {
+      "id": "garrincha",
+      "full_name": "Garrincha",
+      "aliases": [
+        "manoel francisco dos santos",
+        "garrincha"
+      ],
+      "nationality": "Brasile",
+      "position": "Attaccante",
+      "birth_year": 1933,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Botafogo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1953,
+          "end_year": 1965,
+          "loan": false,
+          "apps": 236,
+          "goals": 85
+        },
+        {
+          "team": "Corinthians",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1966,
+          "end_year": 1967,
+          "loan": false,
+          "apps": 4,
+          "goals": 0
+        },
+        {
+          "team": "Vasco da Gama",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1967,
+          "end_year": 1967,
+          "loan": true,
+          "apps": 0,
+          "goals": 0
+        },
+        {
+          "team": "Atletico Junior",
+          "country": "Colombia",
+          "league": "Categoria Primera A",
+          "start_year": 1968,
+          "end_year": 1968,
+          "loan": false,
+          "apps": 1,
+          "goals": 0
+        },
+        {
+          "team": "Flamengo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1968,
+          "end_year": 1969,
+          "loan": false,
+          "apps": 5,
+          "goals": 0
+        },
+        {
+          "team": "Sacrofano",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1970,
+          "end_year": 1971,
+          "loan": false,
+          "apps": 12,
+          "goals": 6
+        },
+        {
+          "team": "Olaria",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1971,
+          "end_year": 1972,
+          "loan": false,
+          "apps": 8,
+          "goals": 0
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:03Z",
+      "source": "wikipedia",
+      "source_id": "Garrincha"
+    },
+    {
+      "id": "gavi",
+      "full_name": "Gavi",
+      "aliases": [
+        "pablo martín páez gavira",
+        "gavi"
+      ],
+      "nationality": "Spagna",
+      "position": "Centrocampista",
+      "birth_year": 2004,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Barcellona B",
+          "country": "Spagna",
+          "league": "Primera Federación",
+          "start_year": 2020,
+          "end_year": 2021,
+          "loan": false,
+          "apps": 3,
+          "goals": 0
+        },
+        {
+          "team": "Barcelona",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2021,
+          "loan": false,
+          "apps": 119,
+          "goals": 6
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:03Z",
+      "source": "wikipedia",
+      "source_id": "Gavi (calciatore)"
+    },
+    {
+      "id": "gerd_muller",
+      "full_name": "Gerd Müller",
+      "aliases": [
+        "gerhard müller",
+        "gerd muller",
+        "gerd müller"
+      ],
+      "nationality": "Germania",
+      "position": "Attaccante",
+      "birth_year": 1945,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Nordlingen",
+          "country": "Germania",
+          "league": "Bayernliga",
+          "start_year": 1963,
+          "end_year": 1964,
+          "loan": false,
+          "apps": 31,
+          "goals": 51
+        },
+        {
+          "team": "Bayern Monaco",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 1964,
+          "end_year": 1979,
+          "loan": false,
+          "apps": 459,
+          "goals": 404
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:03Z",
+      "source": "wikipedia",
+      "source_id": "Gerd Müller"
+    },
+    {
+      "id": "giacinto_facchetti",
+      "full_name": "Giacinto Facchetti",
+      "aliases": [
+        "giacinto facchetti"
+      ],
+      "nationality": "Italia",
+      "position": "Difensore",
+      "birth_year": 1942,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Trevigliese",
+          "country": "Italia",
+          "league": "Serie D",
+          "start_year": 1957,
+          "end_year": 1960,
+          "loan": false,
+          "apps": 81,
+          "goals": 0
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1960,
+          "end_year": 1978,
+          "loan": false,
+          "apps": 475,
+          "goals": 59
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:03Z",
+      "source": "wikipedia",
+      "source_id": "Giacinto Facchetti"
+    },
+    {
+      "id": "gigi_riva",
+      "full_name": "Gigi Riva",
+      "aliases": [
+        "luigi riva",
+        "gigi riva"
+      ],
+      "nationality": "Italia",
+      "position": "Attaccante",
+      "birth_year": 1944,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Legnano",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1962,
+          "end_year": 1963,
+          "loan": false,
+          "apps": 23,
+          "goals": 6
+        },
+        {
+          "team": "Cagliari",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1963,
+          "end_year": 1977,
+          "loan": false,
+          "apps": 315,
+          "goals": 164
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:03Z",
+      "source": "wikipedia",
+      "source_id": "Gigi Riva"
+    },
+    {
+      "id": "jairzinho",
+      "full_name": "Jairzinho",
+      "aliases": [
+        "jair ventura filho",
+        "jairzinho"
+      ],
+      "nationality": "Brasile",
+      "position": "Centrocampista",
+      "birth_year": 1944,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Botafogo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1964,
+          "end_year": 1974,
+          "loan": false,
+          "apps": 413,
+          "goals": 186
+        },
+        {
+          "team": "Olympique Marsiglia",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1974,
+          "end_year": 1975,
+          "loan": false,
+          "apps": 18,
+          "goals": 11
+        },
+        {
+          "team": "Kaizer Chiefs",
+          "country": "Sudafrica",
+          "league": "South African Premier Division",
+          "start_year": 1975,
+          "end_year": 1975,
+          "loan": false,
+          "apps": 3,
+          "goals": 7
+        },
+        {
+          "team": "Cruzeiro",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1976,
+          "end_year": 1976,
+          "loan": false,
+          "apps": 32,
+          "goals": 19
+        },
+        {
+          "team": "Portuguesa",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1977,
+          "end_year": 1977,
+          "loan": false,
+          "apps": 24,
+          "goals": 22
+        },
+        {
+          "team": "Noroeste",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1978,
+          "end_year": 1979,
+          "loan": false,
+          "apps": 25,
+          "goals": 10
+        },
+        {
+          "team": "Fast Clube",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1979,
+          "end_year": 1979,
+          "loan": false,
+          "apps": 18,
+          "goals": 10
+        },
+        {
+          "team": "Wilstermann",
+          "country": "Bolivia",
+          "league": "Bolivian Primera Division",
+          "start_year": 1980,
+          "end_year": 1981,
+          "loan": false,
+          "apps": 26,
+          "goals": 16
+        },
+        {
+          "team": "Botafogo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1981,
+          "end_year": 1982,
+          "loan": false,
+          "apps": 3,
+          "goals": 1
+        },
+        {
+          "team": "Nueve de Octubre",
+          "country": "Ecuador",
+          "league": "Ecuadorian Serie A",
+          "start_year": 1982,
+          "end_year": 1982,
+          "loan": false,
+          "apps": 0,
+          "goals": 0
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:03Z",
+      "source": "wikipedia",
+      "source_id": "Jairzinho"
+    },
+    {
+      "id": "just_fontaine",
+      "full_name": "Just Fontaine",
+      "aliases": [
+        "just louis fontaine",
+        "just fontaine"
+      ],
+      "nationality": "Francia",
+      "position": "Attaccante",
+      "birth_year": 1933,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "USM Casablanca",
+          "country": "Marocco",
+          "league": "Botola Pro",
+          "start_year": 1950,
+          "end_year": 1953,
+          "loan": false,
+          "apps": 48,
+          "goals": 62
+        },
+        {
+          "team": "Nizza",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1953,
+          "end_year": 1956,
+          "loan": false,
+          "apps": 99,
+          "goals": 44
+        },
+        {
+          "team": "Stade Reims",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 1956,
+          "end_year": 1962,
+          "loan": false,
+          "apps": 152,
+          "goals": 145
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:04Z",
+      "source": "wikipedia",
+      "source_id": "Just Fontaine"
+    },
+    {
+      "id": "lamine_yamal",
+      "full_name": "Lamine Yamal",
+      "aliases": [
+        "lamine yamal nasraoui ebana",
+        "lamine yamal"
+      ],
+      "nationality": "Spagna",
+      "position": "Attaccante",
+      "birth_year": 2007,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Barcellona Atletic",
+          "country": "Spagna",
+          "league": "Primera Federación",
+          "start_year": 2023,
+          "end_year": 2023,
+          "loan": false,
+          "apps": 1,
+          "goals": 0
+        },
+        {
+          "team": "Barcelona",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2023,
+          "loan": false,
+          "apps": 107,
+          "goals": 37
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:04Z",
+      "source": "wikipedia",
+      "source_id": "Lamine Yamal"
+    },
+    {
+      "id": "marco_tardelli",
+      "full_name": "Marco Tardelli",
+      "aliases": [
+        "marco tardelli"
+      ],
+      "nationality": "Italia",
+      "position": "Difensore",
+      "birth_year": 1954,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Pisa",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1972,
+          "end_year": 1974,
+          "loan": false,
+          "apps": 41,
+          "goals": 4
+        },
+        {
+          "team": "Como",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1974,
+          "end_year": 1975,
+          "loan": false,
+          "apps": 36,
+          "goals": 2
+        },
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1975,
+          "end_year": 1985,
+          "loan": false,
+          "apps": 259,
+          "goals": 35
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1985,
+          "end_year": 1987,
+          "loan": false,
+          "apps": 43,
+          "goals": 2
+        },
+        {
+          "team": "San Gallo",
+          "country": "Svizzera",
+          "league": "Swiss Super League",
+          "start_year": 1987,
+          "end_year": 1988,
+          "loan": false,
+          "apps": 31,
+          "goals": 1
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:04Z",
+      "source": "wikipedia",
+      "source_id": "Marco Tardelli"
+    },
+    {
+      "id": "mario_zagallo",
+      "full_name": "Mário Zagallo",
+      "aliases": [
+        "mário jorge lobo zagallo",
+        "mario zagallo",
+        "mário zagallo"
+      ],
+      "nationality": "Brasile",
+      "position": "Centrocampista",
+      "birth_year": 1931,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Flamengo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1950,
+          "end_year": 1958,
+          "loan": false,
+          "apps": 217,
+          "goals": 30
+        },
+        {
+          "team": "Botafogo",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 1958,
+          "end_year": 1965,
+          "loan": false,
+          "apps": 115,
+          "goals": 46
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:04Z",
+      "source": "wikipedia",
+      "source_id": "Mário Zagallo"
+    },
+    {
+      "id": "paolo_rossi",
+      "full_name": "Paolo Rossi",
+      "aliases": [
+        "paolo rossi"
+      ],
+      "nationality": "Italia",
+      "position": "Attaccante",
+      "birth_year": 1956,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1973,
+          "end_year": 1975,
+          "loan": false,
+          "apps": 0,
+          "goals": 0
+        },
+        {
+          "team": "Como",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1975,
+          "end_year": 1976,
+          "loan": true,
+          "apps": 6,
+          "goals": 0
+        },
+        {
+          "team": "Vicenza",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1976,
+          "end_year": 1979,
+          "loan": false,
+          "apps": 94,
+          "goals": 60
+        },
+        {
+          "team": "Perugia",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1979,
+          "end_year": 1980,
+          "loan": true,
+          "apps": 28,
+          "goals": 13
+        },
+        {
+          "team": "Vicenza",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1980,
+          "end_year": 1981,
+          "loan": false,
+          "apps": 0,
+          "goals": 0
+        },
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1981,
+          "end_year": 1985,
+          "loan": false,
+          "apps": 83,
+          "goals": 24
+        },
+        {
+          "team": "AC Milan",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1985,
+          "end_year": 1986,
+          "loan": false,
+          "apps": 20,
+          "goals": 2
+        },
+        {
+          "team": "Hellas Verona",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1986,
+          "end_year": 1987,
+          "loan": false,
+          "apps": 20,
+          "goals": 4
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:04Z",
+      "source": "wikipedia",
+      "source_id": "Paolo Rossi (calciatore 1956)"
+    },
+    {
+      "id": "pedri",
+      "full_name": "Pedri",
+      "aliases": [
+        "pedro gonzález lópez",
+        "pedri"
+      ],
+      "nationality": "Spagna",
+      "position": "Centrocampista",
+      "birth_year": 2002,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Las Palmas",
+          "country": "Spagna",
+          "league": "Segunda Division",
+          "start_year": 2019,
+          "end_year": 2020,
+          "loan": false,
+          "apps": 36,
+          "goals": 4
+        },
+        {
+          "team": "Barcelona",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2020,
+          "loan": false,
+          "apps": 167,
+          "goals": 22
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:04Z",
+      "source": "wikipedia",
+      "source_id": "Pedri"
+    },
+    {
+      "id": "roberto_bettega",
+      "full_name": "Roberto Bettega",
+      "aliases": [
+        "roberto bettega"
+      ],
+      "nationality": "Italia",
+      "position": "Attaccante",
+      "birth_year": 1950,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Varese",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1969,
+          "end_year": 1970,
+          "loan": true,
+          "apps": 30,
+          "goals": 13
+        },
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1970,
+          "end_year": 1983,
+          "loan": false,
+          "apps": 326,
+          "goals": 129
+        },
+        {
+          "team": "Toronto Blizzard",
+          "country": "Canada",
+          "league": "NASL",
+          "start_year": 1983,
+          "end_year": 1984,
+          "loan": false,
+          "apps": 48,
+          "goals": 11
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:05Z",
+      "source": "wikipedia",
+      "source_id": "Roberto Bettega"
+    },
+    {
+      "id": "rodrygo",
+      "full_name": "Rodrygo",
+      "aliases": [
+        "rodrygo silva de goes",
+        "rodrygo"
+      ],
+      "nationality": "Brasile",
+      "position": "Attaccante",
+      "birth_year": 2001,
+      "popularity": 4,
+      "verified": true,
+      "career": [
+        {
+          "team": "Santos",
+          "country": "Brasile",
+          "league": "Brasileirao",
+          "start_year": 2017,
+          "end_year": 2019,
+          "loan": false,
+          "apps": 41,
+          "goals": 9
+        },
+        {
+          "team": "Real Madrid",
+          "country": "Spagna",
+          "league": "La Liga",
+          "start_year": 2019,
+          "loan": false,
+          "apps": 190,
+          "goals": 33
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:05Z",
+      "source": "wikipedia",
+      "source_id": "Rodrygo Goes"
+    },
+    {
+      "id": "salvatore_schillaci",
+      "full_name": "Salvatore Schillaci",
+      "aliases": [
+        "salvatore schillaci"
+      ],
+      "nationality": "Italia",
+      "position": "Attaccante",
+      "birth_year": 1964,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Riunite Messina",
+          "country": "Italia",
+          "league": "Serie B",
+          "start_year": 1982,
+          "end_year": 1989,
+          "loan": false,
+          "apps": 219,
+          "goals": 61
+        },
+        {
+          "team": "Juventus",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1989,
+          "end_year": 1992,
+          "loan": false,
+          "apps": 90,
+          "goals": 26
+        },
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1992,
+          "end_year": 1994,
+          "loan": false,
+          "apps": 30,
+          "goals": 11
+        },
+        {
+          "team": "Jubilo",
+          "country": "Giappone",
+          "league": "J1 League",
+          "start_year": 1994,
+          "end_year": 1997,
+          "loan": false,
+          "apps": 86,
+          "goals": 58
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:05Z",
+      "source": "wikipedia",
+      "source_id": "Salvatore Schillaci"
+    },
+    {
+      "id": "sandro_mazzola",
+      "full_name": "Sandro Mazzola",
+      "aliases": [
+        "alessandro mazzola",
+        "sandro mazzola"
+      ],
+      "nationality": "Italia",
+      "position": "Centrocampista",
+      "birth_year": 1942,
+      "popularity": 5,
+      "verified": true,
+      "career": [
+        {
+          "team": "Inter",
+          "country": "Italia",
+          "league": "Serie A",
+          "start_year": 1960,
+          "end_year": 1977,
+          "loan": false,
+          "apps": 417,
+          "goals": 116
+        }
+      ],
+      "active": false,
+      "career_last_checked_at": "2026-09-19T14:01:05Z",
+      "one_club_career": true,
+      "source": "wikipedia",
+      "source_id": "Sandro Mazzola"
+    },
+    {
+      "id": "victor_boniface",
+      "full_name": "Victor Boniface",
+      "aliases": [
+        "victor okoh boniface",
+        "victor boniface"
+      ],
+      "nationality": "Nigeria",
+      "position": "Attaccante",
+      "birth_year": 2000,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Bodo/Glimt",
+          "country": "Norvegia",
+          "league": "Eliteserien",
+          "start_year": 2018,
+          "end_year": 2022,
+          "loan": false,
+          "apps": 48,
+          "goals": 13
+        },
+        {
+          "team": "Lefke TSK",
+          "country": "Cipro",
+          "league": "Kibris Super Lig",
+          "start_year": 2018,
+          "end_year": 2018,
+          "loan": true,
+          "apps": 2,
+          "goals": 2
+        },
+        {
+          "team": "Union Saint-Gilloise",
+          "country": "Belgio",
+          "league": "Belgian Pro League",
+          "start_year": 2022,
+          "end_year": 2023,
+          "loan": false,
+          "apps": 37,
+          "goals": 9
+        },
+        {
+          "team": "Bayer Leverkusen",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 2023,
+          "end_year": 2025,
+          "loan": false,
+          "apps": 42,
+          "goals": 22
+        },
+        {
+          "team": "Werder Brema",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 2025,
+          "end_year": 2026,
+          "loan": true,
+          "apps": 11,
+          "goals": 0
+        },
+        {
+          "team": "Bayer Leverkusen",
+          "country": "Germania",
+          "league": "Bundesliga",
+          "start_year": 2026,
+          "loan": false,
+          "apps": 1,
+          "goals": 0
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:05Z",
+      "source": "wikipedia",
+      "source_id": "Victor Boniface"
+    },
+    {
+      "id": "warren_zaire_emery",
+      "full_name": "Warren Zaïre-Emery",
+      "aliases": [
+        "warren marie jean-pierre zaïre-emery",
+        "warren zaire-emery",
+        "warren zaïre-emery"
+      ],
+      "nationality": "Francia",
+      "position": "Centrocampista",
+      "birth_year": 2006,
+      "popularity": 3,
+      "verified": true,
+      "career": [
+        {
+          "team": "Paris Saint-Germain",
+          "country": "Francia",
+          "league": "Ligue 1",
+          "start_year": 2022,
+          "loan": false,
+          "apps": 113,
+          "goals": 8
+        }
+      ],
+      "active": true,
+      "career_last_checked_at": "2026-09-19T14:01:05Z",
+      "one_club_career": true,
+      "source": "wikipedia",
+      "source_id": "Warren Zaïre-Emery"
     }
   ]
 }

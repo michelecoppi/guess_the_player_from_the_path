@@ -868,6 +868,92 @@ def test_make_production_player_id_determinism_and_collision():
     assert pid_col2 == "francesco_totti_2"
 
 
+def test_approval_preserves_explicit_source_retirement_date(temp_env):
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    candidate = create_sample_candidate(
+        "cand_explicit_retirement",
+        "Recent Retiree",
+        state=CandidateState.READY,
+        career=[
+            {
+                "team": "Atalanta",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2020,
+                "end_year": 2024,
+            },
+            {
+                "team": "Milan",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2024,
+                "end_year": 2026,
+            }
+        ],
+        birth_year=1990,
+    )
+    candidate.raw_data["source_metadata"] = {"career_end": "2 luglio 2026"}
+    repo.save(candidate)
+
+    result = service.approve_candidate(
+        admin,
+        candidate.candidate_id,
+        expected_revision=candidate.revision,
+        allow_warnings=True,
+    )
+
+    assert result.success is True
+    promoted = next(
+        player
+        for player in service._load_production_players()
+        if player["id"] == result.promoted_player_id
+    )
+    assert promoted["active"] is False
+    assert promoted["source_career_end"] == "2 luglio 2026"
+
+
+def test_approval_preserves_one_club_career_marker(temp_env):
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    candidate = create_sample_candidate(
+        "cand_one_club",
+        "Club Legend",
+        state=CandidateState.READY,
+        career=[
+            {
+                "team": "Roma",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2000,
+                "end_year": 2020,
+            }
+        ],
+        birth_year=1980,
+    )
+    candidate.metadata["one_club_career"] = True
+    repo.save(candidate)
+
+    result = service.approve_candidate(
+        admin,
+        candidate.candidate_id,
+        expected_revision=candidate.revision,
+        allow_warnings=True,
+    )
+
+    assert result.success is True
+    promoted = next(
+        player
+        for player in service._load_production_players()
+        if player["id"] == result.promoted_player_id
+    )
+    assert promoted["one_club_career"] is True
+
+
 def test_path_traversal_rejection(temp_env):
     repo = temp_env["repo"]
     with pytest.raises(ValueError, match="candidate_id non valido per il filesystem"):

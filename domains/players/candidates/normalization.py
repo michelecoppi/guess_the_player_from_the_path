@@ -1105,7 +1105,12 @@ def normalize_candidate(
     # Un valore e' considerato "manuale" quando la chiave e' presente ma non marcata come
     # auto-impostata (is_retired_auto assente o False significa "qualcuno l'ha scelto a mano").
     if "is_retired" not in candidate.metadata or candidate.metadata.get("is_retired_auto") is True:
-        candidate.metadata["is_retired"] = not infer_active_status(candidate.career)
+        source_metadata = candidate.raw_data.get("source_metadata", {})
+        career_end = source_metadata.get("career_end") if isinstance(source_metadata, dict) else None
+        candidate.metadata["is_retired"] = not infer_active_status(
+            candidate.career,
+            career_end=career_end,
+        )
         candidate.metadata["is_retired_auto"] = True
 
     # Riallinea i riferimenti dei percorsi career[i].prop nella provenienza senza perdere _stop_id
