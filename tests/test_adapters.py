@@ -397,6 +397,26 @@ class TestWikipediaAdapter:
         assert "url" in result.source_metadata
         assert "wikipedia.org" in result.source_metadata["url"]
 
+    def test_explicit_career_end_is_exposed_in_metadata(self):
+        wikitext = """
+{{Sportivo
+|ruolo = Attaccante
+|terminecarriera = 2 luglio 2026
+}}
+{{Bio
+|Nome = Mario
+|Cognome = Rossi
+|AnnoNascita = 1990
+}}
+"""
+        adapter, client = self._make_adapter()
+        client.configure("api.php", _wiki_api_response(wikitext))
+
+        result = adapter.fetch_player("Mario Rossi")
+
+        assert result.success is True
+        assert result.source_metadata["career_end"] == "2 luglio 2026"
+
     # ── Error handling ───────────────────────────────────────────────────
 
     def test_fetch_http_404(self):

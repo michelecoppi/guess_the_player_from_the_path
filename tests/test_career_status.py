@@ -1,4 +1,6 @@
 """Unit test per `domains.players.career_status.infer_active_status`."""
+from datetime import date
+
 from domains.players.career_status import infer_active_status
 
 
@@ -55,3 +57,23 @@ def test_default_current_year_is_injectable():
 def test_incomplete_stop_data_does_not_crash():
     career = [{"team": "A"}, {}]
     assert infer_active_status(career, current_year=2026) is True
+
+
+def test_explicit_career_end_date_overrides_current_year_stop():
+    career = [{"team": "Real Oviedo", "start_year": 2023, "end_year": 2026}]
+
+    assert infer_active_status(
+        career,
+        career_end="2 luglio 2026",
+        current_date=date(2026, 9, 19),
+    ) is False
+
+
+def test_future_explicit_career_end_remains_active():
+    career = [{"team": "Club", "start_year": 2026, "end_year": 2026}]
+
+    assert infer_active_status(
+        career,
+        career_end="31 dicembre 2026",
+        current_date=date(2026, 9, 19),
+    ) is True

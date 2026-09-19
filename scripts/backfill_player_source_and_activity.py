@@ -71,6 +71,9 @@ def find_high_confidence_match(
             return birth_matches[0]
         if len(birth_matches) > 1:
             return None  # ambiguo
+        # Se conosciamo l'anno del record locale, un nome uguale non basta: pagine di
+        # disambiguazione e redirect di omonimi possono avere lo stesso display name.
+        return None
 
     name_matches = [c for c in candidates if _clean_name(c.get("name", "")) == player_name]
     if len(name_matches) == 1:
@@ -283,7 +286,9 @@ def _apply_match(player: dict[str, Any], match: dict[str, Any]) -> None:
     player["source_id"] = match["identifier"]
 
     if result.career:
-        player["active"] = infer_active_status(result.career)
+        player["active"] = infer_active_status(
+            result.career, career_end=result.source_metadata.get("career_end")
+        )
     else:
         # No fresh career means the activity state is unknown, never inactive by default.
         player.pop("active", None)
@@ -295,6 +300,9 @@ def _apply_match(player: dict[str, Any], match: dict[str, Any]) -> None:
         player["source_revision_id"] = revision_id
     if wikidata_id:
         player["wikidata_id"] = wikidata_id
+    career_end = result.source_metadata.get("career_end")
+    if career_end:
+        player["source_career_end"] = career_end
 
 
 def run_backfill(

@@ -235,7 +235,11 @@ def refresh_player_career(
         old_active = player.get("active")
         if fresh_career:
             year_provider = current_year_provider() if current_year_provider else None
-            new_active = infer_active_status(merged_career, year_provider)
+            new_active = infer_active_status(
+                merged_career,
+                year_provider,
+                career_end=result.source_metadata.get("career_end"),
+            )
             if old_active != new_active:
                 diff["active_changed"] = {"previous": old_active, "new": new_active}
 
@@ -251,6 +255,9 @@ def refresh_player_career(
             player["source_revision_id"] = revision_id
         if wikidata_id:
             player["wikidata_id"] = wikidata_id
+        career_end = result.source_metadata.get("career_end")
+        if career_end:
+            player["source_career_end"] = career_end
         players[idx] = player
 
         snapshot_name, snapshot_dest = backup_production_dataset(players_path, backup_dir, player_id)

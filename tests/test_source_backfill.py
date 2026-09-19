@@ -65,6 +65,13 @@ def test_ambiguous_birth_year_returns_none():
     assert find_high_confidence_match(player, candidates) is None
 
 
+def test_known_birth_year_never_falls_back_to_name_only():
+    player = {"full_name": "Giovanni", "birth_year": 1972}
+    candidates = [{"identifier": "Giovanni", "name": "Giovanni", "birth_year": None}]
+
+    assert find_high_confidence_match(player, candidates) is None
+
+
 def test_no_birth_year_available_falls_back_to_unique_name():
     player = {"full_name": "Mario Rossi", "birth_year": None}
     candidates = [{"identifier": "A", "name": "Mario Rossi", "birth_year": None}]

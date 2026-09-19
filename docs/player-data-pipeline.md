@@ -114,7 +114,9 @@ and Wikidata id when supplied, so later runs can be audited.
 the source in the current run; an empty or failed fresh result leaves activity unknown
 instead of inferring retirement from stale local data. Players with unknown activity
 remain eligible for a later refresh, while `active: false` players are excluded from the
-normal bulk refresh.
+normal bulk refresh. When Wikipedia supplies an explicit `terminecarriera` date, that
+date takes precedence over the coarser year of the last career stop; this avoids keeping
+a player active for the rest of the calendar year after a dated retirement.
 
 ## Parent issue #13: documentation audit (2026-09-14)
 

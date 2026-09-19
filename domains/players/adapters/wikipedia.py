@@ -208,6 +208,8 @@ class WikipediaAdapter(PlayerSourceAdapter):
             result.nationality = profile.get("country_code")
             result.nationality_raw = profile.get("nationality_raw")
             result.birth_year = profile.get("birth_year")
+            if profile.get("career_end"):
+                result.source_metadata["career_end"] = profile["career_end"]
         except Exception as exc:
             result.errors.append(
                 AdapterError(
@@ -502,6 +504,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
             "birth_year": birth_year,
             "full_name": cls._strip_markup(name) or None,
             "nationality_raw": cls._strip_markup(bio_params.get("nazionalità", "")),
+            "career_end": cls._strip_markup(params.get("terminecarriera", "")) or None,
         }
 
     # ── Error helpers ────────────────────────────────────────────────────
