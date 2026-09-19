@@ -55,7 +55,7 @@ MAX_STARS = 2500
 # sua (`rarity` in data/shop.json) quando la fascia del prezzo non racconta quello che e':
 # una figurina che esiste solo dentro una collezione costa zero da sola, e "gratuita" e'
 # esattamente il contrario di quello che vuol dire.
-RARITY_BANDS = (("common", 15), ("rare", 30), ("collector", MAX_STARS))
+RARITY_BANDS = (("common", 7), ("rare", 15), ("collector", MAX_STARS))
 RARITIES = ("free", "earned", "common", "rare", "collector")
 
 _catalogue = None

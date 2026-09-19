@@ -16,8 +16,8 @@ def user(*ids, **fields):
 
 def test_completion_price_decreases_and_owned_items_cannot_be_bought():
     pack = shop.get_item("pacchetto_neon")
-    assert shop.price_for(user(), pack) == 60
-    assert shop.price_for(user("neon"), pack) == 45
+    assert shop.price_for(user(), pack) == 30
+    assert shop.price_for(user("neon"), pack) == 23
     complete = user(*pack["grants"])
     assert shop.price_for(complete, pack) == 0
     assert shop.purchase_status(complete, pack["id"]) == "already_owned"
@@ -29,10 +29,10 @@ def test_signed_invoice_records_only_missing_pieces_and_rejects_tampering():
     payload = shop.payment_payload(42, user("neon"), pack)
     quote = shop.payment_quote(payload)
     assert len(payload.encode()) <= 128
-    assert quote["price"] == 45
+    assert quote["price"] == 23
     assert "neon" not in quote["granted"]
     assert set(quote["granted"]) == set(pack["grants"]) - {"neon"}
-    assert shop.payment_quote(payload.replace(":45:", ":1:")) is None
+    assert shop.payment_quote(payload.replace(":23:", ":1:")) is None
     assert shop.parse_payload(payload.replace(":42:", ":99:")) == (None, None)
 
 
@@ -42,7 +42,7 @@ def test_precheckout_rejects_stale_or_invalid_invoices(monkeypatch, change):
     item = shop.get_item("pacchetto_neon")
     payload = shop.payment_payload(42, data, item)
     query = SimpleNamespace(id="q1", invoice_payload=payload, from_user=SimpleNamespace(id=42),
-                            currency="XTR", total_amount=45, answer=AsyncMock())
+                            currency="XTR", total_amount=23, answer=AsyncMock())
     if change == "price":
         query.total_amount = 1
     elif change == "currency":
@@ -66,12 +66,12 @@ def test_completion_delivery_preserves_the_snapshot_for_refunds(monkeypatch):
                         written.update(granted=granted, stars=stars) or True)
     monkeypatch.setattr(firebase_service, "save_user", lambda *args: None)
     monkeypatch.setattr(shop_handler, "language_for", lambda update: "it")
-    payment = SimpleNamespace(invoice_payload=payload, telegram_payment_charge_id="ch", total_amount=45)
+    payment = SimpleNamespace(invoice_payload=payload, telegram_payment_charge_id="ch", total_amount=23)
     message = SimpleNamespace(successful_payment=payment, reply_text=AsyncMock())
     update = SimpleNamespace(effective_user=SimpleNamespace(id=42, first_name="Anna"), effective_message=message)
     asyncio.run(shop_handler.successful_payment_callback(update, None))
     assert "neon" not in written["granted"]
-    assert written["stars"] == 45
+    assert written["stars"] == 23
 
 
 @pytest.mark.parametrize("pack_id", ["pacchetto_europa", "pacchetto_neon", "pacchetto_esordio", "pacchetto_sostenitore"])

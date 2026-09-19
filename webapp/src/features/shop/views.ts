@@ -640,10 +640,10 @@ export function renderShopPage(state: ShopState): string {
 
   const prices: Array<{ key: ShopPriceFilter; label: string }> = [
     { key: "all", label: t("shop.anyPrice") },
-    { key: "15", label: "≤ 15 ⭐" },
-    { key: "25", label: "≤ 25 ⭐" },
-    { key: "55", label: "≤ 55 ⭐" },
-    { key: "75", label: "≤ 75 ⭐" },
+    { key: "7", label: "≤ 7 ⭐" },
+    { key: "12", label: "≤ 12 ⭐" },
+    { key: "28", label: "≤ 28 ⭐" },
+    { key: "38", label: "≤ 38 ⭐" },
   ];
 
   const filtersHtml = `

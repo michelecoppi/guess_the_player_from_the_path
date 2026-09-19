@@ -30,7 +30,7 @@
     {
       "id": "terra_rossa",
       "kind": "theme",
-      "price": 15,
+      "price": 7,
       "name": "Terra rossa",
       "name_i18n": {
         "es": "Tierra roja",
@@ -56,7 +56,7 @@
     {
       "id": "ghiaccio",
       "kind": "theme",
-      "price": 15,
+      "price": 7,
       "name": "Ghiaccio",
       "name_i18n": {
         "es": "Hielo",
@@ -82,7 +82,7 @@
     {
       "id": "carta_ingiallita",
       "kind": "theme",
-      "price": 20,
+      "price": 10,
       "name": "Carta ingiallita",
       "name_i18n": {
         "es": "Papel amarillento",
@@ -108,7 +108,7 @@
     {
       "id": "neon",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Neon",
       "name_i18n": {
         "es": "Neón",
@@ -134,7 +134,7 @@
     {
       "id": "oro_notte",
       "kind": "theme",
-      "price": 30,
+      "price": 15,
       "name": "Oro di notte",
       "name_i18n": {
         "es": "Oro de noche",
@@ -178,7 +178,7 @@
     {
       "id": "fascia_capitano",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Fascia da capitano",
       "name_i18n": {
         "es": "Brazalete de capitán",
@@ -196,7 +196,7 @@
     {
       "id": "anello_oro",
       "kind": "frame",
-      "price": 20,
+      "price": 10,
       "name": "Anello d'oro",
       "name_i18n": {
         "es": "Anillo de oro",
@@ -214,7 +214,7 @@
     {
       "id": "arcobaleno",
       "kind": "frame",
-      "price": 20,
+      "price": 10,
       "name": "Arcobaleno",
       "name_i18n": {
         "es": "Arcoíris",
@@ -232,7 +232,7 @@
     {
       "id": "fuoco",
       "kind": "frame",
-      "price": 25,
+      "price": 12,
       "name": "Fuoco",
       "name_i18n": {
         "es": "Fuego",
@@ -270,7 +270,7 @@
     {
       "id": "talent_scout",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Talent scout",
       "name_i18n": {
         "es": "Ojeador",
@@ -293,7 +293,7 @@
     {
       "id": "memoria_di_ferro",
       "kind": "title",
-      "price": 20,
+      "price": 10,
       "name": "Memoria di ferro",
       "name_i18n": {
         "es": "Memoria de hierro",
@@ -316,7 +316,7 @@
     {
       "id": "re_dei_prestiti",
       "kind": "title",
-      "price": 20,
+      "price": 10,
       "name": "Re dei prestiti",
       "name_i18n": {
         "es": "Rey de las cesiones",
@@ -339,7 +339,7 @@
     {
       "id": "veterano",
       "kind": "title",
-      "price": 25,
+      "price": 12,
       "name": "Veterano del pallone",
       "name_i18n": {
         "es": "Veterano del balón",
@@ -404,7 +404,7 @@
     {
       "id": "distintivo_pallone",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Pallone",
       "name_i18n": {
         "es": "Balón",
@@ -422,7 +422,7 @@
     {
       "id": "distintivo_guanti",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Guanti",
       "name_i18n": {
         "es": "Guantes",
@@ -440,7 +440,7 @@
     {
       "id": "distintivo_binocolo",
       "kind": "badge",
-      "price": 15,
+      "price": 7,
       "name": "Binocolo",
       "name_i18n": {
         "es": "Prismáticos",
@@ -458,7 +458,7 @@
     {
       "id": "distintivo_cilindro",
       "kind": "badge",
-      "price": 15,
+      "price": 7,
       "name": "Cilindro",
       "name_i18n": {
         "es": "Chistera",
@@ -476,7 +476,7 @@
     {
       "id": "distintivo_diamante",
       "kind": "badge",
-      "price": 25,
+      "price": 12,
       "name": "Diamante",
       "name_i18n": {
         "es": "Diamante",
@@ -533,7 +533,7 @@
     {
       "id": "quadratini_pallone",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Pallone e croce",
       "name_i18n": {
         "es": "Balón y cruz",
@@ -553,7 +553,7 @@
     {
       "id": "quadratini_semaforo",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Semaforo",
       "name_i18n": {
         "es": "Semáforo",
@@ -573,7 +573,7 @@
     {
       "id": "quadratini_cuori",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Cuori",
       "name_i18n": {
         "es": "Corazones",
@@ -593,7 +593,7 @@
     {
       "id": "quadratini_stelle",
       "kind": "squares",
-      "price": 20,
+      "price": 10,
       "name": "Stelle",
       "name_i18n": {
         "es": "Estrellas",
@@ -613,16 +613,16 @@
     {
       "id": "pacchetto_esordio",
       "kind": "bundle",
-      "price": 30,
+      "price": 15,
       "name": "Pacchetto Esordio",
       "name_i18n": {
         "es": "Pack Debut",
         "en": "Debut pack"
       },
-      "description": "Terra rossa, fascia da capitano e distintivo pallone. Separati sarebbero 40 ⭐.",
+      "description": "Terra rossa, fascia da capitano e distintivo pallone. Separati sarebbero 19 ⭐.",
       "description_i18n": {
-        "es": "Tierra roja, brazalete de capitán y distintivo balón. Por separado serían 40 ⭐.",
-        "en": "Red clay, captain's armband and ball badge. Separately they'd be 40 ⭐."
+        "es": "Tierra roja, brazalete de capitán y distintivo balón. Por separado serían 19 ⭐.",
+        "en": "Red clay, captain's armband and ball badge. Separately they'd be 19 ⭐."
       },
       "grants": [
         "terra_rossa",
@@ -633,16 +633,16 @@
     {
       "id": "pacchetto_neon",
       "kind": "bundle",
-      "price": 60,
+      "price": 30,
       "name": "Pacchetto Neon",
       "name_i18n": {
         "es": "Pack Neón",
         "en": "Neon pack"
       },
-      "description": "Tema Neon, cornice Fuoco, distintivo Diamante e quadratini Stelle. Separati sarebbero 95 ⭐.",
+      "description": "Tema Neon, cornice Fuoco, distintivo Diamante e quadratini Stelle. Separati sarebbero 46 ⭐.",
       "description_i18n": {
-        "es": "Tema Neón, marco Fuego, distintivo Diamante y cuadrados Estrellas. Por separado serían 95 ⭐.",
-        "en": "Neon theme, Fire frame, Diamond badge and Stars squares. Separately they'd be 95 ⭐."
+        "es": "Tema Neón, marco Fuego, distintivo Diamante y cuadrados Estrellas. Por separado serían 46 ⭐.",
+        "en": "Neon theme, Fire frame, Diamond badge and Stars squares. Separately they'd be 46 ⭐."
       },
       "grants": [
         "neon",
@@ -654,7 +654,7 @@
     {
       "id": "pacchetto_sostenitore",
       "kind": "bundle",
-      "price": 75,
+      "price": 38,
       "name": "Pacchetto Sostenitore",
       "name_i18n": {
         "es": "Pack Mecenas",
@@ -675,7 +675,7 @@
     {
       "id": "collezione_completa",
       "kind": "bundle",
-      "price": 220,
+      "price": 110,
       "name": "Collezione originale",
       "name_i18n": {
         "es": "Colección original",
@@ -716,7 +716,7 @@
     {
       "id": "notti_europee",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Notti europee",
       "name_i18n": {
         "es": "Noches europeas",
@@ -743,7 +743,7 @@
     {
       "id": "riflettori",
       "kind": "frame",
-      "price": 25,
+      "price": 12,
       "name": "Riflettori",
       "name_i18n": {
         "es": "Reflectores",
@@ -762,7 +762,7 @@
     {
       "id": "regista_europeo",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Regista delle grandi notti",
       "name_i18n": {
         "es": "Director de las grandes noches",
@@ -785,7 +785,7 @@
     {
       "id": "distintivo_stadio",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Stadio",
       "name_i18n": {
         "es": "Estadio",
@@ -803,7 +803,7 @@
     {
       "id": "quadratini_europa",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Notte di gol",
       "name_i18n": {
         "es": "Noche de goles",
@@ -823,7 +823,7 @@
     {
       "id": "domenica_90",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Domenica ’90",
       "name_i18n": {
         "es": "Domingo del 90",
@@ -850,7 +850,7 @@
     {
       "id": "bordo_figurina",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bordo figurina",
       "name_i18n": {
         "es": "Borde de cromo",
@@ -868,7 +868,7 @@
     {
       "id": "numero_dieci",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Numero dieci",
       "name_i18n": {
         "es": "El diez",
@@ -891,7 +891,7 @@
     {
       "id": "distintivo_radiolina",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Radiolina",
       "name_i18n": {
         "es": "Radio de bolsillo",
@@ -909,7 +909,7 @@
     {
       "id": "quadratini_schedina",
       "kind": "squares",
-      "price": 10,
+      "price": 5,
       "name": "La schedina",
       "name_i18n": {
         "es": "La quiniela",
@@ -929,7 +929,7 @@
     {
       "id": "calcio_strada",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Calcio di strada",
       "name_i18n": {
         "es": "Fútbol callejero",
@@ -956,7 +956,7 @@
     {
       "id": "rete_campetto",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Rete del campetto",
       "name_i18n": {
         "es": "Red de la cancha",
@@ -974,7 +974,7 @@
     {
       "id": "re_campetto",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Re del campetto",
       "name_i18n": {
         "es": "Rey de la cancha",
@@ -997,7 +997,7 @@
     {
       "id": "distintivo_scarpetta",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Scarpetta",
       "name_i18n": {
         "es": "Bota",
@@ -1015,7 +1015,7 @@
     {
       "id": "quadratini_street",
       "kind": "squares",
-      "price": 10,
+      "price": 5,
       "name": "Gol sull’asfalto",
       "name_i18n": {
         "es": "Gol en el asfalto",
@@ -1035,16 +1035,16 @@
     {
       "id": "pacchetto_europa",
       "kind": "bundle",
-      "price": 65,
+      "price": 33,
       "name": "Notti europee · Set completo",
       "name_i18n": {
         "es": "Noches europeas · Set completo",
         "en": "European nights · Full set"
       },
-      "description": "Cinque dettagli da grande serata: tema, cornice animata, titolo, stadio e simboli. 65 ⭐ invece di 90 ⭐ acquistandoli singolarmente.",
+      "description": "Cinque dettagli da grande serata: tema, cornice animata, titolo, stadio e simboli. 33 ⭐ invece di 43 ⭐ acquistandoli singolarmente.",
       "description_i18n": {
-        "es": "Cinco detalles de una gran noche: tema, marco animado, título, estadio y símbolos. 65 ⭐ en lugar de 90 ⭐ por separado.",
-        "en": "Five big-night details: theme, animated frame, title, stadium badge and symbols. 65 ⭐ instead of 90 ⭐ separately."
+        "es": "Cinco detalles de una gran noche: tema, marco animado, título, estadio y símbolos. 33 ⭐ en lugar de 43 ⭐ por separado.",
+        "en": "Five big-night details: theme, animated frame, title, stadium badge and symbols. 33 ⭐ instead of 43 ⭐ separately."
       },
       "grants": [
         "notti_europee",
@@ -1058,16 +1058,16 @@
     {
       "id": "pacchetto_domenica",
       "kind": "bundle",
-      "price": 55,
+      "price": 28,
       "name": "Domenica ’90 · Set completo",
       "name_i18n": {
         "es": "Domingo del 90 · Set completo",
         "en": "Sunday ’90 · Full set"
       },
-      "description": "Il look delle domeniche alla radio: tema, bordo figurina, Numero dieci, radiolina e schedina. 55 ⭐ invece di 75 ⭐ singolarmente.",
+      "description": "Il look delle domeniche alla radio: tema, bordo figurina, Numero dieci, radiolina e schedina. 28 ⭐ invece di 36 ⭐ singolarmente.",
       "description_i18n": {
-        "es": "El look de los domingos de radio: tema, borde de cromo, El diez, radio y quiniela. 55 ⭐ en lugar de 75 ⭐ por separado.",
-        "en": "The look of radio Sundays: theme, sticker border, Number ten, radio and coupon symbols. 55 ⭐ instead of 75 ⭐ separately."
+        "es": "El look de los domingos de radio: tema, borde de cromo, El diez, radio y quiniela. 28 ⭐ en lugar de 36 ⭐ por separado.",
+        "en": "The look of radio Sundays: theme, sticker border, Number ten, radio and coupon symbols. 28 ⭐ instead of 36 ⭐ separately."
       },
       "grants": [
         "domenica_90",
@@ -1081,16 +1081,16 @@
     {
       "id": "pacchetto_strada",
       "kind": "bundle",
-      "price": 55,
+      "price": 28,
       "name": "Calcio di strada · Set completo",
       "name_i18n": {
         "es": "Fútbol callejero · Set completo",
         "en": "Street football · Full set"
       },
-      "description": "Dal cemento al profilo: tema, rete del campetto, titolo, scarpetta e simboli. 55 ⭐ invece di 75 ⭐ acquistandoli singolarmente.",
+      "description": "Dal cemento al profilo: tema, rete del campetto, titolo, scarpetta e simboli. 28 ⭐ invece di 36 ⭐ acquistandoli singolarmente.",
       "description_i18n": {
-        "es": "Del asfalto al perfil: tema, red de la cancha, título, bota y símbolos. 55 ⭐ en lugar de 75 ⭐ por separado.",
-        "en": "From the pavement to your profile: theme, court fence, title, boot and symbols. 55 ⭐ instead of 75 ⭐ separately."
+        "es": "Del asfalto al perfil: tema, red de la cancha, título, bota y símbolos. 28 ⭐ en lugar de 36 ⭐ por separado.",
+        "en": "From the pavement to your profile: theme, court fence, title, boot and symbols. 28 ⭐ instead of 36 ⭐ separately."
       },
       "grants": [
         "calcio_strada",
@@ -1358,7 +1358,7 @@
     {
       "id": "cinegiornale",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Cinegiornale 1966",
       "name_i18n": {
         "es": "Noticiario 1966",
@@ -1385,7 +1385,7 @@
     {
       "id": "bordo_pellicola",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bordo di pellicola",
       "name_i18n": {
         "es": "Borde de película",
@@ -1403,7 +1403,7 @@
     {
       "id": "telecronista",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Il telecronista",
       "name_i18n": {
         "es": "El comentarista",
@@ -1426,7 +1426,7 @@
     {
       "id": "distintivo_moviola",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Moviola",
       "name_i18n": {
         "es": "Repetición",
@@ -1444,7 +1444,7 @@
     {
       "id": "quadratini_moviola",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Ciak e forbici",
       "name_i18n": {
         "es": "Claqueta y tijeras",
@@ -1464,7 +1464,7 @@
     {
       "id": "pacchetto_cinegiornale",
       "kind": "bundle",
-      "price": 70,
+      "price": 35,
       "featured": true,
       "name": "Cinegiornale 1966 · Set completo",
       "name_i18n": {
@@ -1488,7 +1488,7 @@
     {
       "id": "giorno_di_mercato",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Giorno di mercato",
       "name_i18n": {
         "es": "Día de mercado",
@@ -1515,7 +1515,7 @@
     {
       "id": "nastro_mercato",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Nastro del mercato",
       "name_i18n": {
         "es": "Cinta de mercado",
@@ -1533,7 +1533,7 @@
     {
       "id": "uomo_mercato",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Uomo mercato",
       "name_i18n": {
         "es": "Hombre de mercado",
@@ -1556,7 +1556,7 @@
     {
       "id": "distintivo_ticker",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Ticker",
       "name_i18n": {
         "es": "Teletipo",
@@ -1574,7 +1574,7 @@
     {
       "id": "quadratini_mercato",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Rialzo e ribasso",
       "name_i18n": {
         "es": "Alza y baja",
@@ -1594,7 +1594,7 @@
     {
       "id": "pacchetto_mercato",
       "kind": "bundle",
-      "price": 55,
+      "price": 28,
       "featured": true,
       "name": "Giorno di mercato · Set completo",
       "name_i18n": {
@@ -1617,7 +1617,7 @@
     {
       "id": "notte_di_neve",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Notte di neve",
       "name_i18n": {
         "es": "Noche de nieve",
@@ -1644,7 +1644,7 @@
     {
       "id": "anello_di_ghiaccio",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Anello di ghiaccio",
       "name_i18n": {
         "es": "Anillo de hielo",
@@ -1663,7 +1663,7 @@
     {
       "id": "guerriero_di_gennaio",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Guerriero di gennaio",
       "name_i18n": {
         "es": "Guerrero de enero",
@@ -1686,7 +1686,7 @@
     {
       "id": "distintivo_fiocco",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Fiocco",
       "name_i18n": {
         "es": "Copo",
@@ -1704,7 +1704,7 @@
     {
       "id": "quadratini_neve",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Campo innevato",
       "name_i18n": {
         "es": "Campo nevado",
@@ -1724,7 +1724,7 @@
     {
       "id": "pacchetto_neve",
       "kind": "bundle",
-      "price": 58,
+      "price": 29,
       "featured": true,
       "name": "Notte di neve · Set completo",
       "name_i18n": {
@@ -1747,7 +1747,7 @@
     {
       "id": "novembre_in_provincia",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Novembre in provincia",
       "name_i18n": {
         "es": "Noviembre de provincias",
@@ -1774,7 +1774,7 @@
     {
       "id": "bordo_di_zolle",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bordo di zolle",
       "name_i18n": {
         "es": "Borde de tepes",
@@ -1792,7 +1792,7 @@
     {
       "id": "uomo_dordine",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Uomo d'ordine",
       "name_i18n": {
         "es": "Hombre de orden",
@@ -1815,7 +1815,7 @@
     {
       "id": "distintivo_scarponi",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Scarponi",
       "name_i18n": {
         "es": "Botas",
@@ -1833,7 +1833,7 @@
     {
       "id": "quadratini_fango",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Campo pesante",
       "name_i18n": {
         "es": "Campo pesado",
@@ -1853,7 +1853,7 @@
     {
       "id": "pacchetto_fango",
       "kind": "bundle",
-      "price": 52,
+      "price": 26,
       "featured": true,
       "name": "Novembre in provincia · Set completo",
       "name_i18n": {
@@ -1876,7 +1876,7 @@
     {
       "id": "notte_sudamericana",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Notte sudamericana",
       "name_i18n": {
         "es": "Noche sudamericana",
@@ -1903,7 +1903,7 @@
     {
       "id": "bandiere_di_curva",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bandiere di curva",
       "name_i18n": {
         "es": "Banderas de tribuna",
@@ -1921,7 +1921,7 @@
     {
       "id": "il_dieci",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Il dieci",
       "name_i18n": {
         "es": "El diez",
@@ -1944,7 +1944,7 @@
     {
       "id": "distintivo_tromba",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Tromba",
       "name_i18n": {
         "es": "Trompeta",
@@ -1962,7 +1962,7 @@
     {
       "id": "quadratini_fuochi",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Fuochi in curva",
       "name_i18n": {
         "es": "Fuegos en la tribuna",
@@ -1982,7 +1982,7 @@
     {
       "id": "pacchetto_sudamerica",
       "kind": "bundle",
-      "price": 60,
+      "price": 30,
       "featured": true,
       "name": "Notte sudamericana · Set completo",
       "name_i18n": {
@@ -2023,7 +2023,7 @@
     {
       "id": "maglia_uno",
       "kind": "number",
-      "price": 10,
+      "price": 5,
       "name": "Numero 1",
       "name_i18n": {
         "es": "Número 1",
@@ -2041,7 +2041,7 @@
     {
       "id": "maglia_sette",
       "kind": "number",
-      "price": 10,
+      "price": 5,
       "name": "Numero 7",
       "name_i18n": {
         "es": "Número 7",
@@ -2059,7 +2059,7 @@
     {
       "id": "maglia_nove",
       "kind": "number",
-      "price": 10,
+      "price": 5,
       "name": "Numero 9",
       "name_i18n": {
         "es": "Número 9",
@@ -2077,7 +2077,7 @@
     {
       "id": "maglia_dieci",
       "kind": "number",
-      "price": 15,
+      "price": 7,
       "name": "Numero 10",
       "name_i18n": {
         "es": "Número 10",
@@ -2134,7 +2134,7 @@
     {
       "id": "figurina_notturna",
       "kind": "card",
-      "price": 55,
+      "price": 28,
       "name": "Figurina notturna",
       "name_i18n": {
         "es": "Cromo nocturno",
@@ -2155,7 +2155,7 @@
     {
       "id": "figurina_foil",
       "kind": "card",
-      "price": 75,
+      "price": 38,
       "name": "Figurina olografica",
       "name_i18n": {
         "es": "Cromo holográfico",
@@ -2199,7 +2199,7 @@
     {
       "id": "titolo_bandiera",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Bandiera",
       "name_i18n": {
         "es": "Bandera",
@@ -2222,7 +2222,7 @@
     {
       "id": "titolo_meteora",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Meteora",
       "name_i18n": {
         "es": "Meteorito",
@@ -2245,7 +2245,7 @@
     {
       "id": "titolo_svincolato",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Svincolato",
       "name_i18n": {
         "es": "Agente libre",
@@ -2268,7 +2268,7 @@
     {
       "id": "titolo_spogliatoio",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Uomo spogliatoio",
       "name_i18n": {
         "es": "Hombre de vestuario",

@@ -132,7 +132,7 @@ export interface LookResponse {
 
 export type ShopSubview = "catalog" | "wardrobe" | "achievements" | "history";
 export type ShopKindFilter = "all" | CosmeticSlot | "bundle";
-export type ShopPriceFilter = "all" | "15" | "25" | "55" | "75";
+export type ShopPriceFilter = "all" | "7" | "12" | "28" | "38";
 export type ShopDeliveryStatus = "idle" | "delivering" | "delivered" | "pending";
 
 export interface ShopPreviewState {

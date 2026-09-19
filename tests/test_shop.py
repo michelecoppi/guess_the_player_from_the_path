@@ -241,7 +241,7 @@ class FakeMessage:
         self.replies.append(text)
 
 
-def payment_update(payload, charge_id="ch_1", stars=25, user_id=42):
+def payment_update(payload, charge_id="ch_1", stars=12, user_id=42):
     payment = SimpleNamespace(
         invoice_payload=payload, telegram_payment_charge_id=charge_id, total_amount=stars,
     )
@@ -276,12 +276,12 @@ def firestore(monkeypatch):
 
 
 def test_a_payment_delivers_every_piece_of_a_bundle(firestore):
-    update, message = payment_update(shop.payload_for(42, "pacchetto_neon"), stars=60)
+    update, message = payment_update(shop.payload_for(42, "pacchetto_neon"), stars=30)
     asyncio.run(shop_handler.successful_payment_callback(update, None))
 
     delivered = firestore["delivered"]["ch_1"]
     assert delivered["granted"] == shop.get_item("pacchetto_neon")["grants"]
-    assert delivered["stars"] == 60
+    assert delivered["stars"] == 30
     assert len(message.replies) == 1
 
 
@@ -345,7 +345,7 @@ def test_the_screen_offers_the_one_action_that_makes_sense():
     assert [b for b in buttons(owned) if "Indossa" in b]
 
     _, on_sale = shop_handler._item_view("it", user, shop.get_item("neon"))
-    assert [b for b in buttons(on_sale) if "25" in b]
+    assert [b for b in buttons(on_sale) if "12" in b]
 
 
 class FakeBot:
@@ -389,7 +389,7 @@ def test_the_invoice_carries_the_price_from_the_catalogue(firestore):
     assert invoice["currency"] == "XTR"
     assert invoice["prices"][0].amount == shop.get_item("collezione_completa")["price"]
     assert shop.parse_payload(invoice["payload"]) == ("collezione_completa", 42)
-    assert shop.payment_quote(invoice["payload"])["price"] == 220
+    assert shop.payment_quote(invoice["payload"])["price"] == 110
     # Le Stelle non passano da un fornitore esterno: il token vuoto e' la configurazione giusta.
     assert invoice["provider_token"] == ""
 
@@ -436,7 +436,7 @@ class FakePreCheckout:
         self.invoice_payload = payload
         self.id = "checkout_1"
         self.currency = "XTR"
-        self.total_amount = 25
+        self.total_amount = 12
         self.from_user = SimpleNamespace(id=user_id, language_code="it")
         self.answers = []
 

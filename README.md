@@ -342,15 +342,28 @@ oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
 
 | Tipo | Dove si vede | Prezzi |
 |---|---|---|
-| Temi | colori di tutta la mini app | 15 – 30 ⭐ |
-| Cornici | il cerchio intorno all'avatar | 15 – 25 ⭐ |
-| Titoli | una riga sotto il nome | 15 – 25 ⭐ |
-| Distintivi | accanto al nome, **anche nella classifica in chat** | 10 – 25 ⭐ |
-| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 10 – 20 ⭐ |
-| Numeri | il numero di maglia prima del nome, **anche in classifica** | 10 – 15 ⭐ |
+| Temi | colori di tutta la mini app | 7 – 15 ⭐ |
+| Cornici | il cerchio intorno all'avatar | 7 – 12 ⭐ |
+| Titoli | una riga sotto il nome | 7 – 12 ⭐ |
+| Distintivi | accanto al nome, **anche nella classifica in chat** | 5 – 12 ⭐ |
+| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 5 – 10 ⭐ |
+| Numeri | il numero di maglia prima del nome, **anche in classifica** | 5 – 7 ⭐ |
 | Festeggiamenti | cosa succede sullo schermo quando indovini | non in vendita |
-| Figurine | la finitura della card del risultato come immagine | 55 – 75 ⭐ |
-| Pacchetti | piu' cose insieme | 30 – 220 ⭐ |
+| Figurine | la finitura della card del risultato come immagine | 28 – 38 ⭐ |
+| Pacchetti | piu' cose insieme | 15 – 110 ⭐ |
+
+Il listino parte deliberatamente basso: sono cosmetici permanenti di un gioco gratuito, non
+contenuti o vantaggi competitivi. Le fasce 5/7/12/15 ⭐ tengono il primo acquisto successivo
+al benvenuto nella zona dell'impulso; i set principali stanno fra 26 e 35 ⭐ e la collezione
+completa a 110 ⭐. Il riferimento economico non è una conversione mostrata all'utente — il
+costo di acquisto delle Stelle varia per paese, imposte e canale — ma il valore ufficiale
+riconosciuto al developer, oggi pari all'equivalente di 0,013 USD per Stella. Le fonti da
+ricontrollare a ogni revisione sono la [guida ai pagamenti in
+Stelle](https://core.telegram.org/bots/payments-stars) e i [termini per i developer,
+sezione 6.2](https://telegram.org/tos/bot-developers#6-2-digital-goods-and-services).
+Finché non esiste uno storico sufficiente di visualizzazioni, acquisti e rimborsi, i prezzi
+non si alzano per imitare cataloghi di giochi più grandi: si misura prima la conversione del
+negozio e si rivede il listino come esperimento separato.
 
 I primi cinque sono i **fondamentali** (`CORE_KINDS`) e una collezione li riempie tutti; i tre
 in fondo sono arrivati dopo e una collezione puo' averli o no. Non e' pigrizia: un numero di

@@ -586,8 +586,8 @@ test("11 to 16. Filter semantics: kind, price, hide-owned, and empty state", asy
     assert.ok(container.querySelector("#shelf-frame"));
     assert.equal(container.querySelector("#shelf-theme"), null);
 
-    // 13. Price filter: <= 25 (frame costs 55 so frame disappears)
-    controller.setPriceFilter("25");
+    // 13. Price filter: <= 12 (frame costs 55 so frame disappears)
+    controller.setPriceFilter("12");
     container.innerHTML = renderShopPage(controller.getState());
     assert.equal(container.querySelector("#shelf-frame"), null);
 
@@ -602,7 +602,7 @@ test("11 to 16. Filter semantics: kind, price, hide-owned, and empty state", asy
     assert.ok(items[0].textContent?.includes("Neon"));
 
     // 15. Empty filtered results
-    controller.setPriceFilter("15"); // Neon costs 25, so nothing matches
+    controller.setPriceFilter("7"); // Neon costs 25, so nothing matches
     container.innerHTML = renderShopPage(controller.getState());
     assert.ok(container.textContent?.includes("Nessun oggetto con questi filtri."));
 

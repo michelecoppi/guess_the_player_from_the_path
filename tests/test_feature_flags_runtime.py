@@ -331,7 +331,7 @@ class FakePreCheckout:
         self.invoice_payload = payload
         self.id = "checkout_1"
         self.currency = "XTR"
-        self.total_amount = 25
+        self.total_amount = 12
         self.from_user = SimpleNamespace(id=42, language_code="en")
         self.answers = []
 
@@ -362,7 +362,7 @@ def test_precheckout_is_unchanged_when_the_shop_is_enabled(stars):
 def test_an_already_charged_payment_is_delivered_exactly_once_even_with_the_shop_disabled(stars):
     install({"shop": {"enabled": False}})
     payment = SimpleNamespace(invoice_payload=shop.payload_for(42, "neon"),
-                              telegram_payment_charge_id="ch_9", total_amount=25)
+                              telegram_payment_charge_id="ch_9", total_amount=12)
     for _ in range(2):
         message = FakeMessage()
         message.successful_payment = payment
