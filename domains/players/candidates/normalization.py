@@ -19,13 +19,13 @@ from typing import Any, Optional
 
 from domains.players.candidates.finding import CandidateFinding, FindingCode, FindingSeverity
 from domains.players.candidates.model import CandidatePlayer, CandidateState
-from domains.players.career_status import infer_active_status
 from domains.players.candidates.provenance import (
     CandidateProvenance,
     NormalizationRecord,
     make_career_stop_id,
     now_utc_iso,
 )
+from domains.players.career_status import infer_active_status
 from services.career_order import order_career
 
 # Repository root: domains/players/candidates/<module>.py -> parents[3].

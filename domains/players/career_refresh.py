@@ -6,6 +6,7 @@ Riusa lo stesso pattern di sicurezza di `approve_candidate` in
 scrittura atomica, rollback su fallimento. Non tocca la coda dei candidati: opera
 direttamente su `data/players.json`.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,6 +29,7 @@ from domains.players.production_dataset import (
 from services.career_order import order_career
 from services.repos.file_lock import ProcessFileLock
 
+observability: Any
 try:
     from services import observability
 except Exception:  # pragma: no cover - fallback difensivo
@@ -117,7 +119,6 @@ def _diff_career(existing: list[dict[str, Any]], fresh: list[dict[str, Any]]) ->
 def _merge_career(existing: list[dict[str, Any]], fresh: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Applica le tappe fresche sulla carriera esistente: arricchisce/aggiorna quelle note,
     aggiunge quelle nuove. Non elimina mai tappe presenti solo nella carriera esistente."""
-    existing_by_team: dict[str, dict[str, Any]] = {_team_key(s): s for s in existing if s.get("team")}
     merged: list[dict[str, Any]] = [dict(s) for s in existing]
     merged_by_team = {_team_key(s): s for s in merged if s.get("team")}
 
@@ -150,7 +151,9 @@ def _append_audit_log(player_id: str, diff: dict[str, Any], log_path: Path) -> N
         if observability is not None:
             try:
                 observability.log_event(
-                    "career_refresh.audit_log_failed", logging.WARNING, exc_info=err,
+                    "career_refresh.audit_log_failed",
+                    logging.WARNING,
+                    exc_info=err,
                     error_type=type(err).__name__,
                 )
                 return
@@ -178,14 +181,18 @@ def refresh_player_career(
         players, load_err = load_production_players_strict(players_path)
         if players is None:
             return CareerRefreshResult(
-                player_id=player_id, success=False, changed=False,
+                player_id=player_id,
+                success=False,
+                changed=False,
                 message=load_err or "Dataset di produzione non accessibile.",
             )
 
         idx = next((i for i, p in enumerate(players) if p.get("id") == player_id), None)
         if idx is None:
             return CareerRefreshResult(
-                player_id=player_id, success=False, changed=False,
+                player_id=player_id,
+                success=False,
+                changed=False,
                 message=f"Giocatore '{player_id}' non trovato nel dataset di produzione.",
             )
 
@@ -194,7 +201,9 @@ def refresh_player_career(
         source_id = player.get("source_id")
         if not source or not source_id:
             return CareerRefreshResult(
-                player_id=player_id, success=False, changed=False,
+                player_id=player_id,
+                success=False,
+                changed=False,
                 message="Nessuna fonte collegata: impossibile aggiornare la carriera automaticamente.",
             )
 
@@ -202,14 +211,18 @@ def refresh_player_career(
             result = adapter_resolver(source, source_id)
         except Exception as err:  # noqa: BLE001 - errore di rete/adapter, non deve propagare
             return CareerRefreshResult(
-                player_id=player_id, success=False, changed=False,
+                player_id=player_id,
+                success=False,
+                changed=False,
                 message=f"Errore durante il recupero dalla fonte '{source}': {type(err).__name__}: {err}",
             )
 
         if result is None or not getattr(result, "success", False):
             reason = "fonte non supportata" if result is None else "recupero fallito"
             return CareerRefreshResult(
-                player_id=player_id, success=False, changed=False,
+                player_id=player_id,
+                success=False,
+                changed=False,
                 message=f"Impossibile aggiornare da '{source}' ({reason}).",
             )
 
@@ -219,17 +232,25 @@ def refresh_player_career(
 
         merged_career = _merge_career(existing_career, fresh_career) if fresh_career else existing_career
 
-        year_provider = current_year_provider() if current_year_provider else None
-        new_active = infer_active_status(merged_career, year_provider)
         old_active = player.get("active")
-        if old_active != new_active:
-            diff["active_changed"] = {"previous": old_active, "new": new_active}
+        if fresh_career:
+            year_provider = current_year_provider() if current_year_provider else None
+            new_active = infer_active_status(merged_career, year_provider)
+            if old_active != new_active:
+                diff["active_changed"] = {"previous": old_active, "new": new_active}
 
         changed = bool(diff)
 
         player["career"] = merged_career
-        player["active"] = new_active
+        if fresh_career:
+            player["active"] = new_active
         player["career_last_checked_at"] = _now_utc_iso()
+        revision_id = result.source_metadata.get("revision_id")
+        wikidata_id = result.source_metadata.get("wikidata_id")
+        if revision_id is not None:
+            player["source_revision_id"] = revision_id
+        if wikidata_id:
+            player["wikidata_id"] = wikidata_id
         players[idx] = player
 
         snapshot_name, snapshot_dest = backup_production_dataset(players_path, backup_dir, player_id)
@@ -242,7 +263,9 @@ def refresh_player_career(
             except Exception:
                 pass
             return CareerRefreshResult(
-                player_id=player_id, success=False, changed=False,
+                player_id=player_id,
+                success=False,
+                changed=False,
                 message=f"Errore durante la scrittura del dataset di produzione: {type(err).__name__}: {err}",
             )
 
@@ -250,7 +273,11 @@ def refresh_player_career(
 
     _append_audit_log(player_id, diff, log_path)
 
-    message = "Carriera aggiornata con modifiche." if changed else "Nessuna modifica rilevata (fonte già allineata)."
+    message = (
+        "Carriera aggiornata con modifiche."
+        if changed
+        else "Nessuna modifica rilevata (fonte già allineata)."
+    )
     return CareerRefreshResult(player_id=player_id, success=True, changed=changed, message=message, diff=diff)
 
 
@@ -260,6 +287,7 @@ def refresh_all_active_players(
     backup_dir: Path,
     delay_seconds: float = 1.5,
     adapter_resolver: Callable[[str, str], Optional[AdapterResult]] = resolve_adapter_result,
+    wikipedia_adapter_factory: Optional[Callable[[], Any]] = None,
     sleep_fn: Callable[[float], None] = time.sleep,
     log_path: Optional[Path] = None,
 ) -> tuple[list[CareerRefreshResult], list[dict[str, Any]]]:
@@ -276,18 +304,49 @@ def refresh_all_active_players(
     with_source = [p for p in active_players if p.get("source_id")]
     without_source = [p for p in active_players if not p.get("source_id")]
 
+    prefetched_wikipedia: dict[str, AdapterResult] = {}
+    wikipedia_ids = [
+        str(player["source_id"]) for player in with_source if player.get("source") == "wikipedia"
+    ]
+    if wikipedia_ids and (
+        wikipedia_adapter_factory is not None or adapter_resolver is resolve_adapter_result
+    ):
+        if wikipedia_adapter_factory is None:
+            from domains.players.adapters.wikipedia import WikipediaAdapter
+
+            wikipedia_adapter_factory = WikipediaAdapter
+        try:
+            prefetched_wikipedia = wikipedia_adapter_factory().fetch_players(wikipedia_ids)
+        except Exception as err:  # noqa: BLE001 - fallback al resolver sequenziale
+            _logger.warning("Prefetch Wikipedia batch non riuscito: %s", err)
+
     results: list[CareerRefreshResult] = []
     for i, player in enumerate(with_source):
+        source = str(player.get("source") or "")
+        source_id = str(player.get("source_id") or "")
+        prefetched = prefetched_wikipedia.get(source_id)
+
+        def player_resolver(
+            requested_source: str,
+            requested_id: str,
+            *,
+            _prefetched: Optional[AdapterResult] = prefetched,
+        ) -> Optional[AdapterResult]:
+            if requested_source == "wikipedia" and _prefetched is not None:
+                return _prefetched
+            return adapter_resolver(requested_source, requested_id)
+
         results.append(
             refresh_player_career(
                 player["id"],
                 players_path=players_path,
                 backup_dir=backup_dir,
-                adapter_resolver=adapter_resolver,
+                adapter_resolver=player_resolver,
                 log_path=log_path,
             )
         )
-        if i < len(with_source) - 1 and delay_seconds > 0:
+        used_sequential_request = not (source == "wikipedia" and source_id in prefetched_wikipedia)
+        if used_sequential_request and i < len(with_source) - 1 and delay_seconds > 0:
             sleep_fn(delay_seconds)
 
     return results, without_source

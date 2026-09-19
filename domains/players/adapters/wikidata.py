@@ -16,6 +16,7 @@ Wikidata properties used:
   - P1350 (number of matches played/races/starts) qualifier — appearances
   - P1351 (number of goals/points scored) qualifier — goals
 """
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,7 @@ from domains.players.adapters.base import (
     CareerEntry,
     PlayerSourceAdapter,
 )
-from domains.players.adapters.http_client import HttpClient, HttpError, UrllibHttpClient
+from domains.players.adapters.http_client import HttpClient, HttpError, RetryingHttpClient
 
 _SOURCE_NAME = "wikidata"
 _ENTITY_API = "https://www.wikidata.org/wiki/Special:EntityData/{qid}.json"
@@ -39,17 +40,17 @@ _ENTITY_API = "https://www.wikidata.org/wiki/Special:EntityData/{qid}.json"
 # ── Position mapping (Wikidata QIDs → dataset labels) ────────────────────
 
 _POSITION_MAP: dict[str, str] = {
-    "Q193592": "Attaccante",        # forward
-    "Q280658": "Centrocampista",    # midfielder
-    "Q336286": "Difensore",         # defender
-    "Q201330": "Portiere",          # goalkeeper
-    "Q4611891": "Centrocampista",   # winger (maps to centrocampista in dataset)
-    "Q2383640": "Centrocampista",   # attacking midfielder
-    "Q1249716": "Centrocampista",   # defensive midfielder
-    "Q6543924": "Attaccante",       # centre-forward
-    "Q1397417": "Difensore",        # centre-back
-    "Q1203494": "Difensore",        # full-back
-    "Q18553490": "Difensore",       # wing-back
+    "Q193592": "Attaccante",  # forward
+    "Q280658": "Centrocampista",  # midfielder
+    "Q336286": "Difensore",  # defender
+    "Q201330": "Portiere",  # goalkeeper
+    "Q4611891": "Centrocampista",  # winger (maps to centrocampista in dataset)
+    "Q2383640": "Centrocampista",  # attacking midfielder
+    "Q1249716": "Centrocampista",  # defensive midfielder
+    "Q6543924": "Attaccante",  # centre-forward
+    "Q1397417": "Difensore",  # centre-back
+    "Q1203494": "Difensore",  # full-back
+    "Q18553490": "Difensore",  # wing-back
 }
 
 
@@ -61,7 +62,7 @@ class WikidataAdapter(PlayerSourceAdapter):
     """
 
     def __init__(self, http_client: Optional[HttpClient] = None) -> None:
-        self._http = http_client or UrllibHttpClient()
+        self._http = http_client or RetryingHttpClient()
 
     @property
     def source_name(self) -> str:
@@ -86,13 +87,15 @@ class WikidataAdapter(PlayerSourceAdapter):
             return result
 
         if entity is None:
-            result.errors.append(AdapterError(
-                error_type=AdapterErrorType.NOT_FOUND,
-                message=f"Entità non trovata: {qid}",
-                source_name=_SOURCE_NAME,
-                details={"phase": "fetch", "identifier": qid},
-                retryable=False,
-            ))
+            result.errors.append(
+                AdapterError(
+                    error_type=AdapterErrorType.NOT_FOUND,
+                    message=f"Entità non trovata: {qid}",
+                    source_name=_SOURCE_NAME,
+                    details={"phase": "fetch", "identifier": qid},
+                    retryable=False,
+                )
+            )
             return result
 
         result.raw_payload = {"entity": entity, "qid": qid}
@@ -103,13 +106,15 @@ class WikidataAdapter(PlayerSourceAdapter):
         try:
             self._extract_player_data(entity, result)
         except Exception as exc:
-            result.errors.append(AdapterError(
-                error_type=AdapterErrorType.PARSE,
-                message=f"Errore nel parsing dell'entità: {exc}",
-                source_name=_SOURCE_NAME,
-                details={"phase": "extraction", "qid": qid, "exception": str(exc)},
-                retryable=False,
-            ))
+            result.errors.append(
+                AdapterError(
+                    error_type=AdapterErrorType.PARSE,
+                    message=f"Errore nel parsing dell'entità: {exc}",
+                    source_name=_SOURCE_NAME,
+                    details={"phase": "extraction", "qid": qid, "exception": str(exc)},
+                    retryable=False,
+                )
+            )
 
         result.success = bool(result.player_name or result.career)
         return result
@@ -120,8 +125,7 @@ class WikidataAdapter(PlayerSourceAdapter):
         url = (
             "https://www.wikidata.org/w/api.php"
             "?action=wbsearchentities"
-            "&search=" + urllib.parse.quote(query)
-            + f"&language=it&limit={limit}&format=json"
+            "&search=" + urllib.parse.quote(query) + f"&language=it&limit={limit}&format=json&maxlag=5"
         )
         try:
             resp = self._http.get(url)
@@ -131,9 +135,7 @@ class WikidataAdapter(PlayerSourceAdapter):
             search_items = data.get("search", [])
             if not isinstance(search_items, list):
                 raise ValueError("Risposta API Wikidata non valida: 'search' non è una lista")
-            result.identifiers = [
-                hit["id"] for hit in search_items if isinstance(hit, dict) and "id" in hit
-            ]
+            result.identifiers = [hit["id"] for hit in search_items if isinstance(hit, dict) and "id" in hit]
             result.success = True
             return result
         except Exception as exc:

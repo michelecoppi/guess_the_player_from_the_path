@@ -9,6 +9,7 @@ The existing ``wiki.py`` module is NOT modified — this adapter delegates to
 its parsing functions and wraps the HTTP layer via the injectable
 ``HttpClient`` for testability.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,7 +25,7 @@ from domains.players.adapters.base import (
     CareerEntry,
     PlayerSourceAdapter,
 )
-from domains.players.adapters.http_client import HttpClient, HttpError, UrllibHttpClient
+from domains.players.adapters.http_client import HttpClient, HttpError, RetryingHttpClient
 
 # ── Wikipedia API constants ──────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
     """
 
     def __init__(self, http_client: Optional[HttpClient] = None) -> None:
-        self._http = http_client or UrllibHttpClient()
+        self._http = http_client or RetryingHttpClient()
 
     @property
     def source_name(self) -> str:
@@ -60,28 +61,143 @@ class WikipediaAdapter(PlayerSourceAdapter):
         ``identifier`` is the page title (e.g. ``"Francesco Totti"``).
         """
         result = AdapterResult(source_name=_SOURCE_NAME, source_id=identifier)
-
-        # 1. Fetch wikitext
-        wikitext: Optional[str] = None
         try:
             wikitext = self._fetch_wikitext(identifier)
         except Exception as exc:
             result.errors.append(self._error_from_exception(exc, identifier, phase="fetch"))
             return result
-
         if wikitext is None:
-            result.errors.append(AdapterError(
-                error_type=AdapterErrorType.NOT_FOUND,
-                message=f"Pagina non trovata: {identifier}",
-                source_name=_SOURCE_NAME,
-                retryable=False,
-            ))
+            result.errors.append(
+                AdapterError(
+                    error_type=AdapterErrorType.NOT_FOUND,
+                    message=f"Pagina non trovata: {identifier}",
+                    source_name=_SOURCE_NAME,
+                    retryable=False,
+                )
+            )
             return result
+        return self._result_from_wikitext(identifier, wikitext)
+
+    def fetch_players(self, identifiers: list[str], *, chunk_size: int = 10) -> dict[str, AdapterResult]:
+        """Fetch multiple current Wikipedia revisions with one request per chunk.
+
+        ``action=query&prop=revisions`` accepts multiple titles, unlike the old
+        ``action=parse`` path.  Chunks default to ten because footballer wikitext can be
+        large; callers may raise the value up to MediaWiki's normal 50-title limit.
+        """
+        unique = list(dict.fromkeys(str(item).strip() for item in identifiers if str(item).strip()))
+        size = max(1, min(int(chunk_size), 50))
+        output: dict[str, AdapterResult] = {}
+
+        for offset in range(0, len(unique), size):
+            chunk = unique[offset : offset + size]
+            params = urllib.parse.urlencode(
+                {
+                    "action": "query",
+                    "prop": "revisions|pageprops",
+                    "titles": "|".join(chunk),
+                    "rvprop": "ids|timestamp|content",
+                    "rvslots": "main",
+                    "ppprop": "wikibase_item",
+                    "redirects": "1",
+                    "format": "json",
+                    "formatversion": "2",
+                    "maxlag": "5",
+                }
+            )
+            try:
+                data = self._http.get(f"{_API}?{params}").json()
+                if not isinstance(data, dict) or not isinstance(data.get("query"), dict):
+                    raise ValueError("Risposta MediaWiki bulk non valida")
+            except Exception as exc:
+                for title in chunk:
+                    failed = AdapterResult(source_name=_SOURCE_NAME, source_id=title)
+                    failed.errors.append(self._error_from_exception(exc, title, phase="bulk_fetch"))
+                    output[title] = failed
+                continue
+
+            query = data["query"]
+            aliases: dict[str, str] = {}
+            for collection in ("normalized", "redirects"):
+                for item in query.get(collection, []) or []:
+                    if isinstance(item, dict) and item.get("from") and item.get("to"):
+                        aliases[str(item["from"])] = str(item["to"])
+
+            pages = query.get("pages", [])
+            if not isinstance(pages, list):
+                pages = []
+            pages_by_title = {
+                str(page.get("title", "")).casefold(): page
+                for page in pages
+                if isinstance(page, dict) and page.get("title")
+            }
+
+            for requested in chunk:
+                canonical = requested
+                seen: set[str] = set()
+                while canonical in aliases and canonical not in seen:
+                    seen.add(canonical)
+                    canonical = aliases[canonical]
+                page = pages_by_title.get(canonical.casefold())
+                if not page or page.get("missing") is True:
+                    missing = AdapterResult(source_name=_SOURCE_NAME, source_id=requested)
+                    missing.errors.append(
+                        AdapterError(
+                            error_type=AdapterErrorType.NOT_FOUND,
+                            message=f"Pagina non trovata: {requested}",
+                            source_name=_SOURCE_NAME,
+                            retryable=False,
+                        )
+                    )
+                    output[requested] = missing
+                    continue
+
+                revisions = page.get("revisions") or []
+                revision = revisions[0] if revisions and isinstance(revisions[0], dict) else {}
+                slots = revision.get("slots") if isinstance(revision, dict) else {}
+                main_slot = slots.get("main", {}) if isinstance(slots, dict) else {}
+                content = main_slot.get("content") if isinstance(main_slot, dict) else None
+                if content is None and isinstance(revision, dict):
+                    content = revision.get("content") or revision.get("*")
+                if content is None:
+                    failed = AdapterResult(source_name=_SOURCE_NAME, source_id=requested)
+                    failed.errors.append(
+                        AdapterError(
+                            error_type=AdapterErrorType.PARSE,
+                            message=f"Wikitext mancante nella risposta bulk: {requested}",
+                            source_name=_SOURCE_NAME,
+                            retryable=False,
+                        )
+                    )
+                    output[requested] = failed
+                    continue
+
+                metadata = {
+                    "canonical_title": str(page.get("title") or canonical),
+                    "revision_id": revision.get("revid"),
+                    "revision_timestamp": revision.get("timestamp"),
+                    "wikidata_id": (page.get("pageprops") or {}).get("wikibase_item"),
+                }
+                output[requested] = self._result_from_wikitext(requested, str(content), metadata=metadata)
+
+        return output
+
+    def _result_from_wikitext(
+        self,
+        identifier: str,
+        wikitext: str,
+        *,
+        metadata: Optional[dict[str, Any]] = None,
+    ) -> AdapterResult:
+        """Parse already-fetched wikitext into the normal source-neutral result."""
+        result = AdapterResult(source_name=_SOURCE_NAME, source_id=identifier)
+        canonical_title = str((metadata or {}).get("canonical_title") or identifier)
 
         result.raw_payload = {"wikitext": wikitext, "title": identifier}
         result.source_metadata["retrieved_at"] = self._now_iso()
+        result.source_metadata.update({k: v for k, v in (metadata or {}).items() if v is not None})
         result.source_metadata["url"] = (
-            f"https://it.wikipedia.org/wiki/{urllib.parse.quote(identifier.replace(' ', '_'))}"
+            f"https://it.wikipedia.org/wiki/{urllib.parse.quote(canonical_title.replace(' ', '_'))}"
         )
 
         # 2. Parse profile
@@ -93,25 +209,29 @@ class WikipediaAdapter(PlayerSourceAdapter):
             result.nationality_raw = profile.get("nationality_raw")
             result.birth_year = profile.get("birth_year")
         except Exception as exc:
-            result.errors.append(AdapterError(
-                error_type=AdapterErrorType.PARSE,
-                message=f"Errore nel parsing del profilo: {exc}",
-                source_name=_SOURCE_NAME,
-                details={"phase": "profile", "title": identifier},
-                retryable=False,
-            ))
+            result.errors.append(
+                AdapterError(
+                    error_type=AdapterErrorType.PARSE,
+                    message=f"Errore nel parsing del profilo: {exc}",
+                    source_name=_SOURCE_NAME,
+                    details={"phase": "profile", "title": identifier},
+                    retryable=False,
+                )
+            )
 
         # 3. Parse career
         try:
             result.career = self._parse_career(wikitext)
         except Exception as exc:
-            result.errors.append(AdapterError(
-                error_type=AdapterErrorType.PARSE,
-                message=f"Errore nel parsing della carriera: {exc}",
-                source_name=_SOURCE_NAME,
-                details={"phase": "career", "title": identifier},
-                retryable=False,
-            ))
+            result.errors.append(
+                AdapterError(
+                    error_type=AdapterErrorType.PARSE,
+                    message=f"Errore nel parsing della carriera: {exc}",
+                    source_name=_SOURCE_NAME,
+                    details={"phase": "career", "title": identifier},
+                    retryable=False,
+                )
+            )
 
         # Determine success: at least a name or career data
         result.success = bool(result.player_name or result.career)
@@ -124,7 +244,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
             _API
             + "?action=query&list=search&srsearch="
             + urllib.parse.quote(query)
-            + f"&srlimit={limit}&format=json&formatversion=2"
+            + f"&srlimit={limit}&format=json&formatversion=2&maxlag=5"
         )
         try:
             resp = self._http.get(url)
@@ -135,9 +255,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
             if not isinstance(search_items, list):
                 raise ValueError("Risposta API Wikipedia non valida: 'search' non è una lista")
             result.identifiers = [
-                hit["title"]
-                for hit in search_items
-                if isinstance(hit, dict) and "title" in hit
+                hit["title"] for hit in search_items if isinstance(hit, dict) and "title" in hit
             ]
             result.success = True
             return result
@@ -154,7 +272,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
             _API
             + "?action=parse&page="
             + urllib.parse.quote(title)
-            + "&prop=wikitext&format=json&formatversion=2&redirects=1"
+            + "&prop=wikitext&format=json&formatversion=2&redirects=1&maxlag=5"
         )
         resp = self._http.get(url)
         data = resp.json()
@@ -199,7 +317,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
         current = ""
         i = 0
         while i < len(body):
-            two = body[i:i + 2]
+            two = body[i : i + 2]
             if two in ("{{", "}}", "[[", "]]"):
                 if two == "{{":
                     depth_c += 1
@@ -232,15 +350,15 @@ class WikipediaAdapter(PlayerSourceAdapter):
         depth = 0
         i = start
         while i < len(text):
-            if text[i:i + 2] == "{{":
+            if text[i : i + 2] == "{{":
                 depth += 1
                 i += 2
                 continue
-            if text[i:i + 2] == "}}":
+            if text[i : i + 2] == "}}":
                 depth -= 1
                 i += 2
                 if depth == 0:
-                    return text[start + 2:i - 2]
+                    return text[start + 2 : i - 2]
                 continue
             i += 1
         return None
@@ -285,10 +403,17 @@ class WikipediaAdapter(PlayerSourceAdapter):
 
     _ROLES: list[tuple[str, str]] = [
         ("portiere", "Portiere"),
-        ("difensore", "Difensore"), ("terzino", "Difensore"), ("libero", "Difensore"),
-        ("centrocampista", "Centrocampista"), ("mediano", "Centrocampista"),
-        ("regista", "Centrocampista"), ("ala", "Centrocampista"), ("trequartista", "Centrocampista"),
-        ("attaccante", "Attaccante"), ("punta", "Attaccante"), ("centravanti", "Attaccante"),
+        ("difensore", "Difensore"),
+        ("terzino", "Difensore"),
+        ("libero", "Difensore"),
+        ("centrocampista", "Centrocampista"),
+        ("mediano", "Centrocampista"),
+        ("regista", "Centrocampista"),
+        ("ala", "Centrocampista"),
+        ("trequartista", "Centrocampista"),
+        ("attaccante", "Attaccante"),
+        ("punta", "Attaccante"),
+        ("centravanti", "Attaccante"),
     ]
 
     # ── High-level parsing ───────────────────────────────────────────────
@@ -369,9 +494,7 @@ class WikipediaAdapter(PlayerSourceAdapter):
         birth = bio_params.get("annonascita", "")
         m_birth = re.search(r"(\d{4})", birth)
         birth_year = int(m_birth.group(1)) if m_birth else None
-        name = " ".join(
-            x for x in (bio_params.get("nome", ""), bio_params.get("cognome", "")) if x
-        ).strip()
+        name = " ".join(x for x in (bio_params.get("nome", ""), bio_params.get("cognome", "")) if x).strip()
 
         return {
             "position": position,

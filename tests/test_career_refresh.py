@@ -1,4 +1,5 @@
 """Test per `domains.players.career_refresh` con adapter_resolver mockato (nessuna rete)."""
+
 import json
 
 import pytest
@@ -12,7 +13,9 @@ from domains.players.career_refresh import (
 
 
 def _write_dataset(path, players):
-    path.write_text(json.dumps({"_comment": "test", "players": players}, ensure_ascii=False), encoding="utf-8")
+    path.write_text(
+        json.dumps({"_comment": "test", "players": players}, ensure_ascii=False), encoding="utf-8"
+    )
 
 
 def _base_player(**overrides):
@@ -29,10 +32,24 @@ def _base_player(**overrides):
         "source": "wikipedia",
         "source_id": "Mario_Rossi",
         "career": [
-            {"team": "Roma", "country": "Italia", "league": "Serie A", "start_year": 2013, "end_year": 2018,
-             "apps": 100, "goals": 10},
-            {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 2018, "end_year": None,
-             "apps": 50, "goals": 5},
+            {
+                "team": "Roma",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2013,
+                "end_year": 2018,
+                "apps": 100,
+                "goals": 10,
+            },
+            {
+                "team": "Milan",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2018,
+                "end_year": None,
+                "apps": 50,
+                "goals": 5,
+            },
         ],
     }
     player.update(overrides)
@@ -56,9 +73,7 @@ def backup_dir(tmp_path):
 @pytest.fixture(autouse=True)
 def _isolated_log_path(tmp_path, monkeypatch):
     log_path = tmp_path / "logs" / "career_refresh.log"
-    monkeypatch.setattr(
-        "domains.players.career_refresh._default_log_path", lambda: log_path
-    )
+    monkeypatch.setattr("domains.players.career_refresh._default_log_path", lambda: log_path)
     return log_path
 
 
@@ -85,7 +100,10 @@ def test_refresh_player_adapter_failure(dataset_path, backup_dir):
         return AdapterResult(source_name=source, source_id=source_id, success=False)
 
     result = refresh_player_career(
-        "mario_rossi", players_path=dataset_path, backup_dir=backup_dir, adapter_resolver=failing_resolver,
+        "mario_rossi",
+        players_path=dataset_path,
+        backup_dir=backup_dir,
+        adapter_resolver=failing_resolver,
     )
     assert result.success is False
     assert result.changed is False
@@ -97,17 +115,37 @@ def test_refresh_player_adapter_failure(dataset_path, backup_dir):
 def test_refresh_player_no_changes(dataset_path, backup_dir):
     def resolver(source, source_id):
         return AdapterResult(
-            source_name=source, source_id=source_id, success=True, player_name="Mario Rossi",
+            source_name=source,
+            source_id=source_id,
+            success=True,
+            player_name="Mario Rossi",
             career=[
-                {"team": "Roma", "country": "Italia", "league": "Serie A", "start_year": 2013, "end_year": 2018,
-                 "apps": 100, "goals": 10},
-                {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 2018, "end_year": None,
-                 "apps": 50, "goals": 5},
+                {
+                    "team": "Roma",
+                    "country": "Italia",
+                    "league": "Serie A",
+                    "start_year": 2013,
+                    "end_year": 2018,
+                    "apps": 100,
+                    "goals": 10,
+                },
+                {
+                    "team": "Milan",
+                    "country": "Italia",
+                    "league": "Serie A",
+                    "start_year": 2018,
+                    "end_year": None,
+                    "apps": 50,
+                    "goals": 5,
+                },
             ],
         )
 
     result = refresh_player_career(
-        "mario_rossi", players_path=dataset_path, backup_dir=backup_dir, adapter_resolver=resolver,
+        "mario_rossi",
+        players_path=dataset_path,
+        backup_dir=backup_dir,
+        adapter_resolver=resolver,
     )
     assert result.success is True
     assert result.changed is False
@@ -119,19 +157,47 @@ def test_refresh_player_no_changes(dataset_path, backup_dir):
 def test_refresh_player_detects_transfer_and_new_team(dataset_path, backup_dir):
     def resolver(source, source_id):
         return AdapterResult(
-            source_name=source, source_id=source_id, success=True, player_name="Mario Rossi",
+            source_name=source,
+            source_id=source_id,
+            success=True,
+            player_name="Mario Rossi",
             career=[
-                {"team": "Roma", "country": "Italia", "league": "Serie A", "start_year": 2013, "end_year": 2018,
-                 "apps": 100, "goals": 10},
-                {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 2018, "end_year": 2023,
-                 "apps": 120, "goals": 15},
-                {"team": "Juventus", "country": "Italia", "league": "Serie A", "start_year": 2023, "end_year": None,
-                 "apps": 10, "goals": 1},
+                {
+                    "team": "Roma",
+                    "country": "Italia",
+                    "league": "Serie A",
+                    "start_year": 2013,
+                    "end_year": 2018,
+                    "apps": 100,
+                    "goals": 10,
+                },
+                {
+                    "team": "Milan",
+                    "country": "Italia",
+                    "league": "Serie A",
+                    "start_year": 2018,
+                    "end_year": 2023,
+                    "apps": 120,
+                    "goals": 15,
+                },
+                {
+                    "team": "Juventus",
+                    "country": "Italia",
+                    "league": "Serie A",
+                    "start_year": 2023,
+                    "end_year": None,
+                    "apps": 10,
+                    "goals": 1,
+                },
             ],
+            source_metadata={"revision_id": 987, "wikidata_id": "Q123"},
         )
 
     result = refresh_player_career(
-        "mario_rossi", players_path=dataset_path, backup_dir=backup_dir, adapter_resolver=resolver,
+        "mario_rossi",
+        players_path=dataset_path,
+        backup_dir=backup_dir,
+        adapter_resolver=resolver,
     )
     assert result.success is True
     assert result.changed is True
@@ -142,21 +208,41 @@ def test_refresh_player_detects_transfer_and_new_team(dataset_path, backup_dir):
     data = json.loads(dataset_path.read_text(encoding="utf-8"))
     teams = [c["team"] for c in data["players"][0]["career"]]
     assert "Juventus" in teams
+    assert data["players"][0]["source_revision_id"] == 987
+    assert data["players"][0]["wikidata_id"] == "Q123"
 
 
 def test_refresh_player_detects_active_change(dataset_path, backup_dir):
     def resolver(source, source_id):
         return AdapterResult(
-            source_name=source, source_id=source_id, success=True, player_name="Mario Rossi",
+            source_name=source,
+            source_id=source_id,
+            success=True,
+            player_name="Mario Rossi",
             career=[
-                {"team": "Roma", "country": "Italia", "league": "Serie A", "start_year": 2013, "end_year": 2018},
-                {"team": "Milan", "country": "Italia", "league": "Serie A", "start_year": 2018, "end_year": 2020},
+                {
+                    "team": "Roma",
+                    "country": "Italia",
+                    "league": "Serie A",
+                    "start_year": 2013,
+                    "end_year": 2018,
+                },
+                {
+                    "team": "Milan",
+                    "country": "Italia",
+                    "league": "Serie A",
+                    "start_year": 2018,
+                    "end_year": 2020,
+                },
             ],
         )
 
     result = refresh_player_career(
-        "mario_rossi", players_path=dataset_path, backup_dir=backup_dir,
-        adapter_resolver=resolver, current_year_provider=lambda: 2026,
+        "mario_rossi",
+        players_path=dataset_path,
+        backup_dir=backup_dir,
+        adapter_resolver=resolver,
+        current_year_provider=lambda: 2026,
     )
     assert result.success is True
     assert result.diff.get("active_changed") == {"previous": True, "new": False}
@@ -172,7 +258,9 @@ def test_refresh_all_active_players_separates_missing_source(tmp_path, backup_di
         [
             _base_player(id="a", full_name="Player A", source="wikipedia", source_id="Player_A", active=True),
             _base_player(id="b", full_name="Player B", source=None, source_id=None, active=True),
-            _base_player(id="c", full_name="Player C", source="wikipedia", source_id="Player_C", active=False),
+            _base_player(
+                id="c", full_name="Player C", source="wikipedia", source_id="Player_C", active=False
+            ),
         ],
     )
 
@@ -180,13 +268,18 @@ def test_refresh_all_active_players_separates_missing_source(tmp_path, backup_di
 
     def resolver(source, source_id):
         calls.append(source_id)
-        return AdapterResult(source_name=source, source_id=source_id, success=True, player_name="X", career=[])
+        return AdapterResult(
+            source_name=source, source_id=source_id, success=True, player_name="X", career=[]
+        )
 
     sleeps = []
 
     results, without_source = refresh_all_active_players(
-        players_path=path, backup_dir=backup_dir, delay_seconds=0.01,
-        adapter_resolver=resolver, sleep_fn=lambda s: sleeps.append(s),
+        players_path=path,
+        backup_dir=backup_dir,
+        delay_seconds=0.01,
+        adapter_resolver=resolver,
+        sleep_fn=lambda s: sleeps.append(s),
     )
 
     assert len(results) == 1
@@ -195,3 +288,51 @@ def test_refresh_all_active_players_separates_missing_source(tmp_path, backup_di
     assert without_source[0]["id"] == "b"
     # player "c" is inactive, never contacted
     assert "Player_C" not in calls
+
+
+def test_refresh_all_batches_wikipedia_players(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(
+        path,
+        [
+            _base_player(id="a", full_name="Player A", source_id="Player_A"),
+            _base_player(id="b", full_name="Player B", source_id="Player_B"),
+        ],
+    )
+
+    class _BatchWikipediaAdapter:
+        def __init__(self):
+            self.calls = []
+
+        def fetch_players(self, identifiers):
+            self.calls.append(identifiers)
+            return {
+                identifier: AdapterResult(
+                    source_name="wikipedia",
+                    source_id=identifier,
+                    success=True,
+                    player_name=identifier,
+                    career=[{"team": "Roma", "start_year": 2025, "end_year": None}],
+                )
+                for identifier in identifiers
+            }
+
+    adapter = _BatchWikipediaAdapter()
+
+    def unexpected_resolver(source, source_id):
+        raise AssertionError(f"sequential resolver called for {source}/{source_id}")
+
+    sleeps = []
+    results, without_source = refresh_all_active_players(
+        players_path=path,
+        backup_dir=backup_dir,
+        delay_seconds=1,
+        adapter_resolver=unexpected_resolver,
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=sleeps.append,
+    )
+
+    assert [result.success for result in results] == [True, True]
+    assert adapter.calls == [["Player_A", "Player_B"]]
+    assert sleeps == []
+    assert without_source == []

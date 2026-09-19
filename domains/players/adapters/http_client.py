@@ -9,9 +9,12 @@ Design:
   exposes a ``retryable`` hint for upstream retry decisions.
 - Sensible defaults: 30-second timeout, identifiable User-Agent.
 """
+
 from __future__ import annotations
 
 import json
+import random
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -43,12 +46,14 @@ class HttpError(Exception):
         url: str = "",
         retryable: bool = False,
         body: str = "",
+        headers: Optional[dict[str, str]] = None,
     ) -> None:
         self.status_code = status_code
         self.message = message
         self.url = url
         self.retryable = retryable
         self.body = body
+        self.headers = dict(headers or {})
         super().__init__(f"HTTP {status_code}: {message} [{url}]")
 
 
@@ -66,7 +71,9 @@ class HttpClient(Protocol):
         ...
 
 
-_DEFAULT_UA = "guess-the-player-dataset/1.0 (adapter pipeline; contact: repo owner)"
+_DEFAULT_UA = (
+    "guess-the-player-dataset/1.1 " "(https://github.com/michelecoppi/guess_the_player_from_the_path)"
+)
 _DEFAULT_TIMEOUT = 30
 
 
@@ -120,6 +127,7 @@ class UrllibHttpClient:
                 url=url,
                 retryable=retryable,
                 body=err_body,
+                headers={k: v for k, v in exc.headers.items()} if exc.headers else {},
             ) from exc
         except urllib.error.URLError as exc:
             if "timed out" in str(exc).lower() or isinstance(exc.reason, TimeoutError):
@@ -139,3 +147,76 @@ class UrllibHttpClient:
                 url=url,
                 retryable=True,
             ) from exc
+
+
+class RetryingHttpClient:
+    """Retry decorator for Wikimedia reads.
+
+    Handles gateway throttling (429/503) and MediaWiki's ``maxlag`` error, which is
+    returned with HTTP 200.  ``Retry-After`` wins over exponential backoff.  The
+    wrapper is intentionally serial; callers decide how to batch identifiers.
+    """
+
+    def __init__(
+        self,
+        client: Optional[HttpClient] = None,
+        *,
+        max_retries: int = 5,
+        base_delay: float = 5.0,
+        sleep_fn: Any = time.sleep,
+        random_fn: Any = random.random,
+    ) -> None:
+        self._client = client or UrllibHttpClient()
+        self._max_retries = max(0, int(max_retries))
+        self._base_delay = max(0.0, float(base_delay))
+        self._sleep = sleep_fn
+        self._random = random_fn
+
+    @staticmethod
+    def _header(headers: dict[str, str], name: str) -> Optional[str]:
+        wanted = name.lower()
+        return next((value for key, value in headers.items() if key.lower() == wanted), None)
+
+    def _wait_seconds(self, attempt: int, headers: dict[str, str]) -> float:
+        retry_after = self._header(headers, "Retry-After")
+        if retry_after:
+            try:
+                return max(0.0, float(retry_after))
+            except ValueError:
+                pass
+        return self._base_delay * (2**attempt) + self._random()
+
+    @staticmethod
+    def _mediawiki_retryable(response: HttpResponse) -> bool:
+        try:
+            data = response.json()
+        except (TypeError, ValueError):
+            return False
+        if not isinstance(data, dict) or not isinstance(data.get("error"), dict):
+            return False
+        return data["error"].get("code") in {"maxlag", "ratelimited"}
+
+    def get(self, url: str, *, timeout: int = 30) -> HttpResponse:
+        attempt = 0
+        while True:
+            try:
+                response = self._client.get(url, timeout=timeout)
+                if not self._mediawiki_retryable(response):
+                    return response
+                if attempt >= self._max_retries:
+                    data = response.json()
+                    code = data["error"].get("code", "maxlag")
+                    raise HttpError(
+                        status_code=429 if code == "ratelimited" else 503,
+                        message=str(data["error"].get("info", code)),
+                        url=url,
+                        retryable=True,
+                        body=response.body,
+                        headers=response.headers,
+                    )
+                self._sleep(self._wait_seconds(attempt, response.headers))
+            except HttpError as err:
+                if not err.retryable or attempt >= self._max_retries:
+                    raise
+                self._sleep(self._wait_seconds(attempt, err.headers))
+            attempt += 1

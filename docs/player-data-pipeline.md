@@ -91,6 +91,31 @@ Provenance (observations, source URLs, retrieval timestamps, raw payloads,
 the approved profile and career into the lean production schema; none of the lineage
 data is written to `data/players.json` and none of it is served to players.
 
+## Source/activity backfill and career refresh
+
+The maintenance flow for existing production players has two distinct steps:
+
+1. `python scripts/backfill_player_source_and_activity.py --dry-run` resolves missing
+   `source`/`source_id` values. Wikipedia exact-title lookups are sent through batched
+   `action=query` requests; only unresolved names fall back to search and Wikidata.
+   Remove `--dry-run` only after reviewing the summary. The script never rewrites the
+   local `career`.
+2. The Admin **Refresh carriera** batch calls
+   `domains.players.career_refresh.refresh_all_active_players`. Wikipedia revisions are
+   fetched in batches and then applied one player at a time through the existing lock,
+   backup and atomic-write boundary.
+
+Wikimedia calls use an identifiable User-Agent, `maxlag=5`, bounded exponential retry,
+and honor `Retry-After`. A temporary transport/rate-limit failure remains retryable and
+must not be logged as a genuine “no match”. The batch API records the source revision
+and Wikidata id when supplied, so later runs can be audited.
+
+`active` is deliberately optional. It is recalculated only from a career returned by
+the source in the current run; an empty or failed fresh result leaves activity unknown
+instead of inferring retirement from stale local data. Players with unknown activity
+remain eligible for a later refresh, while `active: false` players are excluded from the
+normal bulk refresh.
+
 ## Parent issue #13: documentation audit (2026-09-14)
 
 [#13](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/13) is still
