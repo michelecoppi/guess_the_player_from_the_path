@@ -19,6 +19,7 @@ from typing import Any, Optional
 
 from domains.players.candidates.finding import CandidateFinding, FindingCode, FindingSeverity
 from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.career_status import infer_active_status
 from domains.players.candidates.provenance import (
     CandidateProvenance,
     NormalizationRecord,
@@ -1099,6 +1100,13 @@ def normalize_candidate(
             )
         )
     candidate.career = ordered_stops
+
+    # Auto-inferenza is_retired dalla carriera: non sovrascrive mai una scelta admin manuale.
+    # Un valore e' considerato "manuale" quando la chiave e' presente ma non marcata come
+    # auto-impostata (is_retired_auto assente o False significa "qualcuno l'ha scelto a mano").
+    if "is_retired" not in candidate.metadata or candidate.metadata.get("is_retired_auto") is True:
+        candidate.metadata["is_retired"] = not infer_active_status(candidate.career)
+        candidate.metadata["is_retired_auto"] = True
 
     # Riallinea i riferimenti dei percorsi career[i].prop nella provenienza senza perdere _stop_id
     if hasattr(candidate, "provenance") and candidate.provenance:

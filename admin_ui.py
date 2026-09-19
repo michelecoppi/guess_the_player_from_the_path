@@ -60,6 +60,7 @@ os.environ["FIREBASE_CREDENTIALS_PATH"] = str(credentials_path)
 from admin_pages import (
     analytics,
     blocked,
+    career_refresh,
     challenges,
     dataset,
     events,
@@ -97,6 +98,7 @@ PAGES = [
     "🩺 Salute sistema",
     "📚 Dataset",
     "🔎 Review giocatori",
+    "🔄 Refresh carriera",
     "🚫 Giocatori sospesi",
     "👨‍👦 Coppie padre/figlio",
 ]
@@ -136,6 +138,7 @@ RENDERERS = {
     '🩺 Salute sistema': system.render,
     '📚 Dataset': dataset.render,
     '🔎 Review giocatori': player_review.render,
+    '🔄 Refresh carriera': career_refresh.render,
     '🚫 Giocatori sospesi': blocked.render,
     '👨\u200d👦 Coppie padre/figlio': father_son.render,
 }

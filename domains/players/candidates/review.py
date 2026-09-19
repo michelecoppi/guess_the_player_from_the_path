@@ -25,12 +25,9 @@ import copy
 import functools
 import json
 import logging
-import os
 import re
 import shutil
-import tempfile
 import unicodedata
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -39,10 +36,17 @@ from time import perf_counter
 from typing import Any, Callable, Optional
 
 from domains.players.adapters.candidate_integration import populate_candidate_from_result
+from domains.players.adapters.resolver import resolve_adapter_result
 from domains.players.candidates.model import CandidatePlayer, CandidateState
 from domains.players.candidates.normalization import clean_text, normalize_candidate
 from domains.players.candidates.repository import CandidatePlayerRepository
 from domains.players.candidates.validation import validate_candidate
+from domains.players.career_status import infer_active_status
+from domains.players.production_dataset import (
+    atomic_write_production_dataset,
+    backup_production_dataset,
+    load_production_players_strict,
+)
 from services import observability
 from services.career_order import order_career
 from services.matching import similarity
@@ -585,18 +589,7 @@ def build_review_projection(
     )
 
 
-def _default_adapter_resolver(source: str, source_id: str) -> Optional[Any]:
-    """Risolutore di adapter standard per la pipeline di acquisizione."""
-    src = str(source).strip().lower()
-    if src == "wikipedia":
-        from domains.players.adapters.wikipedia import WikipediaAdapter
-
-        return WikipediaAdapter().fetch_player(source_id)
-    elif src == "wikidata":
-        from domains.players.adapters.wikidata import WikidataAdapter
-
-        return WikidataAdapter().fetch_player(source_id)
-    return None
+_default_adapter_resolver = resolve_adapter_result
 
 
 def _pipeline_flag_enabled() -> bool:
@@ -672,72 +665,15 @@ class CandidateReviewService:
 
     def _load_production_players_strict(self) -> tuple[Optional[list[dict[str, Any]]], Optional[str]]:
         """Carica il dataset di produzione con semantica FAIL-CLOSED per mutazioni."""
-        if not self._players_path.is_file():
-            observability.log_event("candidate.dataset.unreadable", logging.ERROR, reason="missing")
-            return None, "Dataset di produzione mancante o non accessibile."
-        try:
-            with open(self._players_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception as err:
-            observability.log_event("candidate.dataset.unreadable", logging.ERROR, exc_info=err, reason="invalid_json")
-            return None, "Dataset di produzione non valido o corrotto."
-
-        if not isinstance(data, dict) or "players" not in data or not isinstance(data["players"], list):
-            observability.log_event("candidate.dataset.unreadable", logging.ERROR, reason="invalid_structure")
-            return None, "Struttura del dataset di produzione inattesa o non conforme."
-
-        return list(data["players"]), None
+        return load_production_players_strict(self._players_path)
 
     def _backup_production_dataset(self, candidate_id: str) -> tuple[str, Path]:
         """Crea una copia di backup con identificatore univoco e sicuro (collision-free)."""
-        self._backup_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
-        clean_cid = re.sub(r"[^a-zA-Z0-9]+", "_", str(candidate_id)).strip("_")[:20] or "cand"
-        random_suffix = uuid.uuid4().hex[:8]
-        filename = f"players-review-{stamp}_{clean_cid}_{random_suffix}.json"
-        dest = self._backup_dir / filename
-
-        if self._players_path.is_file():
-            shutil.copy2(str(self._players_path), str(dest))
-        return filename, dest
+        return backup_production_dataset(self._players_path, self._backup_dir, candidate_id)
 
     def _atomic_write_production_dataset(self, players: list[dict[str, Any]]) -> None:
         """Scrittura atomica sicura del dataset di produzione con fsync e replace."""
-        comment = (
-            "Dataset locale curato di carriere calcistiche. 'verified': true = dati controllati e pronti "
-            "per la selezione automatica."
-        )
-        if self._players_path.is_file():
-            try:
-                with open(self._players_path, "r", encoding="utf-8") as f:
-                    existing = json.load(f)
-                    comment = existing.get("_comment", comment)
-            except Exception:
-                pass
-
-        payload = {
-            "_comment": comment,
-            "players": players,
-        }
-
-        parent_dir = self._players_path.parent
-        parent_dir.mkdir(parents=True, exist_ok=True)
-
-        handle, tmp_path_str = tempfile.mkstemp(dir=str(parent_dir), prefix=".tmp_players_", suffix=".json")
-        try:
-            with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
-                f.write("\n")
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(tmp_path_str, str(self._players_path))
-        except Exception:
-            if os.path.exists(tmp_path_str):
-                try:
-                    os.remove(tmp_path_str)
-                except OSError:
-                    pass
-            raise
+        atomic_write_production_dataset(self._players_path, players)
 
     # -----------------------------------------------------------------------
     # Query: list and get
@@ -1006,7 +942,13 @@ class CandidateReviewService:
                 "popularity": candidate.popularity if candidate.popularity in (1, 2, 3, 4, 5) else 3,
                 "verified": True,
                 "career": clean_career,
+                "active": infer_active_status(clean_career, self._current_year_provider() if self._current_year_provider else None),
+                "career_last_checked_at": _now_utc_iso(),
             }
+            if candidate.source:
+                new_player["source"] = candidate.source
+            if candidate.source_id:
+                new_player["source_id"] = candidate.source_id
 
             # Controlli invarianti sul nuovo giocatore e sul dataset complessivo
             player_problems = validate_player(new_player)
@@ -1185,6 +1127,15 @@ class CandidateReviewService:
                 for stop in v:
                     clean_stops.append(dict(stop))
                 setattr(candidate, k, clean_stops)
+            elif k == "is_one_club_man":
+                # validate_candidate_data legge metadata['one_club_career'], non un attributo
+                # dell'oggetto: le due chiavi vanno tenute allineate per non bloccare la
+                # transizione a VALIDATED per le "bandiere" (un solo club in carriera).
+                candidate.metadata["one_club_career"] = v
+                candidate.metadata["is_one_club_man"] = v
+            elif k == "is_retired":
+                candidate.metadata["is_retired"] = v
+                candidate.metadata["is_retired_auto"] = False
             else:
                 setattr(candidate, k, v)
 

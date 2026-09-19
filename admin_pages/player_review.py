@@ -22,6 +22,9 @@ from admin_pages.shared import (
     show_table,
     st,
 )
+from domains.players.adapters.candidate_integration import populate_candidate_from_result
+from domains.players.adapters.resolver import resolve_adapter_result
+from domains.players.career_status import infer_active_status
 from services import observability
 
 PAGE_SIZE = 20
@@ -169,6 +172,60 @@ def _run_action(action_fn, *, success_message: Optional[str] = None):
     if result.conflicts:
         st.error("Conflitti tra fonti: " + "; ".join(result.conflicts))
     return result
+
+
+def _run_refresh_from_source(admin, candidate_id, expected_revision):
+    """Ricontatta la fonte collegata del candidato e riapplica i dati freschi via `edit()`.
+
+    Sola lettura diretta sul repository per ricostruire i campi da proporre; la scrittura
+    passa sempre dal servizio (`edit`) con CAS sulla revisione mostrata a schermo.
+    """
+    from admin_pages.shared import FileCandidatePlayerRepository
+
+    repo = FileCandidatePlayerRepository()
+    candidate = repo.get_by_id(candidate_id)
+    if candidate is None:
+        st.error(f"Candidato '{candidate_id}' non trovato.")
+        return
+
+    if not candidate.source or not candidate.source_id:
+        st.error("Nessuna fonte collegata a questo candidato.")
+        return
+
+    try:
+        result = resolve_adapter_result(candidate.source, candidate.source_id)
+    except Exception as e:  # noqa: BLE001 - mai un traceback grezzo nella UI
+        observability.log_event("admin.action.failed", logging.ERROR, exc_info=e, component="admin",
+                                surface="streamlit", page="player_review", error_type=type(e).__name__)
+        st.error(f"Errore imprevisto durante il recupero dalla fonte: {type(e).__name__}")
+        return
+
+    if result is None or not result.success:
+        st.error("Impossibile recuperare dati freschi dalla fonte collegata.")
+        return
+
+    populate_candidate_from_result(candidate, result)
+    is_retired = not infer_active_status(candidate.career)
+
+    updates = {
+        "full_name": candidate.full_name,
+        "aliases": list(candidate.aliases),
+        "nationality": candidate.nationality,
+        "position": candidate.position,
+        "career": candidate.career,
+        "is_retired": is_retired,
+    }
+    if candidate.birth_year is not None:
+        updates["birth_year"] = candidate.birth_year
+
+    service = get_review_service()
+    _run_action(
+        lambda: service.edit(
+            admin, candidate_id, expected_revision=expected_revision, updates=updates,
+            reason="Aggiornamento da fonte collegata",
+        ),
+        success_message="Candidato aggiornato con i dati freschi dalla fonte.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -366,9 +423,24 @@ def _render_validation(projection):
             show_table(projection.findings)
 
 
-def _render_provenance(projection):
+def _render_provenance(admin, candidate_id, projection):
     st.markdown("#### Fonte attiva")
     st.write(f"`{projection.source}` — id `{projection.source_id}`")
+
+    st.markdown("#### Aggiorna da fonte")
+    st.caption(
+        "Ricontatta la fonte collegata e riapplica i dati freschi (carriera, alias, stato "
+        "ritiro) sul candidato. La scrittura passa sempre da `edit()` con CAS, mai da "
+        "modifiche dirette al repository."
+    )
+    rev = projection.revision
+    confirmed = st.checkbox(
+        "Confermo l'aggiornamento dalla fonte", key=f"confirm_refresh_source_{candidate_id}_{rev}"
+    )
+    if st.button(
+        "🔄 Aggiorna da fonte", key=f"refresh_source_{candidate_id}_{rev}", disabled=not confirmed
+    ):
+        _run_refresh_from_source(admin, candidate_id, rev)
 
     rejected = [
         ev for ev in projection.review_history
@@ -811,7 +883,7 @@ def _render_detail(admin, admin_user_id, candidate_id):
         _render_identity_and_career(projection)
         _render_validation(projection)
     with tabs[1]:
-        _render_provenance(projection)
+        _render_provenance(admin, candidate_id, projection)
     with tabs[2]:
         _render_duplicates(projection)
     with tabs[3]:

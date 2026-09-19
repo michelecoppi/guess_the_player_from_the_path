@@ -388,6 +388,10 @@ def test_approve_valid_ready_candidate(temp_env):
     assert del_piero_prod["full_name"] == "Alessandro Del Piero"
     assert del_piero_prod["verified"] is True
     assert len(del_piero_prod["career"]) == 2
+    assert del_piero_prod["source"] == "wikipedia"
+    assert del_piero_prod["source_id"] == "item_sample"
+    assert del_piero_prod["active"] is False  # career ends 2012, well in the past
+    assert "career_last_checked_at" in del_piero_prod
 
 
 def test_approve_valid_validated_candidate(temp_env):
