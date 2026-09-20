@@ -1,0 +1,153 @@
+/* Matchday presentation. Loaded after the established layout and cosmetic contract.
+   No skin token is used for semantic success/error text or focus indication. */
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../assets/fonts/BarlowCondensed-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+.app-header { padding-bottom:16px; margin-bottom:24px; }
+.header-logo { border-radius:8px; width:40px; height:40px; }
+.header-title-group h1 { font-size:15px; }
+.eyebrow,.page-kicker { font-size:10px; letter-spacing:.14em; }
+.daily-heading h2,.page-title,.page-heading h2 { font-size:clamp(38px,8vw,58px); font-weight:600; letter-spacing:-.02em; }
+.daily-heading { padding-bottom:20px; }
+.daily-heading>p { font-size:14px; margin-top:8px; }
+.daily-heading .edition { border-left:0; padding:0; margin-bottom:14px; }
+.edition-number { border:1px solid var(--edge); border-radius:4px; padding:4px 9px; font-size:12px; }
+.match-meta { border:0; gap:8px; margin-top:18px; padding:0; }
+.match-meta span { padding:6px 10px; background:color-mix(in srgb,var(--text) 5%,transparent); border-radius:4px; }
+.match-meta span+span { border-left:0; padding-left:10px; }
+.match-meta span:last-child { background:transparent; padding-right:0; }
+.daily-layout { gap:20px; }
+.career-sheet { border:1px solid var(--edge); border-radius:12px; padding:18px 14px 8px; background:color-mix(in srgb,var(--bg) 65%,transparent); }
+.sheet-heading { padding:0 0 18px; align-items:center; }
+.sheet-heading h3 { font:600 25px/1.1 var(--font-display); }
+.sheet-heading>.icon { width:30px; height:30px; color:var(--muted); }
+.career-caption { margin-top:5px; font-size:11px; color:var(--muted); }
+.career-columns { grid-template-columns:71px minmax(0,1fr) 44px; gap:8px; padding-bottom:10px; font-size:10px; }
+.career-columns span { overflow-wrap:anywhere; }
+.stop { grid-template-columns:45px 18px minmax(0,1fr) 44px; gap:8px; min-height:66px; }
+.stop:not(:last-child)::after { left:61px; width:1px; background:var(--edge); }
+.transfer-node { width:18px; height:18px; font-size:8px; border-radius:50%; background:var(--bg-secondary); }
+.stop:first-child .transfer-node,.stop:last-child .transfer-node { background:var(--accent); color:var(--accent-text); border-color:var(--accent); }
+.stop .who { padding:13px 0; border:0; }
+.team { font-size:16px; line-height:1.25; letter-spacing:-.025em; }
+.years { font-size:10px; line-height:1.7; }
+.apps { font-size:10px; line-height:1.6; }
+.meta { font-size:10px; line-height:1.5; }
+.loan-label { align-self:flex-start; font-size:9px; border:1px solid var(--warn); border-radius:3px; padding:1px 5px; margin-top:5px; }
+.answer-desk { border:1px solid var(--edge); padding:18px; border-radius:12px; background:color-mix(in srgb,var(--card) 70%,transparent); }
+.attempts-line { margin-bottom:18px; }
+.attempt { border-radius:50%; width:25px; height:25px; }
+.answer-desk .guess-input { font-size:16px; }
+.btn { border-radius:7px; }
+.answer-desk .btn { min-height:48px; }
+.match-report.feedback { padding:22px 18px; border-radius:9px; margin-top:12px; animation:report-enter .3s ease-out; }
+.match-report.ok { background:var(--success-bg); border:1px solid var(--success); color:var(--text); }
+.match-report.no { background:var(--danger-bg); border:1px solid var(--danger); color:var(--text); }
+.report-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.report-top .eyebrow { color:var(--text); }
+.report-emblem { display:grid; place-items:center; width:38px; height:38px; border:1px solid currentColor; border-radius:50%; color:var(--success); }
+.no .report-emblem { color:var(--danger); }
+.match-report h3 { font:600 38px/1.05 var(--font-display); margin-top:16px; }
+.report-player { font:600 29px/1.2 var(--font-display); margin-top:10px; overflow-wrap:anywhere; }
+.report-stats { display:flex; flex-wrap:wrap; gap:28px; padding:20px 0; margin:18px 0; border-block:1px solid color-mix(in srgb,var(--text) 18%,transparent); }
+.report-stats>div { display:flex; flex-direction:column; gap:4px; }
+.report-stats strong { font:600 54px/1 var(--font-display); font-variant-numeric:tabular-nums; }
+.report-stats small { font-size:22px; }
+.report-stats span,.report-note { font-size:12px; }
+.report-note { line-height:1.6; margin-bottom:14px; }
+.match-report>.btn { width:100%; }
+.result-card img { max-width:100%; height:auto; }
+.app-nav { background:var(--bg-secondary); border-top:1px solid var(--edge); box-shadow:0 -8px 30px #0002; }
+.app-nav button[aria-current="page"] { position:relative; }
+.app-nav button[aria-current="page"]::before { content:""; position:absolute; top:0; width:22px; height:2px; background:var(--accent); border-radius:2px; }
+
+/* The identity card sits inside the owner's scoped cosmetic surface. */
+.profile-page[data-cosmetic-profile] { padding:20px 0; border-top:0; }
+.profile-page .profile-hero { position:relative; overflow:hidden; padding:22px; border:1px solid var(--skin-accent-secondary); border-top:3px solid var(--skin-accent); border-radius:12px; background:color-mix(in srgb,var(--bg) 50%,transparent); }
+.profile-page .profile-hero::after { content:""; position:absolute; width:120px; height:120px; border:1px solid var(--skin-accent); border-radius:50%; right:-55px; top:30px; opacity:.25; pointer-events:none; }
+.player-pass-label { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; padding-bottom:18px; margin-bottom:4px; border-bottom:1px solid var(--edge); text-transform:uppercase; letter-spacing:.15em; font-size:10px; color:var(--muted); }
+.player-pass-label .icon { width:19px; height:19px; }
+.profile-page .profile-player-name { font-size:40px; font-weight:600; }
+.profile-showcase-container { padding-top:14px; border-top:1px dashed var(--edge); }
+.profile-page .primary-stats { gap:10px; }
+.profile-page .primary-stats .tile { padding:14px 0; }
+.primary-stats .tile-value { font:600 clamp(32px,8vw,48px)/1 var(--font-display); }
+.primary-stats .tile-label { font-size:11px; margin-top:8px; }
+.secondary-stats { margin-top:14px; }
+.secondary-stats summary { cursor:pointer; min-height:44px; display:list-item; align-content:center; font-size:12px; color:var(--muted); }
+.secondary-stats .tile-value { font-size:24px; }
+.section-heading { font:600 24px/1.2 var(--font-display); }
+
+.arena-heading-mark { font:600 62px/1 var(--font-display); color:var(--muted); opacity:.5; }
+.arena-modes { gap:12px; margin-top:20px; }
+.arena-modes .mode-entry { padding:22px 18px; border:1px solid var(--edge); border-radius:10px; background:color-mix(in srgb,var(--bg) 50%,transparent); gap:14px; }
+.arena-modes .mode-entry:first-child { background:var(--sport-surface); color:var(--sport-text); border-color:var(--sport-highlight); padding-block:30px; }
+.arena-modes .mode-entry:first-child small { color:var(--sport-text); }
+.arena-modes .mode-entry:first-child b { font-size:32px; }
+.arena-modes .mode-entry b { font-weight:600; font-size:26px; }
+.arena-modes .mode-entry>.icon:first-child { color:var(--accent); }
+.arena-feature { border-radius:12px; border:1px solid var(--sport-highlight); margin-top:20px; }
+.arena-feature-copy h3 { font-family:var(--font-display); font-size:36px; font-weight:600; }
+.active-duel { margin-top:20px; border-left:3px solid var(--accent); }
+.active-duel small { line-height:1.5; }
+.active-duel strong small { font-size:13px; }
+.arena-versus { padding:26px 14px; margin:16px 0; background:var(--bg); border-radius:12px; border-top:3px solid var(--skin-accent); }
+.arena-versus .scoreboard-number { font:600 48px/1.15 var(--font-display); color:var(--text); }
+.scoreboard-number small { font-size:20px; color:var(--muted); }
+.arena-versus strong { font-size:11px; font-weight:500; color:var(--muted); }
+.arena-versus .arena-vs { font:600 24px/1 var(--font-display); padding:8px; }
+
+.shop-hero { border-bottom:1px solid var(--edge); padding-block:12px 24px; margin-bottom:20px; }
+.shop-shell .shop-hero h2 { font:600 clamp(38px,8vw,58px)/1 var(--font-display); max-width:75%; }
+.shop-heading p { line-height:1.6; }
+.shop-shell .shop-section { background:transparent; border:0; border-top:1px solid var(--edge); padding:24px 0; }
+.shop-section-heading h2,.showcase-strip h2 { font:600 27px/1.1 var(--font-display); }
+.shop-item { border-radius:10px; background:color-mix(in srgb,var(--card) 80%,transparent); }
+.shop-item .shop-stage { min-height:170px; }
+.shop-item .nm { font:600 24px/1.15 var(--font-display); }
+.shop-item .shop-preview-trigger { margin:8px; min-height:44px; }
+#shelf-collections .shop-grid { grid-template-columns:1fr; }
+#shelf-collections .shop-item { border-top:2px solid var(--skin-accent); }
+#shelf-collections .bundle-stage { min-height:230px; }
+.shop-shortcuts { gap:8px; }
+.shop-shortcuts a { border-radius:5px; }
+@keyframes report-enter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@media(min-width:700px) {
+  #shelf-collections .shop-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .arena-modes { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .arena-modes .mode-entry:first-child { grid-column:1/-1; }
+}
+@media(min-width:900px) {
+  #root { padding-top:24px; }
+  .app-header { margin-bottom:32px; }
+  .daily-heading { padding-block:6px 28px; }
+  .daily-heading h2 { font-size:64px; }
+  .daily-layout { grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:28px; align-items:start; }
+  .career-sheet { padding:24px 24px 12px; }
+  .stop { min-height:74px; grid-template-columns:56px 18px minmax(0,1fr) 55px; gap:12px; }
+  .stop:not(:last-child)::after { left:76px; }
+  .team { font-size:19px; }
+  .years,.apps,.meta { font-size:12px; }
+  .career-columns { grid-template-columns:86px minmax(0,1fr) 55px; gap:12px; }
+  .answer-desk { padding:24px; border:1px solid var(--edge); border-radius:12px; }
+  .profile-page .profile-hero { max-width:620px; width:100%; margin-inline:auto; padding:28px; }
+}
+@media(max-width:359px) {
+  .career-sheet { padding:14px 10px 6px; }
+  .stop { grid-template-columns:36px 16px minmax(0,1fr) 38px; gap:6px; }
+  .stop:not(:last-child)::after { left:49px; }
+  .transfer-node { width:16px; height:16px; }
+  .career-columns { grid-template-columns:58px minmax(0,1fr) 38px; gap:6px; }
+  .team { font-size:14px; }
+  .answer-desk { padding:14px; }
+  .profile-page .profile-hero { padding:16px; }
+  .profile-page .profile-player-name { font-size:32px; }
+  .arena-modes .mode-entry { padding:18px 12px; gap:10px; }
+  .match-meta { gap:4px; font-size:11px; }
+}
+@media(prefers-reduced-motion:reduce) { .match-report.feedback { animation:none; } }

@@ -125,6 +125,10 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 
 ## Tracking log
 
+- 2026-09-20: #126 records the owner's requested Mini App presentation refresh:
+  Daily/result, identity and stats, bundled typography, Arena and Shop. The only
+  additive API field is the name revealed after a confirmed Daily win.
+
 Dated, historical notes about roadmap-structure changes. They are not current status; Project #2 is.
 
 - 2026-09-11: created 22 roadmap issues (#11–#32) and added them to GitHub Project #2.

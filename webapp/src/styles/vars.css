@@ -40,7 +40,7 @@
   --skin-pattern: none;
   --font-family:
     "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-  --font-display: "Bahnschrift", "Arial Narrow", var(--font-family);
+  --font-display: "Barlow Condensed", "Arial Narrow", var(--font-family);
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

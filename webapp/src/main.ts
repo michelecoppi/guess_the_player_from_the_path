@@ -1,6 +1,7 @@
 import "./styles/vars.css";
 import "./styles/app.css";
 import "./styles/editorial.css";
+import "./styles/matchday.css";
 import { bootstrap } from "./app/bootstrap";
 
 if (typeof document !== "undefined") {

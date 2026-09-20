@@ -355,6 +355,8 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
 
     result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"),
                              surface="miniapp")
+    if result.get("status") == "correct":
+        result["answer"] = firebase_service.get_display_name_for_day(today)
     return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols)
 
 

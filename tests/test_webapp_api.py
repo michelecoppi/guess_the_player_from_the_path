@@ -283,6 +283,21 @@ def test_a_guess_with_todays_date_is_still_todays_challenge(firebase, monkeypatc
     assert played == ["messi"]
 
 
+def test_daily_reveals_name_only_after_confirmed_win(firebase, monkeypatch, share_link):
+    for status in ("wrong", "refused", "no_challenge", "correct"):
+        monkeypatch.setattr(
+            webapp_api.game, "play_daily",
+            lambda *a, **kw: {"status": status, "attempts_left": 2, "attempts_used": 1},
+        )
+        result = webapp_api.play(42, USER, "messi", today=DAY)
+        if status == "correct":
+            assert result["answer"] == "Lionel Messi"
+            assert "messi" not in result["share"]["text"].lower()
+        else:
+            assert "answer" not in result
+        assert "correct_answers" not in result
+
+
 def test_the_share_card_appears_only_when_the_game_is_over(share_link):
     still_open = webapp_api.with_share_card({"status": "wrong", "attempts_left": 1, "attempts_used": 2}, "it", 3)
     assert "share" not in still_open

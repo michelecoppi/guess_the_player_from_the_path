@@ -1,5 +1,11 @@
 import { getLanguage } from "./index";
 const copy = {
+  matchReport: ["Il tuo risultato", "Your match report", "Tu resultado"],
+  attemptsUsed: ["Tentativi", "Attempts", "Intentos"],
+  playerPass: ["Tessera giocatore", "Player pass", "Carné de jugador"],
+  moreStats: ["Tutte le statistiche", "All statistics", "Todas las estadísticas"],
+  matchDay: ["Si scende in campo", "Time to play", "Saltamos al campo"],
+  clubCount: ["{n} tappe. Un calciatore.", "{n} stops. One player.", "{n} etapas. Un jugador."],
   equippedStyle: ["Indossato", "Equipped", "Equipado"],
   outfit: ["La tenuta", "The outfit", "La equipación"],
   ownedStyles: ["Stili posseduti", "Owned styles", "Estilos en propiedad"],

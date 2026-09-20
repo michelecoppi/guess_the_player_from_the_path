@@ -728,7 +728,7 @@ export function renderShopPage(state: ShopState): string {
   const showcaseHtml = state.view === "catalog" ? renderWeeklyShowcase(state) : "";
   const savedLooksHtml = state.view === "wardrobe" ? renderSavedLooks(state) : "";
 
-  const contentShelves = collectionsHtml + bundlesHtml + shelvesHtml;
+  const contentShelves = bundlesHtml + shelvesHtml;
   const emptyHtml = `<p class="card center muted">${escapeHtml(t("shop.empty"))}</p>`;
 
   return `
@@ -739,10 +739,11 @@ export function renderShopPage(state: ShopState): string {
       ${tabsHtml}
       ${state.view === 'wardrobe' ? renderStyleInventory([], state.catalogue!.sections.flatMap(section => section.items).filter(item => item.owned), state.catalogue!.equipped) : ''}
       ${savedLooksHtml}
+      ${collectionsHtml}
       ${showcaseHtml}
       ${filtersHtml}
       ${shortcutsHtml}
-      ${contentShelves || emptyHtml}
+      ${contentShelves || (collectionsHtml ? "" : emptyHtml)}
       ${toastHtml}
     </section>
   `;
