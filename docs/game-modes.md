@@ -198,3 +198,44 @@ by `/league_*` commands and `/app/api/league`.
 qualification counted only from server-recorded daily finishes (`REQUIRED_DAYS`),
 cosmetic rewards at fixed thresholds, stored in `referrals/{key}`; Mini App dashboard at
 `/app/api/referrals` (higher rate-limit cost).
+
+## Offline streak balance comparison (#123)
+
+`python -m tools.streak_simulation --demo` replays a synthetic 30-day Daily calendar
+under the current daily-tier bonus and a proposed one-off bonus at days 3, 7 and 30.
+`--input path/to/normalized.json` instead reads a local normalized history. Neither
+mode reads Firestore, calls external services or changes live scoring. Output defaults
+to Markdown; `--format json` produces structured results with a `synthetic` flag.
+
+Input shape (anonymous identifiers, one final Daily result per user/day):
+
+```json
+{
+  "players": [{"id": "player_a", "initial_streak": 2, "last_correct_day": "2026-08-31"}],
+  "results": [{"player": "player_a", "day": "2026-09-01", "solved": true,
+    "difficulty": "hard", "hints_used": 1, "first_correct": false}]
+}
+```
+
+For a new streak use `initial_streak: 0` and omit `last_correct_day`. A nonzero
+streak requires its last correct date before that player's first input row. The
+history must be complete for the selected window: missing dates break continuity,
+just like not playing. Input order does not matter; duplicates, unknown difficulty,
+ambiguous booleans, inconsistent Daily bands and multiple first winners are rejected.
+Results include solves, base plus first-solver points, both streak bonuses, totals,
+delta and competition ranks (ties 1, 1, 3). Ranks cover only the supplied period;
+they do not include previously earned points or rebuild a production leaderboard.
+
+Historical source limitations matter: user Daily history is not a ready-made input.
+Difficulty must come from the Daily snapshot, and the per-result first-solver flag
+must be known. `daily_path.first_correct_user` is only a boolean, not the winner's
+ID; an aggregate user bonus count cannot reconstruct the winning dates. Do not
+invent unknown values or label an approximate reconstruction as exact history.
+Use the demo until a complete, appropriately anonymized input is available.
+
+The proposed bonus pays once per uninterrupted streak. A loss or missing date
+resets it; on day 31+ there is no recurring bonus. Initial streak continuity is
+preserved across the input boundary, so an established player does not receive
+old milestones again. Both policies use identical outcomes, hints and first bonuses.
+This replay does not predict changes in participation, retention or purchases.
+See [the synthetic report](streak-balance-report.md) for the checked example.
