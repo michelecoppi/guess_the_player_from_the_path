@@ -323,6 +323,13 @@ condanna a restare ultimi.
 
 ### Negozio (Stelle di Telegram)
 
+Il set **Biglietto da trasferta** comprende tema (12 Stelle), cornice perforata (10),
+titolo (5) e card con matrice e timbro (15): insieme **32 Stelle** anziché 42.
+Notturna costa 15, Foil 22 e il distintivo Diamante 7 Stelle. I pacchetti continuano
+ad addebitare soltanto una quota proporzionale ai pezzi mancanti.
+Le card in prova sono esempi prodotti dal renderer dei risultati condivisi; i
+festeggiamenti si possono provare e rispettano la preferenza di movimento ridotto.
+
 `/shop` e la quinta scheda della mini app vendono **solo cose da guardare**, pagate in
 [Stelle di Telegram](https://core.telegram.org/bots/payments-stars): temi che ricolorano tutta
 la mini app, cornici per l'avatar, titoli sotto il nome, distintivi accanto al nome in
@@ -349,7 +356,7 @@ oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
 | Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 5 – 10 ⭐ |
 | Numeri | il numero di maglia prima del nome, **anche in classifica** | 5 – 7 ⭐ |
 | Festeggiamenti | cosa succede sullo schermo quando indovini | non in vendita |
-| Figurine | la finitura della card del risultato come immagine | 28 – 38 ⭐ |
+| Figurine | la finitura della card del risultato come immagine | 15 – 22 ⭐ |
 | Pacchetti | piu' cose insieme | 15 – 110 ⭐ |
 
 Il listino parte deliberatamente basso: sono cosmetici permanenti di un gioco gratuito, non
@@ -511,7 +518,7 @@ rimborsare il pacchetto, il tema l'aveva pagato e resta suo.
 La riga di quadratini si incolla; una figurina si guarda. `render_share_card`
 (`services/path_image.py`) disegna il risultato come PNG verticale 860×1075 — il formato che
 Telegram mostra piu' grande in una bolla senza tagliarlo — e la finitura e' un cosmetico
-(`kind: card`): piatta, notturna, olografica, di pellicola.
+(`kind: card`): piatta, notturna, olografica, di pellicola, tattica e biglietto da trasferta.
 
 Nel disegno **non entrano emoji**: il font non ha quei glifi e li stamperebbe come quadratini
 vuoti (`services/fonts.py`). I tentativi sono forme disegnate, ed e' anche il motivo per cui

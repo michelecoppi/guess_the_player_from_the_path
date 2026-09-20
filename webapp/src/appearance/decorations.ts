@@ -1,6 +1,7 @@
 /** Reviewed CSS literals only. Unknown styles require an explicit visual mapping.
  * The legacy grain SVG maps to a local CSS texture; no URLs are ever emitted. */
 export const FRAME_PAINTS: ReadonlyMap<string, string> = new Map([
+  ["repeating-conic-gradient(#edbe7e 0deg 12deg, #302a26 12deg 16deg)", "repeating-conic-gradient(#edbe7e 0deg 12deg, #302a26 12deg 16deg)"],
   [
     "repeating-linear-gradient(45deg, #f5c542 0 7px, #1b3a6b 7px 14px)",
     "repeating-linear-gradient(45deg, #f5c542 0 7px, #1b3a6b 7px 14px)"
@@ -71,6 +72,7 @@ export const FRAME_PAINTS: ReadonlyMap<string, string> = new Map([
   ]
 ]);
 export const THEME_PATTERNS: ReadonlyMap<string, string> = new Map([
+  ["repeating-linear-gradient(90deg, transparent 0 27px, rgba(237,190,126,.045) 27px 28px)", "repeating-linear-gradient(90deg, transparent 0 27px, rgba(237,190,126,.045) 27px 28px)"],
   [
     "linear-gradient(115deg, transparent 20%, rgba(188,220,255,.08) 21%, transparent 38%), linear-gradient(245deg, transparent 20%, rgba(188,220,255,.08) 21%, transparent 38%)",
     "linear-gradient(115deg, transparent 20%, rgba(188,220,255,.08) 21%, transparent 38%), linear-gradient(245deg, transparent 20%, rgba(188,220,255,.08) 21%, transparent 38%)"

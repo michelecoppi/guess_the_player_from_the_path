@@ -401,6 +401,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       leaderboardNotice: "La migrazione delle leghe e classifiche appartiene all'issue #43.",
     },
     shop: {
+      cardSample: "Esempio di risultato condiviso",
       title: "Negozio",
       kicker: "LO SPOGLIATOIO",
       headline: "Il tuo gioco. Il tuo stile.",
@@ -933,6 +934,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       leaderboardNotice: "Migration of leagues and rankings is owned by issue #43.",
     },
     shop: {
+      cardSample: "Sample shared result",
       title: "Shop",
       kicker: "THE LOCKER ROOM",
       headline: "Your game. Your style.",
@@ -1465,6 +1467,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       leaderboardNotice: "La migración de ligas y clasificaciones corresponde a la issue #43.",
     },
     shop: {
+      cardSample: "Ejemplo de resultado compartido",
       title: "Tienda",
       kicker: "EL VESTUARIO",
       headline: "Tu juego. Tu estilo.",

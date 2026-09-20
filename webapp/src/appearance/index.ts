@@ -8,7 +8,7 @@ export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-text", "--skin-accen
 export type SkinTokens = Partial<Record<typeof SKIN_TOKENS[number], string>>;
 const SLOTS: CosmeticSlot[] = ["theme", "frame", "title", "badge", "squares", "number", "celebration", "card"];
 const EFFECTS = new Set(["spotlight", "confetti", "dust", "flash", "paper", "snow", "mud", "fireworks"]);
-const FINISHES = new Set(["plain", "night", "foil", "grain"]);
+const FINISHES = new Set(["plain", "night", "foil", "grain", "tactics", "eleven", "ticket"]);
 const record = (v: unknown): Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (v: unknown, max = 160): string => typeof v === "string" && v.length <= max ? v : "";
 const color = (v: unknown): string => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : "";
@@ -33,6 +33,8 @@ export function parseResolvedAppearance(value: unknown): ResolvedAppearance {
     celebration: EFFECTS.has(text(source.celebration)) ? source.celebration as string : "",
     card: { finish: FINISHES.has(text(card.finish)) ? card.finish as string : "", ink: color(card.ink), paper: color(card.paper), glow: color(card.glow) },
   };
+  if (frame.tactics === 3 || frame.tactics === 11) result.frame!.tactics = frame.tactics;
+  if (theme.formation === true) result.theme!.formation = true;
   // Structural colors are deliberately not forwarded to the presentation layer.
   for (const key of ["accent", "accentText", "edge", "track", "card"] as const) {
     const valid = color(theme[key]);

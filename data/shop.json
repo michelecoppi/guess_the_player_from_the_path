@@ -62,10 +62,10 @@
         "es": "Hielo",
         "en": "Ice"
       },
-      "description": "Chiarissimo. Per chi gioca alla luce del sole e odia gli schermi neri.",
+      "description": "Blu glaciale e riflessi freddi su una superficie scura: il campo dopo il gelo.",
       "description_i18n": {
-        "es": "Clarísimo. Para quien juega a plena luz y odia las pantallas negras.",
-        "en": "Bright and clean. For those who play in daylight and hate dark screens."
+        "es": "Azul glacial y reflejos fríos sobre una superficie oscura: el campo tras la helada.",
+        "en": "Glacial blue and cool highlights on a dark surface: the pitch after the frost."
       },
       "style": {
         "bg": "#eef4fa",
@@ -202,10 +202,10 @@
         "es": "Anillo de oro",
         "en": "Gold ring"
       },
-      "description": "Oro lucido, con il riflesso che gira intorno.",
+      "description": "Oro lucido e riflessi chiari lungo il bordo del tuo avatar.",
       "description_i18n": {
-        "es": "Oro pulido, con el reflejo dando la vuelta.",
-        "en": "Polished gold, with the highlight running around it."
+        "es": "Oro pulido y reflejos claros en el borde de tu avatar.",
+        "en": "Polished gold with bright highlights along the edge of your avatar."
       },
       "style": {
         "ring": "conic-gradient(#b8892f, #f7e39c, #d9b45b, #fff3c4, #b8892f)"
@@ -238,10 +238,10 @@
         "es": "Fuego",
         "en": "Fire"
       },
-      "description": "Gira davvero: un anello di fiamme arancioni intorno al tuo avatar.",
+      "description": "Un anello di riflessi arancioni e oro intorno al tuo avatar, come una curva accesa.",
       "description_i18n": {
-        "es": "Gira de verdad: un anillo de llamas naranjas alrededor de tu avatar.",
-        "en": "It actually spins: a ring of orange flames around your avatar."
+        "es": "Un anillo de reflejos naranjas y dorados alrededor de tu avatar, como una grada encendida.",
+        "en": "A ring of orange and gold highlights around your avatar, like a glowing terrace."
       },
       "style": {
         "ring": "conic-gradient(#ffd000, #ff8a00, #ff2d00, #ff8a00, #ffd000)",
@@ -476,7 +476,7 @@
     {
       "id": "distintivo_diamante",
       "kind": "badge",
-      "price": 12,
+      "price": 7,
       "name": "Diamante",
       "name_i18n": {
         "es": "Diamante",
@@ -639,10 +639,10 @@
         "es": "Pack Neón",
         "en": "Neon pack"
       },
-      "description": "Tema Neon, cornice Fuoco, distintivo Diamante e quadratini Stelle. Separati sarebbero 46 ⭐.",
+      "description": "Tema Neon, cornice Fuoco, distintivo Diamante e quadratini Stelle. Separati sarebbero 41 ⭐.",
       "description_i18n": {
-        "es": "Tema Neón, marco Fuego, distintivo Diamante y cuadrados Estrellas. Por separado serían 46 ⭐.",
-        "en": "Neon theme, Fire frame, Diamond badge and Stars squares. Separately they'd be 46 ⭐."
+        "es": "Tema Neón, marco Fuego, distintivo Diamante y cuadrados Estrellas. Por separado serían 41 ⭐.",
+        "en": "Neon theme, Fire frame, Diamond badge and Stars squares. Separately they'd be 41 ⭐."
       },
       "grants": [
         "neon",
@@ -749,10 +749,10 @@
         "es": "Reflectores",
         "en": "Floodlights"
       },
-      "description": "Quattro bagliori d’argento girano intorno al profilo, come i fari sopra il campo.",
+      "description": "Riflessi da grande serata, come i fari dello stadio intorno al tuo avatar.",
       "description_i18n": {
-        "es": "Cuatro destellos de plata giran alrededor del perfil, como los focos sobre el campo.",
-        "en": "Four silver highlights circle your profile like floodlights over the pitch."
+        "es": "Reflejos de una gran noche, como los focos del estadio alrededor de tu avatar.",
+        "en": "Big-night highlights, like stadium floodlights around your avatar."
       },
       "style": {
         "ring": "repeating-conic-gradient(#233e66 0deg 55deg, #bddcff 65deg, #ffffff 72deg, #233e66 90deg)",
@@ -1041,10 +1041,10 @@
         "es": "Noches europeas · Set completo",
         "en": "European nights · Full set"
       },
-      "description": "Cinque dettagli da grande serata: tema, cornice animata, titolo, stadio e simboli. 33 ⭐ invece di 43 ⭐ acquistandoli singolarmente.",
+      "description": "Cinque dettagli da grande serata: tema, cornice a riflettori, titolo, stadio e simboli. 33 ⭐ invece di 43 ⭐ acquistandoli singolarmente.",
       "description_i18n": {
-        "es": "Cinco detalles de una gran noche: tema, marco animado, título, estadio y símbolos. 33 ⭐ en lugar de 43 ⭐ por separado.",
-        "en": "Five big-night details: theme, animated frame, title, stadium badge and symbols. 33 ⭐ instead of 43 ⭐ separately."
+        "es": "Cinco detalles de una gran noche: tema, marco de focos, título, estadio y símbolos. 33 ⭐ en lugar de 43 ⭐ por separado.",
+        "en": "Five big-night details: theme, floodlight frame, title, stadium badge and symbols. 33 ⭐ instead of 43 ⭐ separately."
       },
       "grants": [
         "notti_europee",
@@ -1623,10 +1623,10 @@
         "es": "Noche de nieve",
         "en": "Snow night"
       },
-      "description": "Blu di gennaio e fiocchi nel fascio dei riflettori. Il fondo non sta fermo: e' l'unico tema che si muove.",
+      "description": "Blu di gennaio e fiocchi sospesi nel fascio dei riflettori. Una notte invernale sul campo.",
       "description_i18n": {
-        "es": "Azul de enero y copos en el haz de los focos. El fondo no se queda quieto: es el único tema que se mueve.",
-        "en": "January blue and snow in the floodlight beam. The background does not sit still: it is the only theme that moves."
+        "en": "January blue and snowflakes suspended in the floodlight beam. A winter night on the pitch.",
+        "es": "Azul de enero y copos suspendidos en el haz de los focos. Una noche de invierno en el campo."
       },
       "style": {
         "bg": "#070d1a",
@@ -1650,10 +1650,10 @@
         "es": "Anillo de hielo",
         "en": "Ice ring"
       },
-      "description": "Ghiaccio che gira piano intorno all'avatar.",
+      "description": "Riflessi di ghiaccio azzurro e bianco lungo il bordo del tuo avatar.",
       "description_i18n": {
-        "es": "Hielo girando despacio alrededor del avatar.",
-        "en": "Ice turning slowly around the avatar."
+        "en": "Ice-blue and white highlights around the edge of your avatar.",
+        "es": "Reflejos de hielo azul y blanco en el borde de tu avatar."
       },
       "style": {
         "ring": "conic-gradient(#bfe6ff, #ffffff, #6ba8d8, #eaf6ff, #bfe6ff)",
@@ -1731,10 +1731,10 @@
         "es": "Noche de nieve · Set completo",
         "en": "Snow night · Full set"
       },
-      "description": "Coppa, gennaio, fiocchi nel cono dei riflettori: il fondo si muove piano, ed e' l'unico set che lo fa.",
+      "description": "Tema invernale, cornice di ghiaccio, titolo, fiocco e simboli coordinati: il ricordo di una partita sotto la neve.",
       "description_i18n": {
-        "es": "Copa, enero, copos en el cono de los focos: el fondo se mueve despacio, y es el único set que lo hace.",
-        "en": "Cup night, January, snow in the floodlight beam: the background drifts, and it is the only set that does."
+        "en": "Winter theme, ice frame, title, snowflake and matching symbols: a memory of a match in the snow.",
+        "es": "Tema invernal, marco de hielo, título, copo y símbolos a juego: el recuerdo de un partido bajo la nieve."
       },
       "grants": [
         "notte_di_neve",
@@ -1909,10 +1909,10 @@
         "es": "Banderas de tribuna",
         "en": "Terrace flags"
       },
-      "description": "Spicchi blu e oro che girano come le bandiere dietro la porta.",
+      "description": "Spicchi blu e oro, come le bandiere della curva intorno al tuo avatar.",
       "description_i18n": {
-        "es": "Gajos azules y dorados girando como las banderas detrás del arco.",
-        "en": "Blue and gold wedges turning like the flags behind the goal."
+        "en": "Blue and gold wedges, like terrace flags around your avatar.",
+        "es": "Gajos azules y dorados, como las banderas de la grada alrededor de tu avatar."
       },
       "style": {
         "ring": "repeating-conic-gradient(#f2c74c 0deg 22deg, #123a72 22deg 45deg)"
@@ -2134,7 +2134,7 @@
     {
       "id": "figurina_notturna",
       "kind": "card",
-      "price": 28,
+      "price": 15,
       "name": "Figurina notturna",
       "name_i18n": {
         "es": "Cromo nocturno",
@@ -2155,7 +2155,7 @@
     {
       "id": "figurina_foil",
       "kind": "card",
-      "price": 38,
+      "price": 22,
       "name": "Figurina olografica",
       "name_i18n": {
         "es": "Cromo holográfico",
@@ -2592,10 +2592,10 @@
         "en": "The tactics board",
         "es": "La pizarra del míster"
       },
-      "description": "Cinque amici qualificati. Una card personale con campo tattico e passaggi animati nel profilo; finitura dedicata nei risultati condivisi.",
+      "description": "Cinque amici qualificati. Campo tattico e tracce di passaggio sulla tua card, nel profilo e nei risultati condivisi.",
       "description_i18n": {
-        "en": "Five qualified friends. A personal tactics card with animated passes on your profile and a matching shared-result finish.",
-        "es": "Cinco amigos clasificados. Una tarjeta táctica personal con pases animados en el perfil y acabado para resultados compartidos."
+        "en": "Five qualified friends. A tactics pitch and passing routes on your card, on your profile and shared results.",
+        "es": "Cinco amigos clasificados. Campo táctico y líneas de pase en tu tarjeta, en el perfil y en los resultados compartidos."
       },
       "achievement": {
         "field": "referral_qualified",
@@ -2744,6 +2744,116 @@
         "field": "story_perfect_chapters",
         "target": 1
       }
+    },
+    {
+      "id": "trasferta",
+      "kind": "theme",
+      "price": 12,
+      "name": "Biglietto da trasferta",
+      "name_i18n": {
+        "es": "Entrada visitante",
+        "en": "Away ticket"
+      },
+      "description": "Inchiostro blu, carta scura e righe da biglietto. La prossima fermata è lo stadio.",
+      "description_i18n": {
+        "es": "Tinta azul, papel oscuro y líneas de entrada. Próxima parada: el estadio.",
+        "en": "Blue ink, dark paper and ticket ruling. Next stop: the stadium."
+      },
+      "style": {
+        "bg": "#101a24",
+        "bg2": "#172431",
+        "card": "#1e2e3c",
+        "edge": "#79664e",
+        "text": "#f6efdf",
+        "muted": "#bdb9af",
+        "accent": "#edbe7e",
+        "accentText": "#20180e",
+        "track": "#635641",
+        "pattern": "repeating-linear-gradient(90deg, transparent 0 27px, rgba(237,190,126,.045) 27px 28px)"
+      }
+    },
+    {
+      "id": "cornice_trasferta",
+      "kind": "frame",
+      "price": 10,
+      "name": "Bordo perforato",
+      "name_i18n": {
+        "es": "Borde perforado",
+        "en": "Perforated edge"
+      },
+      "description": "Il bordo color carta di un biglietto conservato dopo la partita.",
+      "description_i18n": {
+        "es": "El borde de papel de una entrada guardada después del partido.",
+        "en": "The paper-coloured edge of a ticket kept after the match."
+      },
+      "style": {
+        "ring": "repeating-conic-gradient(#edbe7e 0deg 12deg, #302a26 12deg 16deg)"
+      }
+    },
+    {
+      "id": "titolo_trasferta",
+      "kind": "title",
+      "price": 5,
+      "name": "Sempre in trasferta",
+      "name_i18n": {
+        "es": "Siempre de visitante",
+        "en": "Always away"
+      },
+      "description": "Una sciarpa nello zaino e un altro stadio da ricordare.",
+      "description_i18n": {
+        "es": "Una bufanda en la mochila y otro estadio para recordar.",
+        "en": "A scarf in your bag and another stadium to remember."
+      },
+      "style": {
+        "label": "Sempre in trasferta",
+        "label_i18n": {
+          "en": "Always away",
+          "es": "Siempre de visitante"
+        },
+        "color": "#edbe7e"
+      }
+    },
+    {
+      "id": "card_trasferta",
+      "kind": "card",
+      "price": 15,
+      "name": "Il biglietto della partita",
+      "name_i18n": {
+        "es": "La entrada del partido",
+        "en": "Match ticket"
+      },
+      "description": "Il tuo risultato su un biglietto con matrice perforata e timbro. Da conservare e condividere.",
+      "description_i18n": {
+        "es": "Tu resultado en una entrada con talón perforado y sello. Para guardar y compartir.",
+        "en": "Your result on a ticket with a perforated stub and stamp. Keep it and share it."
+      },
+      "style": {
+        "finish": "ticket",
+        "paper": "#14222f",
+        "ink": "#f6efdf",
+        "glow": "#edbe7e"
+      }
+    },
+    {
+      "id": "pacchetto_trasferta",
+      "kind": "bundle",
+      "price": 32,
+      "name": "Biglietto da trasferta · Set viaggio",
+      "name_i18n": {
+        "es": "Entrada visitante · Set de viaje",
+        "en": "Away ticket · Travel set"
+      },
+      "description": "Tema, cornice, titolo e card coordinati. Quattro ricordi di trasferta: 32 Stelle invece di 42.",
+      "description_i18n": {
+        "es": "Tema, marco, título y tarjeta a juego. Cuatro recuerdos de visitante: 32 Estrellas en vez de 42.",
+        "en": "Matching theme, frame, title and card. Four away-day keepsakes: 32 Stars instead of 42."
+      },
+      "grants": [
+        "trasferta",
+        "cornice_trasferta",
+        "titolo_trasferta",
+        "card_trasferta"
+      ]
     }
   ]
 }

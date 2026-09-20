@@ -412,6 +412,7 @@ export interface TranslationSchema {
     leaderboardNotice: string;
   };
   shop: {
+    cardSample: string;
     title: string;
     kicker: string;
     headline: string;

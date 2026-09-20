@@ -14,6 +14,8 @@ new dated section below.
 
 ## [Unreleased]
 
+- Shop: Away ticket set, backend-rendered card samples, referral decorations and targeted cosmetic prices (#122).
+
 ### Added
 
 - Optional Sentry error tracking for the backend (bot, API, jobs, Cloud Tasks workers,

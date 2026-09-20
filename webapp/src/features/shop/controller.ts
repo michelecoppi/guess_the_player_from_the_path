@@ -1,3 +1,4 @@
+import { celebrate } from '@/features/daily/celebrate';
 import { api, type ApiClient } from "@/api/client";
 import { getTelegramWebApp } from "@/telegram/webapp";
 import {
@@ -242,6 +243,7 @@ export class ShopController {
     );
 
     applyPreview(previewAppearance);
+    if (item.kind === "celebration") celebrate(previewAppearance.celebration);
     this.updateState({
       preview: {
         item,

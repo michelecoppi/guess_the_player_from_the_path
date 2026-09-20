@@ -1,3 +1,4 @@
+import { renderProfileCosmeticArt } from '@/components/CosmeticArt';
 import { renderStyleInventory } from "@/components/StyleInventory";
 import { v } from "@/i18n/visual";
 import { identityAppearance } from "@/appearance";
@@ -98,7 +99,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
     <section class="public-profile-view" ${profileSurfaceAttributes(p.cosmetics)} aria-label="${escapeHtml(t("leaderboard.publicProfileTitle"))}">
       ${backBtn}
       <div class="card profile-hero mt-3">
-        ${renderAvatar({name:u.name,size:'large',ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
+        ${renderAvatar({name:u.name,size:'large',tactics:cosmetics.frame.tactics,ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
         <div class="hero-info">
           <p class="eyebrow">${escapeHtml(t("leaderboard.publicProfileTitle"))}</p>
           <h2 id="public-profile-heading" tabindex="-1">
@@ -108,6 +109,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
           <p class="muted text-xs">${escapeHtml(tCount("common.trophiesCount", trophiesCount))}</p>
         </div>
       </div>
+      ${renderProfileCosmeticArt(p.cosmetics)}
       <div class="card">
         <h3 class="section-heading">${escapeHtml(t("leaderboard.numbers"))}</h3>
         <div class="stat-grid three-cols">

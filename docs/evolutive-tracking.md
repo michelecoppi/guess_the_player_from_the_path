@@ -12,6 +12,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | Issue | Work item |
 | --- | --- |
 | [#123](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/123) | Offline streak balance simulation |
+| [#122](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/122) | Shop quality and Away ticket collection |
 | [#11](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/11) | Standardize the GitHub product/development workflow |
 | [#24](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/24) | Local developer environment and configuration validator |
 | [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) | Admin Control Center (epic) |
@@ -139,3 +140,4 @@ Dated, historical notes about roadmap-structure changes. They are not current st
 - 2026-09-16: #28 split before implementation (Size 8) into #109 (domain map and enforced boundaries) → #110 (`bot.py` composition root) → #111 (first domains into packages); soft ordering on the same architectural surface, no `blocked by`. Remaining domains move when next touched, as recorded on #28.
 
 - 2026-09-20: #123 adds a reproducible, offline scoring comparison approved after the shop investigation. It changes no live scoring rules and is independent of shop issue #122.
+- 2026-09-19: #122 tracks the owner-approved shop investigation: faithful previews, cosmetic detail support, targeted prices and the Away ticket set. Scoring simulation is tracked independently in #123.
