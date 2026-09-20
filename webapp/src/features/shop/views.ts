@@ -1,6 +1,7 @@
+import { renderCardSample, renderFormation } from '@/components/CosmeticArt';
 import { renderStyleInventory } from "@/components/StyleInventory";
 import { escapeHtml, weekNumber } from "@/utils/format";
-import { t } from "@/i18n";
+import { t, getLanguage } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
 import { icon } from "@/components/Icon";
 import { legalHref } from "@/components/LegalLinks";
@@ -39,6 +40,12 @@ const SHOT_STOPS = [
   ["2021", "Club B"],
   ["2024", "Club C"],
 ];
+
+function localizedTitle(style: Record<string, unknown>): string {
+  const labels = style.label_i18n;
+  const label = labels && typeof labels === 'object' ? (labels as Record<string, unknown>)[getLanguage()] : undefined;
+  return typeof label === 'string' ? label : typeof style.label === 'string' ? style.label : '';
+}
 
 function previewDisplayName(): string {
   const user = getTelegramUser();
@@ -133,7 +140,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
     return `
       <div class="shop-stage theme-stage" ${profileSurfaceAttributes({ theme: style }).replace("data-cosmetic-profile ", "")}>
         ${caption}
-        ${themeShot(style)}
+        ${renderFormation({ theme: style })}${themeShot(style)}
       </div>
     `;
   }
@@ -141,7 +148,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
   if (kind === "frame") {
     const ring = typeof style.ring === "string" ? `background:${style.ring}` : undefined;
     const identityHtml = showIdentity
-      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame: style }).frame?.tactics })}
          <div class="preview-name">${escapeHtml(previewDisplayName())}</div>`
       : "";
     return `
@@ -176,7 +183,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
   }
 
   if (kind === "title") {
-    const label = (style.label as string) || "—";
+    const label = localizedTitle(style) || "—";
     const color = (style.color as string) || "var(--muted)";
     return `
       <div class="shop-stage">
@@ -217,19 +224,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
   }
 
   if (kind === "card") {
-    const finish = (style.finish as string) || "plain";
-    const paper = (style.paper as string) || "#0a131e";
-    const ink = (style.ink as string) || "#ecf2f8";
-    const glow = (style.glow as string) || "#38bd82";
-    return `
-      <div class="shop-stage" style="padding:14px">
-        <div class="fig-mini fig-${escapeHtml(finish)}" style="--paper:${escapeHtml(paper)};--ink:${escapeHtml(ink)};--glow:${escapeHtml(glow)}">
-          <span class="n">#412</span>
-          <span class="sq"><i></i><i class="on"></i><i class="off"></i></span>
-          <span class="sc">2/3</span>
-        </div>
-      </div>
-    `;
+    return `<div class="shop-stage shop-card-art">${renderCardSample(style)}</div>`;
   }
 
   if (kind === "bundle" && item.contents && item.contents.length > 0) {
@@ -241,11 +236,8 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
     const badge = byKind("badge");
     const squares = byKind("squares");
 
-    const bg = (theme.bg as string) || "var(--bg)";
-    const pattern = (theme.pattern as string) || "none";
-    const text = (theme.text as string) || "var(--text)";
     const ring = typeof frame.ring === "string" ? `background:${frame.ring}` : undefined;
-    const titleLabel = (title.label as string) || "";
+    const titleLabel = localizedTitle(title);
     const titleColor = (title.color as string) || "var(--muted)";
     const badgeEmoji = (badge.emoji as string) || "";
 
@@ -254,18 +246,20 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
     const unused = (squares.unused as string) || "";
 
     const identityHtml = showIdentity
-      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame }).frame?.tactics })}
          <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml(badgeEmoji)}</div>`
       : badgeEmoji
         ? `<div class="emoji-preview">${escapeHtml(badgeEmoji)}</div>`
         : "";
 
     return `
-      <div class="shop-stage" style="background-color:${escapeHtml(bg)};background-image:${escapeHtml(pattern)};color:${escapeHtml(text)}">
+      <div class="shop-stage bundle-stage" ${profileSurfaceAttributes({ theme }).replace("data-cosmetic-profile", "data-cosmetic-preview")}>
         ${caption}
         ${identityHtml}
         ${titleLabel ? `<div class="title-tag" style="color:${escapeHtml(titleColor)}">${escapeHtml(titleLabel)}</div>` : ""}
         ${correct ? `<div class="emoji-preview">${escapeHtml(wrong + correct + unused)}</div>` : ""}
+        ${renderCardSample(byKind("card"))}
+        ${renderFormation({ theme })}
       </div>
     `;
   }
@@ -486,8 +480,9 @@ export function renderPreviewBar(state: ShopState): string {
       <div class="preview-layout">
       <div class="preview-profile" ${profileSurfaceAttributes(worn)}>
       <p class="eyebrow">${escapeHtml(t('profile.title'))}</p>
+      ${renderFormation(worn)}
       <div class="preview-person">
-        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, size: "large" })}
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: worn.frame?.tactics, size: "large" })}
         <div class="preview-meta">
           <div class="preview-identity">
             ${worn.number ? `<span class="shirt">${escapeHtml(worn.number)}</span>` : ""}

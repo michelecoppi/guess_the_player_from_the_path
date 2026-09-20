@@ -189,3 +189,23 @@ input,select,textarea { max-width:100%; }
 @media(min-width:700px) { .preview-layout { grid-template-columns:minmax(0,1fr) minmax(0,1fr); } }
 @media(min-width:900px) { .profile-page>.style-inventory { grid-column:1/-1; } .profile-page>.style-inventory .outfit-sheet { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(prefers-reduced-motion:reduce) { .profile-link-btn { transition:none; } }
+
+/* Catalogue samples share the backend renderer and bounded referral decorations. */
+.cosmetic-card-sample { margin:0; min-width:0; width:min(100%, 220px); text-align:center; }
+.cosmetic-card-sample img { display:block; width:100%; height:auto; border-radius:12px; box-shadow:0 12px 28px #0004; }
+.cosmetic-card-sample figcaption { color:var(--muted); font-size:11px; line-height:1.4; margin-top:8px; }
+.shop-card-art { padding:16px; min-height:240px; }
+.bundle-stage[data-cosmetic-preview] { background-color:var(--skin-profile-surface); background-image:var(--skin-profile-glow),var(--skin-pattern); color:var(--text); gap:12px; padding:20px; }
+.bundle-stage .cosmetic-card-sample { width:120px; }
+.profile-cosmetic-art { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:24px; padding:24px 0; }
+.profile-cosmetic-art .cosmetic-card-sample { width:180px; }
+.cosmetic-formation { width:140px; max-width:100%; flex:none; color:var(--skin-accent, #9fffd0); }
+.cosmetic-formation svg { width:100%; display:block; fill:none; stroke:currentColor; stroke-width:.6; }
+.cosmetic-formation .formation-player { fill:currentColor; stroke:var(--skin-profile-surface, #102925); stroke-width:1; animation:take-position .7s ease-out both; animation-delay:var(--player-delay); transform-box:fill-box; transform-origin:center; }
+.avatar-tactics { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; fill:#9fffd0; }
+.avatar-tactics .tactics-ball { fill:#fff; stroke:#102925; stroke-width:1; transform-origin:50px 50px; animation:tactics-pass 3s ease-in-out 1; }
+@keyframes take-position { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes tactics-pass { from { transform:rotate(0); } to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cosmetic-formation .formation-player, .avatar-tactics .tactics-ball { animation:none; }
+}

@@ -1,0 +1,68 @@
+{
+  "renderer_sha256": "fb84ed7155504b1fffec75e702263607c59f8a80dc41ecb1db72d98025377d3c",
+  "cards": [
+    {
+      "id": "figurina_classica",
+      "style": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    },
+    {
+      "id": "figurina_notturna",
+      "style": {
+        "finish": "night",
+        "ink": "#eaf2ff",
+        "paper": "#050c1c",
+        "glow": "#7fc4ff"
+      }
+    },
+    {
+      "id": "figurina_foil",
+      "style": {
+        "finish": "foil",
+        "ink": "#fdf7ff",
+        "paper": "#10112e",
+        "glow": "#ff9ce3"
+      }
+    },
+    {
+      "id": "figurina_cinegiornale",
+      "style": {
+        "finish": "grain",
+        "ink": "#ede9e2",
+        "paper": "#171614",
+        "glow": "#ded5c4"
+      }
+    },
+    {
+      "id": "referral_lavagna",
+      "style": {
+        "finish": "tactics",
+        "paper": "#102925",
+        "ink": "#edfff6",
+        "glow": "#9fffd0"
+      }
+    },
+    {
+      "id": "referral_undici_card",
+      "style": {
+        "finish": "eleven",
+        "paper": "#102925",
+        "ink": "#f2ffe4",
+        "glow": "#c8f48b"
+      }
+    },
+    {
+      "id": "card_trasferta",
+      "style": {
+        "finish": "ticket",
+        "paper": "#14222f",
+        "ink": "#f6efdf",
+        "glow": "#edbe7e"
+      }
+    }
+  ]
+}

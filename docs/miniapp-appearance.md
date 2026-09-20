@@ -1,99 +1,85 @@
-# V2 appearance policy (#66)
+# Mini App appearance
 
-Primary document for the V2 appearance contract. For the overall Mini App architecture
-and rollout status see [miniapp.md](miniapp.md).
+Primary cosmetic contract (#66, #115, #122). The Vite Mini App is served at `/app`;
+`/app/v2` redirects there. Project #2 remains the source of work status.
 
-V2 is structurally dark before JavaScript loads. Telegram light/dark and system
-preferences cannot choose its colors. `connectTheme` retains theme, viewport and
-both safe-area event subscriptions; CSS still combines device and Telegram insets.
-No theme toggle, backend changes, catalog products, or legacy `/app` changes.
+## Theme and token ownership
 
-## Token ownership
+The app starts dark before JavaScript. Telegram and system appearance cannot
+change its structural colors; safe-area and viewport subscriptions remain active.
+`appearance/index.ts` accepts six-digit hex colors and maps theme `accent`,
+`accentText`, `edge`, `track`, `card`, `pattern` and boolean `formation`.
+`bg`, `bg2`, `text` and `muted` never replace structural colors. Light surfaces become
+a dark tint (30% accent with #0b121b); dark surfaces retain 70% of their card color.
+Glow uses 16% accent. Descriptions must describe this result, including Ghiaccio.
 
-Product-owned: `--bg`, `--bg-secondary`, `--card`, `--text`, `--muted`, `--edge`,
-`--track`, `--accent`, `--accent-text`, `--danger`, `--danger-bg`, `--warn`,
-`--warn-bg`, `--success`, `--success-bg`, `--focus`, `--disabled-opacity`,
-`--sport-surface`, `--sport-text`, `--sport-highlight`, all font, radius, touch,
-transition, spacing, layout and safe-area tokens. Interaction green is deliberately
-independent of decorative accent. Focus and success no longer depend on cosmetics.
+The CSS shell applies decorative surface, glow, pattern and accent to the header,
+navigation and tabs. Product text, success/error/warning colors, focus, typography,
+layout and touch sizes remain product-owned. `skinTokens()` owns seven `--skin-*`
+variables. Titles use decorative color while keeping readable product text.
+Reviewed gradients belong to `appearance/decorations.ts`. Unknown gradients, CSS
+keys and URLs are ignored; legacy grain maps to a local texture. Parsing is idempotent.
 
-Cosmetic theme allowlist (wire key -> V2 token):
+## Wire contract and lifecycle
 
-| Wire key | Decorative token | Use |
-| --- | --- | --- |
-| accent | --skin-accent | Daily edition edge, identity decoration |
-| edge | --skin-accent-secondary | Non-semantic identity border |
-| track | --skin-pitch | Decorative pitch/career mark |
-| card | --skin-profile-surface | 12% tint mixed with fixed dark #1a2734 |
-| pattern | --skin-pattern | Reviewed identity texture |
+`ResolvedAppearance` represents `domains/shop/service.py::appearance`, returned by
+`/app/api/me` and public profiles: eight optional slots plus `equipped` IDs. Ownership,
+achievements, completion, prices and equip rules remain backend-authoritative.
 
-The mapper never writes arbitrary property names. Colors require six-digit hex;
-gradients require exact membership in `appearance/decorations.ts`, a reviewed
-visual vocabulary without item IDs or business rules. The legacy grain SVG maps
-to a local CSS texture. Unknown gradients, URLs and unknown keys are ignored.
-Theme bg/bg2/text/muted/accentText cannot alter V2 structure or readability.
-Decorative tokens must not be used for readable text or interactive states.
-Title color decorates a border, while the label retains readable product text.
+- `applyResolvedAppearance()` validates and replaces tokens, returning a detached snapshot.
+- `clearResolvedAppearance()` resets tokens and invalidates pending loads; auth changes
+  and Daily reset prevent old requests from restoring another user's appearance.
+- `identityAppearance()` and `resultAppearance()` project the supplied person's look.
+  Public profiles never apply their skin globally.
+- No local/session storage. Missing values use presentation fallbacks, not ownership rules.
+- New wire styles require parser, renderer, tests and catalogue review together.
 
-## Contract and lifecycle
+## Slots and surfaces
 
-`appearance/types.ts::ResolvedAppearance` represents `domains/shop/service.py::appearance`,
-returned under `/app/api/me.cosmetics` and public-profile `cosmetics`:
-`equipped?`, `theme?`, `frame?`, `title?`, `badge?` (string), `squares?`,
-`number?` (string, preserves leading zero), `celebration?` (effect string), `card?`.
-Style objects retain wire names. All eight slots share one `CosmeticSlot` type.
-Shop products use backend `kind` (including bundle), `price`, `owned`, `free`,
-`equipped`, `rarity`, etc.; these are server results, never recomputed in TypeScript.
-Ownership, default item IDs, earned/collection completion, pricing/refunds and equip
-validation remain solely in Python. No additive API change was needed.
-
-- `applyResolvedAppearance(unknown)` validates, replaces every supported token and
-  returns a detached sanitized value. Reapplying is idempotent.
-- `getResolvedAppearance()` exposes a detached snapshot to current-user consumers.
-- `clearResolvedAppearance()` resets all skin/data and invalidates pending loads.
-- `identityAppearance(payload)` and `resultAppearance(payload)` are pure surface
-  projections; pass the target user's payload for public/list contexts, never apply
-  somebody else's skin globally. Renderers in `appearance/surfaces.ts` escape text.
-- Daily consumes `/me.cosmetics`, resets before full reload, clears on load failure,
-  and ignores old responses after reset/newer load. `DailyController.reset()` is the
-  integration hook before a future logout/user replacement. App initialization calls
-  it. API auth-token changes clear skin; old-session responses are rejected.
-- No local/session storage. A fresh page always starts with the dark product base.
-
-Missing/partial/malformed payloads never trigger catalog resolution: available safe
-fields are retained, other fields are omitted/empty. Missing attempt symbols use
-product presentation fallbacks, not item ownership defaults. Unknown future slots,
-style keys, effects and finishes are ignored until explicitly supported.
-
-## Surface mapping
-
-| Slot | Surface and limits |
+| Slot | Rendering |
 | --- | --- |
-| theme | Controlled global decorative skin; never structure/semantics |
-| frame | Avatar/identity only; reviewed ring paint, static in V2 even if spin=true |
-| title | Near username; localized label from backend, escaped as text |
-| badge | Profile/public/leaderboard identity, where the consuming surface supports it |
-| squares | Daily attempts and result/share projection; server owns shared text |
-| number | Player/profile identity only; string, including 01 |
-| celebration | Correct-answer feedback only; empty means none; reduced motion disables |
-| card | Result-image frame: plain/night/foil/grain; --result-finish-accent from safe glow |
+| theme | Decorative shell and scoped profile. Referral `formation: true` draws eleven players on own/public profiles and Shop try-on. |
+| frame | Reviewed avatar ring. General ring spinning stays off. Referral `tactics` accepts only 3 or 11 nodes, with one three-second ball movement. |
+| title | Localized backend label near the name, escaped as text. |
+| badge | Profile, public profile and supported identity/list surfaces. |
+| squares | Daily attempts and results; backend owns shared text. |
+| number | Identity string, including leading zero when supplied. |
+| celebration | Correct-answer feedback and explicit Shop try-on use the same two-second canvas effect. |
+| card | Backend shared image. Finishes: plain, night, foil, grain, tactics, eleven, ticket. Profiles and Shop show a labelled sample. |
 
-Share-card pixels (including ink/paper) remain rendered by the backend `/card`.
-No client reconstruction or recoloring of the image. Card appearance is exposed for
-future previews. Frame spinning stays off to avoid perpetual decoration.
+Formation entrance and ball movement are finite. `prefers-reduced-motion` disables
+these and canvas celebrations while keeping static decorations visible. Referral
+cards show a tactical pitch and passing routes; their samples and shared PNGs are static.
 
-## Fixtures and review
+## Faithful previews
 
-`webapp/src/prototypes/appearance-fixtures.json` contains backend-generated snapshots checked
-by `tests/test_appearance_contract.py`: default, captain frame + scout title + football
-badge, full Neve collection plus number 10/night card/earned snow celebration,
-football squares, Ghiaccio theme, number 7, confetti, and foil card. Fixtures have no
-ownership logic. The dev-only `?design-review` appearance selector demonstrates them
-with an identity sample and Daily symbols.
+`components/CosmeticArt.ts` is shared by Shop and profiles. Card samples use
+`services/path_image.py::render_share_card`, resized to 400x500. Challenge #412 and
+PLAYER are examples, identified by a localized caption. Real shared images keep
+the actual user's name and score. Regenerate when styles or the renderer change:
 
-Status after #66: the functional consumers (#42 Profile, #45 Shop and the other
-migrations) and the #61 redesign have since been merged on top of this contract, and
-`webapp/src/prototypes/theme-fixtures.json` covers all real themes. The final review of
-every real cosmetic on every surface is
-[#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81); legacy
-`/app` remains the production default until a separate rollout issue.
+```sh
+python -m scripts.shop_previews
+```
+
+Commit `webapp/src/assets/card-previews/` and generated `appearance/card-previews.ts`
+together. The manifest records catalogue styles and renderer hash with normalized
+newlines; tests reject stale/missing samples. Only generated asset URLs are used,
+never payload URLs. Images load lazily; Vite fingerprints filenames for caching.
+
+Bundle artwork uses the applied theme's scoped skin and shows included card samples,
+including exclusive pieces. Try-on contains one wearer identity; stopping or leaving
+Shop restores authoritative appearance. The Away ticket set covers four slots
+(theme, frame, title, card); existing full collections cover all five core slots.
+Existing signed quotes prorate the missing pieces; no payment API change was needed.
+
+## Review
+
+`tests/test_appearance_contract.py` checks backend theme fixtures;
+`tests/frontend/shop-quality.test.ts` checks every real visual style through the
+parser, including referral exclusives. `tests/test_shop_quality.py` checks samples,
+travel bundle pricing and the ticket's unobscured result area.
+Use `scripts/preview_webapp.py` with the real build for 320/390px and desktop checks:
+IT/EN/ES, own/public profiles, try-on/restore and reduced motion. This preview has
+in-memory users and does not touch Firestore. Browser simulation does not replace
+physical Telegram iOS/Android checks.
