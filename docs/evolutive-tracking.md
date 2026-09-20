@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#122](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/122) | Shop quality and Away ticket collection |
 | [#11](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/11) | Standardize the GitHub product/development workflow |
 | [#24](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/24) | Local developer environment and configuration validator |
 | [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) | Admin Control Center (epic) |
@@ -136,3 +137,5 @@ Dated, historical notes about roadmap-structure changes. They are not current st
 - 2026-09-14: #23 — added the documentation index ([`README.md`](README.md)), [`architecture.md`](architecture.md), focused docs for game modes, player-data pipeline, Mini App, Admin, Firestore, security and operations, and [`agent-protocol.md`](agent-protocol.md); `AGENTS.md` now links to them. The former “Protocol for future agents” list here was reduced to the status/WIP rules this file owns.
 - 2026-09-16: #32 — performance measurement. Production baseline (2026-09-07..16) taken from Cloud Run request logs: cold starts dominate (first request p50 5.3 s vs warm p95 764 ms). Added Firestore per-request accounting, startup/handler/Mini App timings, budgets and `tools/perf_report.py`; the only code optimisation applied is the measured one (shared PTB HTTP client). Decision log and `--min-instances` recommendation in [`performance.md`](performance.md#decisioni-di-ottimizzazione).
 - 2026-09-16: #28 split before implementation (Size 8) into #109 (domain map and enforced boundaries) → #110 (`bot.py` composition root) → #111 (first domains into packages); soft ordering on the same architectural surface, no `blocked by`. Remaining domains move when next touched, as recorded on #28.
+
+- 2026-09-19: #122 tracks the owner-approved shop investigation: faithful previews, cosmetic detail support, targeted prices and the Away ticket set. Scoring simulation is tracked independently in #123.

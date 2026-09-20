@@ -52,7 +52,7 @@
   "terra_rossa": {
     "name": "Terra rossa",
     "description": "Argilla e tramonto, come un campo di periferia alle sette di sera.",
-    "price": 15,
+    "price": 7,
     "rarity": "common",
     "appearance": {
       "equipped": {
@@ -101,8 +101,8 @@
   },
   "ghiaccio": {
     "name": "Ghiaccio",
-    "description": "Chiarissimo. Per chi gioca alla luce del sole e odia gli schermi neri.",
-    "price": 15,
+    "description": "Blu glaciale e riflessi freddi su una superficie scura: il campo dopo il gelo.",
+    "price": 7,
     "rarity": "common",
     "appearance": {
       "equipped": {
@@ -152,7 +152,7 @@
   "carta_ingiallita": {
     "name": "Carta ingiallita",
     "description": "Il colore di un almanacco tenuto in cantina per trent'anni.",
-    "price": 20,
+    "price": 10,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -202,7 +202,7 @@
   "neon": {
     "name": "Neon",
     "description": "Nero e fucsia. Si vede da lontano che non stai giocando alla versione base.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -252,7 +252,7 @@
   "oro_notte": {
     "name": "Oro di notte",
     "description": "Nero e oro, senza esagerare. Il più sobrio fra i temi vistosi.",
-    "price": 30,
+    "price": 15,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -302,7 +302,7 @@
   "notti_europee": {
     "name": "Notti europee",
     "description": "Blu profondo, argento e fasci di luce. L’atmosfera di uno stadio quando parte la partita più attesa.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -353,7 +353,7 @@
   "domenica_90": {
     "name": "Domenica ’90",
     "description": "Carta crema, verde bottiglia e righe leggere. Il calcio delle figurine sul tavolo e della radio accesa.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -404,7 +404,7 @@
   "calcio_strada": {
     "name": "Calcio di strada",
     "description": "Asfalto scuro, lime e una rete sottile sullo sfondo. Bastano due zaini per fare una porta.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -455,7 +455,7 @@
   "cinegiornale": {
     "name": "Cinegiornale 1966",
     "description": "Niente colore: solo grigi caldi e la grana della pellicola. In mezzo a un negozio di temi accesi, e' quello che si nota.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -506,7 +506,7 @@
   "giorno_di_mercato": {
     "name": "Giorno di mercato",
     "description": "Giallo su nero e il ticker che scorre sul fondo. Il gioco parla di trasferimenti: questo tema lo dice.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -556,8 +556,8 @@
   },
   "notte_di_neve": {
     "name": "Notte di neve",
-    "description": "Blu di gennaio e fiocchi nel fascio dei riflettori. Il fondo non sta fermo: e' l'unico tema che si muove.",
-    "price": 25,
+    "description": "Blu di gennaio e fiocchi sospesi nel fascio dei riflettori. Una notte invernale sul campo.",
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -608,7 +608,7 @@
   "novembre_in_provincia": {
     "name": "Novembre in provincia",
     "description": "Verde spento, terra smossa, luce bassa. Chi lo indossa sta dicendo che tipo di tifoso e'.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -659,7 +659,7 @@
   "notte_sudamericana": {
     "name": "Notte sudamericana",
     "description": "Blu profondo e oro, con il fumo dei fumogeni che sale dal bordo basso della pagina.",
-    "price": 25,
+    "price": 12,
     "rarity": "rare",
     "appearance": {
       "equipped": {
@@ -836,6 +836,57 @@
         "accent": "#00e5ff",
         "accentText": "#00131a",
         "track": "#3a1f66"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "trasferta": {
+    "name": "Biglietto da trasferta",
+    "description": "Inchiostro blu, carta scura e righe da biglietto. La prossima fermata è lo stadio.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "trasferta",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#101a24",
+        "bg2": "#172431",
+        "card": "#1e2e3c",
+        "edge": "#79664e",
+        "text": "#f6efdf",
+        "muted": "#bdb9af",
+        "accent": "#edbe7e",
+        "accentText": "#20180e",
+        "track": "#635641",
+        "pattern": "repeating-linear-gradient(90deg, transparent 0 27px, rgba(237,190,126,.045) 27px 28px)"
       },
       "frame": {
         "ring": ""

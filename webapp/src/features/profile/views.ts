@@ -1,3 +1,4 @@
+import { renderProfileCosmeticArt } from '@/components/CosmeticArt';
 import { renderStyleInventory } from "@/components/StyleInventory";
 import { renderAvatar } from "@/components/Avatar";
 import { renderStatTile } from "@/components/StatTile";
@@ -378,6 +379,7 @@ export function renderProfileView(state: ProfileState): string {
           name: u.name,
           ringStyle: cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined,
           size: "large",
+          tactics: cosmetics.frame.tactics,
         })}
         <div class="hero-info">
           <h3 id="profile-heading" tabindex="-1" class="profile-player-name">
@@ -392,6 +394,8 @@ export function renderProfileView(state: ProfileState): string {
           ${pinnedHtml}
         </div>
       </div>
+
+      ${renderProfileCosmeticArt(profile.cosmetics)}
 
       <!-- Core Numbers / Stat Grid Card -->
       <div class="card mt-3">

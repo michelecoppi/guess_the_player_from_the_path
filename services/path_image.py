@@ -485,6 +485,24 @@ def _finish_grain(img, paper, glow):
     return Image.blend(grey, out, 0.55)
 
 
+def _finish_ticket(img, paper, glow):
+    """A kept match ticket: paper edge, perforated stub and an admission stamp."""
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    line = tuple(round(paper[i] * .55 + glow[i] * .45) for i in range(3))
+    draw.rounded_rectangle((24, 24, w - 24, h - 24), radius=22, outline=glow, width=3)
+    for y in range(48, h - 48, 24):
+        draw.ellipse((16, y - 5, 32, y + 5), fill=paper, outline=line)
+        draw.ellipse((w - 32, y - 5, w - 16, y + 5), fill=paper, outline=line)
+    for x in range(44, w - 44, 20):
+        draw.line((x, 220, x + 8, 220), fill=line, width=2)
+    draw.ellipse((w - 130, 54, w - 54, 130), outline=line, width=3)
+    draw.line((w - 115, 110, w - 70, 72), fill=line, width=3)
+    for i, x in enumerate(range(55, 150, 5)):
+        draw.rectangle((x, 60, x + (1 if i % 3 else 3), 124), fill=line)
+    return img
+
+
 def _finish_tactics(img, paper, glow, eleven=False):
     draw = ImageDraw.Draw(img)
     w, h = img.size
@@ -509,6 +527,7 @@ def _finish_tactics(img, paper, glow, eleven=False):
 
 
 FINISHES: dict[str, Callable[..., Image.Image]] = {
+    "ticket": _finish_ticket,
     "plain": _finish_plain,
     "night": _finish_night,
     "foil": _finish_foil,
