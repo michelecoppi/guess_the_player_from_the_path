@@ -64,23 +64,34 @@ function renderResultCard(state: DailyState): string {
   `.trim();
 }
 
+function renderMatchReport(state: DailyState, feedback?: DailyGuessResult): string {
+  const won = feedback ? feedback.status === "correct" : !!state.challenge?.solved;
+  const attempts = feedback?.attempts_used ?? state.challenge?.attempts_used ?? 0;
+  // Only the server's post-game response may reveal a name or awarded score.
+  const answer = feedback?.answer;
+  return `<section class="feedback match-report ${won ? "ok" : "no"}" role="status" aria-live="polite">
+    <div class="report-top"><span class="eyebrow">${v("matchReport")}</span><span class="report-emblem" aria-hidden="true">${icon(won ? "ranking" : "career")}</span></div>
+    <h3>${escapeHtml(won ? t("daily.correct") : v("final"))}</h3>
+    ${answer ? `<p class="report-player">${escapeHtml(answer)}</p>` : ""}
+    <div class="report-stats">
+      ${feedback?.points_awarded != null ? `<div><strong>${feedback.points_awarded}</strong><span>${escapeHtml(t("daily.gotPoints"))}</span></div>` : ""}
+      <div><strong>${attempts}<small> / ${state.challenge?.max_attempts ?? 5}</small></strong><span>${v("attemptsUsed")}</span></div>
+    </div>
+    <p class="report-note">${escapeHtml(won ? v("next") : t("daily.outOfAttempts"))}</p>
+    ${feedback?.share ? `<button class="btn" id="share">${icon("share")}${escapeHtml(t("daily.share"))}</button>` : ""}
+    ${renderResultCard(state)}
+  </section>`;
+}
+
 function renderFeedback(
   feedback: DailyGuessResult | null | undefined,
   state: DailyState,
 ): string {
   if (!feedback) return "";
 
-  if (feedback.status === "correct") {
-    const shareHtml = feedback.share
-      ? `<button class="btn ghost" style="margin-top: 10px;" id="share">${escapeHtml(t("daily.share"))}</button>${renderResultCard(state)}`
-      : "";
-
-    return `
-      <div class="feedback ok" role="status" aria-live="polite">
-        <b>${escapeHtml(t("daily.correct"))}</b> ${feedback.points_awarded ?? 0} ${escapeHtml(t("daily.gotPoints"))}.
-        ${shareHtml}
-      </div>
-    `.trim();
+  if (feedback.status === "correct" ||
+      (feedback.status === "wrong" && feedback.attempts_left === 0)) {
+    return renderMatchReport(state, feedback);
   }
 
   if (feedback.status === "wrong") {
@@ -162,13 +173,13 @@ export function renderDailyPage(state?: DailyState): string {
     </header>
     <div class="daily-layout">
       <section class="career-sheet" id="daily-career-card" aria-label="${v("career")}">
-        <div class="sheet-heading"><h3>${v("career")}</h3>${icon("career")}</div>
+        <div class="sheet-heading"><div><h3>${v("career")}</h3><p class="career-caption">${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</p></div>${icon("career")}</div>
         <div class="career-columns" aria-hidden="true"><span>${v("season")}</span><span>${v("club")}</span><span>${v("apps")}</span></div>
         ${renderCareerPath({ stops: today.career_path || [], emptyText: v("missing") })}
       </section>
       <section class="answer-desk" id="daily-interaction-card" aria-label="${v("answer")}">
         <div class="attempts-line"><span>${escapeHtml(done ? v("final") : t("daily.left"))}${done ? "" : ` <b>${left}</b>`}</span><div class="attempts" role="img" aria-label="${used}/${max}">${attempts}</div></div>
-        ${done ? (!state.feedback ? `<div class="feedback ${today.solved ? "ok" : "no"}" role="status"><h3>${escapeHtml(today.solved ? t("daily.solved") : v("final"))}</h3><p>${escapeHtml(today.solved ? v("next") : t("daily.outOfAttempts"))}</p></div>` : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
+        ${done ? (!state.feedback ? renderMatchReport(state) : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
         ${state.errorMessage ? `<div class="feedback no" role="alert">${escapeHtml(state.errorMessage)}</div>` : ""}
         ${renderFeedback(state.feedback, state)}
         ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: t("daily.hintsLeft"), noHintsLabel: t("daily.noHints") })}

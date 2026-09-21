@@ -108,7 +108,7 @@ def _challenge():
     return {
         "player_id": player["id"],
         "correct_answers": player.get("aliases") or [player["id"]],
-        "difficulty": "media",
+        "difficulty": "medium",
         "career_path": player["career"],
         "first_correct_user": False,
     }
@@ -120,6 +120,11 @@ LEADERBOARD = [
     {"telegram_id": 22, "username": "Sara", "points": 774},
     {"telegram_id": 23, "username": "Dario", "points": 610},
     {"telegram_id": 24, "username": "Elisa", "points": 588},
+    {"telegram_id": 25, "username": "Luca", "points": 542},
+    {"telegram_id": 26, "username": "Sofia", "points": 497},
+    {"telegram_id": 27, "username": "Matteo", "points": 463},
+    {"telegram_id": 28, "username": "Chiara", "points": 421},
+    {"telegram_id": 29, "username": "Davide", "points": 386},
 ]
 
 
@@ -221,7 +226,7 @@ window.addEventListener("load", function () {
     setTimeout(function () {
       var inp = document.querySelector("#answer");
       if (inp) {
-        inp.value = mode === "solved" ? "Vitolo" : "Messi";
+        inp.value = mode === "solved" ? "solve" : "Messi";
         inp.dispatchEvent(new Event("input", { bubbles: true }));
         var btn = document.querySelector("#submit");
         if (btn) btn.click();
@@ -426,18 +431,21 @@ async def preview_guess(payload: dict = Body(default={})):
     if not answer:
         return {"status": "error", "reason": "empty_guess"}
 
-    if answer.lower() in ("vitolo", "correct", "solve"):
+    aliases = _challenge()["correct_answers"]
+    if answer.lower() in {str(name).lower() for name in aliases} | {"correct", "solve"}:
+        from services.dates import today_iso
+        STATE["user"]["last_played_day"] = today_iso()
         STATE["user"]["has_guessed_today"] = True
         STATE["user"]["daily_attempts"] = 2
         return {
             "status": "correct",
             "attempts_used": 2,
             "attempts_left": 3,
-            "points": 100,
+            "points_awarded": 4,
             "streak": 10,
             "best_streak": 31,
             "squares": "🟥🟩⬜⬜⬜",
-            "player_name": "Vitolo",
+            "answer": firebase_service.get_display_name_for_day(today_iso()),
             "share": {
                 "text": "Guess the Player #462 2/5\n🟥🟩⬜⬜⬜",
                 "url": "https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fpreview_bot",
@@ -502,7 +510,13 @@ async def preview_arena(payload: dict = Body(default={})):
 
     mode, action = payload.get("mode"), payload.get("action", "get")
     if mode != "story":
-        raise HTTPException(status_code=409, detail="invalid")
+        from scripts.preview_arena import create_handler
+
+        if not hasattr(app.state, "arena_preview"):
+            app.state.arena_preview = create_handler(_lang)
+        if app.state.arena_preview is None:
+            raise HTTPException(status_code=409, detail="unavailable")
+        return app.state.arena_preview(payload)
     try:
         if action == "list":
             return story.list_chapters(USER_ID, _lang())
@@ -535,10 +549,6 @@ async def wear(payload: dict = Body(default={})):
 
 def main():
     import uvicorn
-
-    from scripts.preview_arena import install
-
-    install(app, STATE, _lang)
 
     catalogue = len(shop.all_items())
     print(f"Anteprima mini app su http://localhost:{PORT}/app")

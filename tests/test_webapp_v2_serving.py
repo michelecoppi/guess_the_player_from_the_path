@@ -168,7 +168,30 @@ def test_preview_webapp_guess_contract(preview_webapp):
     assert data_wrong["status"] == "wrong"
     assert data_wrong["comparison"]["name"] == "Messi"
 
-    res_correct = client.post("/app/api/guess", json={"answer": "Vitolo"})
+    name = preview_webapp._challenge()["correct_answers"][0]
+    res_correct = client.post("/app/api/guess", json={"answer": name})
     assert res_correct.status_code == 200
     assert res_correct.json()["status"] == "correct"
+    assert res_correct.json()["answer"]
+    assert res_correct.json()["points_awarded"] == 4
+
+
+def test_preview_profile_populates_the_full_top_ten(preview_webapp):
+    client = TestClient(preview_webapp.app)
+    response = client.post("/app/api/me", json={})
+    assert response.status_code == 200
+    rows = response.json()["leaderboard"]
+    assert [row["position"] for row in rows] == list(range(1, 11))
+    assert len({row["profile_id"] for row in rows}) == 10
+    assert [row["points"] for row in rows] == sorted(
+        (row["points"] for row in rows), reverse=True
+    )
+    assert sum(row["me"] for row in rows) == 1
+
+
+def test_preview_arena_routes_do_not_shadow_each_other(preview_webapp):
+    client = TestClient(preview_webapp.app)
+    for mode in ("duel", "training", "events", "story"):
+        response = client.post("/app/api/arena", json={"mode": mode, "action": "list"})
+        assert response.status_code == 200, (mode, response.text)
 

@@ -2,6 +2,7 @@ import { escapeHtml } from "@/utils/format";
 import { icon } from "@/components/Icon";
 import { renderCareerPath, renderGuessInput, renderLoadingState, renderErrorState } from "@/components";
 import { t, getLanguage } from "@/i18n";
+import { v } from "@/i18n/visual";
 import type {
   ArenaState,
   DuelData,
@@ -194,9 +195,11 @@ function renderOpenDuelsList(state: ArenaState): string {
   `.trim();
 }
 
-export function renderHubView(_state: ArenaState): string {
+export function renderHubView(state: ArenaState): string {
+  const active = state.data?.open?.find(duel => !duel.complete && duel.opponent);
   return `<div class="arena-view arena-hub">
-    <header class="page-heading"><h2 class="page-title">${escapeHtml(t("nav.arena"))}</h2></header>
+    <header class="page-heading"><div><p class="eyebrow">${v("matchDay")}</p><h2 class="page-title">${escapeHtml(t("nav.arena"))}</h2></div><span class="arena-heading-mark" aria-hidden="true">VS</span></header>
+    ${active ? `<button type="button" class="active-duel" data-arena-duel="${escapeHtml(active.code)}"><span class="duel-indicator">${icon("arena")}</span><span><b>${escapeHtml(t("arena.activeDuelWith", { name: active.opponent || "" }))}</b><small>${escapeHtml(t("arena.progress", { n: active.round, total: active.total }))}</small></span>${icon("arrow")}</button>` : ""}
     <nav class="arena-modes" aria-label="${escapeHtml(t("nav.arena"))}">
       <button class="mode-entry" data-arena-nav="duels" type="button">${icon("arena")}<span><b>${escapeHtml(t("pages.arenaTitle"))}</b><small>${escapeHtml(t("arena.featureDesc"))}</small></span>${icon("arrow")}</button>
       <button class="mode-entry" data-tab="events" type="button">${icon("events")}<span><b>${escapeHtml(t("arena.eventsTitle"))}</b><small>${escapeHtml(t("arena.eventsDesc"))}</small></span>${icon("arrow")}</button>
@@ -219,7 +222,7 @@ export function renderDuelsHub(state: ArenaState): string {
           <b>${escapeHtml(t("arena.activeDuelWith", { name: activeDuel.opponent || "" }))}</b>
           <small>${escapeHtml(t("arena.progress", { n: activeDuel.round, total: activeDuel.total }))}</small>
         </span>
-        <strong>${activeDuel.round} : ${activeDuel.total}</strong>
+        <strong>${activeDuel.round}<small> / ${activeDuel.total}</small></strong>
         ${icon("arrow")}
       </button>
     `.trim()
@@ -355,11 +358,13 @@ export function renderDuelView(state: ArenaState): string {
     <div class="arena-versus">
       <div>
         <span>${escapeHtml(t("arena.you"))}</span>
+        <b class="scoreboard-number" aria-hidden="true">${s.round}<small> / ${s.total}</small></b>
         <strong>${escapeHtml(t("arena.progress", { n: s.round, total: s.total }))}</strong>
       </div>
       <span class="arena-vs" aria-hidden="true">${escapeHtml(t("arena.versus"))}</span>
       <div>
         <span>${escapeHtml(d.opponent ? d.opponent.name : t("arena.waiting"))}</span>
+        <b class="scoreboard-number" aria-hidden="true">${d.opponent ? `${d.opponent.round ?? 0}<small> / ${s.total}</small>` : "—"}</b>
         <strong>${d.opponent ? escapeHtml(t("arena.progress", { n: d.opponent.round ?? 0, total: s.total })) : "—"}</strong>
       </div>
     </div>

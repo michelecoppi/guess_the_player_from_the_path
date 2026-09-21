@@ -5,6 +5,26 @@ Primary cosmetic contract (#66, #115, #122). The Vite Mini App is served at `/ap
 
 ## Theme and token ownership
 
+### Matchday presentation (#126)
+
+`styles/matchday.css`, loaded after the existing layout and cosmetic rules, owns
+the career sheet, final match report, player pass, primary/secondary profile
+statistics, Arena match presentation and collection-first Shop layout. It uses
+the existing product and scoped skin tokens; it never changes ownership, prices
+or the meaning of progress. Arena fractions show completed paths out of total,
+not a score against an opponent. All existing modes remain reachable.
+
+Display typography uses locally bundled Barlow Condensed SemiBold (SIL OFL,
+`webapp/src/assets/fonts/OFL.txt`) with `font-display: swap`; no third-party font
+request is made. Body text retains the system stack. The result entrance obeys
+reduced motion and supplements the existing equipped celebration.
+
+The final Daily report shows server-awarded points and a revealed name only when
+present in the response. Reopening an already completed Daily shows attempts and
+the card action without inventing a score/name absent from `/me`. The profile's
+three primary stats are total points, guessed players and current streak; a native
+disclosure keeps the four secondary stats accessible by touch and keyboard.
+
 The app starts dark before JavaScript. Telegram and system appearance cannot
 change its structural colors; safe-area and viewport subscriptions remain active.
 `appearance/index.ts` accepts six-digit hex colors and maps theme `accent`,

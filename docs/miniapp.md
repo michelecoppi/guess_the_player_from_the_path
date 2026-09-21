@@ -22,6 +22,11 @@ Both frontends call the same `POST /app/api/*` endpoints implemented in
 
 ## Backend contract and authentication
 
+The successful Daily `guess` response also includes optional `answer`, the display
+name resolved on the server after a confirmed correct result (#126). It is not
+included in the active challenge or unsuccessful in-progress guesses. Shared text
+and cards remain spoiler-free. Points continue to come from `points_awarded`.
+
 **Current state.**
 
 - Every Mini App API call is a `POST` with a JSON body containing `initData` from

@@ -10,6 +10,7 @@ import { histogram, cabinetCounts } from "@/utils/game";
 import { identityAppearance } from "@/appearance";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
 import { t, tCount } from "@/i18n";
+import { v } from "@/i18n/visual";
 import type {
   CabinetFilter,
   ProfileState,
@@ -375,6 +376,7 @@ export function renderProfileView(state: ProfileState): string {
 
       <!-- Player Pass Hero Card -->
       <div class="card profile-hero mt-3">
+        <div class="player-pass-label"><span>${v("playerPass")}</span>${icon("career")}</div>
         ${renderAvatar({
           name: u.name,
           ringStyle: cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined,
@@ -400,15 +402,19 @@ export function renderProfileView(state: ProfileState): string {
       <!-- Core Numbers / Stat Grid Card -->
       <div class="card mt-3">
         <h3 class="section-heading">${escapeHtml(t("profile.yourNumbers"))}</h3>
-        <div class="stat-grid three-cols mt-3">
+        <div class="stat-grid three-cols mt-3 primary-stats">
           ${renderStatTile({ value: u.points, label: t("profile.totalPoints") })}
-          ${renderStatTile({ value: u.monthly_points, label: t("profile.monthlyPoints") })}
           ${renderStatTile({ value: u.players_guessed, label: t("profile.guessed") })}
           ${renderStatTile({ value: u.streak, label: t("profile.streak") })}
+        </div>
+        <details class="secondary-stats"><summary>${v("moreStats")}</summary>
+        <div class="stat-grid three-cols mt-3">
+          ${renderStatTile({ value: u.monthly_points, label: t("profile.monthlyPoints") })}
           ${renderStatTile({ value: u.best_streak, label: t("profile.bestStreak") })}
           ${renderStatTile({ value: u.archive_solved, label: t("profile.recovered") })}
           ${renderStatTile({ value: u.bonus_first_guessed, label: t("profile.bonusFirstGuesser") })}
         </div>
+        </details>
       </div>
 
       <!-- Attempt Distribution Card -->
