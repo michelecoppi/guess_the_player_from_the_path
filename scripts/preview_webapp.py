@@ -120,6 +120,11 @@ LEADERBOARD = [
     {"telegram_id": 22, "username": "Sara", "points": 774},
     {"telegram_id": 23, "username": "Dario", "points": 610},
     {"telegram_id": 24, "username": "Elisa", "points": 588},
+    {"telegram_id": 25, "username": "Luca", "points": 542},
+    {"telegram_id": 26, "username": "Sofia", "points": 497},
+    {"telegram_id": 27, "username": "Matteo", "points": 463},
+    {"telegram_id": 28, "username": "Chiara", "points": 421},
+    {"telegram_id": 29, "username": "Davide", "points": 386},
 ]
 
 
