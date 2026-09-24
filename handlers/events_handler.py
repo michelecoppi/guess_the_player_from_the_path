@@ -12,9 +12,10 @@ dell'evento cambia, quindi una sessione di ieri non deve rispondere per la sfida
 """
 import asyncio
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update, WebAppInfo
 from telegram.ext import ContextTypes
 
+from config import WEBAPP_URL
 from handlers.legend_handler import legend_keyboard
 from services import event_config, firebase_service
 from services import product_analytics as analytics
@@ -99,7 +100,7 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         active = "player"
         # Aprire la scheda del giocatore apre la sessione: da qui in poi un messaggio
         # libero e' un tentativo su questo evento, non sulla sfida del giorno.
-        if (event.get("daily_data") or {}).get(today_iso()):
+        if event.get("type") != "blind_path" and (event.get("daily_data") or {}).get(today_iso()):
             (await asyncio.to_thread(firebase_service.set_event_key, update.effective_user.id, session_key(event["code"])))
             analytics.capture(analytics.Event.EVENT_STARTED, user_id=update.effective_user.id, properties={
                 "surface": "telegram_chat", "event_code": event.get("code"),
@@ -124,12 +125,13 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
 
     # La legenda solo sulla scheda del giocatore, e solo quando l'immagine e' davvero un
     # percorso di carriera: sotto un banner o una foto di coppia non spiegherebbe niente.
-    shows_career_path = active == "player" and bool(
+    shows_career_path = active == "player" and event.get("type") != "blind_path" and bool(
         ((event.get("daily_data") or {}).get(today_iso()) or {}).get("career_path")
     )
+    app_row = [InlineKeyboardButton(t(lang, "events.blind_open_app"), web_app=WebAppInfo(url=WEBAPP_URL))] if active == "player" and event.get("type") == "blind_path" and WEBAPP_URL else []
     reply_markup = (
-        legend_keyboard(lang, extra_rows=[tabs, exit_row]) if shows_career_path
-        else InlineKeyboardMarkup([tabs, exit_row])
+        legend_keyboard(lang, extra_rows=[tabs, app_row, exit_row]) if shows_career_path
+        else InlineKeyboardMarkup([row for row in [tabs, app_row, exit_row] if row])
     )
 
     await query.edit_message_media(
@@ -177,6 +179,7 @@ def get_event_home_message(event, lang="it"):
     gameplay_line = t(lang, {
         "career": "events.gameplay.career",
         "path": "events.gameplay.path",
+        "blind_path": "app.event.blind_path",
         "father_son": "events.gameplay.father_son",
         "transfer_guess": "events.gameplay.transfer_guess",
     }.get(event_type, "events.gameplay.default"))
@@ -189,6 +192,9 @@ def get_today_player_message(event, lang="it"):
 
     if not today_data:
         return t(lang, "events.no_player_today"), None
+
+    if event.get("type") == "blind_path":
+        return t(lang, "events.blind_open_app"), _event_banner(event, lang, "image.badge_player")
 
     career_path = today_data.get("career_path")
     if career_path:
@@ -299,6 +305,10 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
 
     event_type = event.get("type", "path")
     max_attempts = event_config.event_rules(event)["attempts"]
+
+    if event_type == "blind_path":
+        await update.effective_message.reply_text(t(lang, "events.blind_open_app"))
+        return
 
     if event_config.is_multi_answer(event_type) and len([p for p in guess.split(",") if p.strip()]) > MAX_CAREER_ANSWERS_PER_ATTEMPT:
         await update.effective_message.reply_text(t(lang, "events.max_answers", max_answers=MAX_CAREER_ANSWERS_PER_ATTEMPT))

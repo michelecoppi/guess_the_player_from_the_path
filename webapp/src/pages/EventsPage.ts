@@ -70,6 +70,33 @@ function renderComparison(data?: DailyComparison | null): string {
   return `<div class="event-comparison">${escapeHtml(t("daily.compared"))} <b>${escapeHtml(data.name || "")}</b>:<ul>${items}</ul></div>`;
 }
 
+function renderBlindPath(event: ReturnType<EventsController["selected"]>): string {
+  if (!event) return "";
+  const total = Math.max(1, event.total_stops ?? 1);
+  const shown = Math.min(total, event.progress.revealed ?? 1);
+  const hidden = Math.max(0, total - shown);
+  const busy = event.progress.finished || !event.available;
+  const stops = (event.career_path || []).map((stop, index) => `
+    <li class="blind-stop" style="--blind-index:${index}">
+      <span class="blind-stop-index" aria-hidden="true">${String(total - shown + index + 1).padStart(2, "0")}</span>
+      <span class="blind-stop-main"><strong>${escapeHtml(stop.team)}</strong><small>${escapeHtml(String(stop.start_year ?? ""))}${stop.end_year ? `–${escapeHtml(String(stop.end_year))}` : ""}</small></span>
+      <span class="blind-stop-mark" aria-hidden="true">${icon("career")}</span>
+    </li>`).join("");
+  const sealed = Array.from({ length: hidden }, (_, index) => `
+    <li class="blind-stop sealed" aria-label="${escapeHtml(t("events.blindSealed", { n: hidden - index }))}">
+      <span class="blind-stop-index" aria-hidden="true">${String(hidden - index).padStart(2, "0")}</span>
+      <span class="blind-stop-main"><strong>${escapeHtml(t("events.blindHidden"))}</strong><small>${escapeHtml(t("events.blindRevealPrompt"))}</small></span>
+      <span class="blind-stop-lock" aria-hidden="true">✦</span>
+    </li>`).join("");
+  return `<section class="blind-board" aria-label="${escapeHtml(t("events.blindBoard"))}">
+    <div class="blind-board-head"><span>${escapeHtml(t("events.blindEyebrow"))}</span><b>${shown}<small> / ${total}</small></b></div>
+    <div class="blind-score"><span>${escapeHtml(t("events.blindCurrentPrize"))}</span><strong>${event.points} <small>${escapeHtml(t("events.points"))}</small></strong></div>
+    <ol class="blind-stops" aria-live="polite">${stops}${sealed}</ol>
+    ${!busy && hidden ? `<button class="btn ghost blind-reveal" type="button" id="events-reveal" ${event.progress.finished ? "disabled" : ""}>${escapeHtml(t("events.blindReveal"))}<span>−1 ${escapeHtml(t("events.points"))}</span></button>` : ""}
+    ${!busy && !hidden ? `<p class="blind-all-open">${escapeHtml(t("events.blindAllOpen"))}</p>` : ""}
+  </section>`;
+}
+
 export function renderEventsPage(controller: EventsController): string {
   const state = controller.getState();
   const selectedEvent = state.events.find((x) => x.code === state.selectedCode);
@@ -124,6 +151,7 @@ export function renderEventsPage(controller: EventsController): string {
           <article class="mode-entry events-entry">
             <span>
               <b>${escapeHtml(event.name)}</b>
+              ${event.type === "blind_path" ? `<small class="blind-list-tag">${escapeHtml(t("events.blindEyebrow"))}</small>` : ""}
               <small>${escapeHtml(event.description)}</small>
               <small class="muted">${escapeHtml(event.rules)}</small>
               ${endDateHtml}
@@ -165,6 +193,8 @@ export function renderEventsPage(controller: EventsController): string {
     hintHtml = `<p class="muted event-hint">${t("events.careerHint")}${minSuffix}</p>`;
   } else if (event.type === "father_son") {
     hintHtml = `<p class="muted event-hint">${t("events.fatherSonHint")}</p>`;
+  } else if (event.type === "blind_path") {
+    hintHtml = `<p class="muted event-hint">${t("events.blindHint")}</p>`;
   } else if (event.type !== "path" && event.type !== "transfer_guess") {
     hintHtml = `<p class="muted event-hint">${t("events.unknownType")}</p>`;
   }
@@ -176,8 +206,9 @@ export function renderEventsPage(controller: EventsController): string {
       : "";
 
   // Content presentation (CareerPath or Image)
-  const contentHtml =
-    event.career_path && event.career_path.length > 0
+  const contentHtml = event.type === "blind_path"
+    ? renderBlindPath(event)
+    : event.career_path && event.career_path.length > 0
       ? renderCareerPath({ stops: event.career_path })
       : imageHtml;
 
@@ -267,19 +298,19 @@ export function renderEventsPage(controller: EventsController): string {
       <button class="btn ghost" id="events-back">${t("events.back")}</button>
       <button class="btn ghost" id="events-refresh">${t("events.refresh")}</button>
     </div>
-    <section class="event-detail">
+    <section class="event-detail${event.type === "blind_path" ? " blind-event" : ""}">
       <h2 id="events-heading" tabindex="-1">${escapeHtml(event.name)}</h2>
       <p class="event-description">${escapeHtml(event.description)}</p>
-      <p class="event-rules">${escapeHtml(event.rules)}</p>
+      ${event.type === "blind_path" ? "" : `<p class="event-rules">${escapeHtml(event.rules)}</p>`}
       ${endDateHtml}
       <p class="event-meta">
-        <span class="pill">${event.points} ${t("events.points")}</span>
-        ${event.bonus_available ? ` · <span class="event-bonus">${t("events.bonus")}</span>` : ""}
-        · ${t("events.score")}: ${event.progress.points}
+        ${event.type === "blind_path" ? "" : `<span class="pill">${event.points} ${t("events.points")}</span>`}
+        ${event.bonus_available ? `<span class="event-bonus">${t("events.bonus")}</span>` : ""}
+        <span>${t("events.score")}: ${event.progress.points}</span>
       </p>
       ${playerNameHtml}
-      ${hintHtml}
       ${contentHtml}
+      ${hintHtml}
       ${!event.progress.finished && event.available ? `<p class="event-attempts" aria-live="polite">${t("events.attempts")}: ${remaining}</p>` : ""}
       ${feedbackHtml}
       ${errorHtml}
@@ -326,6 +357,10 @@ export function attachEventsEventListeners(
 
   root.querySelector<HTMLButtonElement>("#events-back")?.addEventListener("click", () => {
     controller.back();
+  });
+
+  root.querySelector<HTMLButtonElement>("#events-reveal")?.addEventListener("click", () => {
+    void controller.reveal();
   });
 
   root

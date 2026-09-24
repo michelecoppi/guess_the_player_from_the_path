@@ -11,6 +11,9 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#128](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/128) | Timed event: Blind Career |
+| [#129](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/129) | Timed event: Find the link |
+| [#130](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/130) | Timed event: Order the career |
 | [#123](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/123) | Offline streak balance simulation |
 | [#122](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/122) | Shop quality and Away ticket collection |
 | [#11](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/11) | Standardize the GitHub product/development workflow |
@@ -124,6 +127,10 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-24: the owner's request for three visually complete timed game formats was
+  split into #128–#130. Each format changes event generation, rules and Mini App
+  presentation; sequencing them keeps one feature per reviewable PR.
 
 - 2026-09-20: #126 records the owner's requested Mini App presentation refresh:
   Daily/result, identity and stats, bundled typography, Arena and Shop. The only

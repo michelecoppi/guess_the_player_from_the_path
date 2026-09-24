@@ -77,6 +77,15 @@ def test_build_event_doc_path_type_has_career_path_and_answers():
     assert day_data["career_path"]
 
 
+def test_blind_event_uses_five_distinct_stops_per_day():
+    template = next(t for t in event_generator.load_templates() if t["id"] == "carriera_al_buio")
+    _, doc = event_generator.build_event_doc(template, datetime(2026, 6, 15, tzinfo=ITALY_TZ))
+    assert len(doc["daily_data"]) == 3
+    for data in doc["daily_data"].values():
+        assert len(data["career_path"]) == 5
+        assert len({stop["team"] for stop in data["career_path"]}) == 5
+
+
 def test_maybe_generate_event_skips_when_event_active(monkeypatch):
     monkeypatch.setattr(event_generator.firebase_service, "get_active_events", lambda: [{"code": "x"}])
     saved = []

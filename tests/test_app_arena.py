@@ -244,6 +244,46 @@ def test_events_hide_answers_and_share_bonus_and_attempts(store, event):
     assert app_events.list_events(1, "es")["events"][0]["progress"]["finished"]
 
 
+def test_blind_event_reveals_only_owned_stops_and_scores_from_persisted_state(store, event):
+    doc = store["events/week"]
+    doc["type"] = "blind_path"
+    doc["rewards"] = {"first_correct_bonus": 0}
+    doc["daily_data"][event].update(points=5, career_path=[
+        {"team": "Milan", "start_year": 2000},
+        {"team": "Chelsea", "start_year": 2003},
+        {"team": "Madrid", "start_year": 2007},
+    ])
+    first = app_events.list_events(1, "en")["events"][0]
+    assert [stop["team"] for stop in first["career_path"]] == ["Madrid"]
+    assert first["points"] == 5 and first["progress"]["revision"] == 0
+    assert "Milan" not in json.dumps(first) and "secret" not in json.dumps(first)
+
+    app_events.reveal(1, "week", event, 0)
+    second = app_events.list_events(1, "en")["events"][0]
+    assert [stop["team"] for stop in second["career_path"]] == ["Chelsea", "Madrid"]
+    assert second["points"] == 4 and second["progress"]["revision"] == 1
+    with pytest.raises(arena.ArenaError, match="stale"):
+        app_events.reveal(1, "week", event, 0)
+    with pytest.raises(arena.ArenaError, match="stale"):
+        app_events.guess(1, "Anna", "week", event, "Paolo Maldini", 0)
+    result = app_events.guess(1, "Anna", "week", event, "Paolo Maldini", 1)
+    assert result["points"] == 4
+    with pytest.raises(arena.ArenaError, match="finished"):
+        app_events.reveal(1, "week", event, 2)
+
+
+def test_blind_reveal_stops_at_last_club_and_keeps_guess_available(store, event):
+    doc = store["events/week"]
+    doc["type"] = "blind_path"
+    doc["daily_data"][event].update(points=2, career_path=[
+        {"team": "Milan", "start_year": 2000}, {"team": "Chelsea", "start_year": 2003},
+    ])
+    app_events.reveal(1, "week", event, 0)
+    with pytest.raises(arena.ArenaError, match="finished"):
+        app_events.reveal(1, "week", event, 1)
+    assert app_events.guess(1, "Anna", "week", event, "Paolo Maldini", 1)["points"] == 2
+
+
 def test_events_exhaustion_and_stale_day_do_not_leak_solution(store, event):
     for revision in range(3):
         result = app_events.guess(1, "Anna", "week", event, "Lionel Messi", revision)

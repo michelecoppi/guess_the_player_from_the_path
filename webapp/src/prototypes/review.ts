@@ -51,6 +51,8 @@ export function startReview(root:HTMLElement):void {
   root.setAttribute('data-cosmetic-shell','');
   window.Telegram={WebApp:createMockTelegramWebApp()};
   let page:string='Daily', state:ReviewState='ready', outfit:AppearanceFixtureName='default', language:'it'|'en'|'es'='it', eventIndex=0;
+  const requestedEvent=Number(new URLSearchParams(window.location.search).get('event'));
+  if(Number.isInteger(requestedEvent) && requestedEvent>=0 && requestedEvent<5)eventIndex=requestedEvent;
   const requestedPage=new URLSearchParams(window.location.search).get('view');
   const requestedTheme=new URLSearchParams(window.location.search).get('theme');
   let realTheme:ThemeId|''=THEME_IDS.includes(requestedTheme as ThemeId)?requestedTheme as ThemeId:'';
