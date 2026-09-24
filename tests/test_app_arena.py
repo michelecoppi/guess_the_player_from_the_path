@@ -241,6 +241,18 @@ def test_link_event_exposes_names_but_keeps_club_private(store, event):
     assert app_events.guess(1, "Anna", "week", event, "Juventus", 0)["status"] == "correct"
 
 
+def test_order_event_only_exposes_shuffled_stops(store, event):
+    data = store["events/week"]["daily_data"][event]
+    store["events/week"]["type"] = "order_career"
+    data.update(player_name="Andrea Pirlo", shuffled_stops=[{"id": 71, "team": "Milan"}, {"id": 32, "team": "Inter"}],
+                order_stop_ids=[32, 71])
+    card = app_events.list_events(1, "it")["events"][0]
+    assert card["shuffled_stops"] == data["shuffled_stops"]
+    assert "order_stop_ids" not in json.dumps(card)
+    assert app_events.guess(1, "Anna", "week", event, "71,32", 0)["status"] == "wrong"
+    assert app_events.guess(1, "Anna", "week", event, "32,71", 1)["status"] == "correct"
+
+
 def test_events_hide_answers_and_share_bonus_and_attempts(store, event):
     listing = app_events.list_events(1, "en")
     assert listing["events"][0]["name"] == "Event"

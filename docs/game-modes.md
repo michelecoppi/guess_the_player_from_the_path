@@ -192,8 +192,13 @@ Points stay inside the group. Rules still live in the handler plus
   while the answer stays server-side. The Mini App presents the pair on a skin
   surface and accepts a club name; chat directs players to the Mini App.
 
-**Planned evolution.** [#130](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/130)
-(Metti in ordine la carriera) needs its own generation, evaluation and Mini App rendering.
+- **Metti in ordine la carriera (#130).** The generator selects five distinct
+  recent clubs and sends them shuffled with opaque IDs, without years. The
+  correct order stays server-side. In the Mini App the player moves stops with
+  touch-sized, keyboard-accessible up and down controls, then submits the order.
+  The usual event attempts, score and leaderboard apply; chat directs users
+  to the Mini App without exposing the solution.
+
 
 ## Leaderboards, seasons and leagues
 

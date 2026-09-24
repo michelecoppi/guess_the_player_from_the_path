@@ -12,6 +12,14 @@ def evaluate_event_guess(event_type, guess, today_data):
     parole scritte: elencare due volte la stessa squadra non fa punteggio."""
     correct_answers = today_data.get("correct_answers", [])
 
+    if event_type == "order_career":
+        order = today_data.get("order_stop_ids", [])
+        parts = [part.strip() for part in guess.split(",")]
+        if len(parts) != len(order) or not all(part.isdigit() for part in parts):
+            return False, None, len(order)
+        submitted = [int(part) for part in parts]
+        return submitted == order, None, len(order)
+
     if not is_multi_answer(event_type):
         return find_match(guess, correct_answers) is not None, None, len(correct_answers)
 

@@ -100,7 +100,7 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
         active = "player"
         # Aprire la scheda del giocatore apre la sessione: da qui in poi un messaggio
         # libero e' un tentativo su questo evento, non sulla sfida del giorno.
-        if event.get("type") not in {"blind_path", "link_club"} and (event.get("daily_data") or {}).get(today_iso()):
+        if event.get("type") not in {"blind_path", "link_club", "order_career"} and (event.get("daily_data") or {}).get(today_iso()):
             (await asyncio.to_thread(firebase_service.set_event_key, update.effective_user.id, session_key(event["code"])))
             analytics.capture(analytics.Event.EVENT_STARTED, user_id=update.effective_user.id, properties={
                 "surface": "telegram_chat", "event_code": event.get("code"),
@@ -125,10 +125,10 @@ async def handle_event_navigation(update: Update, context: ContextTypes.DEFAULT_
 
     # La legenda solo sulla scheda del giocatore, e solo quando l'immagine e' davvero un
     # percorso di carriera: sotto un banner o una foto di coppia non spiegherebbe niente.
-    shows_career_path = active == "player" and event.get("type") not in {"blind_path", "link_club"} and bool(
+    shows_career_path = active == "player" and event.get("type") not in {"blind_path", "link_club", "order_career"} and bool(
         ((event.get("daily_data") or {}).get(today_iso()) or {}).get("career_path")
     )
-    app_row = [InlineKeyboardButton(t(lang, "events.open_app"), web_app=WebAppInfo(url=WEBAPP_URL))] if active == "player" and event.get("type") in {"blind_path", "link_club"} and WEBAPP_URL else []
+    app_row = [InlineKeyboardButton(t(lang, "events.open_app"), web_app=WebAppInfo(url=WEBAPP_URL))] if active == "player" and event.get("type") in {"blind_path", "link_club", "order_career"} and WEBAPP_URL else []
     reply_markup = (
         legend_keyboard(lang, extra_rows=[tabs, app_row, exit_row]) if shows_career_path
         else InlineKeyboardMarkup([row for row in [tabs, app_row, exit_row] if row])
@@ -181,6 +181,7 @@ def get_event_home_message(event, lang="it"):
         "path": "events.gameplay.path",
         "blind_path": "app.event.blind_path",
         "link_club": "app.event.link_club",
+        "order_career": "app.event.order_career",
         "father_son": "events.gameplay.father_son",
         "transfer_guess": "events.gameplay.transfer_guess",
     }.get(event_type, "events.gameplay.default"))
@@ -194,8 +195,9 @@ def get_today_player_message(event, lang="it"):
     if not today_data:
         return t(lang, "events.no_player_today"), None
 
-    if event.get("type") in {"blind_path", "link_club"}:
-        key = "events.blind_open_app" if event.get("type") == "blind_path" else "events.link_open_app"
+    if event.get("type") in {"blind_path", "link_club", "order_career"}:
+        key = {"blind_path": "events.blind_open_app", "link_club": "events.link_open_app",
+               "order_career": "events.order_open_app"}[event["type"]]
         return t(lang, key), _event_banner(event, lang, "image.badge_player")
 
     career_path = today_data.get("career_path")
@@ -308,8 +310,9 @@ async def _process_guess(update: Update, event: dict, raw_answer, lang=None, clo
     event_type = event.get("type", "path")
     max_attempts = event_config.event_rules(event)["attempts"]
 
-    if event_type in {"blind_path", "link_club"}:
-        key = "events.blind_open_app" if event_type == "blind_path" else "events.link_open_app"
+    if event_type in {"blind_path", "link_club", "order_career"}:
+        key = {"blind_path": "events.blind_open_app", "link_club": "events.link_open_app",
+               "order_career": "events.order_open_app"}[event_type]
         await update.effective_message.reply_text(t(lang, key))
         return
 

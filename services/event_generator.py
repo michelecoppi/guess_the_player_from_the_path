@@ -124,7 +124,7 @@ def pick_event_template(now_italy=None):
 def eligible_players(template, players=None):
     """Return the same candidate pool for generation and dashboard previews."""
     candidates = filter_players(get_all_players() if players is None else players, template["filters"])
-    if template["type"] == "blind_path":
+    if template["type"] in {"blind_path", "order_career"}:
         # Repeated clubs in the five-stop puzzle would feel like a duplicate reveal.
         candidates = [player for player in candidates if len({stop["team"] for stop in order_career(player["career"])[-5:]}) == 5]
     return candidates
@@ -181,8 +181,24 @@ def _build_daily_data(template, dates):
             }
             continue
         player = rng.choice(players)
-        if event_type == "blind_path" and len(players) > 1:
+        if event_type in {"blind_path", "order_career"} and len(players) > 1:
             players.remove(player)
+
+        if event_type == "order_career":
+            stops = order_career(player["career"])[-5:]
+            stop_ids = rng.sample(range(10000, 99999), 5)
+            sequence = list(range(5))
+            rng.shuffle(sequence)
+            if sequence == list(range(5)):
+                sequence[0], sequence[1] = sequence[1], sequence[0]
+            daily_data[date_str] = {
+                "player_name": player["full_name"],
+                "shuffled_stops": [{"id": stop_ids[index], "team": stops[index]["team"]} for index in sequence],
+                "order_stop_ids": stop_ids,
+                "points": points_per_day,
+                "first_correct_user": False,
+            }
+            continue
 
         if event_config.is_multi_answer(event_type):
             team_names = [stop["team"] for stop in player["career"]]

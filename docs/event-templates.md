@@ -77,6 +77,7 @@ the generator (`EVENT_TYPES` in `services/event_config.py`).
 | `path` | the player (typo-tolerant, with the nationality/role/age comparison after a wrong guess) | dataset | full career path |
 | `blind_path` | the player (same matching and comparison as `path`) | dataset | one recent career stop at first; the Mini App reveals up to five distinct stops one at a time |
 | `link_club` | the sole shared club | dataset | two player names; pairs with multiple shared clubs are excluded |
+| `order_career` | the five stops in chronological order | dataset | a named player's five distinct recent clubs, shuffled without years; opaque stop IDs preserve the private solution |
 | `transfer_guess` | the player (with the comparison) | dataset | last career stop only |
 | `career` | a comma-separated list of the named player's clubs, at most 5 per attempt | dataset | player name, no path image |
 | `father_son` | the father/son pair | photos uploaded with `/admin_fs_add` | the photo; must use `schedule.mode: "manual"` and no `filters` |

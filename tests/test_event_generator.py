@@ -107,6 +107,18 @@ def test_link_pair_excludes_ambiguous_shared_clubs():
     assert all({left["id"], right["id"]} != {"a", "b"} for left, right, _ in pairs)
 
 
+def test_order_career_shuffles_five_distinct_clubs_with_opaque_ids():
+    template = next(t for t in event_generator.load_templates() if t["id"] == "metti_in_ordine_la_carriera")
+    _, doc = event_generator.build_event_doc(template, datetime(2026, 6, 15, tzinfo=ITALY_TZ))
+    assert len(doc["daily_data"]) == 3
+    for data in doc["daily_data"].values():
+        stops = data["shuffled_stops"]
+        assert len({stop["team"] for stop in stops}) == 5
+        assert {stop["id"] for stop in stops} == set(data["order_stop_ids"])
+        assert [stop["id"] for stop in stops] != data["order_stop_ids"]
+        assert "career_path" not in data
+
+
 def test_maybe_generate_event_skips_when_event_active(monkeypatch):
     monkeypatch.setattr(event_generator.firebase_service, "get_active_events", lambda: [{"code": "x"}])
     saved = []
