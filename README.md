@@ -128,6 +128,12 @@ due versioni del punteggio da tenere allineate.
 | `/legend` (`/legenda`) | come si legge l'immagine del percorso |
 | `/notify`, `/language` | notifiche e lingua |
 
+Per le campagne di promozione esistono link tracciabili
+`https://t.me/<bot>?start=src_<canale>` (per esempio `src_tiktok`, `src_reddit`,
+`src_telegram_group`): aprono il normale benvenuto e registrano solo il canale di
+provenienza. L'elenco dei canali ammessi è in
+[`docs/product-analytics.md`](docs/product-analytics.md).
+
 Il menu "/" di Telegram (`set_my_commands`) viene impostato all'avvio nelle tre lingue: le
 **descrizioni** sono tradotte, i **nomi dei comandi** no — sono in inglese per tutti. Un bot
 trilingue con tre serie di comandi diversi obbligherebbe a scrivere ogni messaggio in tre
