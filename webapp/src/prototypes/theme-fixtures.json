@@ -910,5 +910,56 @@
         "glow": "#38bd82"
       }
     }
+  },
+  "tabellone_acceso": {
+    "name": "Tabellone acceso",
+    "description": "Prugna profonda, luce corallo e righe da tabellone nell'ultimo minuto.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "tabellone_acceso",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#271129",
+        "bg2": "#381832",
+        "card": "#4a2141",
+        "edge": "#994b62",
+        "text": "#fff2e5",
+        "muted": "#d3a7ad",
+        "accent": "#ff824e",
+        "accentText": "#281023",
+        "track": "#68304d",
+        "pattern": "repeating-linear-gradient(0deg, transparent 0 28px, rgba(255,173,97,.06) 28px 29px)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
   }
 }

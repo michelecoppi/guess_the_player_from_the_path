@@ -33,6 +33,7 @@ const CELEBRATION_GLYPH: Record<string, string> = {
   snow: "❄️",
   mud: "🟫",
   fireworks: "🎆",
+  stadium_wave: "〰️",
 };
 
 const SHOT_STOPS = [

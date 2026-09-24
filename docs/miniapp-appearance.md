@@ -67,6 +67,14 @@ achievements, completion, prices and equip rules remain backend-authoritative.
 | celebration | Correct-answer feedback and explicit Shop try-on use the same two-second canvas effect. |
 | card | Backend shared image. Finishes: plain, night, foil, grain, tactics, eleven, ticket. Profiles and Shop show a labelled sample. |
 
+The Ultimo minuto collection (#143) adds a reviewed coral scoreboard texture and
+segmented avatar ring, with five purchasable core slots. Number 90 and the Stadium
+wave celebration are separate purchases. The wave travels across the canvas for two
+seconds after a correct answer or explicit Shop try-on; reduced motion suppresses it.
+The Mini App keeps structural backgrounds dark, so the plum colour tints scoped
+surfaces while coral marks the accent. Bundle ownership uses the existing prorated
+quote and all appearance styles pass through the reviewed parser.
+
 Formation entrance and ball movement are finite. `prefers-reduced-motion` disables
 these and canvas celebrations while keeping static decorations visible. Referral
 cards show a tactical pitch and passing routes; their samples and shared PNGs are static.
