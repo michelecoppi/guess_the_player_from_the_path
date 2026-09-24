@@ -111,3 +111,17 @@ def test_a_rotation_that_can_never_start_is_warned():
                                        "window": {"from": "02-30", "to": "02-30"}})
     preview = editor.preview_template(template)
     assert preview["valid"] and any("non puo' partire" in w for w in preview["warnings"])
+
+
+@pytest.mark.parametrize("template_id", ["trova_il_collegamento", "metti_in_ordine_la_carriera", "carriera_al_buio"])
+def test_the_preview_of_the_new_formats_shows_what_the_player_sees(template_id):
+    template = next(t for t in event_generator.load_payload()["templates"] if t["id"] == template_id)
+    preview = editor.preview_template(template, original_id=template_id)
+    assert preview["valid"], preview["errors"]
+    day = preview["sample_days"][0]
+    if template_id == "trova_il_collegamento":
+        assert " + " in day["content"] and day["answers"] == 1 and day["answer"] != "?"
+    elif template_id == "metti_in_ordine_la_carriera":
+        assert day["answer"].count(" → ") == 4 and day["answers"] == 1 and day["content"]
+    else:
+        assert day["content"] and day["stops_shown"] == 5
