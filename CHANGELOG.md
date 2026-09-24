@@ -18,6 +18,9 @@ new dated section below.
 
 ### Added
 
+- `scripts/refresh_player_careers.py`: career refresh from Wikipedia for all active players
+  (`--all`, resumable with `--resume`), for single players by id or name (`--player`) or from an
+  id list, with `--dry-run` ([player-data-pipeline.md](docs/player-data-pipeline.md)).
 - Optional Sentry error tracking for the backend (bot, API, jobs, Cloud Tasks workers,
   payments, broadcasts, Admin, Candidate pipeline), enabled only by `SENTRY_DSN`; the Sentry
   release is the `VERSION` release and the Cloud Run revision is a separate tag
@@ -103,6 +106,9 @@ new dated section below.
 
 ### Fixed
 
+- Bulk career refresh no longer stops updating after Wikipedia timeouts: timeouts are retried,
+  slow chunks are split, each chunk is saved once (one backup per run instead of one per
+  player) and an unreachable source stops the run cleanly.
 - Mini App: on short pages (Daily before any guess) the bottom nav bar was cut off by a dark
   strip on mobile; Events and Archive now have a back link to the Arena hub.
 

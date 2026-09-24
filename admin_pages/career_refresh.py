@@ -7,6 +7,7 @@ sicure (lock di processo, backup, scrittura atomica) usate da `CandidateReviewSe
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from admin_pages.shared import confirm_button, flash, show_table, st
@@ -111,25 +112,48 @@ def _render_batch_section():
     st.divider()
     st.subheader("Batch: aggiorna tutti i giocatori attivi")
     st.caption(
-        "Contatta la fonte collegata di ogni giocatore marcato `active` con un ritardo tra "
-        "una richiesta e l'altra, aggiorna carriera/stato attività e scrive subito ogni "
-        "modifica (backup + scrittura atomica, come per l'approvazione candidati)."
+        "Scarica le pagine a blocchi e salva ogni blocco appena pronto (backup una volta per "
+        "run + scrittura atomica). Se il run si interrompe, rilancialo con «salta i già "
+        "controllati»: riparte da dove era rimasto. Per run lunghi è più robusta la CLI "
+        "`python scripts/refresh_player_careers.py --all`."
+    )
+    col1, col2 = st.columns(2)
+    include_inactive = col1.checkbox("Includi i ritirati", key="career_refresh_include_inactive")
+    skip_hours = col2.number_input(
+        "Salta i già controllati nelle ultime N ore (0 = nessuno)",
+        min_value=0, max_value=24 * 30, value=0, step=1, key="career_refresh_skip_hours",
     )
 
     if confirm_button("🔄 Avvia refresh batch", key="career_refresh_batch", help_text="Contatta fonti esterne per ogni giocatore attivo con source_id."):
-        with st.spinner("Aggiornamento in corso..."):
-            try:
-                results, without_source = refresh_all_active_players(
-                    players_path=_PLAYERS_PATH, backup_dir=_BACKUP_DIR,
-                )
-            except Exception as e:  # noqa: BLE001
-                observability.log_event(
-                    "admin.career_refresh_batch.failed", logging.ERROR, exc_info=e,
-                    component="admin", surface="streamlit", page="career_refresh", error_type=type(e).__name__,
-                )
-                st.error(f"Errore imprevisto: {type(e).__name__}")
-                return
+        checked_before = None
+        if skip_hours:
+            since = datetime.now(timezone.utc) - timedelta(hours=int(skip_hours))
+            checked_before = since.strftime("%Y-%m-%dT%H:%M:%SZ")
+        bar = st.progress(0.0, text="Aggiornamento in corso...")
 
+        def _progress(done, total, result):
+            bar.progress(done / total if total else 1.0, text=f"{done}/{total} · {result.player_id}")
+
+        try:
+            results, without_source = refresh_all_active_players(
+                players_path=_PLAYERS_PATH, backup_dir=_BACKUP_DIR,
+                include_inactive=include_inactive, checked_before=checked_before,
+                progress_callback=_progress,
+            )
+        except Exception as e:  # noqa: BLE001
+            observability.log_event(
+                "admin.career_refresh_batch.failed", logging.ERROR, exc_info=e,
+                component="admin", surface="streamlit", page="career_refresh", error_type=type(e).__name__,
+            )
+            st.error(f"Errore imprevisto: {type(e).__name__}")
+            return
+
+        failed = [r for r in results if not r.success]
+        if failed:
+            st.warning(
+                f"{len(failed)} giocatori non aggiornati: rilancia più tardi con «salta i già "
+                "controllati» per riprovare solo quelli."
+            )
         st.success(f"Completato: {len(results)} giocatori contattati.")
         show_table(
             [

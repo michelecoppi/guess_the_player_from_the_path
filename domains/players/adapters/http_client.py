@@ -152,8 +152,8 @@ class UrllibHttpClient:
 class RetryingHttpClient:
     """Retry decorator for Wikimedia reads.
 
-    Handles gateway throttling (429/503) and MediaWiki's ``maxlag`` error, which is
-    returned with HTTP 200.  ``Retry-After`` wins over exponential backoff.  The
+    Handles gateway throttling (429/503), read/connect timeouts and MediaWiki's
+    ``maxlag`` error, which is returned with HTTP 200.  ``Retry-After`` wins over exponential backoff.  The
     wrapper is intentionally serial; callers decide how to batch identifiers.
     """
 
@@ -219,4 +219,10 @@ class RetryingHttpClient:
                 if not err.retryable or attempt >= self._max_retries:
                     raise
                 self._sleep(self._wait_seconds(attempt, err.headers))
+            except TimeoutError:
+                # Un timeout di lettura e' transitorio come un 503: senza retry un singolo
+                # rallentamento di Wikimedia faceva fallire un intero blocco di giocatori.
+                if attempt >= self._max_retries:
+                    raise
+                self._sleep(self._wait_seconds(attempt, {}))
             attempt += 1

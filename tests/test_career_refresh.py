@@ -9,6 +9,8 @@ from domains.players.career_refresh import (
     CareerRefreshResult,
     refresh_all_active_players,
     refresh_player_career,
+    refresh_players,
+    select_players_for_refresh,
 )
 
 
@@ -336,3 +338,176 @@ def test_refresh_all_batches_wikipedia_players(tmp_path, backup_dir):
     assert adapter.calls == [["Player_A", "Player_B"]]
     assert sleeps == []
     assert without_source == []
+
+
+class _ChunkAdapter:
+    """Adapter bulk finto: `failing` e' l'insieme di titoli che tornano con errore."""
+
+    def __init__(self, failing=(), retryable=True):
+        self.calls = []
+        self.failing = set(failing)
+        self.retryable = retryable
+
+    def fetch_players(self, identifiers):
+        from domains.players.adapters.base import AdapterError, AdapterErrorType
+
+        self.calls.append(list(identifiers))
+        out = {}
+        for identifier in identifiers:
+            if identifier in self.failing:
+                failed = AdapterResult(source_name="wikipedia", source_id=identifier)
+                failed.errors.append(
+                    AdapterError(
+                        error_type=AdapterErrorType.TIMEOUT,
+                        message="Timeout",
+                        source_name="wikipedia",
+                        retryable=self.retryable,
+                    )
+                )
+                out[identifier] = failed
+            else:
+                out[identifier] = AdapterResult(
+                    source_name="wikipedia",
+                    source_id=identifier,
+                    success=True,
+                    player_name=identifier,
+                    career=[{"team": "Juventus", "start_year": 2026, "end_year": None}],
+                )
+        return out
+
+
+def _players(n):
+    return [_base_player(id=f"p{i}", full_name=f"Player {i}", source_id=f"Player_{i}") for i in range(n)]
+
+
+def test_refresh_players_writes_once_per_chunk_with_single_backup(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(5))
+    adapter = _ChunkAdapter()
+    progress = []
+
+    results = refresh_players(
+        [f"p{i}" for i in range(5)],
+        players_path=path,
+        backup_dir=backup_dir,
+        chunk_size=2,
+        adapter_resolver=lambda s, i: pytest.fail("sequential resolver not expected"),
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+        progress_callback=lambda done, total, r: progress.append((done, total, r.player_id)),
+    )
+
+    assert [r.success for r in results] == [True] * 5
+    assert all(r.changed for r in results)
+    assert adapter.calls == [["Player_0", "Player_1"], ["Player_2", "Player_3"], ["Player_4"]]
+    assert progress == [(i + 1, 5, f"p{i}") for i in range(5)]
+    assert len(list(backup_dir.iterdir())) == 1
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert all(p["career"][-1]["team"] == "Juventus" for p in data["players"])
+    assert all(p["career_last_checked_at"] for p in data["players"])
+
+
+def test_refresh_players_retries_transient_bulk_failure_sequentially(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(3))
+    adapter = _ChunkAdapter(failing={"Player_1"})
+    sequential = []
+
+    def resolver(source, source_id):
+        sequential.append(source_id)
+        return AdapterResult(
+            source_name=source, source_id=source_id, success=True, player_name="X",
+            career=[{"team": "Napoli", "start_year": 2026, "end_year": None}],
+        )
+
+    results = refresh_players(
+        ["p0", "p1", "p2"],
+        players_path=path,
+        backup_dir=backup_dir,
+        adapter_resolver=resolver,
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+    )
+
+    assert [r.success for r in results] == [True, True, True]
+    assert sequential == ["Player_1"]
+
+
+def test_refresh_players_does_not_retry_permanent_bulk_failure(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(2))
+    adapter = _ChunkAdapter(failing={"Player_1"}, retryable=False)
+
+    results = refresh_players(
+        ["p0", "p1"],
+        players_path=path,
+        backup_dir=backup_dir,
+        adapter_resolver=lambda s, i: pytest.fail("permanent failure must not be retried"),
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+    )
+
+    assert [r.success for r in results] == [True, False]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert "career_last_checked_at" not in data["players"][1]
+
+
+def test_refresh_players_stops_when_source_is_unreachable(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(6))
+    adapter = _ChunkAdapter(failing={f"Player_{i}" for i in range(6)})
+
+    results = refresh_players(
+        [f"p{i}" for i in range(6)],
+        players_path=path,
+        backup_dir=backup_dir,
+        chunk_size=2,
+        adapter_resolver=lambda s, i: pytest.fail("no sequential fallback when the bulk is dead"),
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+    )
+
+    assert len(adapter.calls) == 2
+    assert [r.player_id for r in results] == [f"p{i}" for i in range(6)]
+    assert not any(r.success for r in results)
+    assert "Non tentato" in results[-1].message
+    assert list(backup_dir.iterdir()) == []
+
+
+def test_refresh_players_dry_run_does_not_write(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(1))
+    before = path.read_text(encoding="utf-8")
+
+    results = refresh_players(
+        ["p0"],
+        players_path=path,
+        backup_dir=backup_dir,
+        dry_run=True,
+        wikipedia_adapter_factory=lambda: _ChunkAdapter(),
+        sleep_fn=lambda s: None,
+    )
+
+    assert results[0].success and results[0].changed
+    assert results[0].diff["new_teams"] == ["Juventus"]
+    assert path.read_text(encoding="utf-8") == before
+    assert list(backup_dir.iterdir()) == []
+
+
+def test_select_players_for_refresh_resume_and_inactive():
+    players = [
+        _base_player(id="fresh", career_last_checked_at="2026-09-24T10:00:00Z"),
+        _base_player(id="stale", career_last_checked_at="2026-09-01T10:00:00Z"),
+        _base_player(id="never"),
+        _base_player(id="retired", active=False),
+        _base_player(id="nosource", source=None, source_id=None),
+    ]
+
+    with_source, without_source = select_players_for_refresh(
+        players, checked_before="2026-09-24T00:00:00Z"
+    )
+    assert [p["id"] for p in with_source] == ["stale", "never"]
+    assert [p["id"] for p in without_source] == ["nosource"]
+
+    with_source, _ = select_players_for_refresh(players, include_inactive=True)
+    assert "retired" in [p["id"] for p in with_source]

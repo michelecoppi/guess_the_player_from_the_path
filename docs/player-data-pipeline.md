@@ -100,13 +100,32 @@ The maintenance flow for existing production players has two distinct steps:
    `action=query` requests; only unresolved names fall back to search and Wikidata.
    Remove `--dry-run` only after reviewing the summary. The script never rewrites the
    local `career`.
-2. The Admin **Refresh carriera** batch calls
-   `domains.players.career_refresh.refresh_all_active_players`. Wikipedia revisions are
-   fetched in batches and then applied one player at a time through the existing lock,
-   backup and atomic-write boundary.
+2. Career refresh, from the Admin **Refresh carriera** page or, for long runs such as the
+   end of a transfer window, from the CLI:
 
-Wikimedia calls use an identifiable User-Agent, `maxlag=5`, bounded exponential retry,
-and honor `Retry-After`. A temporary transport/rate-limit failure remains retryable and
+   ```bash
+   python scripts/refresh_player_careers.py --all [--dry-run]    # active + unknown-activity players
+   python scripts/refresh_player_careers.py --all --resume 12    # skip players checked in the last 12 h
+   python scripts/refresh_player_careers.py --player dusan_vlahovic --player "Rafael Leao"
+   python scripts/refresh_player_careers.py --ids-file data/logs/career_refresh_failed.txt
+   ```
+
+   Both call `domains.players.career_refresh.refresh_players`. Players are processed in
+   chunks (default 20): the Wikipedia revisions of a chunk are fetched with one bulk
+   request outside the lock, then the chunk is applied and written **once** under the
+   lock. The dataset is backed up once per run, before the first write. Finished chunks
+   stay saved when a run is interrupted, and a failed player keeps no
+   `career_last_checked_at`, so `--resume` (Admin: "salta i già controllati") only
+   retries what is missing. The CLI writes failed ids to
+   `data/logs/career_refresh_failed.txt` and exits non-zero when any player failed.
+
+Wikimedia calls use an identifiable User-Agent, `maxlag=5`, bounded exponential retry
+(also on read/connect timeouts), and honor `Retry-After`. A bulk chunk that still times
+out is split in half and retried, so one slow page does not fail its neighbours; a
+player whose bulk result failed transiently is retried once with a single request. If
+the source returns nothing for two chunks in a row (Wikipedia down or rate limiting),
+the run stops and the remaining players are reported as not attempted instead of
+retrying for hours. A temporary transport/rate-limit failure remains retryable and
 must not be logged as a genuine “no match”. The batch API records the source revision
 and Wikidata id when supplied, so later runs can be audited.
 
