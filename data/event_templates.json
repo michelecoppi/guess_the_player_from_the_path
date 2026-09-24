@@ -254,6 +254,21 @@
       "schedule": {"mode": "rotation"}
     },
     {
+      "id": "metti_in_ordine_la_carriera",
+      "name": "Metti in ordine la carriera",
+      "description": "Cinque club fuori ordine: ricostruisci la carriera del calciatore.",
+      "name_i18n": {"es": "Ordena la carrera", "en": "Put the Career in Order"},
+      "description_i18n": {"es": "Cinco clubes mezclados: reconstruye la carrera del futbolista.", "en": "Five shuffled clubs: rebuild the player's career."},
+      "type": "order_career",
+      "category": "modalita_speciale",
+      "difficulty": "medium",
+      "duration_days": 3,
+      "filters": {"min_teams": 5, "min_popularity": 3},
+      "rules": {"attempts": 3},
+      "rewards": {"points_per_day": 4, "first_correct_bonus": 1, "podium_trophies": 3},
+      "schedule": {"mode": "rotation"}
+    },
+    {
       "id": "coppie_leggendarie",
       "name": "Coppie leggendarie",
       "description": "Indovina la coppia padre/figlio dall'immagine mostrata.",

@@ -13,7 +13,7 @@ import type { DailyComparison } from "@/features/daily/types";
  */
 export const EVENT_MAX_ATTEMPTS = 3;
 
-export type KnownEventType = "path" | "blind_path" | "link_club" | "career" | "father_son" | "transfer_guess";
+export type KnownEventType = "path" | "blind_path" | "link_club" | "order_career" | "career" | "father_son" | "transfer_guess";
 
 /** @deprecated Preview-only shape retained until the prototype fixture is removed. */
 export interface EventChallenge {
@@ -55,6 +55,7 @@ export interface EventCard {
   rules: string;
   player_name: string;
   player_names?: string[];
+  shuffled_stops?: Array<{ id: number; team: string }>;
   min_correct: number;
   career_path: CareerStop[];
   total_stops?: number | null;
@@ -89,6 +90,7 @@ export interface EventsState {
   selectedCode: string | null;
   feedback: EventFeedback | null;
   draftAnswer: string;
+  orderDraft: number[];
   error: string | null;
 }
 

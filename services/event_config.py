@@ -45,6 +45,7 @@ EVENT_TYPES: dict[str, dict[str, str | None]] = {
     # La Mini App rivela le ultime tappe una alla volta; il server conserva il percorso completo.
     "blind_path": {"answer": "player", "content": "dataset", "career_shown": "blind"},
     "link_club": {"answer": "club", "content": "dataset", "career_shown": None},
+    "order_career": {"answer": "order", "content": "dataset", "career_shown": None},
     # si indovina il calciatore da un solo trasferimento (l'ultima tappa)
     "transfer_guess": {"answer": "player", "content": "dataset", "career_shown": "last"},
     # si elencano le squadre del calciatore nominato; nessuna immagine del percorso

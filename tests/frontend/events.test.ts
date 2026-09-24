@@ -71,6 +71,20 @@ test("Link Club displays only the two names and a club input, never the solution
   assert.doesNotMatch(html, /Juventus/);
 });
 
+test("Order Career moves stops with accessible controls and submits the selected order", async () => {
+  setLanguage("it");
+  const card = createTestCard({ type: "order_career", player_name: "Andrea Pirlo", career_path: [],
+    shuffled_stops: [{ id: 71, team: "Milan" }, { id: 32, team: "Inter" }] });
+  const controller = new EventsController();
+  Object.assign(controller.getState(), { status: "ready", events: [card] });
+  controller.select(card.code);
+  assert.equal(controller.orderAnswer(), "71,32");
+  assert.match(renderEventsPage(controller), /Sposta Inter più in alto/);
+  controller.moveOrder(32, -1);
+  assert.equal(controller.orderAnswer(), "32,71");
+  assert.match(renderEventsPage(controller), /Conferma l'ordine/);
+});
+
 function mockClient(queue: Array<EventsResponse | Error | ((url: string, payload: any) => Promise<EventsResponse>)>) {
   const recordedCalls: Array<{ url: string; payload: any }> = [];
   const client: any = {

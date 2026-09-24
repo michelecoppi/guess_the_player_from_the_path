@@ -108,6 +108,23 @@ function renderLinkClub(names: string[]): string {
   </section>`;
 }
 
+function renderOrderCareer(controller: EventsController): string {
+  const event = controller.selected();
+  if (!event) return "";
+  const stops = event.shuffled_stops || [];
+  const ordered = controller.orderedStops().map((id) => stops.find((stop) => stop.id === id)).filter((stop) => !!stop);
+  return `<section class="order-board" aria-label="${escapeHtml(t("events.orderBoard"))}">
+    <div class="order-board-head"><span>${escapeHtml(t("events.orderEyebrow"))}</span><strong>01 <small>→</small> 05</strong></div>
+    <ol class="order-stops">${ordered.map((stop, index) => `<li class="order-stop">
+      <span class="order-number">${String(index + 1).padStart(2, "0")}</span>
+      <strong>${escapeHtml(stop.team)}</strong>
+      <div class="order-controls">
+        <button type="button" data-order-id="${stop.id}" data-order-direction="-1" aria-label="${escapeHtml(t("events.orderUp", { team: stop.team }))}" ${index === 0 ? "disabled" : ""}>↑</button>
+        <button type="button" data-order-id="${stop.id}" data-order-direction="1" aria-label="${escapeHtml(t("events.orderDown", { team: stop.team }))}" ${index === ordered.length - 1 ? "disabled" : ""}>↓</button>
+      </div></li>`).join("")}</ol>
+  </section>`;
+}
+
 export function renderEventsPage(controller: EventsController): string {
   const state = controller.getState();
   const selectedEvent = state.events.find((x) => x.code === state.selectedCode);
@@ -162,7 +179,7 @@ export function renderEventsPage(controller: EventsController): string {
           <article class="mode-entry events-entry">
             <span>
               <b>${escapeHtml(event.name)}</b>
-              ${event.type === "blind_path" || event.type === "link_club" ? `<small class="blind-list-tag">${escapeHtml(t(event.type === "blind_path" ? "events.blindEyebrow" : "events.linkEyebrow"))}</small>` : ""}
+              ${["blind_path", "link_club", "order_career"].includes(event.type) ? `<small class="blind-list-tag">${escapeHtml(t(event.type === "blind_path" ? "events.blindEyebrow" : event.type === "link_club" ? "events.linkEyebrow" : "events.orderEyebrow"))}</small>` : ""}
               <small>${escapeHtml(event.description)}</small>
               <small class="muted">${escapeHtml(event.rules)}</small>
               ${endDateHtml}
@@ -208,18 +225,22 @@ export function renderEventsPage(controller: EventsController): string {
     hintHtml = `<p class="muted event-hint">${t("events.blindHint")}</p>`;
   } else if (event.type === "link_club") {
     hintHtml = `<p class="muted event-hint">${t("events.linkHint")}</p>`;
+  } else if (event.type === "order_career") {
+    hintHtml = `<p class="muted event-hint">${t("events.orderHint")}</p>`;
   } else if (event.type !== "path" && event.type !== "transfer_guess") {
     hintHtml = `<p class="muted event-hint">${t("events.unknownType")}</p>`;
   }
 
   // Player name for career events
   const playerNameHtml =
-    event.player_name && event.type === "career"
+    event.player_name && (event.type === "career" || event.type === "order_career")
       ? `<h3 class="event-player-name">${escapeHtml(event.player_name)}</h3>`
       : "";
 
   // Content presentation (CareerPath or Image)
-  const contentHtml = event.type === "link_club"
+  const contentHtml = event.type === "order_career"
+    ? renderOrderCareer(controller)
+    : event.type === "link_club"
     ? renderLinkClub(event.player_names || [])
     : event.type === "blind_path"
     ? renderBlindPath(event)
@@ -278,7 +299,9 @@ export function renderEventsPage(controller: EventsController): string {
       `.trim();
     }
   } else {
-    interactiveHtml = `
+    interactiveHtml = event.type === "order_career"
+      ? `<form id="events-guess-form" class="events-guess-form order-submit"><button class="btn" type="submit" ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}>${t("events.orderSubmit")}</button></form>`
+      : `
       <form id="events-guess-form" class="events-guess-form">
         <label for="events-answer">${event.type === "link_club" ? t("events.linkFormLabel") : t("events.formLabel")}</label>
         <input
@@ -313,7 +336,7 @@ export function renderEventsPage(controller: EventsController): string {
       <button class="btn ghost" id="events-back">${t("events.back")}</button>
       <button class="btn ghost" id="events-refresh">${t("events.refresh")}</button>
     </div>
-    <section class="event-detail${event.type === "blind_path" ? " blind-event" : event.type === "link_club" ? " link-event" : ""}">
+    <section class="event-detail${event.type === "blind_path" ? " blind-event" : event.type === "link_club" ? " link-event" : event.type === "order_career" ? " order-event" : ""}">
       <h2 id="events-heading" tabindex="-1">${escapeHtml(event.name)}</h2>
       <p class="event-description">${escapeHtml(event.description)}</p>
       ${event.type === "blind_path" ? "" : `<p class="event-rules">${escapeHtml(event.rules)}</p>`}
@@ -378,6 +401,16 @@ export function attachEventsEventListeners(
     void controller.reveal();
   });
 
+  root.querySelectorAll<HTMLButtonElement>("[data-order-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = Number(button.dataset.orderId);
+      const direction = Number(button.dataset.orderDirection);
+      if (!Number.isInteger(id) || (direction !== -1 && direction !== 1)) return;
+      controller.moveOrder(id, direction as -1 | 1);
+      root.querySelector<HTMLButtonElement>(`[data-order-id="${id}"][data-order-direction="${direction}"]`)?.focus({ preventScroll: true });
+    });
+  });
+
   root
     .querySelectorAll<HTMLButtonElement>("#events-refresh, #events-retry")
     .forEach((btn) => {
@@ -397,7 +430,7 @@ export function attachEventsEventListeners(
     .querySelector<HTMLFormElement>("#events-guess-form")
     ?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const value = input?.value || controller.getState().draftAnswer || "";
+      const value = controller.selected()?.type === "order_career" ? controller.orderAnswer() : input?.value || controller.getState().draftAnswer || "";
       await controller.submit(value);
 
       const active = controller.selected();

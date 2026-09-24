@@ -13,6 +13,7 @@ export class EventsController {
     selectedCode: null,
     feedback: null,
     draftAnswer: "",
+    orderDraft: [],
     error: null,
   };
 
@@ -89,11 +90,13 @@ export class EventsController {
    * Select an event card to view details or play.
    */
   public select(code: string): void {
-    if (this.state.events.some((e) => e.code === code)) {
+    const event = this.state.events.find((e) => e.code === code);
+    if (event) {
       this.setState({
         selectedCode: code,
         feedback: null,
         draftAnswer: "",
+        orderDraft: (event.shuffled_stops || []).map((stop) => stop.id),
         error: null,
       });
     }
@@ -107,6 +110,7 @@ export class EventsController {
       selectedCode: null,
       feedback: null,
       draftAnswer: "",
+      orderDraft: [],
       error: null,
     });
   }
@@ -117,6 +121,26 @@ export class EventsController {
 
   public selected(): EventCard | undefined {
     return this.state.events.find((e) => e.code === this.state.selectedCode);
+  }
+
+  public orderedStops(): number[] {
+    const available = (this.selected()?.shuffled_stops || []).map((stop) => stop.id);
+    return this.state.orderDraft.length === available.length &&
+      this.state.orderDraft.every((id) => available.includes(id))
+      ? this.state.orderDraft : available;
+  }
+
+  public moveOrder(id: number, direction: -1 | 1): void {
+    if (this.selected()?.type !== "order_career" || this.state.status === "submitting") return;
+    const next = [...this.orderedStops()];
+    const index = next.indexOf(id);
+    if (index < 0 || index + direction < 0 || index + direction >= next.length) return;
+    [next[index], next[index + direction]] = [next[index + direction], next[index]];
+    this.setState({ orderDraft: next, feedback: null });
+  }
+
+  public orderAnswer(): string {
+    return this.orderedStops().join(",");
   }
 
   /**

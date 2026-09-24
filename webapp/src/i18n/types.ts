@@ -216,6 +216,12 @@ export interface TranslationSchema {
       linkHint: string;
       linkFormLabel: string;
       linkPlaceholder: string;
+      orderEyebrow: string;
+      orderBoard: string;
+      orderHint: string;
+      orderUp: string;
+      orderDown: string;
+      orderSubmit: string;
     stale: string;
     expired: string;
     finished: string;
