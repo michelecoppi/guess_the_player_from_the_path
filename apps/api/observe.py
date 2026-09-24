@@ -4,8 +4,10 @@ import uuid
 from time import perf_counter
 
 from fastapi import Request
+from starlette.concurrency import run_in_threadpool
 
 from services import observability, performance
+from services import product_analytics as analytics
 
 # Il sottosistema a cui appartiene una richiesta, per i log e per i tag di Sentry. Le pagine
 # statiche non compaiono: un record per ogni file servito sarebbe solo rumore.
@@ -52,6 +54,8 @@ async def observe_request(request: Request, call_next):
                 **usage.fields(),
             )
             raise
+        # Before the response leaves: afterwards Cloud Run may take the CPU away (#138).
+        await run_in_threadpool(analytics.flush_pending)
         elapsed_ms = (perf_counter() - started) * 1000
         response.headers["X-Request-ID"] = request_id
         if path.startswith("/app/api/"):

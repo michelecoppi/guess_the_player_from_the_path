@@ -325,6 +325,9 @@ class _State:
         self.settings = Settings()
         self.client: Any = None
         self._warned: set[str] = set()
+        # Set by capture(), cleared by flush_pending(): lets a request flush only when it
+        # actually queued something (#138).
+        self.pending = False
 
     def warn_once(self, key: str, event: str, **fields: Any) -> None:
         if key in self._warned:
@@ -417,7 +420,37 @@ def init(*, settings: Optional[Settings] = None) -> Settings:
                 _state.warn_once("init_failed", "product_analytics.init_failed",
                                  error_type=type(exc).__name__)
         _state.initialized = True
+        _log_status(_state.settings, client_ready=_state.client is not None)
         return _state.settings
+
+
+def _status_reasons(settings: Settings) -> list[str]:
+    """Why capture() would drop events. Names only, never a key or a salt value."""
+    reasons = []
+    if not settings.api_key:
+        reasons.append("missing_api_key")
+    elif not settings.enabled:
+        reasons.append("disabled_for_environment")
+    if not settings.salt:
+        reasons.append("missing_salt")
+    return reasons
+
+
+def _log_status(settings: Settings, *, client_ready: bool) -> None:
+    """One startup line saying whether events will reach PostHog, and if not why (#138):
+    otherwise every misconfiguration looks the same - an empty dashboard."""
+    try:
+        reasons = _status_reasons(settings)
+        if settings.enabled and not client_ready:
+            reasons.append("client_init_failed")
+        sending = settings.enabled and client_ready and not reasons
+        observability.log_event(
+            "product_analytics.status", logging.INFO if sending or not settings.api_key else logging.WARNING,
+            component="analytics", sending=sending, environment=settings.environment,
+            host=settings.host, reasons=reasons,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def is_enabled() -> bool:
@@ -505,6 +538,7 @@ def capture(
         # PostHog *project* setting an operator must confirm).
         enriched["$process_person_profile"] = False
         _call_capture(_state.client, event.value, distinct_id, enriched)
+        _state.pending = True
     except Exception as exc:  # noqa: BLE001 - analytics must never break the caller
         try:
             _state.warn_once("capture_failed:" + type(exc).__name__, "product_analytics.capture_failed",
@@ -518,6 +552,20 @@ def flush() -> None:
     try:
         if _state.client is not None:
             _state.client.flush()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def flush_pending(timeout_seconds: float = 2.0) -> None:
+    """Send what this process queued, if anything. Cloud Run only gives the instance CPU
+    while a request is open, so the SDK's 5-second background flush can freeze until the
+    next request or be lost when the instance scales to zero (#138). Called at the end of
+    each HTTP request, before the response. Never raises."""
+    try:
+        if not _state.pending or _state.client is None:
+            return
+        _state.pending = False
+        _state.client.flush(timeout_seconds=timeout_seconds)
     except Exception:  # noqa: BLE001
         pass
 
@@ -542,3 +590,4 @@ def _reset_for_tests() -> None:
         _state.settings = Settings()
         _state.client = None
         _state._warned = set()
+        _state.pending = False

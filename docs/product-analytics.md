@@ -443,7 +443,7 @@ Every event automatically carries (never passed manually at a call site):
 
 ## 9. Reliability
 
-- Every `product_analytics` public function (`capture`, `flush`, `shutdown`, `init`) is
+- Every `product_analytics` public function (`capture`, `flush`, `flush_pending`, `shutdown`, `init`) is
   wrapped in `try/except Exception` and never re-raises. A PostHog outage cannot affect
   gameplay, hint delivery, Shop purchases, or referral rewards.
 - `posthog-python`'s default client batches and flushes on its own background thread
@@ -462,6 +462,37 @@ Every event automatically carries (never passed manually at a call site):
   comment in `domains/referrals/service.py::credit_day` for exactly how that is avoided: the
   transactional closure records its outcome in a local variable, and the capture call
   happens once, after `commit(...)` returns, using that outcome).
+- **Delivery on Cloud Run** ([#138](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/138)).
+  The service is deployed with request-based CPU: once a response leaves, the SDK's
+  background thread (5-second flush interval) can be frozen until the next request, and
+  events still queued when the instance scales to zero are lost. `apps/api/observe.py`
+  therefore calls `product_analytics.flush_pending()` at the end of every HTTP request,
+  before the response: a no-op unless that process captured something since the last
+  flush, bounded by a 2-second timeout, never raising.
+- **Startup status line** (#138). `init()` logs one `product_analytics.status` record:
+  `sending` (true/false), `environment`, `host` and `reasons`, a list of
+  `missing_api_key`, `disabled_for_environment`, `missing_salt`, `client_init_failed`.
+  It never carries the key or the salt. It is a `WARNING` whenever a key is set but
+  events would still be dropped.
+
+### Troubleshooting: the PostHog dashboard is empty
+
+Check in this order, stopping at the first failure:
+
+1. Cloud Run logs after a deploy: find `product_analytics.status`. `sending=false` names
+   the cause in `reasons`.
+2. `missing_api_key` → set `POSTHOG_API_KEY` (the project key, `phc_…`) with
+   `gcloud run services update guess-the-player --update-env-vars …`; `deploy.yml` never
+   sets variables.
+3. `missing_salt` → set `PRODUCT_ANALYTICS_SALT` (a random secret of 32+ characters).
+   Without it every event is dropped because no pseudonymous id can be built.
+4. `disabled_for_environment` → the environment resolved to `local`/`development`/`test`,
+   usually through `SENTRY_ENVIRONMENT`. Set `PRODUCT_ANALYTICS_ENVIRONMENT=production`.
+5. `sending=true` but nothing arrives → `POSTHOG_HOST` must match the project's region:
+   `https://eu.i.posthog.com` (default) or `https://us.i.posthog.com`.
+6. Events visible under Activity but the dashboard is empty → the dashboard in §15 is
+   built by hand in PostHog; this repository does not create it. The admin page (§15a)
+   also needs `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID`.
 
 ## 10. Server vs. client, and the frontend-tracking scope decision
 
