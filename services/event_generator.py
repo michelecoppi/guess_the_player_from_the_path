@@ -132,7 +132,7 @@ def eligible_players(template, players=None):
 
 def link_pairs(players):
     """Pairs with exactly one shared club; a displayed pair has one valid answer."""
-    clubs = {}
+    clubs: dict[str, list[dict]] = {}
     for player in players:
         for club in {stop["team"] for stop in player["career"]}:
             clubs.setdefault(club, []).append(player)
