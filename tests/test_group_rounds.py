@@ -218,3 +218,13 @@ def test_attempts_are_counted_per_round(firebase):
 
     assert firebase.calls["attempts"] == [(7, 3)]
     assert MAX_GROUP_ATTEMPTS == 3
+
+
+def test_opening_a_round_is_a_product_event_without_the_group_id(firebase, monkeypatch):
+    """#139: who opened the round, never which chat."""
+    captured = []
+    monkeypatch.setattr(group_handler.analytics, "capture", lambda event, **kw: captured.append((event.value, kw)))
+    update, _ = make_update("/sfida")
+    asyncio.run(group_handler.group_challenge(update, None))
+
+    assert captured == [("group_round_started", {"user_id": 7})]

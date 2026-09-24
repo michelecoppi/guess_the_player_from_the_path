@@ -23,6 +23,7 @@ from telegram.ext import ContextTypes
 from config import BOT_USERNAME
 from services import firebase_service
 from services import leagues as league_rules
+from services import product_analytics as analytics
 from services.i18n import resolve_language, t
 from services.leagues import MAX_LEAGUES_PER_USER, MAX_MEMBERS, MAX_NAME_LENGTH
 
@@ -112,6 +113,8 @@ async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE, name
     status, code = (await asyncio.to_thread(league_rules.create, user.id, user_data, name, user.first_name))
 
     if status == "ok":
+        analytics.capture(analytics.Event.LEAGUE_CREATED, user_id=user.id,
+                          properties={"surface": "telegram_chat"})
         await message.reply_text(
             t(lang, "league.created", name=name, code=code, link=invite_link(code) or code),
             parse_mode="HTML",
@@ -144,6 +147,8 @@ async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=N
     status, league = (await asyncio.to_thread(league_rules.join, user.id, user_data, code, user.first_name))
 
     if status == "ok":
+        analytics.capture(analytics.Event.LEAGUE_JOINED, user_id=user.id,
+                          properties={"surface": "telegram_chat"})
         await message.reply_text(t(lang, "league.joined", name=league.get("name", code)), parse_mode="HTML")
         return
     if status == "no_code":

@@ -267,6 +267,19 @@ double-count "the leaderboard was on screen" against "the Mini App was opened." 
 distinct Mini App leaderboard interaction is added later (e.g. a dedicated leaderboard
 screen with its own scope toggle), instrument that specific interaction then.
 
+### Social and retention levers
+
+Added by [#139](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/139)
+to measure the levers the launch campaign relies on. All server-side, no group or league
+identifier is ever sent.
+
+| Event | Trigger | Source | Idempotency | Properties | Intent/completion |
+| --- | --- | --- | --- | --- | --- |
+| `league_created` | `status == "ok"` from `services/leagues.create`, in `handlers/league_handler.py::league_create` and `POST /app/api/league` | server | one per created league; refusals (no name, too long, limit) fire nothing | `surface` | completion |
+| `league_joined` | `status == "ok"` from `services/leagues.join`, same two entry points (includes `/start lega_…`) | server | one per membership; `already_member`, `full`, `limit` fire nothing | `surface` | completion |
+| `group_round_started` | `handlers/group_handler.py::group_challenge` after the round is stored (`/round` or the "another round" button) | server | one per opened round; the identity is whoever opened it, never the chat | none | completion |
+| `notifications_changed` | `handlers/notify_handler.py::notify_callback`, only when the stored state actually flips | server | pressing "on" when already on fires nothing | `enabled` | completion |
+
 ### Referral
 
 | Event | Trigger | Source | Idempotency | Properties | Intent/completion |
@@ -640,6 +653,10 @@ this dashboard).
 | 10 | Shop view → checkout-start rate | Trend (ratio) | `shop_purchase_started` ÷ `shop_viewed` | `surface` | Session-scoped |
 | 11 | Shop view → purchase-completion conversion | Trend (ratio) | `shop_purchase_completed` ÷ `shop_viewed` | `item_kind` | Session-scoped |
 | 12 | Purchase → equip conversion | Trend (ratio) | `shop_item_equipped` ÷ `shop_purchase_completed` | `item_kind`, matched on `item_id` | Session-scoped |
+| 13 | New users by channel (#137) | Trend | `bot_started` (`is_new_user=true`) | `acquisition_channel` | Daily, unique users |
+| 14 | Activation by channel | Funnel | `bot_started` (`is_new_user=true`) → `daily_completed` | `acquisition_channel` | 7 days |
+| 15 | Social levers (#139) | Trend (four series) | `league_created`; `league_joined`; `group_round_started`; `duel_created` | — | Weekly, count |
+| 16 | Notification opt-in | Trend | `notifications_changed` | `enabled` | Weekly, unique users |
 
 Rows 10-12 deliberately do **not** collapse into one funnel: `shop_viewed` happens once per
 visit to the Shop but a person can preview/start several different items in the same visit,

@@ -27,6 +27,7 @@ from telegram.ext import ContextTypes
 
 from handlers.legend_handler import legend_keyboard
 from services import firebase_service, practice_content
+from services import product_analytics as analytics
 from services.difficulty import points_for_difficulty
 from services.guess_feedback import build_comparison, comparison_text
 from services.i18n import difficulty_label, resolve_language, t
@@ -84,6 +85,9 @@ async def group_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     round_doc = (await asyncio.to_thread(firebase_service.start_group_round, chat_id, challenge))
+    # Who opened it, never which group: a group id would identify the chat (#139).
+    if update.effective_user:
+        analytics.capture(analytics.Event.GROUP_ROUND_STARTED, user_id=update.effective_user.id)
 
     difficulty = difficulty_label(lang, challenge.get("difficulty"))
     career_path = challenge["career_path"]
