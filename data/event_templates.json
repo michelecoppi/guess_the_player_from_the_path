@@ -239,6 +239,21 @@
       "schedule": {"mode": "rotation"}
     },
     {
+      "id": "trova_il_collegamento",
+      "name": "Trova il collegamento",
+      "description": "Due calciatori, un club condiviso: sai trovare il legame?",
+      "name_i18n": {"es": "Encuentra la conexión", "en": "Find the Connection"},
+      "description_i18n": {"es": "Dos futbolistas, un club compartido. ¿Cuál es?", "en": "Two players, one club in common. Can you find it?"},
+      "type": "link_club",
+      "category": "modalita_speciale",
+      "difficulty": "medium",
+      "duration_days": 3,
+      "filters": {"min_teams": 2, "min_popularity": 3},
+      "rules": {"attempts": 3},
+      "rewards": {"points_per_day": 3, "first_correct_bonus": 1, "podium_trophies": 3},
+      "schedule": {"mode": "rotation"}
+    },
+    {
       "id": "coppie_leggendarie",
       "name": "Coppie leggendarie",
       "description": "Indovina la coppia padre/figlio dall'immagine mostrata.",

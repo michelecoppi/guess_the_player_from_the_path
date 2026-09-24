@@ -86,6 +86,27 @@ def test_blind_event_uses_five_distinct_stops_per_day():
         assert len({stop["team"] for stop in data["career_path"]}) == 5
 
 
+def test_link_event_has_one_shared_club_without_public_career():
+    template = next(t for t in event_generator.load_templates() if t["id"] == "trova_il_collegamento")
+    _, doc = event_generator.build_event_doc(template, datetime(2026, 6, 15, tzinfo=ITALY_TZ))
+    assert len(doc["daily_data"]) == 3
+    for data in doc["daily_data"].values():
+        assert len(data["player_names"]) == 2
+        assert len(data["correct_answers"]) == 1
+        assert "career_path" not in data
+
+
+def test_link_pair_excludes_ambiguous_shared_clubs():
+    def player(identifier, *clubs):
+        return {"id": identifier, "career": [{"team": club} for club in clubs]}
+    pairs = event_generator.link_pairs([
+        player("a", "Milan", "Inter"), player("b", "Milan", "Inter"),
+        player("c", "Milan", "Juventus"),
+    ])
+    assert len(pairs) == 2
+    assert all({left["id"], right["id"]} != {"a", "b"} for left, right, _ in pairs)
+
+
 def test_maybe_generate_event_skips_when_event_active(monkeypatch):
     monkeypatch.setattr(event_generator.firebase_service, "get_active_events", lambda: [{"code": "x"}])
     saved = []

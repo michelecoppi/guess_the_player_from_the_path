@@ -59,6 +59,18 @@ function createTestCard(overrides: Partial<EventCard> = {}): EventCard {
   };
 }
 
+test("Link Club displays only the two names and a club input, never the solution", () => {
+  setLanguage("it");
+  const controller = new EventsController();
+  const card = createTestCard({ type: "link_club", player_names: ["Andrea Pirlo", "Gianluigi Buffon"], career_path: [] });
+  Object.assign(controller.getState(), { status: "ready", events: [card], selectedCode: card.code });
+  const html = renderEventsPage(controller);
+  assert.match(html, /Andrea Pirlo/);
+  assert.match(html, /Gianluigi Buffon/);
+  assert.match(html, /Club in comune/);
+  assert.doesNotMatch(html, /Juventus/);
+});
+
 function mockClient(queue: Array<EventsResponse | Error | ((url: string, payload: any) => Promise<EventsResponse>)>) {
   const recordedCalls: Array<{ url: string; payload: any }> = [];
   const client: any = {
