@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -132,6 +133,8 @@ def build_career(data, index):
 
 
 def main():
+    # Serve la versione attuale delle pagine, non quella rimasta in cache da un run precedente.
+    wiki.set_cache_cutoff(time.time())
     ids = [line.strip() for line in open(sys.argv[1], encoding="utf-8") if line.strip()]
     out_path = sys.argv[2]
     dataset = json.load(open(_PLAYERS_PATH, encoding="utf-8"))

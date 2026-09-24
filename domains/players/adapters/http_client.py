@@ -13,7 +13,10 @@ Design:
 from __future__ import annotations
 
 import json
+import os
 import random
+import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -71,10 +74,53 @@ class HttpClient(Protocol):
         ...
 
 
-_DEFAULT_UA = (
-    "guess-the-player-dataset/1.1 " "(https://github.com/michelecoppi/guess_the_player_from_the_path)"
-)
+_PROJECT_URL = "https://github.com/michelecoppi/guess_the_player_from_the_path"
 _DEFAULT_TIMEOUT = 30
+
+# Wikimedia (limiti globali 2026) classifica i client dallo User-Agent: senza un contatto
+# (URL completo o email) si finisce in "Unidentified", 10 richieste/minuto su TUTTI i
+# progetti insieme, e ogni richiesta in piu' prende 429. Con nome + contatto il limite e'
+# 200/minuto. https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits
+WIKIMEDIA_CONTACT_ENV = "WIKIMEDIA_CONTACT"
+
+
+def build_user_agent(contact: Optional[str] = None) -> str:
+    """User-Agent conforme alla policy Wikimedia: nome/versione (URL progetto; contatto).
+
+    `contact` (o la variabile d'ambiente WIKIMEDIA_CONTACT) aggiunge un'email di chi
+    lancia gli script; l'URL del progetto e' sempre presente come contatto minimo.
+    """
+    if contact is None:
+        contact = os.environ.get(WIKIMEDIA_CONTACT_ENV, "")
+    contact = contact.strip()
+    details = f"{_PROJECT_URL}; {contact}" if contact else _PROJECT_URL
+    python = f"{sys.version_info[0]}.{sys.version_info[1]}"
+    return f"guess-the-player-dataset/1.2 ({details}) python-urllib/{python}"
+
+
+# Intervallo minimo tra due richieste reali verso Wikimedia dallo stesso processo:
+# 1 s = 60 richieste/minuto, ben sotto i 200/minuto del livello identificato.
+DEFAULT_MIN_INTERVAL = 1.0
+
+
+class _ProcessThrottle:
+    """Distanzia le richieste di tutto il processo (piu' adapter condividono lo stesso limite)."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._last = float("-inf")
+
+    def wait(self, min_interval: float, sleep_fn: Any, clock: Any = time.monotonic) -> None:
+        if min_interval <= 0:
+            return
+        with self._lock:
+            delay = self._last + min_interval - clock()
+            if delay > 0:
+                sleep_fn(delay)
+            self._last = clock()
+
+
+_PROCESS_THROTTLE = _ProcessThrottle()
 
 
 class UrllibHttpClient:
@@ -87,10 +133,10 @@ class UrllibHttpClient:
     def __init__(
         self,
         *,
-        user_agent: str = _DEFAULT_UA,
+        user_agent: Optional[str] = None,
         default_timeout: int = _DEFAULT_TIMEOUT,
     ) -> None:
-        self._user_agent = user_agent
+        self._user_agent = user_agent or build_user_agent()
         self._default_timeout = default_timeout
 
     def get(self, url: str, *, timeout: Optional[int] = None) -> HttpResponse:
@@ -165,7 +211,13 @@ class RetryingHttpClient:
         base_delay: float = 5.0,
         sleep_fn: Any = time.sleep,
         random_fn: Any = random.random,
+        min_interval: Optional[float] = None,
     ) -> None:
+        # Il throttle serve solo verso la rete vera: un client iniettato (test) non lo usa
+        # salvo richiesta esplicita.
+        if min_interval is None:
+            min_interval = DEFAULT_MIN_INTERVAL if client is None else 0.0
+        self._min_interval = max(0.0, float(min_interval))
         self._client = client or UrllibHttpClient()
         self._max_retries = max(0, int(max_retries))
         self._base_delay = max(0.0, float(base_delay))
@@ -200,6 +252,7 @@ class RetryingHttpClient:
         attempt = 0
         while True:
             try:
+                _PROCESS_THROTTLE.wait(self._min_interval, self._sleep)
                 response = self._client.get(url, timeout=timeout)
                 if not self._mediawiki_retryable(response):
                     return response

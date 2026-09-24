@@ -119,8 +119,17 @@ The maintenance flow for existing production players has two distinct steps:
    retries what is missing. The CLI writes failed ids to
    `data/logs/career_refresh_failed.txt` and exits non-zero when any player failed.
 
-Wikimedia calls use an identifiable User-Agent, `maxlag=5`, bounded exponential retry
-(also on read/connect timeouts), and honor `Retry-After`. A bulk chunk that still times
+Every Wikimedia call, from the adapters and from the legacy `scripts/wikipedia/wiki.py`,
+goes through `RetryingHttpClient`. Since the 2026
+[global API rate limits](https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits),
+a User-Agent without contact info (full URL or email) is classified as *Unidentified*:
+10 requests/minute across all Wikimedia projects, then 429s. The User-Agent is built by
+`build_user_agent()` and always carries the project URL; set `WIKIMEDIA_CONTACT` to an
+email to add one. Requests from one process are spaced at least 1 s apart (≤ 60/min,
+well below the 200/min identified limit), and use `maxlag=5`, bounded exponential retry
+(also on read/connect timeouts) and `Retry-After`. `scripts/wikipedia/refresh_careers.py`
+ignores wikitext cached before the run starts, so it never re-reads pre-transfer pages;
+`GTP_WIKI_CACHE_NOT_BEFORE` (epoch seconds) does the same for the other legacy scripts. A bulk chunk that still times
 out is split in half and retried, so one slow page does not fail its neighbours; a
 player whose bulk result failed transiently is retried once with a single request. If
 the source returns nothing for two chunks in a row (Wikipedia down or rate limiting),

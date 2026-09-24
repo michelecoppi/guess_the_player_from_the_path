@@ -247,6 +247,41 @@ class TestHttpClient:
         assert waits == [2.0]
 
 
+    def test_user_agent_has_contact_for_wikimedia_rate_limits(self, monkeypatch):
+        from domains.players.adapters.http_client import build_user_agent
+
+        monkeypatch.delenv("WIKIMEDIA_CONTACT", raising=False)
+        assert "(https://github.com/michelecoppi/guess_the_player_from_the_path)" in build_user_agent()
+
+        monkeypatch.setenv("WIKIMEDIA_CONTACT", "ops@example.org")
+        ua = build_user_agent()
+        assert ua.startswith("guess-the-player-dataset/")
+        assert "; ops@example.org)" in ua
+        assert UrllibHttpClient()._user_agent == ua
+
+    def test_process_throttle_spaces_requests(self):
+        from domains.players.adapters.http_client import _ProcessThrottle
+
+        now = [100.0]
+        waits = []
+
+        def sleep(seconds):
+            waits.append(seconds)
+            now[0] += seconds
+
+        throttle = _ProcessThrottle()
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+        now[0] += 0.25
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+        now[0] += 5
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+
+        assert waits == [0.75]
+
+    def test_retrying_client_throttles_only_the_real_network_by_default(self):
+        assert RetryingHttpClient()._min_interval == 1.0
+        assert RetryingHttpClient(FakeHttpClient())._min_interval == 0.0
+
     def test_retrying_client_retries_timeouts(self):
         class SequenceClient:
             def __init__(self):

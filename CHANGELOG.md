@@ -109,6 +109,10 @@ new dated section below.
 - Bulk career refresh no longer stops updating after Wikipedia timeouts: timeouts are retried,
   slow chunks are split, each chunk is saved once (one backup per run instead of one per
   player) and an unreachable source stops the run cleanly.
+- Wikipedia scripts no longer end up rate limited (the "blacklist" after a few players): every
+  Wikimedia call uses a policy-compliant User-Agent with a contact (`WIKIMEDIA_CONTACT` adds an
+  email) and is spaced at most 60 requests/minute; the legacy career refresh no longer re-reads
+  stale cached pages.
 - Mini App: on short pages (Daily before any guess) the bottom nav bar was cut off by a dark
   strip on mobile; Events and Archive now have a back link to the Arena hub.
 
