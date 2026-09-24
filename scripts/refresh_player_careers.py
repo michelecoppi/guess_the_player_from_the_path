@@ -76,6 +76,11 @@ def _format_diff(diff: dict[str, Any]) -> list[str]:
         )
     for change in diff.get("stat_changes", []):
         lines.append(f"~ {change['team']} {change['field']}: {change['previous']} -> {change['new']}")
+    for missing in diff.get("unresolved_teams", []):
+        lines.append(
+            f"! nuova squadra NON aggiunta (paese/campionato non trovati): "
+            f"{missing['team']} ({missing['start_year']})"
+        )
     if "active_changed" in diff:
         change = diff["active_changed"]
         lines.append(f"~ attivo: {change['previous']} -> {change['new']}")
@@ -181,7 +186,7 @@ def main(argv: Optional[list[str]] = None, **refresh_overrides: Any) -> int:
         else:
             status = "invariato"
         print(f"  [{done:>4}/{total}] {label}: {status}", flush=True)
-        if result.success and result.changed:
+        if result.success:
             for line in _format_diff(result.diff):
                 print(f"           {line}")
 
@@ -205,6 +210,12 @@ def main(argv: Optional[list[str]] = None, **refresh_overrides: Any) -> int:
     snapshot = next((r.diff.get("backup_snapshot") for r in results if r.diff.get("backup_snapshot")), None)
     if snapshot:
         print(f"Backup del dataset prima delle modifiche: {Path(args.backup_dir) / snapshot}")
+    unresolved = [r for r in results if r.success and r.diff.get("unresolved_teams")]
+    if unresolved:
+        print(f"\n{len(unresolved)} giocatori con una squadra nuova da completare a mano (paese/campionato):")
+        for r in unresolved:
+            teams = ", ".join(f"{u['team']} ({u['start_year']})" for u in r.diff["unresolved_teams"])
+            print(f"  - {r.player_id} ({names.get(r.player_id, '?')}): {teams}")
     if without_source:
         print(f"\n{len(without_source)} giocatori senza fonte collegata (collegala dall'Admin o col backfill):")
         for p in without_source:

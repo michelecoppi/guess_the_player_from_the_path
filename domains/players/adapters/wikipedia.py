@@ -197,6 +197,46 @@ class WikipediaAdapter(PlayerSourceAdapter):
             }
             output[requested] = self._result_from_wikitext(requested, str(content), metadata=metadata)
 
+    def fetch_club(self, team: str, link: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+        """(paese, campionato) dall'infobox {{Squadra di calcio}} della pagina del club.
+
+        Prova il link della tappa, il nome e poi la ricerca "<nome> calcio squadra". Il
+        campionato e' quello ATTUALE del club: per un trasferimento appena avvenuto e'
+        proprio quello giusto. Ritorna (None, None) se nessuna pagina lo dice.
+        """
+        from domains.players.club_resolution import club_info_from_params
+
+        seen: set[str] = set()
+
+        def _from_titles(titles: list[str]) -> tuple[Optional[str], Optional[str]]:
+            for title in titles:
+                if not title or title.casefold() in seen:
+                    continue
+                seen.add(title.casefold())
+                try:
+                    wikitext = self._fetch_wikitext(title)
+                except Exception:  # noqa: BLE001 - un candidato illeggibile non blocca gli altri
+                    continue
+                body = self._find_template(wikitext or "", "Squadra di calcio")
+                if not body:
+                    continue
+                params = self._named_params(body)
+                country, league = club_info_from_params(
+                    params.get("nazione", ""), self._strip_markup(params.get("campionato", ""))
+                )
+                if country and league:
+                    return country, league
+            return None, None
+
+        # La ricerca costa una richiesta in piu': solo se link e nome non bastano.
+        found = _from_titles([t for t in (link, team) if t])
+        if found[0]:
+            return found
+        search = self.search_player(f"{team} calcio squadra", limit=4)
+        if search.success:
+            return _from_titles(search.identifiers)
+        return None, None
+
     def _result_from_wikitext(
         self,
         identifier: str,

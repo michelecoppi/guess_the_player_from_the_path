@@ -439,6 +439,20 @@ class TestWikipediaAdapter:
         assert client.calls == 1
         assert all(not r.success and r.errors[0].retryable for r in results.values())
 
+    def test_fetch_club_reads_country_and_current_league(self):
+        page = "{{Squadra di calcio\n|nazione = {{KSA}}\n|campionato = [[Saudi Pro League]]\n}}"
+        adapter, client = self._make_adapter()
+        client.configure("Al-Hilal_Saudi", HttpResponse(200, json.dumps({"parse": {"wikitext": page}})))
+        client.configure(
+            "Al-Hilal%20Saudi", HttpResponse(200, json.dumps({"parse": {"wikitext": page}}))
+        )
+
+        assert adapter.fetch_club("Al-Hilal", "Al-Hilal Saudi Football Club") == (
+            "Arabia Saudita",
+            "Saudi Pro League",
+        )
+        assert not any("list=search" in url for url in client.requests)
+
     def test_fetch_with_loans_and_unicode(self):
         """Non-ASCII player name, loan markers, wiki links."""
         wikitext = _load_fixture("wikipedia_wikitext_loans.txt")

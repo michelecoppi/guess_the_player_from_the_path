@@ -119,6 +119,32 @@ The maintenance flow for existing production players has two distinct steps:
    retries what is missing. The CLI writes failed ids to
    `data/logs/career_refresh_failed.txt` and exits non-zero when any player failed.
 
+   How a fresh Wikipedia career is merged into the production one
+   (`career_refresh._reconcile_career`):
+
+   - **Known stops** are matched by club (dataset name, aliases, wiki link) **and** start
+     year, with ±1 year tolerance only when unambiguous. A return to a former club is a
+     new stop, not a merge. Only `end_year`, `apps` and `goals` are updated; `team`,
+     `country` and `league` stay as curated.
+   - **New stops after the last known one** (the transfers) are added only once `team`,
+     `country` and `league` are resolved by `domains.players.club_resolution.resolve_club`.
+     The order is: manual table, exact dataset club (name, then link), the club's
+     Wikipedia page (`{{Squadra di calcio}}`: `nazione` + current `campionato`), and last a
+     unique prefix match. The league is normalized to the dataset's spelling for that
+     country. An unresolved club is **not** written (a stop without `country`/`league`
+     makes `validate_player` drop the player from the game); it is reported as
+     `unresolved_teams` in the result, the Admin message and the CLI summary, to be
+     completed by hand.
+   - **Stops missing before the last known one** were left out on purpose when the player
+     was created (unresolved club, no appearances) and are not reintroduced.
+   - Goals are never written for goalkeepers or when negative (Wikipedia lists conceded
+     goals as negative numbers).
+   - Existing stops are never deleted.
+
+   `scripts/wikipedia/clubs.py` re-exports the same tables and rules from
+   `club_resolution`, so the legacy batch scripts and the production refresh resolve
+   clubs identically.
+
 Every Wikimedia call, from the adapters and from the legacy `scripts/wikipedia/wiki.py`,
 goes through `RetryingHttpClient`. Since the 2026
 [global API rate limits](https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits),

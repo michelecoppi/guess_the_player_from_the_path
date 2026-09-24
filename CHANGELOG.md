@@ -113,6 +113,11 @@ new dated section below.
   Wikimedia call uses a policy-compliant User-Agent with a contact (`WIKIMEDIA_CONTACT` adds an
   email) and is spaced at most 60 requests/minute; the legacy career refresh no longer re-reads
   stale cached pages.
+- Career refresh no longer adds a transfer without `country`/`league` (which silently dropped
+  the player from the game): new clubs are resolved from the dataset, the manual table or the
+  club's Wikipedia page, and unresolved ones are reported for manual completion. Returns to a
+  former club are no longer merged into the old stop, curated team/country/league are kept, and
+  goalkeepers' conceded goals are never written as goals.
 - Mini App: on short pages (Daily before any guess) the bottom nav bar was cut off by a dark
   strip on mobile; Events and Archive now have a back link to the Arena hub.
 

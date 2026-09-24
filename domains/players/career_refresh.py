@@ -21,6 +21,7 @@ from typing import Any, Callable, Optional
 from domains.players.adapters.base import AdapterResult
 from domains.players.adapters.resolver import resolve_adapter_result
 from domains.players.career_status import infer_active_status
+from domains.players.club_resolution import ALIASES, ClubCatalog, ClubLookup, norm, resolve_club
 from domains.players.production_dataset import (
     atomic_write_production_dataset,
     backup_production_dataset,
@@ -37,9 +38,6 @@ except Exception:  # pragma: no cover - fallback difensivo
 
 _logger = logging.getLogger(__name__)
 
-_CAREER_FIELDS = ("team", "country", "league", "start_year", "end_year", "loan", "apps", "goals")
-
-
 def _now_utc_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -53,58 +51,148 @@ class CareerRefreshResult:
     diff: dict[str, Any] = field(default_factory=dict)
 
 
-def _clean_career_entry(stop: dict[str, Any]) -> dict[str, Any]:
-    return {k: stop[k] for k in _CAREER_FIELDS if k in stop and stop[k] is not None}
+def _int_or_none(value: Any) -> Optional[int]:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
 
 
-def _team_key(stop: dict[str, Any]) -> str:
-    return str(stop.get("team", "")).strip().lower()
+def _usable_goals(value: Any, position: Optional[str]) -> Optional[int]:
+    """Per i portieri Wikipedia scrive i gol SUBITI col segno meno: non sono gol segnati, e
+    un valore negativo rende la scheda invalida per `validate_player` (esce dal gioco)."""
+    goals = _int_or_none(value)
+    if goals is None or goals < 0 or position == "Portiere":
+        return None
+    return goals
 
 
-def _diff_career(existing: list[dict[str, Any]], fresh: list[dict[str, Any]]) -> dict[str, Any]:
-    """Confronta la carriera esistente con quella appena recuperata dalla fonte.
+def _stop_keys(team: str, link: Optional[str], catalog: ClubCatalog) -> set[str]:
+    """Tutti i modi in cui la tappa del dataset puo' chiamare la squadra letta da Wikipedia."""
+    keys = set()
+    for name in (team, link):
+        if not name:
+            continue
+        keys.add(norm(name))
+        alias = ALIASES.get(norm(name))
+        if alias:
+            keys.add(norm(alias))
+        hit = catalog.exact(name)
+        if hit:
+            keys.add(norm(hit[0]))
+    keys.discard("")
+    return keys
 
-    Struttura del diff: liste leggibili di aggiunte, trasferimenti (end_year cambiato su
-    una tappa esistente) e aggiornamenti di statistiche (apps/goals).
+
+def _match_existing(
+    career: list[dict[str, Any]], used: set[int], keys: set[str], start_year: Optional[int]
+) -> Optional[int]:
+    """La tappa esistente che corrisponde a quella fresca, o None se e' una tappa nuova.
+
+    Squadra E anno di inizio (con tolleranza di un anno sull'anno, solo se univoca): chi
+    torna in un club ci ha due tappe, e fonderle cancellerebbe un pezzo di percorso.
     """
-    existing_by_team: dict[str, dict[str, Any]] = {_team_key(s): s for s in existing if s.get("team")}
+    candidates = [i for i, stop in enumerate(career) if i not in used and norm(stop.get("team")) in keys]
+    if not candidates:
+        return None
+    if start_year is None:
+        return candidates[0] if len(candidates) == 1 else None
+    exact = [i for i in candidates if career[i].get("start_year") == start_year]
+    if exact:
+        return exact[0]
+    near = [
+        i
+        for i in candidates
+        if _int_or_none(career[i].get("start_year")) is not None
+        and abs(career[i]["start_year"] - start_year) <= 1
+    ]
+    return near[0] if len(near) == 1 else None
 
+
+def _reconcile_career(
+    existing: list[dict[str, Any]],
+    fresh: list[dict[str, Any]],
+    *,
+    position: Optional[str],
+    catalog: ClubCatalog,
+    club_lookup: Optional[ClubLookup],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """(carriera aggiornata, diff) a partire dalle tappe appena lette dalla fonte.
+
+    - Tappe gia' note: si aggiornano solo anno di fine, presenze e gol. Squadra, paese e
+      campionato restano quelli del dataset (sono decisioni editoriali).
+    - Tappe nuove DOPO l'ultima nota (i trasferimenti): si aggiungono solo con squadra,
+      paese e campionato risolti (dataset, tabella manuale o pagina del club); se non si
+      risolvono finiscono in `unresolved_teams` invece di entrare incomplete.
+    - Tappe mancanti PRIMA dell'ultima nota: erano state escluse di proposito quando la
+      scheda e' stata creata (club non risolto, presenze assenti) e restano escluse.
+    - Nessuna tappa esistente viene mai cancellata.
+    """
+    merged = [dict(stop) for stop in existing]
+    known_starts = [y for y in (_int_or_none(s.get("start_year")) for s in existing) if y is not None]
+    latest_start = max(known_starts) if known_starts else None
+    used: set[int] = set()
     new_teams: list[str] = []
     transfers: list[dict[str, Any]] = []
     stat_changes: list[dict[str, Any]] = []
+    unresolved: list[dict[str, Any]] = []
 
     for fresh_stop in fresh:
-        key = _team_key(fresh_stop)
-        if not key:
+        team = str(fresh_stop.get("team") or "").strip()
+        if not team:
             continue
-        prev = existing_by_team.get(key)
-        if prev is None:
-            new_teams.append(fresh_stop.get("team", key))
-            continue
+        link = fresh_stop.get("link") or None
+        start_year = _int_or_none(fresh_stop.get("start_year"))
+        idx = _match_existing(existing, used, _stop_keys(team, link, catalog), start_year)
 
-        prev_end = prev.get("end_year")
-        fresh_end = fresh_stop.get("end_year")
-        if prev_end != fresh_end:
-            transfers.append(
-                {
-                    "team": fresh_stop.get("team", key),
-                    "previous_end_year": prev_end,
-                    "new_end_year": fresh_end,
-                }
-            )
-
-        for stat in ("apps", "goals"):
-            prev_val = prev.get(stat)
-            fresh_val = fresh_stop.get(stat)
-            if fresh_val is not None and fresh_val != prev_val:
-                stat_changes.append(
-                    {
-                        "team": fresh_stop.get("team", key),
-                        "field": stat,
-                        "previous": prev_val,
-                        "new": fresh_val,
-                    }
+        if idx is not None:
+            used.add(idx)
+            stop = merged[idx]
+            label = stop.get("team", team)
+            fresh_end = fresh_stop.get("end_year")
+            if stop.get("end_year") != fresh_end:
+                transfers.append(
+                    {"team": label, "previous_end_year": stop.get("end_year"), "new_end_year": fresh_end}
                 )
+                stop["end_year"] = fresh_end
+            fresh_apps = _int_or_none(fresh_stop.get("apps"))
+            fresh_goals = _usable_goals(fresh_stop.get("goals"), position)
+            for stat, value in (("apps", fresh_apps if fresh_apps is None or fresh_apps >= 0 else None),
+                                ("goals", fresh_goals)):
+                if value is not None and value != stop.get(stat):
+                    stat_changes.append({"team": label, "field": stat, "previous": stop.get(stat), "new": value})
+                    stop[stat] = value
+            continue
+
+        if start_year is None or (latest_start is not None and start_year < latest_start):
+            continue
+
+        if fresh_stop.get("country") and fresh_stop.get("league"):
+            country = str(fresh_stop["country"])
+            league = catalog.normalize_league_for(str(fresh_stop["league"]), country)
+            resolved = (team, country, league, "fonte") if league else None
+        else:
+            resolved = resolve_club(team, link, catalog, club_lookup)
+        if not resolved:
+            unresolved.append({"team": team, "start_year": start_year})
+            continue
+
+        resolved_team, country, league, _how = resolved
+        entry: dict[str, Any] = {
+            "team": resolved_team,
+            "country": country,
+            "league": league,
+            "start_year": start_year,
+            "end_year": fresh_stop.get("end_year"),
+        }
+        apps = _int_or_none(fresh_stop.get("apps"))
+        if apps is not None and apps >= 0:
+            entry["apps"] = apps
+        goals = _usable_goals(fresh_stop.get("goals"), position)
+        if goals is not None:
+            entry["goals"] = goals
+        if fresh_stop.get("loan"):
+            entry["loan"] = True
+        merged.append(entry)
+        catalog.add(resolved_team, country, league)
+        new_teams.append(resolved_team)
 
     diff: dict[str, Any] = {}
     if new_teams:
@@ -113,27 +201,31 @@ def _diff_career(existing: list[dict[str, Any]], fresh: list[dict[str, Any]]) ->
         diff["team_changes"] = transfers
     if stat_changes:
         diff["stat_changes"] = stat_changes
-    return diff
+    if unresolved:
+        diff["unresolved_teams"] = unresolved
+    return order_career(merged), diff
 
 
-def _merge_career(existing: list[dict[str, Any]], fresh: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Applica le tappe fresche sulla carriera esistente: arricchisce/aggiorna quelle note,
-    aggiunge quelle nuove. Non elimina mai tappe presenti solo nella carriera esistente."""
-    merged: list[dict[str, Any]] = [dict(s) for s in existing]
-    merged_by_team = {_team_key(s): s for s in merged if s.get("team")}
+def _cached_lookup(lookup: ClubLookup) -> ClubLookup:
+    cache: dict[tuple[str, Optional[str]], tuple[Optional[str], Optional[str]]] = {}
 
-    for fresh_stop in fresh:
-        clean_fresh = _clean_career_entry(fresh_stop)
-        key = _team_key(clean_fresh)
-        if not key:
-            continue
-        if key in merged_by_team:
-            merged_by_team[key].update(clean_fresh)
-        else:
-            merged.append(clean_fresh)
-            merged_by_team[key] = clean_fresh
+    def cached(team: str, link: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+        key = (norm(team), link)
+        if key not in cache:
+            try:
+                cache[key] = lookup(team, link)
+            except Exception as err:  # noqa: BLE001 - un club non risolto non ferma il refresh
+                _logger.warning("Ricerca del club '%s' non riuscita: %s", team, err)
+                return None, None
+        return cache[key]
 
-    return order_career(merged)
+    return cached
+
+
+def _default_club_lookup() -> ClubLookup:
+    from domains.players.adapters.wikipedia import WikipediaAdapter
+
+    return _cached_lookup(WikipediaAdapter().fetch_club)
 
 
 def _default_log_path() -> Path:
@@ -194,13 +286,23 @@ def _apply_source_result(
     player: dict[str, Any],
     result: AdapterResult,
     current_year: Optional[int],
+    *,
+    catalog: ClubCatalog,
+    club_lookup: Optional[ClubLookup],
 ) -> tuple[bool, dict[str, Any]]:
     """Applica al giocatore (in place) il risultato fresco della fonte. Ritorna (changed, diff)."""
     existing_career = list(player.get("career", []))
     fresh_career = [dict(c) for c in result.career]
-    diff = _diff_career(existing_career, fresh_career)
-
-    merged_career = _merge_career(existing_career, fresh_career) if fresh_career else existing_career
+    if fresh_career:
+        merged_career, diff = _reconcile_career(
+            existing_career,
+            fresh_career,
+            position=player.get("position"),
+            catalog=catalog,
+            club_lookup=club_lookup,
+        )
+    else:
+        merged_career, diff = existing_career, {}
 
     if fresh_career:
         new_active = infer_active_status(
@@ -213,7 +315,7 @@ def _apply_source_result(
             diff["active_changed"] = {"previous": old_active, "new": new_active}
         player["active"] = new_active
 
-    changed = bool(diff)
+    changed = any(key != "unresolved_teams" for key in diff)
 
     player["career"] = merged_career
     player["career_last_checked_at"] = _now_utc_iso()
@@ -235,6 +337,10 @@ def _success(player_id: str, changed: bool, diff: dict[str, Any]) -> CareerRefre
         if changed
         else "Nessuna modifica rilevata (fonte già allineata)."
     )
+    unresolved = diff.get("unresolved_teams") or []
+    if unresolved:
+        teams = ", ".join(f"{u['team']} ({u['start_year']})" for u in unresolved)
+        message += f" Squadre nuove non aggiunte, paese/campionato non trovati: {teams}. Da completare a mano."
     return CareerRefreshResult(player_id=player_id, success=True, changed=changed, message=message, diff=diff)
 
 
@@ -246,8 +352,15 @@ def refresh_player_career(
     adapter_resolver: Callable[[str, str], Optional[AdapterResult]] = resolve_adapter_result,
     current_year_provider: Optional[Callable[[], int]] = None,
     log_path: Optional[Path] = None,
+    club_lookup: Optional[ClubLookup] = None,
 ) -> CareerRefreshResult:
-    """Ricontrolla la fonte collegata di un giocatore e aggiorna carriera/attivita' se serve."""
+    """Ricontrolla la fonte collegata di un giocatore e aggiorna carriera/attivita' se serve.
+
+    `club_lookup` risolve paese/campionato di un club nuovo (default: pagina del club su
+    Wikipedia, solo con il resolver reale; con un resolver iniettato nessuna rete).
+    """
+    if club_lookup is None and adapter_resolver is resolve_adapter_result:
+        club_lookup = _default_club_lookup()
     players_path = Path(players_path)
     backup_dir = Path(backup_dir)
     log_path = Path(log_path) if log_path is not None else _default_log_path()
@@ -277,7 +390,9 @@ def refresh_player_career(
             return _failure(player_id, _fetch_failure_message(source, result))
 
         current_year = current_year_provider() if current_year_provider else None
-        changed, diff = _apply_source_result(player, result, current_year)
+        changed, diff = _apply_source_result(
+            player, result, current_year, catalog=ClubCatalog(players), club_lookup=club_lookup
+        )
         players[idx] = player
 
         snapshot_name, snapshot_dest = backup_production_dataset(players_path, backup_dir, player_id)
@@ -318,6 +433,7 @@ def refresh_players(
     log_path: Optional[Path] = None,
     progress_callback: Optional[ProgressCallback] = None,
     max_unreachable_chunks: int = 2,
+    club_lookup: Optional[ClubLookup] = None,
 ) -> list[CareerRefreshResult]:
     """Aggiorna la carriera dei giocatori indicati, un blocco alla volta.
 
@@ -343,6 +459,9 @@ def refresh_players(
     size = max(1, int(chunk_size))
 
     use_bulk = wikipedia_adapter_factory is not None or adapter_resolver is resolve_adapter_result
+    if club_lookup is None and adapter_resolver is resolve_adapter_result and wikipedia_adapter_factory is None:
+        club_lookup = _default_club_lookup()
+    catalog: Optional[ClubCatalog] = None
     if use_bulk and wikipedia_adapter_factory is None:
         from domains.players.adapters.wikipedia import WikipediaAdapter
 
@@ -424,6 +543,8 @@ def refresh_players(
                 ]
             else:
                 index_by_id = {p.get("id"): i for i, p in enumerate(players)}
+                if catalog is None:
+                    catalog = ClubCatalog(players)
                 touched = False
                 for player_id in chunk_ids:
                     idx = index_by_id.get(player_id)
@@ -454,7 +575,9 @@ def refresh_players(
                             _failure(player_id, _fetch_failure_message(sources[player_id][0], result))
                         )
                         continue
-                    changed, diff = _apply_source_result(player, result, current_year)
+                    changed, diff = _apply_source_result(
+                        player, result, current_year, catalog=catalog, club_lookup=club_lookup
+                    )
                     touched = True
                     chunk_results.append(_success(player_id, changed, diff))
                     audit.append((player_id, diff))

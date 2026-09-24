@@ -69,7 +69,11 @@ def test_single_player_refresh_updates_only_that_player(tmp_path, monkeypatch, c
     path, common = _setup(tmp_path, monkeypatch, [_player("a", "Alpha"), _player("b", "Beta")])
     adapter = _Adapter()
 
-    code = cli.main(["--player", "alpha", *common], wikipedia_adapter_factory=lambda: adapter)
+    code = cli.main(
+        ["--player", "alpha", *common],
+        wikipedia_adapter_factory=lambda: adapter,
+        club_lookup=lambda team, link: ("Italia", "Serie A"),
+    )
 
     assert code == 0
     assert adapter.calls == [["Alpha"]]
@@ -100,3 +104,20 @@ def test_ambiguous_player_is_rejected(tmp_path, monkeypatch, capsys):
 
     assert code == 2
     assert "ambiguo" in capsys.readouterr().err
+
+
+def test_unresolved_new_team_is_listed_for_manual_completion(tmp_path, monkeypatch, capsys):
+    path, common = _setup(tmp_path, monkeypatch, [_player("a", "Alpha")])
+
+    code = cli.main(
+        ["--player", "a", *common],
+        wikipedia_adapter_factory=_Adapter,
+        club_lookup=lambda team, link: (None, None),
+    )
+
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "NON aggiunta" in out and "Juventus (2026)" in out
+    assert "da completare a mano" in out
+    career = json.loads(path.read_text(encoding="utf-8"))["players"][0]["career"]
+    assert [s["team"] for s in career] == ["Roma"]
