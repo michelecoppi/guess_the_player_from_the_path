@@ -11,6 +11,22 @@ from services.firebase_service import save_user
 from services.i18n import resolve_language, t
 from services.leagues import DEEP_LINK_PREFIX
 
+CAMPAIGN_PREFIX = "src_"
+
+
+def acquisition_channel(argument: str) -> str:
+    """Where a `/start` came from, as one of `analytics.ACQUISITION_CHANNELS`."""
+    if not argument:
+        return "direct"
+    if argument.startswith("ref_"):
+        return "referral"
+    if argument.startswith("duel_"):
+        return "duel"
+    if argument.startswith(DEEP_LINK_PREFIX):
+        return "league"
+    source = argument[len(CAMPAIGN_PREFIX):].lower() if argument.startswith(CAMPAIGN_PREFIX) else ""
+    return source if source in analytics.CAMPAIGN_SOURCES else "other"
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     detected_lang = resolve_language(getattr(update.effective_user, "language_code", None))
@@ -26,11 +42,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lang = result["language"]
     # bot_started: fires on every /start, `is_new_user` distinguishes first contact from a
-    # returning one. referral_opened only when the deep link actually carried a referral
+    # returning one; `acquisition_channel` says which link brought them. referral_opened only when the deep link actually carried a referral
     # code - a bare `/start` is not a referral event.
     analytics.capture(
         analytics.Event.BOT_STARTED, user_id=user.id,
-        properties={"language": lang, "is_new_user": bool(result["created"])},
+        properties={"language": lang, "is_new_user": bool(result["created"]),
+                    "acquisition_channel": acquisition_channel(argument)},
     )
     if argument.startswith("ref_"):
         analytics.capture(

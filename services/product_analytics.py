@@ -182,6 +182,16 @@ def _item_kind(value: Any) -> bool:
         return False
 
 
+# `/start src_<channel>` campaign links (docs/product-analytics.md, #137). A closed list
+# keeps the property's cardinality bounded: an unknown `src_` value is reported as "other",
+# never as the raw text someone typed into a link.
+CAMPAIGN_SOURCES = (
+    "tiktok", "instagram", "youtube", "reddit", "x", "threads", "facebook",
+    "telegram_group", "creator", "producthunt", "directory", "qr",
+)
+ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", *CAMPAIGN_SOURCES, "other")
+
+
 # One validator per property NAME (the same name means the same shape everywhere it is
 # allowed to appear - only EVENT_PROPERTIES decides *where* it may appear).
 PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
@@ -189,6 +199,7 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "language": _enum(*SUPPORTED_LANGUAGES),
     "is_new_user": _bool,
     "referral_attached": _bool,
+    "acquisition_channel": _enum(*ACQUISITION_CHANNELS),
     "scope": _enum("global", "monthly"),
     "status": _enum("correct", "wrong", "refused", "failed"),
     "reason": _enum(
@@ -228,7 +239,7 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
 # `difficulty_band` arrived with #21 and is allowed only on `daily_completed`, the one
 # terminal event per user per day. A property with no event that allows it can never be sent.
 EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
-    Event.BOT_STARTED: frozenset({"language", "is_new_user"}),
+    Event.BOT_STARTED: frozenset({"language", "is_new_user", "acquisition_channel"}),
     Event.MINIAPP_OPENED: frozenset({"language"}),
     Event.DAILY_VIEWED: frozenset({"surface", "language"}),
     Event.DAILY_GUESS_SUBMITTED: frozenset({
