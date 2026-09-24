@@ -100,13 +100,67 @@ The maintenance flow for existing production players has two distinct steps:
    `action=query` requests; only unresolved names fall back to search and Wikidata.
    Remove `--dry-run` only after reviewing the summary. The script never rewrites the
    local `career`.
-2. The Admin **Refresh carriera** batch calls
-   `domains.players.career_refresh.refresh_all_active_players`. Wikipedia revisions are
-   fetched in batches and then applied one player at a time through the existing lock,
-   backup and atomic-write boundary.
+2. Career refresh, from the Admin **Refresh carriera** page or, for long runs such as the
+   end of a transfer window, from the CLI:
 
-Wikimedia calls use an identifiable User-Agent, `maxlag=5`, bounded exponential retry,
-and honor `Retry-After`. A temporary transport/rate-limit failure remains retryable and
+   ```bash
+   python scripts/refresh_player_careers.py --all [--dry-run]    # active + unknown-activity players
+   python scripts/refresh_player_careers.py --all --resume 12    # skip players checked in the last 12 h
+   python scripts/refresh_player_careers.py --player dusan_vlahovic --player "Rafael Leao"
+   python scripts/refresh_player_careers.py --ids-file data/logs/career_refresh_failed.txt
+   ```
+
+   Both call `domains.players.career_refresh.refresh_players`. Players are processed in
+   chunks (default 20): the Wikipedia revisions of a chunk are fetched with one bulk
+   request outside the lock, then the chunk is applied and written **once** under the
+   lock. The dataset is backed up once per run, before the first write. Finished chunks
+   stay saved when a run is interrupted, and a failed player keeps no
+   `career_last_checked_at`, so `--resume` (Admin: "salta i già controllati") only
+   retries what is missing. The CLI writes failed ids to
+   `data/logs/career_refresh_failed.txt` and exits non-zero when any player failed.
+
+   How a fresh Wikipedia career is merged into the production one
+   (`career_refresh._reconcile_career`):
+
+   - **Known stops** are matched by club (dataset name, aliases, wiki link) **and** start
+     year, with ±1 year tolerance only when unambiguous. A return to a former club is a
+     new stop, not a merge. Only `end_year`, `apps` and `goals` are updated; `team`,
+     `country` and `league` stay as curated.
+   - **New stops after the last known one** (the transfers) are added only once `team`,
+     `country` and `league` are resolved by `domains.players.club_resolution.resolve_club`.
+     The order is: manual table, exact dataset club (name, then link), the club's
+     Wikipedia page (`{{Squadra di calcio}}`: `nazione` + current `campionato`), and last a
+     unique prefix match. The league is normalized to the dataset's spelling for that
+     country. An unresolved club is **not** written (a stop without `country`/`league`
+     makes `validate_player` drop the player from the game); it is reported as
+     `unresolved_teams` in the result, the Admin message and the CLI summary, to be
+     completed by hand.
+   - **Stops missing before the last known one** were left out on purpose when the player
+     was created (unresolved club, no appearances) and are not reintroduced.
+   - Goals are never written for goalkeepers or when negative (Wikipedia lists conceded
+     goals as negative numbers).
+   - Existing stops are never deleted.
+
+   `scripts/wikipedia/clubs.py` re-exports the same tables and rules from
+   `club_resolution`, so the legacy batch scripts and the production refresh resolve
+   clubs identically.
+
+Every Wikimedia call, from the adapters and from the legacy `scripts/wikipedia/wiki.py`,
+goes through `RetryingHttpClient`. Since the 2026
+[global API rate limits](https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits),
+a User-Agent without contact info (full URL or email) is classified as *Unidentified*:
+10 requests/minute across all Wikimedia projects, then 429s. The User-Agent is built by
+`build_user_agent()` and always carries the project URL; set `WIKIMEDIA_CONTACT` to an
+email to add one. Requests from one process are spaced at least 1 s apart (≤ 60/min,
+well below the 200/min identified limit), and use `maxlag=5`, bounded exponential retry
+(also on read/connect timeouts) and `Retry-After`. `scripts/wikipedia/refresh_careers.py`
+ignores wikitext cached before the run starts, so it never re-reads pre-transfer pages;
+`GTP_WIKI_CACHE_NOT_BEFORE` (epoch seconds) does the same for the other legacy scripts. A bulk chunk that still times
+out is split in half and retried, so one slow page does not fail its neighbours; a
+player whose bulk result failed transiently is retried once with a single request. If
+the source returns nothing for two chunks in a row (Wikipedia down or rate limiting),
+the run stops and the remaining players are reported as not attempted instead of
+retrying for hours. A temporary transport/rate-limit failure remains retryable and
 must not be logged as a genuine “no match”. The batch API records the source revision
 and Wikidata id when supplied, so later runs can be audited.
 

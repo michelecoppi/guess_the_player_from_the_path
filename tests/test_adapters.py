@@ -7,6 +7,7 @@ No writes to data/players.json.  No dependency on Wikipedia/Wikidata availabilit
 from __future__ import annotations
 
 import json
+import urllib.parse
 from pathlib import Path
 from typing import Any, Optional
 
@@ -246,6 +247,73 @@ class TestHttpClient:
         assert waits == [2.0]
 
 
+    def test_user_agent_has_contact_for_wikimedia_rate_limits(self, monkeypatch):
+        from domains.players.adapters.http_client import build_user_agent
+
+        monkeypatch.delenv("WIKIMEDIA_CONTACT", raising=False)
+        assert "(https://github.com/michelecoppi/guess_the_player_from_the_path)" in build_user_agent()
+
+        monkeypatch.setenv("WIKIMEDIA_CONTACT", "ops@example.org")
+        ua = build_user_agent()
+        assert ua.startswith("guess-the-player-dataset/")
+        assert "; ops@example.org)" in ua
+        assert UrllibHttpClient()._user_agent == ua
+
+    def test_process_throttle_spaces_requests(self):
+        from domains.players.adapters.http_client import _ProcessThrottle
+
+        now = [100.0]
+        waits = []
+
+        def sleep(seconds):
+            waits.append(seconds)
+            now[0] += seconds
+
+        throttle = _ProcessThrottle()
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+        now[0] += 0.25
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+        now[0] += 5
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+
+        assert waits == [0.75]
+
+    def test_retrying_client_throttles_only_the_real_network_by_default(self):
+        assert RetryingHttpClient()._min_interval == 1.0
+        assert RetryingHttpClient(FakeHttpClient())._min_interval == 0.0
+
+    def test_retrying_client_retries_timeouts(self):
+        class SequenceClient:
+            def __init__(self):
+                self.responses = [TimeoutError("read timed out"), HttpResponse(200, '{"ok": true}')]
+
+            def get(self, url, *, timeout=30):
+                response = self.responses.pop(0)
+                if isinstance(response, Exception):
+                    raise response
+                return response
+
+        waits = []
+        client = RetryingHttpClient(
+            SequenceClient(), base_delay=3, sleep_fn=waits.append, random_fn=lambda: 0
+        )
+
+        assert client.get("https://example.test").json() == {"ok": True}
+        assert waits == [3.0]
+
+    def test_retrying_client_gives_up_on_repeated_timeouts(self):
+        class TimeoutClient:
+            def get(self, url, *, timeout=30):
+                raise TimeoutError("read timed out")
+
+        waits = []
+        client = RetryingHttpClient(TimeoutClient(), max_retries=2, sleep_fn=waits.append)
+
+        with pytest.raises(TimeoutError):
+            client.get("https://example.test")
+        assert len(waits) == 2
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # WIKIPEDIA ADAPTER TESTS
 # ═══════════════════════════════════════════════════════════════════════════
@@ -325,6 +393,65 @@ class TestWikipediaAdapter:
         assert result.source_metadata["revision_id"] == 123456
         assert result.source_metadata["wikidata_id"] == "Q1835"
         assert "prop=revisions%7Cpageprops" in client.requests[0]
+
+    @staticmethod
+    def _bulk_page(title, wikitext):
+        return {
+            "title": title,
+            "revisions": [{"revid": 1, "slots": {"main": {"content": wikitext}}}],
+        }
+
+    def test_fetch_players_splits_chunk_that_times_out(self):
+        wikitext = _load_fixture("wikipedia_wikitext_totti.txt")
+        page = self._bulk_page
+
+        class SplittingClient:
+            def __init__(self):
+                self.batches = []
+
+            def get(self, url, *, timeout=30):
+                titles = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["titles"][0].split("|")
+                self.batches.append(titles)
+                if len(titles) > 1 or titles == ["C"]:
+                    raise TimeoutError("read timed out")
+                return HttpResponse(200, json.dumps({"query": {"pages": [page(titles[0], wikitext)]}}))
+
+        client = SplittingClient()
+        results = WikipediaAdapter(http_client=client).fetch_players(["A", "B", "C"])
+
+        assert results["A"].success and results["B"].success
+        assert results["C"].success is False
+        assert results["C"].errors[0].retryable is True
+        assert client.batches == [["A", "B", "C"], ["A"], ["B", "C"], ["B"], ["C"]]
+
+    def test_fetch_players_does_not_split_on_server_error(self):
+        class FailingClient:
+            def __init__(self):
+                self.calls = 0
+
+            def get(self, url, *, timeout=30):
+                self.calls += 1
+                raise HttpError(503, "Service Unavailable", retryable=True)
+
+        client = FailingClient()
+        results = WikipediaAdapter(http_client=client).fetch_players(["A", "B", "C"])
+
+        assert client.calls == 1
+        assert all(not r.success and r.errors[0].retryable for r in results.values())
+
+    def test_fetch_club_reads_country_and_current_league(self):
+        page = "{{Squadra di calcio\n|nazione = {{KSA}}\n|campionato = [[Saudi Pro League]]\n}}"
+        adapter, client = self._make_adapter()
+        client.configure("Al-Hilal_Saudi", HttpResponse(200, json.dumps({"parse": {"wikitext": page}})))
+        client.configure(
+            "Al-Hilal%20Saudi", HttpResponse(200, json.dumps({"parse": {"wikitext": page}}))
+        )
+
+        assert adapter.fetch_club("Al-Hilal", "Al-Hilal Saudi Football Club") == (
+            "Arabia Saudita",
+            "Saudi Pro League",
+        )
+        assert not any("list=search" in url for url in client.requests)
 
     def test_fetch_with_loans_and_unicode(self):
         """Non-ASCII player name, loan markers, wiki links."""

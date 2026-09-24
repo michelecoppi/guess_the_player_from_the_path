@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -22,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import clubs  # noqa: E402
 import wiki  # noqa: E402
 
+from domains.players.club_resolution import resolve_club  # noqa: E402
 from services.player_pool import _PLAYERS_PATH  # noqa: E402
 
 
@@ -57,49 +59,10 @@ def resolve_title(player):
     return None
 
 
-# Valori che l'infobox di un club mette in "campionato" quando il club non gioca piu':
-# non sono campionati e non devono finire nel dataset come se lo fossero.
-NON_LEGHE = {"inattivo", "sciolto", "sciolta", "non attivo", "-", ""}
-
-
-def exact_club(name, index):
-    """Solo corrispondenza esatta (con gli alias): niente match approssimati."""
-    if not name:
-        return None
-    key = clubs.norm(name)
-    alias = clubs.ALIASES.get(key)
-    if alias and clubs.norm(alias) in index:
-        return index[clubs.norm(alias)]
-    return index.get(key)
-
-
 def resolve_stop(stop, index):
-    """(squadra, paese, campionato, come_risolto) per una tappa.
-
-    L'ordine e' diverso da build_wiki.py di proposito. Li' il match approssimato
-    sull'indice viene prima della pagina del club, e su un nome piu' specifico di quello in
-    indice sbaglia in silenzio: "Nacional Medellin" contiene "Nacional", quindi Higuita
-    finiva in Uruguay, e "Independiente Medellin" in Argentina. Qui il fuzzy e' l'ultima
-    spiaggia e vale solo nel verso sicuro (l'etichetta e' piu' corta della voce in indice,
-    "Leeds" -> "Leeds United"), mentre la pagina del club - che l'infobox riporta con paese
-    e campionato espliciti - viene prima.
-    """
-    team, link = stop["team"], stop.get("link")
-    manual = clubs.MANUAL_CLUBS.get(clubs.norm(team))
-    if manual:
-        return team, manual[0], manual[1], "manuale"
-    for name, how in ((team, "esatto"), (link, "esatto (link)")):
-        hit = exact_club(name, index)
-        if hit:
-            return hit[0], hit[1], hit[2], how
-    country, league = clubs.resolve_new_club(link or team)
-    if country and league:
-        return team, country, league, "pagina del club"
-    key = clubs.norm(team)
-    hits = [v for k, v in index.items() if k.startswith(key + " ")]
-    if hits and len({h[0] for h in hits}) == 1:
-        return hits[0][0], hits[0][1], hits[0][2], "approssimato"
-    return None
+    """(squadra, paese, campionato, come_risolto) per una tappa: vedi `resolve_club`."""
+    return resolve_club(stop["team"], stop.get("link"), clubs._catalog(),
+                        lambda team, link: clubs.resolve_new_club(link or team))
 
 
 def build_career(data, index):
@@ -110,13 +73,9 @@ def build_career(data, index):
             continue  # tappa senza dati: meglio ometterla che inventarla
         resolved = resolve_stop(stop, index)
         if not resolved:
-            dropped.append((stop_index, stop["team"], "club non risolto"))
+            dropped.append((stop_index, stop["team"], "club non risolto o campionato non valido"))
             continue
         team, country, league, why = resolved
-        league = clubs.normalize_league_for(league, country)
-        if not league or clubs.norm(league) in NON_LEGHE:
-            dropped.append((stop_index, stop["team"], f"campionato non valido ({league!r})"))
-            continue
         entry = {"team": team, "country": country, "league": league,
                  "start_year": stop["start_year"], "end_year": stop["end_year"],
                  "apps": stop["apps"]}
@@ -132,6 +91,8 @@ def build_career(data, index):
 
 
 def main():
+    # Serve la versione attuale delle pagine, non quella rimasta in cache da un run precedente.
+    wiki.set_cache_cutoff(time.time())
     ids = [line.strip() for line in open(sys.argv[1], encoding="utf-8") if line.strip()]
     out_path = sys.argv[2]
     dataset = json.load(open(_PLAYERS_PATH, encoding="utf-8"))

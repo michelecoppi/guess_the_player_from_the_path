@@ -18,6 +18,9 @@ new dated section below.
 
 ### Added
 
+- `scripts/refresh_player_careers.py`: career refresh from Wikipedia for all active players
+  (`--all`, resumable with `--resume`), for single players by id or name (`--player`) or from an
+  id list, with `--dry-run` ([player-data-pipeline.md](docs/player-data-pipeline.md)).
 - Optional Sentry error tracking for the backend (bot, API, jobs, Cloud Tasks workers,
   payments, broadcasts, Admin, Candidate pipeline), enabled only by `SENTRY_DSN`; the Sentry
   release is the `VERSION` release and the Cloud Run revision is a separate tag
@@ -103,6 +106,18 @@ new dated section below.
 
 ### Fixed
 
+- Bulk career refresh no longer stops updating after Wikipedia timeouts: timeouts are retried,
+  slow chunks are split, each chunk is saved once (one backup per run instead of one per
+  player) and an unreachable source stops the run cleanly.
+- Wikipedia scripts no longer end up rate limited (the "blacklist" after a few players): every
+  Wikimedia call uses a policy-compliant User-Agent with a contact (`WIKIMEDIA_CONTACT` adds an
+  email) and is spaced at most 60 requests/minute; the legacy career refresh no longer re-reads
+  stale cached pages.
+- Career refresh no longer adds a transfer without `country`/`league` (which silently dropped
+  the player from the game): new clubs are resolved from the dataset, the manual table or the
+  club's Wikipedia page, and unresolved ones are reported for manual completion. Returns to a
+  former club are no longer merged into the old stop, curated team/country/league are kept, and
+  goalkeepers' conceded goals are never written as goals.
 - Mini App: on short pages (Daily before any guess) the bottom nav bar was cut off by a dark
   strip on mobile; Events and Archive now have a back link to the Arena hub.
 

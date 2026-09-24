@@ -90,97 +90,152 @@ class WikipediaAdapter(PlayerSourceAdapter):
         output: dict[str, AdapterResult] = {}
 
         for offset in range(0, len(unique), size):
-            chunk = unique[offset : offset + size]
-            params = urllib.parse.urlencode(
-                {
-                    "action": "query",
-                    "prop": "revisions|pageprops",
-                    "titles": "|".join(chunk),
-                    "rvprop": "ids|timestamp|content",
-                    "rvslots": "main",
-                    "ppprop": "wikibase_item",
-                    "redirects": "1",
-                    "format": "json",
-                    "formatversion": "2",
-                    "maxlag": "5",
-                }
-            )
-            try:
-                data = self._http.get(f"{_API}?{params}").json()
-                if not isinstance(data, dict) or not isinstance(data.get("query"), dict):
-                    raise ValueError("Risposta MediaWiki bulk non valida")
-            except Exception as exc:
-                for title in chunk:
-                    failed = AdapterResult(source_name=_SOURCE_NAME, source_id=title)
-                    failed.errors.append(self._error_from_exception(exc, title, phase="bulk_fetch"))
-                    output[title] = failed
-                continue
-
-            query = data["query"]
-            aliases: dict[str, str] = {}
-            for collection in ("normalized", "redirects"):
-                for item in query.get(collection, []) or []:
-                    if isinstance(item, dict) and item.get("from") and item.get("to"):
-                        aliases[str(item["from"])] = str(item["to"])
-
-            pages = query.get("pages", [])
-            if not isinstance(pages, list):
-                pages = []
-            pages_by_title = {
-                str(page.get("title", "")).casefold(): page
-                for page in pages
-                if isinstance(page, dict) and page.get("title")
-            }
-
-            for requested in chunk:
-                canonical = requested
-                seen: set[str] = set()
-                while canonical in aliases and canonical not in seen:
-                    seen.add(canonical)
-                    canonical = aliases[canonical]
-                page = pages_by_title.get(canonical.casefold())
-                if not page or page.get("missing") is True:
-                    missing = AdapterResult(source_name=_SOURCE_NAME, source_id=requested)
-                    missing.errors.append(
-                        AdapterError(
-                            error_type=AdapterErrorType.NOT_FOUND,
-                            message=f"Pagina non trovata: {requested}",
-                            source_name=_SOURCE_NAME,
-                            retryable=False,
-                        )
-                    )
-                    output[requested] = missing
-                    continue
-
-                revisions = page.get("revisions") or []
-                revision = revisions[0] if revisions and isinstance(revisions[0], dict) else {}
-                slots = revision.get("slots") if isinstance(revision, dict) else {}
-                main_slot = slots.get("main", {}) if isinstance(slots, dict) else {}
-                content = main_slot.get("content") if isinstance(main_slot, dict) else None
-                if content is None and isinstance(revision, dict):
-                    content = revision.get("content") or revision.get("*")
-                if content is None:
-                    failed = AdapterResult(source_name=_SOURCE_NAME, source_id=requested)
-                    failed.errors.append(
-                        AdapterError(
-                            error_type=AdapterErrorType.PARSE,
-                            message=f"Wikitext mancante nella risposta bulk: {requested}",
-                            source_name=_SOURCE_NAME,
-                            retryable=False,
-                        )
-                    )
-                    output[requested] = failed
-                    continue
-
-                metadata = {
-                    "canonical_title": str(page.get("title") or canonical),
-                    "revision_id": revision.get("revid"),
-                    "revision_timestamp": revision.get("timestamp"),
-                    "wikidata_id": (page.get("pageprops") or {}).get("wikibase_item"),
-                }
-                output[requested] = self._result_from_wikitext(requested, str(content), metadata=metadata)
+            self._fetch_chunk(unique[offset : offset + size], output)
 
         return output
+
+    def _fetch_chunk(self, chunk: list[str], output: dict[str, AdapterResult]) -> None:
+        """Fetch one chunk; on a timeout retry the two halves separately.
+
+        A chunk of long pages can time out even after the client's retries.  Halving it
+        keeps the healthy titles instead of marking the whole chunk as failed, and
+        isolates the title that really does not come back.
+        """
+        params = urllib.parse.urlencode(
+            {
+                "action": "query",
+                "prop": "revisions|pageprops",
+                "titles": "|".join(chunk),
+                "rvprop": "ids|timestamp|content",
+                "rvslots": "main",
+                "ppprop": "wikibase_item",
+                "redirects": "1",
+                "format": "json",
+                "formatversion": "2",
+                "maxlag": "5",
+            }
+        )
+        try:
+            data = self._http.get(f"{_API}?{params}").json()
+            if not isinstance(data, dict) or not isinstance(data.get("query"), dict):
+                raise ValueError("Risposta MediaWiki bulk non valida")
+        except Exception as exc:
+            # Solo il timeout dipende dalla dimensione della risposta: un 5xx o una
+            # connessione rifiutata non migliorano dividendo, e moltiplicherebbero i retry.
+            if isinstance(exc, TimeoutError) and len(chunk) > 1:
+                middle = len(chunk) // 2
+                self._fetch_chunk(chunk[:middle], output)
+                self._fetch_chunk(chunk[middle:], output)
+                return
+            for title in chunk:
+                failed = AdapterResult(source_name=_SOURCE_NAME, source_id=title)
+                failed.errors.append(self._error_from_exception(exc, title, phase="bulk_fetch"))
+                output[title] = failed
+            return
+
+        query = data["query"]
+        aliases: dict[str, str] = {}
+        for collection in ("normalized", "redirects"):
+            for item in query.get(collection, []) or []:
+                if isinstance(item, dict) and item.get("from") and item.get("to"):
+                    aliases[str(item["from"])] = str(item["to"])
+
+        pages = query.get("pages", [])
+        if not isinstance(pages, list):
+            pages = []
+        pages_by_title = {
+            str(page.get("title", "")).casefold(): page
+            for page in pages
+            if isinstance(page, dict) and page.get("title")
+        }
+
+        for requested in chunk:
+            canonical = requested
+            seen: set[str] = set()
+            while canonical in aliases and canonical not in seen:
+                seen.add(canonical)
+                canonical = aliases[canonical]
+            page = pages_by_title.get(canonical.casefold())
+            if not page or page.get("missing") is True:
+                missing = AdapterResult(source_name=_SOURCE_NAME, source_id=requested)
+                missing.errors.append(
+                    AdapterError(
+                        error_type=AdapterErrorType.NOT_FOUND,
+                        message=f"Pagina non trovata: {requested}",
+                        source_name=_SOURCE_NAME,
+                        retryable=False,
+                    )
+                )
+                output[requested] = missing
+                continue
+
+            revisions = page.get("revisions") or []
+            revision = revisions[0] if revisions and isinstance(revisions[0], dict) else {}
+            slots = revision.get("slots") if isinstance(revision, dict) else {}
+            main_slot = slots.get("main", {}) if isinstance(slots, dict) else {}
+            content = main_slot.get("content") if isinstance(main_slot, dict) else None
+            if content is None and isinstance(revision, dict):
+                content = revision.get("content") or revision.get("*")
+            if content is None:
+                failed = AdapterResult(source_name=_SOURCE_NAME, source_id=requested)
+                failed.errors.append(
+                    AdapterError(
+                        error_type=AdapterErrorType.PARSE,
+                        message=f"Wikitext mancante nella risposta bulk: {requested}",
+                        source_name=_SOURCE_NAME,
+                        retryable=False,
+                    )
+                )
+                output[requested] = failed
+                continue
+
+            metadata = {
+                "canonical_title": str(page.get("title") or canonical),
+                "revision_id": revision.get("revid"),
+                "revision_timestamp": revision.get("timestamp"),
+                "wikidata_id": (page.get("pageprops") or {}).get("wikibase_item"),
+            }
+            output[requested] = self._result_from_wikitext(requested, str(content), metadata=metadata)
+
+    def fetch_club(self, team: str, link: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+        """(paese, campionato) dall'infobox {{Squadra di calcio}} della pagina del club.
+
+        Prova il link della tappa, il nome e poi la ricerca "<nome> calcio squadra". Il
+        campionato e' quello ATTUALE del club: per un trasferimento appena avvenuto e'
+        proprio quello giusto. Ritorna (None, None) se nessuna pagina lo dice.
+        """
+        from domains.players.club_resolution import club_info_from_params
+
+        seen: set[str] = set()
+
+        def _from_titles(titles: list[str]) -> tuple[Optional[str], Optional[str]]:
+            for title in titles:
+                if not title or title.casefold() in seen:
+                    continue
+                seen.add(title.casefold())
+                try:
+                    wikitext = self._fetch_wikitext(title)
+                except Exception:  # noqa: BLE001 - un candidato illeggibile non blocca gli altri
+                    continue
+                body = self._find_template(wikitext or "", "Squadra di calcio")
+                if not body:
+                    continue
+                params = self._named_params(body)
+                country, league = club_info_from_params(
+                    params.get("nazione", ""), self._strip_markup(params.get("campionato", ""))
+                )
+                if country and league:
+                    return country, league
+            return None, None
+
+        # La ricerca costa una richiesta in piu': solo se link e nome non bastano.
+        found = _from_titles([t for t in (link, team) if t])
+        if found[0]:
+            return found
+        search = self.search_player(f"{team} calcio squadra", limit=4)
+        if search.success:
+            return _from_titles(search.identifiers)
+        return None, None
 
     def _result_from_wikitext(
         self,

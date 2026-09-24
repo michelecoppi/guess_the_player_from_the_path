@@ -9,6 +9,8 @@ from domains.players.career_refresh import (
     CareerRefreshResult,
     refresh_all_active_players,
     refresh_player_career,
+    refresh_players,
+    select_players_for_refresh,
 )
 
 
@@ -336,3 +338,335 @@ def test_refresh_all_batches_wikipedia_players(tmp_path, backup_dir):
     assert adapter.calls == [["Player_A", "Player_B"]]
     assert sleeps == []
     assert without_source == []
+
+
+class _ChunkAdapter:
+    """Adapter bulk finto: `failing` e' l'insieme di titoli che tornano con errore."""
+
+    def __init__(self, failing=(), retryable=True):
+        self.calls = []
+        self.failing = set(failing)
+        self.retryable = retryable
+
+    def fetch_players(self, identifiers):
+        from domains.players.adapters.base import AdapterError, AdapterErrorType
+
+        self.calls.append(list(identifiers))
+        out = {}
+        for identifier in identifiers:
+            if identifier in self.failing:
+                failed = AdapterResult(source_name="wikipedia", source_id=identifier)
+                failed.errors.append(
+                    AdapterError(
+                        error_type=AdapterErrorType.TIMEOUT,
+                        message="Timeout",
+                        source_name="wikipedia",
+                        retryable=self.retryable,
+                    )
+                )
+                out[identifier] = failed
+            else:
+                out[identifier] = AdapterResult(
+                    source_name="wikipedia",
+                    source_id=identifier,
+                    success=True,
+                    player_name=identifier,
+                    career=[{"team": "Juventus", "start_year": 2026, "end_year": None}],
+                )
+        return out
+
+
+def _juventus_lookup(team, link):
+    return ("Italia", "Serie A") if team == "Juventus" else (None, None)
+
+
+def _players(n):
+    return [_base_player(id=f"p{i}", full_name=f"Player {i}", source_id=f"Player_{i}") for i in range(n)]
+
+
+def test_refresh_players_writes_once_per_chunk_with_single_backup(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(5))
+    adapter = _ChunkAdapter()
+    progress = []
+
+    results = refresh_players(
+        [f"p{i}" for i in range(5)],
+        players_path=path,
+        backup_dir=backup_dir,
+        chunk_size=2,
+        adapter_resolver=lambda s, i: pytest.fail("sequential resolver not expected"),
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+        progress_callback=lambda done, total, r: progress.append((done, total, r.player_id)),
+        club_lookup=_juventus_lookup,
+    )
+
+    assert [r.success for r in results] == [True] * 5
+    assert all(r.changed for r in results)
+    assert adapter.calls == [["Player_0", "Player_1"], ["Player_2", "Player_3"], ["Player_4"]]
+    assert progress == [(i + 1, 5, f"p{i}") for i in range(5)]
+    assert len(list(backup_dir.iterdir())) == 1
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert all(p["career"][-1]["team"] == "Juventus" for p in data["players"])
+    assert all(p["career_last_checked_at"] for p in data["players"])
+
+
+def test_refresh_players_retries_transient_bulk_failure_sequentially(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(3))
+    adapter = _ChunkAdapter(failing={"Player_1"})
+    sequential = []
+
+    def resolver(source, source_id):
+        sequential.append(source_id)
+        return AdapterResult(
+            source_name=source, source_id=source_id, success=True, player_name="X",
+            career=[{"team": "Napoli", "start_year": 2026, "end_year": None}],
+        )
+
+    results = refresh_players(
+        ["p0", "p1", "p2"],
+        players_path=path,
+        backup_dir=backup_dir,
+        adapter_resolver=resolver,
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+    )
+
+    assert [r.success for r in results] == [True, True, True]
+    assert sequential == ["Player_1"]
+
+
+def test_refresh_players_does_not_retry_permanent_bulk_failure(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(2))
+    adapter = _ChunkAdapter(failing={"Player_1"}, retryable=False)
+
+    results = refresh_players(
+        ["p0", "p1"],
+        players_path=path,
+        backup_dir=backup_dir,
+        adapter_resolver=lambda s, i: pytest.fail("permanent failure must not be retried"),
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+    )
+
+    assert [r.success for r in results] == [True, False]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert "career_last_checked_at" not in data["players"][1]
+
+
+def test_refresh_players_stops_when_source_is_unreachable(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(6))
+    adapter = _ChunkAdapter(failing={f"Player_{i}" for i in range(6)})
+
+    results = refresh_players(
+        [f"p{i}" for i in range(6)],
+        players_path=path,
+        backup_dir=backup_dir,
+        chunk_size=2,
+        adapter_resolver=lambda s, i: pytest.fail("no sequential fallback when the bulk is dead"),
+        wikipedia_adapter_factory=lambda: adapter,
+        sleep_fn=lambda s: None,
+    )
+
+    assert len(adapter.calls) == 2
+    assert [r.player_id for r in results] == [f"p{i}" for i in range(6)]
+    assert not any(r.success for r in results)
+    assert "Non tentato" in results[-1].message
+    assert list(backup_dir.iterdir()) == []
+
+
+def test_refresh_players_dry_run_does_not_write(tmp_path, backup_dir):
+    path = tmp_path / "players.json"
+    _write_dataset(path, _players(1))
+    before = path.read_text(encoding="utf-8")
+
+    results = refresh_players(
+        ["p0"],
+        players_path=path,
+        backup_dir=backup_dir,
+        dry_run=True,
+        wikipedia_adapter_factory=lambda: _ChunkAdapter(),
+        sleep_fn=lambda s: None,
+        club_lookup=_juventus_lookup,
+    )
+
+    assert results[0].success and results[0].changed
+    assert results[0].diff["new_teams"] == ["Juventus"]
+    assert path.read_text(encoding="utf-8") == before
+    assert list(backup_dir.iterdir()) == []
+
+
+def test_select_players_for_refresh_resume_and_inactive():
+    players = [
+        _base_player(id="fresh", career_last_checked_at="2026-09-24T10:00:00Z"),
+        _base_player(id="stale", career_last_checked_at="2026-09-01T10:00:00Z"),
+        _base_player(id="never"),
+        _base_player(id="retired", active=False),
+        _base_player(id="nosource", source=None, source_id=None),
+    ]
+
+    with_source, without_source = select_players_for_refresh(
+        players, checked_before="2026-09-24T00:00:00Z"
+    )
+    assert [p["id"] for p in with_source] == ["stale", "never"]
+    assert [p["id"] for p in without_source] == ["nosource"]
+
+    with_source, _ = select_players_for_refresh(players, include_inactive=True)
+    assert "retired" in [p["id"] for p in with_source]
+
+
+def _refresh_with_career(dataset_path, backup_dir, career, *, club_lookup=None, **player_overrides):
+    if player_overrides:
+        _write_dataset(dataset_path, [_base_player(**player_overrides)])
+
+    def resolver(source, source_id):
+        return AdapterResult(
+            source_name=source, source_id=source_id, success=True, player_name="Mario Rossi", career=career
+        )
+
+    result = refresh_player_career(
+        "mario_rossi",
+        players_path=dataset_path,
+        backup_dir=backup_dir,
+        adapter_resolver=resolver,
+        club_lookup=club_lookup,
+        current_year_provider=lambda: 2026,
+    )
+    player = json.loads(dataset_path.read_text(encoding="utf-8"))["players"][0]
+    return result, player
+
+
+_ROMA = {"team": "Roma", "start_year": 2013, "end_year": 2018, "apps": 100, "goals": 10}
+
+
+def test_new_transfer_gets_country_and_league_from_club_page(dataset_path, backup_dir):
+    lookups = []
+
+    def lookup(team, link):
+        lookups.append((team, link))
+        return "Arabia Saudita", "Saudi Pro League"
+
+    result, player = _refresh_with_career(
+        dataset_path,
+        backup_dir,
+        [
+            _ROMA,
+            {"team": "Milan", "start_year": 2018, "end_year": 2026, "apps": 60, "goals": 6},
+            {"team": "Al-Hilal", "link": "Al-Hilal Saudi Football Club", "start_year": 2026,
+             "end_year": None, "apps": 0, "goals": 0},
+        ],
+        club_lookup=lookup,
+    )
+
+    assert result.success and result.changed
+    assert result.diff["new_teams"] == ["Al-Hilal"]
+    assert lookups == [("Al-Hilal", "Al-Hilal Saudi Football Club")]
+    new_stop = player["career"][-1]
+    assert new_stop == {
+        "team": "Al-Hilal", "country": "Arabia Saudita", "league": "Saudi Pro League",
+        "start_year": 2026, "end_year": None, "apps": 0, "goals": 0,
+    }
+    from services.player_pool import validate_player
+
+    assert validate_player(player) == []
+
+
+def test_new_transfer_to_known_club_reuses_dataset_names(dataset_path, backup_dir):
+    """"Internazionale" su Wikipedia e' "Inter" nel dataset: stesso club, stessi campi."""
+    _write_dataset(
+        dataset_path,
+        [
+            _base_player(),
+            _base_player(id="other", career=[
+                {"team": "Inter", "country": "Italia", "league": "Serie A", "start_year": 2010, "end_year": None},
+            ]),
+        ],
+    )
+    result, player = _refresh_with_career(
+        dataset_path,
+        backup_dir,
+        [_ROMA, {"team": "Milan", "start_year": 2018, "end_year": 2026},
+         {"team": "Internazionale", "start_year": 2026, "end_year": None, "apps": 3}],
+        club_lookup=lambda team, link: pytest.fail("known club must not hit the network"),
+    )
+
+    assert result.diff["new_teams"] == ["Inter"]
+    assert player["career"][-1]["team"] == "Inter"
+    assert player["career"][-1]["league"] == "Serie A"
+
+
+def test_unresolved_new_team_is_reported_not_added_incomplete(dataset_path, backup_dir):
+    result, player = _refresh_with_career(
+        dataset_path,
+        backup_dir,
+        [_ROMA, {"team": "Milan", "start_year": 2018, "end_year": 2026},
+         {"team": "Club Sconosciuto", "start_year": 2026, "end_year": None}],
+        club_lookup=lambda team, link: (None, None),
+    )
+
+    assert result.success is True
+    assert result.diff["unresolved_teams"] == [{"team": "Club Sconosciuto", "start_year": 2026}]
+    assert "Club Sconosciuto" in result.message
+    assert [s["team"] for s in player["career"]] == ["Roma", "Milan"]
+    assert all(s.get("country") and s.get("league") for s in player["career"])
+
+
+def test_old_stops_missing_from_dataset_are_not_reintroduced(dataset_path, backup_dir):
+    result, player = _refresh_with_career(
+        dataset_path,
+        backup_dir,
+        [{"team": "Primavera Roma", "start_year": 2011, "end_year": 2013, "apps": None},
+         _ROMA, {"team": "Milan", "start_year": 2018, "end_year": None, "apps": 50, "goals": 5}],
+        club_lookup=lambda team, link: pytest.fail("editorially excluded stops are not resolved"),
+    )
+
+    assert result.changed is False
+    assert [s["team"] for s in player["career"]] == ["Roma", "Milan"]
+
+
+def test_return_to_a_former_club_is_a_new_stop(dataset_path, backup_dir):
+    result, player = _refresh_with_career(
+        dataset_path,
+        backup_dir,
+        [_ROMA, {"team": "Milan", "start_year": 2018, "end_year": 2026, "apps": 60, "goals": 6},
+         {"team": "Roma", "start_year": 2026, "end_year": None, "apps": 2, "goals": 0}],
+    )
+
+    assert [(s["team"], s["start_year"]) for s in player["career"]] == [
+        ("Roma", 2013), ("Milan", 2018), ("Roma", 2026)
+    ]
+    assert player["career"][0]["end_year"] == 2018
+    assert player["career"][0]["apps"] == 100
+    assert player["career"][-1]["country"] == "Italia"
+    assert result.diff["new_teams"] == ["Roma"]
+
+
+def test_goalkeeper_conceded_goals_are_never_written(dataset_path, backup_dir):
+    result, player = _refresh_with_career(
+        dataset_path,
+        backup_dir,
+        [{"team": "Roma", "start_year": 2013, "end_year": 2018, "apps": 101, "goals": -90},
+         {"team": "Milan", "start_year": 2018, "end_year": None, "apps": 51, "goals": -40}],
+        position="Portiere",
+    )
+
+    assert [s["apps"] for s in player["career"]] == [101, 51]
+    assert [s.get("goals") for s in player["career"]] == [10, 5]
+    assert not any(c["field"] == "goals" for c in result.diff["stat_changes"])
+
+
+def test_existing_stop_keeps_dataset_team_country_and_league(dataset_path, backup_dir):
+    _, player = _refresh_with_career(
+        dataset_path,
+        backup_dir,
+        [{"team": "AS Roma", "country": "X", "league": "Y", "start_year": 2013, "end_year": 2018},
+         {"team": "Milan", "start_year": 2018, "end_year": None}],
+    )
+
+    assert player["career"][0]["team"] == "Roma"
+    assert player["career"][0]["country"] == "Italia"
+    assert player["career"][0]["league"] == "Serie A"
