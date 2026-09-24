@@ -19,6 +19,22 @@ from admin_pages.shared import (
     to_display,
     to_iso,
 )
+from services.event_rules import order_teams
+
+# Formati giocabili solo nella Mini App: in chat il bot manda il giocatore all'app.
+MINI_APP_ONLY_TYPES = {"blind_path", "link_club", "order_career"}
+
+
+def _day_content(day):
+    if day["player_names"]:
+        return " + ".join(day["player_names"])
+    return day["player_name"] or day["pair_id"] or ("foto" if day["image_url"] else "—")
+
+
+def _day_answers(day):
+    if day["order_stop_ids"]:
+        return " → ".join(order_teams(day))
+    return ", ".join(day["answers"]) if day["answers"] else "— VUOTO —"
 
 
 def render(today, now_italy):
@@ -96,8 +112,8 @@ def render(today, now_italy):
                         "": STATUS_ICON[d["status"]],
                         "g.": d["index"],
                         "giorno": f"{d['weekday']} {d['day_display']}",
-                        "contenuto": d["player_name"] or d["pair_id"] or ("foto" if d["image_url"] else "—"),
-                        "risposte": ", ".join(d["answers"]) if d["answers"] else "— VUOTO —",
+                        "contenuto": _day_content(d),
+                        "risposte": _day_answers(d),
                         "min. giuste": str(d["min_correct"]) if d["min_correct"] else "—",
                         "punti": str(d["points"]) if d["points"] is not None else "—",
                         "bonus primo": "assegnato" if d["first_correct_taken"] else "libero",
@@ -164,7 +180,17 @@ def render(today, now_italy):
                 day_options = {f"{d['day_display']} (g. {d['index']})": d for d in detail["days"]}
                 if not day_options:
                     st.caption("L'evento non ha giorni.")
+                elif detail["type"] == "order_career":
+                    st.caption(
+                        "In \"Metti in ordine\" la risposta è l'ordine delle tappe, già nella tabella "
+                        "dei giorni: non ci sono risposte scritte da correggere."
+                    )
                 else:
+                    if detail["type"] == "link_club":
+                        st.caption(
+                            "Qui si aggiungono i nomi alternativi del club in comune "
+                            "(es. \"Real Madrid, Real\"): la risposta resta un solo club."
+                        )
                     picked_label = st.selectbox("Giorno", list(day_options), key=f"day_pick_{code}")
                     picked = day_options[picked_label]
                     text = st.text_input(
@@ -213,6 +239,8 @@ def render(today, now_italy):
     template_by_id = {t["id"]: t for t in templates}
     template_id = st.selectbox("Template", list(template_by_id))
     template = template_by_id[template_id]
+    if template["type"] in MINI_APP_ONLY_TYPES:
+        st.info("Questo formato si gioca solo nella Mini App: in chat il bot mostra il pulsante per aprirla.")
     st.caption(
         f"**{template['name']}** — {template['description']}\n\n"
         f"tipo `{template['type']}` · durata {template['duration_days']} giorni · "
@@ -310,6 +338,7 @@ def _render_templates(now_italy):
             [
                 {
                     "giorno": to_display(day["day"]),
+                    "contenuto": day["content"],
                     "risposta": day["answer"],
                     "risposte accettate": day["answers"],
                     "minimo giuste": day["min_correct"] or "—",

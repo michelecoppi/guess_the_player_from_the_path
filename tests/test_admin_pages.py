@@ -132,3 +132,32 @@ def test_every_name_imported_from_the_shared_admin_module_exists():
                 if absent:
                     missing[path.name] = absent
     assert not missing, missing
+
+
+def test_events_page_shows_the_new_formats_in_readable_form(monkeypatch):
+    """Coppia, ordine giusto e formato solo-app si leggono in chiaro, senza Firestore."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    import streamlit as st
+
+    from services import event_generator, firebase_service
+
+    templates = {t["id"]: t for t in event_generator.load_templates()}
+    start = datetime(2026, 9, 9, tzinfo=ZoneInfo("Europe/Rome"))
+    events = []
+    for template_id in ("trova_il_collegamento", "metti_in_ordine_la_carriera"):
+        code, doc = event_generator.build_event_doc(templates[template_id], start)
+        events.append({**doc, "code": code})
+    monkeypatch.setattr(firebase_service, "get_recent_events", lambda limit=8: events)
+    monkeypatch.setattr(firebase_service, "get_event_participants", lambda code: [])
+    # AppTest shares the process: without this, cached_events answers with an earlier test's result.
+    st.cache_data.clear()
+
+    result = AppTest.from_string(RENDER.format(page="events")).run(timeout=30)
+
+    assert not result.exception
+    cells = [str(value) for frame in result.dataframe for value in frame.value.to_numpy().ravel()]
+    assert any(" + " in cell for cell in cells)
+    assert any(cell.count(" → ") == 4 for cell in cells)
+    assert "— VUOTO —" not in cells

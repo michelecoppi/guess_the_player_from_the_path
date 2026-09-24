@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 
 from services import event_config, event_generator
 from services.dates import ITALY_TZ, to_iso
+from services.event_rules import order_teams
 from services.player_pool import get_all_players
 
 BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backup")
@@ -163,8 +164,10 @@ def preview_template(template, original_id=None, today=None):
             result["sample_days"] = [
                 {
                     "day": day,
-                    "answer": data.get("player_name") or (data.get("correct_answers") or ["?"])[-1],
-                    "answers": len(data.get("correct_answers") or []),
+                    "content": _sample_content(data),
+                    "answer": _sample_answer(data),
+                    # un giorno "order_career" ha una sola risposta: l'ordine intero
+                    "answers": 1 if data.get("order_stop_ids") else len(data.get("correct_answers") or []),
                     "min_correct": data.get("min_correct"),
                     "points": data.get("points"),
                     "stops_shown": len(data.get("career_path") or []),
@@ -176,6 +179,21 @@ def preview_template(template, original_id=None, today=None):
             f"Con questo calendario non puo' partire nei prossimi {SCHEDULE_PREVIEW_DAYS} giorni."
         )
     return result
+
+
+def _sample_content(data):
+    """Cosa vede chi gioca quel giorno, in una riga."""
+    if data.get("player_names"):
+        return " + ".join(data["player_names"])
+    return data.get("player_name") or f"{len(data.get('career_path') or [])} tappe"
+
+
+def _sample_answer(data):
+    if data.get("order_stop_ids"):
+        return " → ".join(order_teams(data))
+    if data.get("player_names") or not data.get("player_name"):
+        return (data.get("correct_answers") or ["?"])[-1]
+    return data["player_name"]
 
 
 def save_template(template, original_id=None):

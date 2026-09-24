@@ -2,6 +2,7 @@ import pytest
 
 from services import content_admin
 from services.content_admin import ContentAdminError
+from services.event_rules import order_teams
 from services.player_pool import get_all_players
 
 TODAY = "2026-03-10"
@@ -313,6 +314,21 @@ def test_describe_event_reports_days_without_content():
 
     assert detail["days_without_content"] == ["11/03/26"]
     assert detail["days"][2]["has_content"] is False
+
+
+def test_describe_event_keeps_the_pair_and_the_order_of_the_new_formats():
+    event = _event()
+    event["daily_data"]["2026-03-09"] = {"player_names": ["Iker Casillas", "Jerzy Dudek"],
+                                         "correct_answers": ["Real Madrid"]}
+    event["daily_data"]["2026-03-10"] = {"player_name": "Angel Di Maria",
+                                         "shuffled_stops": [{"id": 7, "team": "Juventus"}, {"id": 3, "team": "Benfica"}],
+                                         "order_stop_ids": [3, 7]}
+
+    days = content_admin.describe_event(event, today=TODAY)["days"]
+
+    assert days[0]["player_names"] == ["Iker Casillas", "Jerzy Dudek"]
+    assert order_teams(days[1]) == ["Benfica", "Juventus"]
+    assert days[2]["order_stop_ids"] == [] and days[2]["player_names"] == []
 
 
 def test_update_event_day_answers_refuses_a_day_outside_the_event(fake_db):

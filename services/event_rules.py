@@ -33,3 +33,10 @@ def evaluate_event_guess(event_type, guess, today_data):
     min_correct = today_data.get("min_correct", len(correct_answers))
     return matched >= min_correct, matched, len(correct_answers)
 
+
+
+def order_teams(today_data):
+    """La soluzione di un giorno "order_career" come nomi di club, nell'ordine giusto: la
+    risposta vera sono gli id di `order_stop_ids`, che da soli all'admin non dicono niente."""
+    teams = {stop.get("id"): stop.get("team") for stop in today_data.get("shuffled_stops") or []}
+    return [teams.get(stop_id, "?") for stop_id in today_data.get("order_stop_ids") or []]
