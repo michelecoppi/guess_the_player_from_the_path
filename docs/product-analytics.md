@@ -190,13 +190,33 @@ and **intent vs. completion**.
 
 | Event | Trigger | Source | Idempotency | Properties | Intent/completion |
 | --- | --- | --- | --- | --- | --- |
-| `bot_started` | `/start` (any argument), `handlers/start_handler.py` | server | none needed — one event per `/start`, `is_new_user` distinguishes first contact | `language`, `is_new_user` | completion (the interaction happened) |
+| `bot_started` | `/start` (any argument), `handlers/start_handler.py` | server | none needed — one event per `/start`, `is_new_user` distinguishes first contact | `language`, `is_new_user`, `acquisition_channel` | completion (the interaction happened) |
 | `miniapp_opened` | First non-lightweight call to `POST /app/api/me` (`services/webapp_api.build_profile`, `include_social=True`) | server | none needed — fires on every full bootstrap call, not on the lightweight polling variant used to refresh in-game state | `language` | completion |
 
 `miniapp_opened` is server-side rather than a client `posthog-js` call because `/app/api/me`
 is already the authoritative, authenticated signal that the Mini App loaded its data; a
 client-side "page loaded" event would either duplicate it or race it. See §10 for why no
 frontend tracking was added in this iteration.
+
+`acquisition_channel` ([#137](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/137))
+says which link brought someone to `/start`, so a marketing channel can be compared with
+another. It is derived from the `/start` argument by
+`handlers/start_handler.py::acquisition_channel`, from a closed list
+(`services/product_analytics.py::ACQUISITION_CHANNELS`):
+
+| `/start` argument | `acquisition_channel` |
+| --- | --- |
+| none (bot opened directly) | `direct` |
+| `ref_…` | `referral` |
+| `duel_…` | `duel` |
+| `lega_…` | `league` |
+| `src_<source>` with `<source>` in `CAMPAIGN_SOURCES` (`tiktok`, `instagram`, `youtube`, `reddit`, `x`, `threads`, `facebook`, `telegram_group`, `creator`, `producthunt`, `directory`, `qr`; case-insensitive) | `<source>` |
+| anything else, including an unknown `src_` value | `other` |
+
+Campaign links are `https://t.me/<BOT_USERNAME>?start=src_<source>`: they show the normal
+welcome and change nothing else. The raw argument is never sent, so a link cannot smuggle
+free text or personal data into analytics; a new source needs a code change to
+`CAMPAIGN_SOURCES`, until then it reads as `other`.
 
 ### Daily
 
@@ -641,7 +661,7 @@ this dashboard).
 
 | # | Insight | Type | Event(s) / filter | Breakdown | Window / aggregation |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Activation funnel | Funnel | `bot_started` (`is_new_user=true`) → `daily_guess_submitted` | — | 24h |
+| 1 | Activation funnel | Funnel | `bot_started` (`is_new_user=true`) → `daily_guess_submitted` | `acquisition_channel` | 24h |
 | 2 | Daily completion rate | Trend (ratio) | `daily_completed` ÷ unique users on `daily_guess_submitted` | `status` | Daily |
 | 3 | Guesses per completed Daily | Trend (average) | `attempts_used` on `daily_completed` | `status` | Daily, mean |
 | 4 | Hint usage rate | Trend (ratio) | unique users on `hint_used` ÷ unique users on `daily_guess_submitted` | — | Daily |
