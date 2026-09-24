@@ -130,9 +130,31 @@ def eligible_players(template, players=None):
     return candidates
 
 
+def link_pairs(players):
+    """Pairs with exactly one shared club; a displayed pair has one valid answer."""
+    clubs = {}
+    for player in players:
+        for club in {stop["team"] for stop in player["career"]}:
+            clubs.setdefault(club, []).append(player)
+    pairs = []
+    seen = set()
+    for club, members in clubs.items():
+        for left_index, left in enumerate(members):
+            for right in members[left_index + 1:]:
+                key = tuple(sorted((left["id"], right["id"])))
+                if key in seen:
+                    continue
+                seen.add(key)
+                if len({stop["team"] for stop in left["career"]} &
+                       {stop["team"] for stop in right["career"]}) == 1:
+                    pairs.append((left, right, club))
+    return pairs
+
+
 def _build_daily_data(template, dates):
     event_type = template["type"]
     players = eligible_players(template)
+    pairs = link_pairs(players) if event_type == "link_club" else []
     if len(players) < len(dates):
         logging.warning(
             f"[EVENT_GENERATOR] Pool insufficiente per '{template['id']}' "
@@ -145,8 +167,19 @@ def _build_daily_data(template, dates):
     daily_data = {}
 
     for date_str in dates:
-        if not players:
+        if not players or (event_type == "link_club" and not pairs):
             break
+        if event_type == "link_club":
+            left, right, club = rng.choice(pairs)
+            if len(pairs) > 1:
+                pairs.remove((left, right, club))
+            daily_data[date_str] = {
+                "player_names": [left["full_name"], right["full_name"]],
+                "correct_answers": [club],
+                "points": points_per_day,
+                "first_correct_user": False,
+            }
+            continue
         player = rng.choice(players)
         if event_type == "blind_path" and len(players) > 1:
             players.remove(player)

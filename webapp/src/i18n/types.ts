@@ -209,7 +209,13 @@ export interface TranslationSchema {
     blindRevealPrompt: string;
     blindReveal: string;
     blindAllOpen: string;
-    blindHint: string;
+      blindHint: string;
+      linkEyebrow: string;
+      linkBoard: string;
+      linkQuestion: string;
+      linkHint: string;
+      linkFormLabel: string;
+      linkPlaceholder: string;
     stale: string;
     expired: string;
     finished: string;

@@ -42,6 +42,7 @@ def list_events(user_id, lang):
             "dates": event.get("dates", []), "available": bool(data),
             "rules": t(lang, "app.event." + kind if kind in event_config.EVENT_TYPES else "app.event.default"),
             "player_name": data.get("player_name", "") if event_config.is_multi_answer(kind) else "",
+            "player_names": data.get("player_names", []) if kind == "link_club" else [],
             "min_correct": data.get("min_correct", len(data.get("correct_answers", []))) if event_config.is_multi_answer(kind) else 1,
             "career_path": localize_career(career, lang),
             "total_stops": len(data.get("career_path") or []) if kind == "blind_path" else None,

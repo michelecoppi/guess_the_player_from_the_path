@@ -187,9 +187,13 @@ Points stay inside the group. Rules still live in the handler plus
   to one, and the existing first-solver bonus is added separately. Chat shows
   a spoiler-free banner and directs players to the Mini App.
 
-**Planned evolution.** New timed formats [#129](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/129)
-(Trova il collegamento) and [#130](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/130)
-(Metti in ordine la carriera) need their own generation, evaluation and Mini App rendering.
+- **Trova il collegamento (#129).** The generator chooses two players whose
+  careers share exactly one club. The public event card contains their names,
+  while the answer stays server-side. The Mini App presents the pair on a skin
+  surface and accepts a club name; chat directs players to the Mini App.
+
+**Planned evolution.** [#130](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/130)
+(Metti in ordine la carriera) needs its own generation, evaluation and Mini App rendering.
 
 ## Leaderboards, seasons and leagues
 

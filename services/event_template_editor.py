@@ -67,7 +67,8 @@ def list_templates():
             resolved = event_config.resolved(template)
             row["points_per_day"] = resolved["rewards"]["points_per_day"]
             if event_config.uses_dataset(resolved["type"]):
-                row["candidates"] = len(event_generator.eligible_players(resolved, selectable))
+                players = event_generator.eligible_players(resolved, selectable)
+                row["candidates"] = len(event_generator.link_pairs(players)) if resolved["type"] == "link_club" else len(players)
         rows.append(row)
     return rows
 
@@ -150,6 +151,8 @@ def preview_template(template, original_id=None, today=None):
     }
     if event_config.uses_dataset(resolved["type"]):
         candidates = event_generator.eligible_players(resolved)
+        if resolved["type"] == "link_club":
+            candidates = event_generator.link_pairs(candidates)
         result["candidates"] = len(candidates)
         if len(candidates) < resolved["duration_days"]:
             result["warnings"].append(

@@ -97,6 +97,17 @@ function renderBlindPath(event: ReturnType<EventsController["selected"]>): strin
   </section>`;
 }
 
+function renderLinkClub(names: string[]): string {
+  if (names.length !== 2) return "";
+  return `<section class="link-board" aria-label="${escapeHtml(t("events.linkBoard"))}">
+    <div class="link-board-heading"><span>${escapeHtml(t("events.linkEyebrow"))}</span><strong>01 <small>/</small> 02</strong></div>
+    <div class="link-players"><div class="link-player"><span>01</span><strong>${escapeHtml(names[0])}</strong></div>
+    <div class="link-connector" aria-hidden="true">✦</div>
+    <div class="link-player"><span>02</span><strong>${escapeHtml(names[1])}</strong></div></div>
+    <p>${escapeHtml(t("events.linkQuestion"))}</p>
+  </section>`;
+}
+
 export function renderEventsPage(controller: EventsController): string {
   const state = controller.getState();
   const selectedEvent = state.events.find((x) => x.code === state.selectedCode);
@@ -151,7 +162,7 @@ export function renderEventsPage(controller: EventsController): string {
           <article class="mode-entry events-entry">
             <span>
               <b>${escapeHtml(event.name)}</b>
-              ${event.type === "blind_path" ? `<small class="blind-list-tag">${escapeHtml(t("events.blindEyebrow"))}</small>` : ""}
+              ${event.type === "blind_path" || event.type === "link_club" ? `<small class="blind-list-tag">${escapeHtml(t(event.type === "blind_path" ? "events.blindEyebrow" : "events.linkEyebrow"))}</small>` : ""}
               <small>${escapeHtml(event.description)}</small>
               <small class="muted">${escapeHtml(event.rules)}</small>
               ${endDateHtml}
@@ -195,6 +206,8 @@ export function renderEventsPage(controller: EventsController): string {
     hintHtml = `<p class="muted event-hint">${t("events.fatherSonHint")}</p>`;
   } else if (event.type === "blind_path") {
     hintHtml = `<p class="muted event-hint">${t("events.blindHint")}</p>`;
+  } else if (event.type === "link_club") {
+    hintHtml = `<p class="muted event-hint">${t("events.linkHint")}</p>`;
   } else if (event.type !== "path" && event.type !== "transfer_guess") {
     hintHtml = `<p class="muted event-hint">${t("events.unknownType")}</p>`;
   }
@@ -206,7 +219,9 @@ export function renderEventsPage(controller: EventsController): string {
       : "";
 
   // Content presentation (CareerPath or Image)
-  const contentHtml = event.type === "blind_path"
+  const contentHtml = event.type === "link_club"
+    ? renderLinkClub(event.player_names || [])
+    : event.type === "blind_path"
     ? renderBlindPath(event)
     : event.career_path && event.career_path.length > 0
       ? renderCareerPath({ stops: event.career_path })
@@ -265,13 +280,13 @@ export function renderEventsPage(controller: EventsController): string {
   } else {
     interactiveHtml = `
       <form id="events-guess-form" class="events-guess-form">
-        <label for="events-answer">${t("events.formLabel")}</label>
+        <label for="events-answer">${event.type === "link_club" ? t("events.linkFormLabel") : t("events.formLabel")}</label>
         <input
           id="events-answer"
           value="${escapeHtml(state.draftAnswer)}"
           autocomplete="off"
           maxlength="220"
-          placeholder="${t("events.guess")}"
+          placeholder="${event.type === "link_club" ? t("events.linkPlaceholder") : t("events.guess")}"
           ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}
         >
         <button class="btn" type="submit" ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}>
@@ -298,7 +313,7 @@ export function renderEventsPage(controller: EventsController): string {
       <button class="btn ghost" id="events-back">${t("events.back")}</button>
       <button class="btn ghost" id="events-refresh">${t("events.refresh")}</button>
     </div>
-    <section class="event-detail${event.type === "blind_path" ? " blind-event" : ""}">
+    <section class="event-detail${event.type === "blind_path" ? " blind-event" : event.type === "link_club" ? " link-event" : ""}">
       <h2 id="events-heading" tabindex="-1">${escapeHtml(event.name)}</h2>
       <p class="event-description">${escapeHtml(event.description)}</p>
       ${event.type === "blind_path" ? "" : `<p class="event-rules">${escapeHtml(event.rules)}</p>`}

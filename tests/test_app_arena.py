@@ -231,6 +231,16 @@ def event(store, monkeypatch):
     return day
 
 
+def test_link_event_exposes_names_but_keeps_club_private(store, event):
+    data = store["events/week"]["daily_data"][event]
+    store["events/week"]["type"] = "link_club"
+    data.update(player_names=["Andrea Pirlo", "Gianluigi Buffon"], correct_answers=["Juventus"])
+    card = app_events.list_events(1, "it")["events"][0]
+    assert card["player_names"] == ["Andrea Pirlo", "Gianluigi Buffon"]
+    assert "Juventus" not in json.dumps(card)
+    assert app_events.guess(1, "Anna", "week", event, "Juventus", 0)["status"] == "correct"
+
+
 def test_events_hide_answers_and_share_bonus_and_attempts(store, event):
     listing = app_events.list_events(1, "en")
     assert listing["events"][0]["name"] == "Event"
