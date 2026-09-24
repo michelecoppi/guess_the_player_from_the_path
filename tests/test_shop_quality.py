@@ -52,3 +52,26 @@ def test_ticket_finish_is_distinct_and_preserves_the_result_content():
     # The attempt and score area is identical: decoration cannot obscure the result.
     assert ImageChops.difference(ticket.crop((160, 260, 630, 560)),
                                 plain.crop((160, 260, 630, 560))).getbbox() is None
+
+
+def test_final_minute_collection_prices_and_equips_all_five_slots():
+    bundle = shop.get_item("pacchetto_ultimo_minuto")
+    pieces = [shop.get_item(i) for i in shop.grants_of(bundle)]
+    assert {i["kind"] for i in pieces} == {"theme", "frame", "title", "badge", "squares"}
+    assert sum(i["price"] for i in pieces) == 41
+    assert shop.price_for({}, bundle) == 32
+    assert shop.price_for({"cosmetics": {"owned": ["tabellone_acceso"]}}, bundle) == 23
+    complete = {"cosmetics": {"owned": bundle["grants"] + ["maglia_novanta", "festa_onda_stadio"],
+                              "equipped": {**{i["kind"]: i["id"] for i in pieces},
+                                           "number": "maglia_novanta", "celebration": "festa_onda_stadio"}}}
+    assert shop.purchase_status(complete, bundle["id"]) == "already_owned"
+    assert shop.price_for(complete, bundle) == 0
+    for lang in ("it", "en", "es"):
+        appearance = shop.appearance(complete, lang)
+        assert appearance["theme"]["pattern"]
+        assert appearance["frame"]["ring"]
+        assert appearance["title"]["label"]
+        assert appearance["badge"] == "🏁"
+        assert appearance["squares"]["correct"] == "✦"
+        assert appearance["number"] == "90"
+        assert appearance["celebration"] == "stadium_wave"

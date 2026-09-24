@@ -7,7 +7,7 @@ export const DEFAULT_SQUARE_SYMBOLS: SquareSymbols = { correct: "🟩", wrong: "
 export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-text", "--skin-accent-secondary", "--skin-pitch", "--skin-profile-surface", "--skin-profile-glow", "--skin-pattern"] as const;
 export type SkinTokens = Partial<Record<typeof SKIN_TOKENS[number], string>>;
 const SLOTS: CosmeticSlot[] = ["theme", "frame", "title", "badge", "squares", "number", "celebration", "card"];
-const EFFECTS = new Set(["spotlight", "confetti", "dust", "flash", "paper", "snow", "mud", "fireworks"]);
+const EFFECTS = new Set(["spotlight", "confetti", "dust", "flash", "paper", "snow", "mud", "fireworks", "stadium_wave"]);
 const FINISHES = new Set(["plain", "night", "foil", "grain", "tactics", "eleven", "ticket"]);
 const record = (v: unknown): Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (v: unknown, max = 160): string => typeof v === "string" && v.length <= max ? v : "";

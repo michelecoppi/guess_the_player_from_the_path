@@ -2854,6 +2854,98 @@
         "titolo_trasferta",
         "card_trasferta"
       ]
+    },
+    {
+      "id": "tabellone_acceso",
+      "kind": "theme",
+      "price": 12,
+      "name": "Tabellone acceso",
+      "name_i18n": {"en": "Lit scoreboard", "es": "Marcador encendido"},
+      "description": "Prugna profonda, luce corallo e righe da tabellone nell'ultimo minuto.",
+      "description_i18n": {"en": "Deep plum, coral light and scoreboard lines in the final minute.", "es": "Ciruela intensa, luz coral y líneas de marcador en el último minuto."},
+      "style": {
+        "bg": "#271129",
+        "bg2": "#381832",
+        "card": "#4a2141",
+        "edge": "#994b62",
+        "text": "#fff2e5",
+        "muted": "#d3a7ad",
+        "accent": "#ff824e",
+        "accentText": "#281023",
+        "track": "#68304d",
+        "pattern": "repeating-linear-gradient(0deg, transparent 0 28px, rgba(255,173,97,.06) 28px 29px)"
+      }
+    },
+    {
+      "id": "cornice_recupero",
+      "kind": "frame",
+      "price": 10,
+      "name": "Recupero",
+      "name_i18n": {"en": "Added time", "es": "Tiempo añadido"},
+      "description": "Segmenti luminosi di un cronometro avvolgono l'avatar.",
+      "description_i18n": {"en": "Luminous timer segments wrap around your avatar.", "es": "Segmentos luminosos de un cronómetro rodean tu avatar."},
+      "style": {"ring": "repeating-conic-gradient(#ff824e 0deg 24deg, #63213f 24deg 30deg)"}
+    },
+    {
+      "id": "titolo_novantesimo",
+      "kind": "title",
+      "price": 7,
+      "name": "Al novantesimo",
+      "name_i18n": {"en": "90th minute", "es": "Minuto 90"},
+      "description": "Per chi tiene viva la partita fino all'ultima azione.",
+      "description_i18n": {"en": "For those who keep the match alive until the final play.", "es": "Para quien mantiene vivo el partido hasta la última jugada."},
+      "style": {"label": "Al novantesimo", "label_i18n": {"en": "90th minute", "es": "Minuto 90"}, "color": "#ffae74"}
+    },
+    {
+      "id": "distintivo_fischio_finale",
+      "kind": "badge",
+      "price": 5,
+      "name": "Fischio finale",
+      "name_i18n": {"en": "Final whistle", "es": "Pitido final"},
+      "description": "Una bandierina da ultima azione accanto al tuo nome.",
+      "description_i18n": {"en": "A final-play flag beside your name.", "es": "Una banderita de la última jugada junto a tu nombre."},
+      "style": {"emoji": "🏁"}
+    },
+    {
+      "id": "quadratini_tempo_scaduto",
+      "kind": "squares",
+      "price": 7,
+      "name": "Tempo scaduto",
+      "name_i18n": {"en": "Time is up", "es": "Tiempo cumplido"},
+      "description": "Simboli da tabellone: punto per il gol, croce per l'errore, trattino per il tempo rimasto.",
+      "description_i18n": {"en": "Scoreboard symbols: dot for a goal, cross for a miss, dash for time left.", "es": "Símbolos de marcador: punto para el gol, cruz para el fallo y raya para el tiempo restante."},
+      "style": {"correct": "✦", "wrong": "×", "unused": "▫"}
+    },
+    {
+      "id": "pacchetto_ultimo_minuto",
+      "kind": "bundle",
+      "price": 32,
+      "name": "Ultimo minuto · Set completo",
+      "name_i18n": {"en": "Final minute · Full set", "es": "Último minuto · Set completo"},
+      "description": "Cinque pezzi coordinati, dal tabellone alla bandierina: 32 Stelle invece di 41.",
+      "description_i18n": {"en": "Five matching pieces, from scoreboard to final flag: 32 Stars instead of 41.", "es": "Cinco piezas a juego, del marcador a la bandera final: 32 Estrellas en vez de 41."},
+      "grants": ["tabellone_acceso", "cornice_recupero", "titolo_novantesimo", "distintivo_fischio_finale", "quadratini_tempo_scaduto"],
+      "featured": true
+    },
+    {
+      "id": "maglia_novanta",
+      "kind": "number",
+      "price": 7,
+      "name": "Numero 90",
+      "name_i18n": {"en": "Number 90", "es": "Número 90"},
+      "description": "Il minuto in cui la partita può ancora cambiare.",
+      "description_i18n": {"en": "The minute when the match can still change.", "es": "El minuto en que el partido aún puede cambiar."},
+      "style": {"number": "90"}
+    },
+    {
+      "id": "festa_onda_stadio",
+      "kind": "celebration",
+      "price": 7,
+      "name": "Onda di stadio",
+      "name_i18n": {"en": "Stadium wave", "es": "Ola del estadio"},
+      "description": "Una breve onda corallo attraversa lo schermo dopo la risposta giusta.",
+      "description_i18n": {"en": "A brief coral wave crosses the screen after a correct answer.", "es": "Una breve ola coral cruza la pantalla tras una respuesta correcta."},
+      "style": {"effect": "stadium_wave"}
     }
   ]
 }

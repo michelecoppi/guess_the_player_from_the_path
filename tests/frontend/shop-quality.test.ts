@@ -56,3 +56,20 @@ test('travel try-on includes one identity, four slots and the actual shared card
     assert.doesNotMatch(html, /Sempre in trasferta/);
   } finally { setLanguage('it'); cleanup(); }
 });
+
+test('final minute collection and new slot items survive try-on parsing', () => {
+  const pieces = (catalogue.items.find(i => i.id === 'pacchetto_ultimo_minuto')!.grants || [])
+    .map(id => catalogue.items.find(i => i.id === id)!);
+  const bundle = {...catalogue.items.find(i => i.id === 'pacchetto_ultimo_minuto')!, contents: pieces} as unknown as ShopCosmeticItem;
+  const appearance = createPreviewAppearance({}, bundle, 'en');
+  assert.equal(appearance.theme?.accent, '#ff824e');
+  assert.ok(appearance.theme?.pattern);
+  assert.ok(appearance.frame?.ring);
+  assert.equal(appearance.title?.label, '90th minute');
+  assert.equal(appearance.badge, '🏁');
+  assert.equal(appearance.squares?.correct, '✦');
+  const number = catalogue.items.find(i => i.id === 'maglia_novanta')! as unknown as ShopCosmeticItem;
+  const celebration = catalogue.items.find(i => i.id === 'festa_onda_stadio')! as unknown as ShopCosmeticItem;
+  assert.equal(createPreviewAppearance({}, number).number, '90');
+  assert.equal(createPreviewAppearance({}, celebration).celebration, 'stadium_wave');
+});

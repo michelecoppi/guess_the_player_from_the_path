@@ -11,7 +11,8 @@ export type CelebrationKind =
   | "paper"
   | "snow"
   | "mud"
-  | "fireworks";
+  | "fireworks"
+  | "stadium_wave";
 
 interface CelebrationSpec {
   count: number;
@@ -36,6 +37,7 @@ const CELEBRATIONS: Record<string, CelebrationSpec> = {
   snow: { count: 80, color: () => "#eaf6ff", size: [2, 6], fall: 1.1, drift: 0.8 },
   mud: { count: 55, color: (i) => ["#6b5a3a", "#9aa861"][i % 2], size: [3, 9], fall: 2.6, drift: 0.9 },
   fireworks: { count: 70, color: (i) => ["#f2c74c", "#7fc4ff", "#ff9ce3"][i % 3], size: [3, 8], fall: -1.4, drift: 1.4 },
+  stadium_wave: { count: 84, color: (i) => ["#ff824e", "#ffae74", "#f7d7b1"][i % 3], size: [4, 8], fall: -1.2, drift: 0 },
 };
 
 interface Particle {
@@ -69,9 +71,11 @@ export function celebrate(effect?: string | null): void {
 
   const bits: Particle[] = [];
   for (let i = 0; i < spec.count; i++) {
+    const wave = kind === "stadium_wave";
     bits.push({
-      x: Math.random() * canvas.width,
-      y: spec.fall >= 0 ? -Math.random() * canvas.height * 0.6 : canvas.height * (0.4 + Math.random() * 0.7),
+      x: wave ? (i / (spec.count - 1)) * canvas.width : Math.random() * canvas.width,
+      y: wave ? canvas.height * (0.63 + (i % 3) * 0.035)
+        : spec.fall >= 0 ? -Math.random() * canvas.height * 0.6 : canvas.height * (0.4 + Math.random() * 0.7),
       size: spec.size[0] + Math.random() * (spec.size[1] - spec.size[0]),
       vx: (Math.random() - 0.5) * spec.drift * 2,
       vy: spec.fall * (0.6 + Math.random()),
@@ -92,7 +96,12 @@ export function celebrate(effect?: string | null): void {
       bit.x += bit.vx;
       bit.y += bit.vy;
       ctx.fillStyle = bit.color;
-      ctx.fillRect(bit.x, bit.y, bit.size, bit.size);
+      if (kind === "stadium_wave") {
+        const crest = Math.sin(bit.x / 38 - life * 12) * 16;
+        ctx.fillRect(bit.x, bit.y + crest, bit.size, bit.size * 2);
+      } else {
+        ctx.fillRect(bit.x, bit.y, bit.size, bit.size);
+      }
     }
     requestAnimationFrame(step);
   };

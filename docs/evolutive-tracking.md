@@ -16,6 +16,8 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#130](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/130) | Timed event: Order the career |
 | [#123](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/123) | Offline streak balance simulation |
 | [#122](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/122) | Shop quality and Away ticket collection |
+| [#143](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/143) | Ultimo minuto shop collection, Number 90 and Stadium wave |
+| [#144](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/144) | Rain under the floodlights shop collection, Number 11 and Chromatic trail |
 | [#11](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/11) | Standardize the GitHub product/development workflow |
 | [#24](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/24) | Local developer environment and configuration validator |
 | [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) | Admin Control Center (epic) |
@@ -127,6 +129,11 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-24: the owner's two new visual shop collections and four standalone
+  cosmetics were split into #143 and #144. Each collection has its own rendering
+  work and reviewable PR; #144 follows #143 on the shared catalogue and appearance
+  surface.
 
 - 2026-09-24: the owner's request for three visually complete timed game formats was
   split into #128–#130. Each format changes event generation, rules and Mini App
