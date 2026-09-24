@@ -1,5 +1,5 @@
 /* Event formats share the purchased shell skin while controls and status keep product contrast. */
-.events-entry:has(.blind-list-tag) { border-left:3px solid var(--skin-accent); }
+.events-entry:has(.blind-list-tag) { border-left:3px solid var(--skin-accent); padding-left:var(--space-4); }
 .blind-list-tag { align-self:flex-start; width:max-content; padding:3px 7px; border:1px solid var(--skin-accent-secondary); border-radius:3px; color:var(--text); text-transform:uppercase; letter-spacing:.12em; font-size:10px; }
 .blind-event { min-width:0; }
 .blind-event>h2 { font:600 clamp(36px,9vw,58px)/.95 var(--font-display); max-width:13ch; }
