@@ -12,6 +12,7 @@ import random
 from datetime import datetime, timedelta
 
 from services import event_config, firebase_service
+from services.career_order import order_career
 from services.dates import ITALY_TZ, to_iso
 from services.player_pool import filter_players, get_all_players, get_answer_aliases, load_config
 
@@ -120,9 +121,18 @@ def pick_event_template(now_italy=None):
     return rng.choice(eligible)
 
 
+def eligible_players(template, players=None):
+    """Return the same candidate pool for generation and dashboard previews."""
+    candidates = filter_players(get_all_players() if players is None else players, template["filters"])
+    if template["type"] == "blind_path":
+        # Repeated clubs in the five-stop puzzle would feel like a duplicate reveal.
+        candidates = [player for player in candidates if len({stop["team"] for stop in order_career(player["career"])[-5:]}) == 5]
+    return candidates
+
+
 def _build_daily_data(template, dates):
     event_type = template["type"]
-    players = filter_players(get_all_players(), template["filters"])
+    players = eligible_players(template)
     if len(players) < len(dates):
         logging.warning(
             f"[EVENT_GENERATOR] Pool insufficiente per '{template['id']}' "
@@ -138,6 +148,8 @@ def _build_daily_data(template, dates):
         if not players:
             break
         player = rng.choice(players)
+        if event_type == "blind_path" and len(players) > 1:
+            players.remove(player)
 
         if event_config.is_multi_answer(event_type):
             team_names = [stop["team"] for stop in player["career"]]
@@ -151,9 +163,10 @@ def _build_daily_data(template, dates):
             }
         else:  # la risposta e' il calciatore
             career = player["career"]
+            visible_career = order_career(career)[-5:] if shown == "blind" else career
             daily_data[date_str] = {
                 "correct_answers": get_answer_aliases(player),
-                "career_path": [career[-1]] if shown == "last" and len(career) > 1 else career,
+                "career_path": [career[-1]] if shown == "last" and len(career) > 1 else visible_career,
                 # Serve al confronto dopo un tentativo sbagliato, come nella sfida del
                 # giorno: senza l'id non si sa **chi** era e non si puo' confrontare niente.
                 "player_id": player["id"],

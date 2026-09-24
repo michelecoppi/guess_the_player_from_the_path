@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 
 from services import event_config, event_generator
 from services.dates import ITALY_TZ, to_iso
-from services.player_pool import filter_players, get_all_players
+from services.player_pool import get_all_players
 
 BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backup")
 
@@ -67,7 +67,7 @@ def list_templates():
             resolved = event_config.resolved(template)
             row["points_per_day"] = resolved["rewards"]["points_per_day"]
             if event_config.uses_dataset(resolved["type"]):
-                row["candidates"] = len(filter_players(selectable, resolved["filters"]))
+                row["candidates"] = len(event_generator.eligible_players(resolved, selectable))
         rows.append(row)
     return rows
 
@@ -149,7 +149,7 @@ def preview_template(template, original_id=None, today=None):
         "warnings": [],
     }
     if event_config.uses_dataset(resolved["type"]):
-        candidates = filter_players(get_all_players(), resolved["filters"])
+        candidates = event_generator.eligible_players(resolved)
         result["candidates"] = len(candidates)
         if len(candidates) < resolved["duration_days"]:
             result["warnings"].append(

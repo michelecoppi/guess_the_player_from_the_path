@@ -201,6 +201,15 @@ export interface TranslationSchema {
     submit: string;
     careerHint: string;
     fatherSonHint: string;
+    blindEyebrow: string;
+    blindBoard: string;
+    blindCurrentPrize: string;
+    blindHidden: string;
+    blindSealed: string;
+    blindRevealPrompt: string;
+    blindReveal: string;
+    blindAllOpen: string;
+    blindHint: string;
     stale: string;
     expired: string;
     finished: string;

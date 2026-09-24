@@ -75,9 +75,18 @@ the generator (`EVENT_TYPES` in `services/event_config.py`).
 | `type` | Answer | Content | Shown |
 | --- | --- | --- | --- |
 | `path` | the player (typo-tolerant, with the nationality/role/age comparison after a wrong guess) | dataset | full career path |
+| `blind_path` | the player (same matching and comparison as `path`) | dataset | one recent career stop at first; the Mini App reveals up to five distinct stops one at a time |
 | `transfer_guess` | the player (with the comparison) | dataset | last career stop only |
 | `career` | a comma-separated list of the named player's clubs, at most 5 per attempt | dataset | player name, no path image |
 | `father_son` | the father/son pair | photos uploaded with `/admin_fs_add` | the photo; must use `schedule.mode: "manual"` and no `filters` |
+
+`blind_path` (#128) is played in the Mini App. Chat shows a spoiler-free event banner
+and a button to open the app; chat guesses are not accepted. The template must set
+`rewards.points_per_day` to at least 5. Each reveal reduces the day's available base
+points by one, to a minimum of 1. The first-correct bonus, when configured, is added
+after that reduction. The server stores the full five-stop puzzle and exposes only the
+stops that participant has revealed. A reveal and a guess share a per-day revision so
+simultaneous actions cannot spend the same state twice.
 
 ## Filters
 

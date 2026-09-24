@@ -81,6 +81,37 @@ function mockClient(queue: Array<EventsResponse | Error | ((url: string, payload
   return client;
 }
 
+test("Blind Career reveals only server-owned stops, keeps the skin surface and submits the new revision", async () => {
+  setLanguage("it");
+  const first = createTestCard({
+    type: "blind_path", code: "blind", total_stops: 3, points: 5,
+    career_path: [{ team: "Milan", start_year: 2007 }],
+    progress: { attempts: 0, revealed: 1, revision: 0, finished: false, solved: false, points: 0 },
+  });
+  const second = createTestCard({
+    ...first, points: 4,
+    career_path: [{ team: "Chelsea", start_year: 2003 }, { team: "Milan", start_year: 2007 }],
+    progress: { attempts: 0, revealed: 2, revision: 1, finished: false, solved: false, points: 0 },
+  });
+  const client = mockClient([{ events: [first] }, { events: [second] },
+    { events: [second], feedback: { status: "wrong", points: 0 } }]);
+  const controller = new EventsController(client);
+  await controller.load();
+  controller.select("blind");
+  const html = renderEventsPage(controller);
+  assert.match(html, /blind-board/);
+  assert.match(html, /id="events-reveal"/);
+  assert.match(html, /Milan/);
+  assert.doesNotMatch(html, /Chelsea/);
+  await controller.reveal();
+  assert.deepEqual(client.recordedCalls[1].payload, {
+    mode: "events", action: "reveal", code: "blind", day: first.day, revision: 0,
+  });
+  assert.match(renderEventsPage(controller), /Chelsea/);
+  await controller.submit("Pirlo");
+  assert.equal(client.recordedCalls[2].payload.revision, 1);
+});
+
 // ---------------------------------------------------------------------------
 // 1. GET CONTRACT & PUBLIC PROJECTION
 // ---------------------------------------------------------------------------

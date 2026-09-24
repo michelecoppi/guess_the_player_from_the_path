@@ -179,9 +179,17 @@ Points stay inside the group. Rules still live in the handler plus
   `rewards.podium_trophies` positions are assigned by the nightly job the day after an
   event ends.
 
-**Planned evolution.** None tracked for event configuration; new filters, rules or event
-types still need code (a filter in `player_pool.filter_players` and `event_config.FILTERS`,
-a type in `EVENT_TYPES` plus its chat/Mini App rendering).
+- **Carriera al buio (#128).** This event type draws players with five distinct
+  recent clubs. The Mini App starts with the most recent stop and can reveal
+  earlier stops one at a time. Participant state records the revealed count and
+  revision for that day; both guessing and revealing validate the revision in
+  a Firestore transaction. Each reveal costs one of the five base points, down
+  to one, and the existing first-solver bonus is added separately. Chat shows
+  a spoiler-free banner and directs players to the Mini App.
+
+**Planned evolution.** New timed formats [#129](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/129)
+(Trova il collegamento) and [#130](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/130)
+(Metti in ordine la carriera) need their own generation, evaluation and Mini App rendering.
 
 ## Leaderboards, seasons and leagues
 

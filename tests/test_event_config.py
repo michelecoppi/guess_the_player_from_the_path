@@ -43,6 +43,11 @@ def test_a_complete_template_is_valid():
     assert _errors(_valid()) == []
 
 
+def test_blind_event_needs_five_points_for_five_reveal_steps():
+    assert any("almeno 5 punti" in error for error in _errors(_valid(type="blind_path")))
+    assert _errors(_valid(type="blind_path", rewards={"points_per_day": 5})) == []
+
+
 @pytest.mark.parametrize("change, fragment", [
     ({"filters": {"min_team": 6}}, "filters.min_team: filtro sconosciuto"),
     ({"filters": {"min_teams": 0}}, "filters.min_teams"),

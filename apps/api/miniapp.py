@@ -209,6 +209,8 @@ def webapp_arena(payload: dict = Body(default={})):
             if action == "guess":
                 feedback = app_events.guess(user_id, user.get("first_name", "?"), payload.get("code"),
                                             payload.get("day"), payload.get("answer"), payload.get("revision"))
+            elif action == "reveal":
+                app_events.reveal(user_id, payload.get("code"), payload.get("day"), payload.get("revision"))
             elif action != "get":
                 raise arena.ArenaError("invalid")
             return {**app_events.list_events(user_id, lang), "feedback": feedback}

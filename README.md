@@ -68,8 +68,12 @@ Le modifiche diventano operative al deploy e al successivo avvio del servizio.
   automaticamente agli amici.
 - **Eventi settimanali:** il centro mostra gli eventi attivi secondo il calendario
   esistente, con descrizioni tradotte, scadenza, sfida e classifica. Supporta i tipi
-  `path`, `transfer_guess`, `career` e `father_son`; tentativi, punti e bonus sono
-  condivisi con il bot. Non modifica la programmazione degli eventi.
+  `path`, `transfer_guess`, `career`, `father_son` e `blind_path`;
+  in **Carriera al buio** si vede prima solo il club più recente e si possono
+  scoprire fino a cinque tappe, perdendo un punto per ogni club aggiuntivo
+  (minimo un punto). Questa sfida si gioca nella Mini App; il bot apre l'evento
+  senza rivelarne il percorso. Gli altri tipi mantengono le regole condivise
+  fra bot e Mini App.
 
 L'endpoint `/app/api/arena` richiede la stessa firma Telegram degli altri endpoint.
 Le mosse di allenamento e duello controllano una revisione in transazione; gli

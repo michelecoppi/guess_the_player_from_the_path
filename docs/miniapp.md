@@ -46,6 +46,10 @@ and cards remain spoiler-free. Points continue to come from `points_awarded`.
   [performance.md](performance.md)). The route list in `apps/api/miniapp.py` is authoritative.
 - Mutating moves in Training, duels and events carry a `revision`; the server answers
   409 when the state changed and the client reloads.
+  Blind Career events use the same `/app/api/arena` route with `mode: "events"` and
+  `action: "reveal"` to uncover one career stop. For this type, guesses and reveals
+  use `progress.revision`; other event types continue to use attempts as their revision.
+  `career_path` in the response contains only the stops already shown to that user.
 - A feature switched off by a flag answers 403
   `{"detail": "feature_disabled", "code": "FEATURE_DISABLED", "feature": "<key>"}`, and
   `me` carries `features` (resolved booleans only). See [feature-flags.md](feature-flags.md).

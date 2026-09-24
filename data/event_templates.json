@@ -224,6 +224,21 @@
       }
     },
     {
+      "id": "carriera_al_buio",
+      "name": "Carriera al buio",
+      "description": "Un club alla volta: quanto presto riconosci il calciatore?",
+      "name_i18n": {"es": "Carrera a oscuras", "en": "Blind Career"},
+      "description_i18n": {"es": "Un club cada vez: ¿cuándo reconocerás al futbolista?", "en": "One club at a time: how early can you name the player?"},
+      "type": "blind_path",
+      "category": "modalita_speciale",
+      "difficulty": "medium",
+      "duration_days": 3,
+      "filters": {"min_teams": 5},
+      "rules": {"attempts": 3},
+      "rewards": {"points_per_day": 5, "first_correct_bonus": 1, "podium_trophies": 3},
+      "schedule": {"mode": "rotation"}
+    },
+    {
       "id": "coppie_leggendarie",
       "name": "Coppie leggendarie",
       "description": "Indovina la coppia padre/figlio dall'immagine mostrata.",

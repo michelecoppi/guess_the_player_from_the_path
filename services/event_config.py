@@ -42,6 +42,8 @@ WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 EVENT_TYPES: dict[str, dict[str, str | None]] = {
     # si indovina il calciatore dal percorso completo
     "path": {"answer": "player", "content": "dataset", "career_shown": "full"},
+    # La Mini App rivela le ultime tappe una alla volta; il server conserva il percorso completo.
+    "blind_path": {"answer": "player", "content": "dataset", "career_shown": "blind"},
     # si indovina il calciatore da un solo trasferimento (l'ultima tappa)
     "transfer_guess": {"answer": "player", "content": "dataset", "career_shown": "last"},
     # si elencano le squadre del calciatore nominato; nessuna immagine del percorso
@@ -194,7 +196,7 @@ def _check_rules(errors, rules, event_type):
         _check_range(errors, "rules.min_correct_ratio", rules["min_correct_ratio"], "min_correct_ratio", integer=False)
 
 
-def _check_rewards(errors, rewards):
+def _check_rewards(errors, rewards, event_type=None):
     if not isinstance(rewards, dict):
         errors.append("rewards: deve essere un oggetto.")
         return
@@ -203,6 +205,8 @@ def _check_rewards(errors, rewards):
             errors.append(f"rewards.{key}: premio sconosciuto. Disponibili: {', '.join(DEFAULT_REWARDS)}.")
             continue
         _check_range(errors, f"rewards.{key}", value, key)
+    if event_type == "blind_path" and (not _is_int(rewards.get("points_per_day")) or rewards["points_per_day"] < 5):
+        errors.append("rewards.points_per_day: Carriera al buio richiede almeno 5 punti, uno per tappa.")
 
 
 def _parse_iso(value):
@@ -283,7 +287,7 @@ def validate_template(template):
     _check_filters(errors, template.get("filters", {}), event_type)
     if not ("rules" in template and isinstance(template["rules"], dict) and set(template["rules"]) & set(FILTERS)):
         _check_rules(errors, template.get("rules", {}), event_type)
-    _check_rewards(errors, template.get("rewards", {}))
+    _check_rewards(errors, template.get("rewards", {}), event_type)
     if "schedule" not in template:
         errors.append('schedule: obbligatorio, ad esempio {"mode": "rotation"}.')
     else:

@@ -183,3 +183,17 @@ def test_a_wrong_answer_reports_the_template_attempts(firebase):
     update, message = make_update()
     asyncio.run(events_handler.process_event_guess(update, SimpleNamespace(args=["totti"], user_data={}), event))
     assert "7" in message.replies[0]
+
+
+def test_blind_event_chat_never_displays_the_hidden_career_or_spends_attempt(firebase):
+    event = path_event()
+    event["type"] = "blind_path"
+    event["daily_data"][today_iso()]["career_path"] = [
+        {"team": "Secret Club", "start_year": 2000},
+    ]
+    message, _ = events_handler.get_today_player_message(event)
+    assert "Secret Club" not in message
+    update, reply = make_update()
+    asyncio.run(events_handler.process_event_guess(update, SimpleNamespace(args=["messi"]), event))
+    assert firebase.calls["attempts"] == []
+    assert "Mini App" in reply.replies[0]
