@@ -95,6 +95,11 @@ class Event(str, Enum):
     EVENT_COMPLETED = "event_completed"
     # Leaderboard
     LEADERBOARD_VIEWED = "leaderboard_viewed"
+    # Social / retention levers (#139)
+    LEAGUE_CREATED = "league_created"
+    LEAGUE_JOINED = "league_joined"
+    GROUP_ROUND_STARTED = "group_round_started"
+    NOTIFICATIONS_CHANGED = "notifications_changed"
     # Referral
     REFERRAL_OPENED = "referral_opened"
     REFERRAL_CONVERTED = "referral_converted"
@@ -199,6 +204,7 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "language": _enum(*SUPPORTED_LANGUAGES),
     "is_new_user": _bool,
     "referral_attached": _bool,
+    "enabled": _bool,
     "acquisition_channel": _enum(*ACQUISITION_CHANNELS),
     "scope": _enum("global", "monthly"),
     "status": _enum("correct", "wrong", "refused", "failed"),
@@ -261,6 +267,10 @@ EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
     Event.EVENT_STARTED: frozenset({"surface", "event_code", "event_type"}),
     Event.EVENT_COMPLETED: frozenset({"surface", "event_code", "event_type", "attempts_used", "bonus_awarded"}),
     Event.LEADERBOARD_VIEWED: frozenset({"surface", "scope"}),
+    Event.LEAGUE_CREATED: frozenset({"surface"}),
+    Event.LEAGUE_JOINED: frozenset({"surface"}),
+    Event.GROUP_ROUND_STARTED: frozenset(),
+    Event.NOTIFICATIONS_CHANGED: frozenset({"enabled"}),
     Event.REFERRAL_OPENED: frozenset({"referral_attached"}),
     Event.REFERRAL_CONVERTED: frozenset({"qualified_days"}),
     Event.REFERRAL_REWARD_GRANTED: frozenset({"reward_item_count"}),

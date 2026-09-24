@@ -250,9 +250,13 @@ def webapp_league(payload: dict = Body(default={})):
 
     if action == "create":
         status, code = league_rules.create(user_id, user_data, payload.get("name"), name)
+        if status == "ok":
+            analytics.capture(analytics.Event.LEAGUE_CREATED, user_id=user_id, properties={"surface": "miniapp"})
         return {"status": status, "code": code, "link": league_rules.invite_link(code, config.BOT_USERNAME) if code else ""}
     if action == "join":
         status, league = league_rules.join(user_id, user_data, payload.get("code"), name)
+        if status == "ok":
+            analytics.capture(analytics.Event.LEAGUE_JOINED, user_id=user_id, properties={"surface": "miniapp"})
         return {"status": status, "league": league}
     if action == "leave":
         status, league = league_rules.leave(user_id, payload.get("code"))

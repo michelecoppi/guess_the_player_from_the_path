@@ -3,6 +3,7 @@ import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from services import product_analytics as analytics
 from services.firebase_service import get_user_data, set_user_notifications
 from services.i18n import resolve_language, t
 
@@ -52,16 +53,26 @@ async def notify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = (await asyncio.to_thread(get_user_data, user_id))
     lang = (user_data or {}).get("language") or resolve_language(getattr(query.from_user, "language_code", None))
 
+    was_on = notifications_enabled(user_data or {})
     if query.data == ENABLE_INLINE:
-        already_on = notifications_enabled(user_data or {})
-        if not already_on:
+        if not was_on:
             (await asyncio.to_thread(set_user_notifications, user_id, chat_id, True))
+            _changed(user_id, True)
         await query.message.reply_text(
-            t(lang, "notify.already_enabled" if already_on else "notify.enabled_inline")
+            t(lang, "notify.already_enabled" if was_on else "notify.enabled_inline")
         )
     elif query.data == "enable_notify":
         (await asyncio.to_thread(set_user_notifications, user_id, chat_id, True))
+        if not was_on:
+            _changed(user_id, True)
         await query.edit_message_text(t(lang, "notify.enabled_confirm"))
     elif query.data == "disable_notify":
         (await asyncio.to_thread(set_user_notifications, user_id, chat_id, False))
+        if was_on:
+            _changed(user_id, False)
         await query.edit_message_text(t(lang, "notify.disabled_confirm"))
+
+
+def _changed(user_id, enabled):
+    """Only a real change is an event: re-pressing "on" when already on is not (#139)."""
+    analytics.capture(analytics.Event.NOTIFICATIONS_CHANGED, user_id=user_id, properties={"enabled": enabled})
