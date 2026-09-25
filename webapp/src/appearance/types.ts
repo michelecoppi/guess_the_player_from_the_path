@@ -5,8 +5,10 @@ export type EquippedCosmetics = Partial<Record<CosmeticSlot, string | null>>;
 export interface ThemeStyle {
   bg?: string; bg2?: string; card?: string; edge?: string; text?: string;
   muted?: string; accent?: string; accentText?: string; track?: string; pattern?: string; formation?: boolean;
+  /** Reviewed ambient motion id (appearance/decorations.ts THEME_MOTIONS). */
+  motion?: string;
 }
-export interface FrameStyle { ring?: string; spin?: boolean; tactics?: 3 | 11 }
+export interface FrameStyle { ring?: string; spin?: boolean; tactics?: 3 | 11; motion?: string }
 export interface TitleStyle { label?: string; color?: string }
 export interface SquaresStyle { correct?: string; wrong?: string; unused?: string }
 export interface CardStyle { finish?: string; ink?: string; paper?: string; glow?: string }

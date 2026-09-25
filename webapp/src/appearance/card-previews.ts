@@ -7,4 +7,7 @@ export const CARD_PREVIEWS = [
   { style: {"finish": "tactics", "paper": "#102925", "ink": "#edfff6", "glow": "#9fffd0"}, url: new URL('../assets/card-previews/referral_lavagna.png', import.meta.url).href },
   { style: {"finish": "eleven", "paper": "#102925", "ink": "#f2ffe4", "glow": "#c8f48b"}, url: new URL('../assets/card-previews/referral_undici_card.png', import.meta.url).href },
   { style: {"finish": "ticket", "paper": "#14222f", "ink": "#f6efdf", "glow": "#edbe7e"}, url: new URL('../assets/card-previews/card_trasferta.png', import.meta.url).href },
+  { style: {"finish": "aurora", "paper": "#06121a", "ink": "#eafff8", "glow": "#5ef0b0"}, url: new URL('../assets/card-previews/figurina_aurora.png', import.meta.url).href },
+  { style: {"finish": "halftone", "paper": "#1c0a0a", "ink": "#fff1ec", "glow": "#ff5a4d"}, url: new URL('../assets/card-previews/figurina_fanzine.png', import.meta.url).href },
+  { style: {"finish": "pixel", "paper": "#05070d", "ink": "#eef3ff", "glow": "#7cff4f"}, url: new URL('../assets/card-previews/figurina_8bit.png', import.meta.url).href },
 ];

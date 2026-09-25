@@ -1,8 +1,10 @@
 """Catalogue promises survive the renderer and the real purchase/equip projection."""
 import hashlib
 import json
+import re
 from pathlib import Path
 
+import pytest
 from PIL import Image, ImageChops
 
 from domains.shop import service as shop
@@ -75,3 +77,61 @@ def test_final_minute_collection_prices_and_equips_all_five_slots():
         assert appearance["squares"]["correct"] == "✦"
         assert appearance["number"] == "90"
         assert appearance["celebration"] == "stadium_wave"
+
+
+NEW_FINISHES = ("aurora", "pixel", "halftone")
+
+
+def test_new_card_finishes_are_distinct_and_never_cover_the_result():
+    for finish in NEW_FINISHES:
+        card = next(i for i in shop.all_items() if i["kind"] == "card" and i["style"]["finish"] == finish)
+        style = card["style"]
+        decorated = Image.open(render_share_card(412, 2, 3, style=style))
+        plain = Image.open(render_share_card(412, 2, 3, style={**style, "finish": "plain"}))
+        assert ImageChops.difference(decorated, plain).getbbox(), finish
+        # Attempts and score stay pixel-identical to the plain card.
+        assert ImageChops.difference(decorated.crop((160, 260, 630, 560)),
+                                     plain.crop((160, 260, 630, 560))).getbbox() is None, finish
+
+
+def _frontend_set(path, name):
+    """The quoted ids of one reviewed allowlist in the Mini App source."""
+    source = (ROOT / path).read_text(encoding="utf-8")
+    start = source.index(name)
+    block = source[start:source.index(")", source.index("[", start))]
+    return set(re.findall(r'"([a-z_]+)"', block))
+
+
+def test_every_motion_effect_and_finish_in_the_catalogue_is_drawn_by_the_mini_app():
+    """A catalogue value the Mini App parser does not know is silently dropped: the item
+    would be sold without the thing it describes."""
+    theme_motions = set(re.findall(r'\["([a-z]+)", "skin-', (ROOT / "webapp/src/appearance/decorations.ts").read_text(encoding="utf-8")))
+    frame_motions = _frontend_set("webapp/src/appearance/decorations.ts", "FRAME_MOTIONS")
+    effects = _frontend_set("webapp/src/appearance/index.ts", "const EFFECTS")
+    finishes = _frontend_set("webapp/src/appearance/index.ts", "const FINISHES")
+    celebrate = (ROOT / "webapp/src/features/daily/celebrate.ts").read_text(encoding="utf-8")
+    for item in shop.all_items():
+        style = item.get("style") or {}
+        if item["kind"] == "theme" and "motion" in style:
+            assert style["motion"] in theme_motions, item["id"]
+        if item["kind"] == "frame" and "motion" in style:
+            assert style["motion"] in frame_motions, item["id"]
+        if item["kind"] == "celebration" and style.get("effect"):
+            assert style["effect"] in effects, item["id"]
+            assert f"  {style['effect']}: {{" in celebrate, item["id"]
+        if item["kind"] == "card":
+            assert style["finish"] in finishes, item["id"]
+
+
+@pytest.mark.parametrize("bundle_id", ["pacchetto_aurora", "pacchetto_curva", "pacchetto_arcade", "pacchetto_hanami",
+                                       "pacchetto_spiaggia", "pacchetto_galassia", "pacchetto_temporale"])
+def test_animated_collections_are_cheaper_than_their_pieces_and_prorate(bundle_id):
+    bundle = shop.get_item(bundle_id)
+    pieces = [shop.get_item(i) for i in shop.grants_of(bundle)]
+    assert set(shop.CORE_KINDS) <= {i["kind"] for i in pieces}
+    assert shop.price_for({}, bundle) == bundle["price"] < sum(i["price"] for i in pieces)
+    theme = next(i for i in pieces if i["kind"] == "theme")
+    assert 0 < shop.price_for({"cosmetics": {"owned": [theme["id"]]}}, bundle) < bundle["price"]
+    worn = {"cosmetics": {"owned": bundle["grants"], "equipped": {i["kind"]: i["id"] for i in pieces}}}
+    appearance = shop.appearance(worn, "es")
+    assert appearance["theme"]["motion"] and appearance["frame"]["motion"]

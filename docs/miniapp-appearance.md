@@ -33,7 +33,14 @@ a dark tint (30% accent with #0b121b); dark surfaces retain 70% of their card co
 Glow uses 16% accent. Descriptions must describe this result, including Ghiaccio.
 
 The CSS shell applies decorative surface, glow, pattern and accent to the header,
-navigation and tabs. Product text, success/error/warning colors, focus, typography,
+navigation and tabs. `styles/cosmetic-effects.css` (loaded last) extends that to every
+tab: inside `[data-cosmetic-shell]` the structural `--bg`, `--bg-secondary`, `--card`,
+`--edge` and `--track` are derived from the scoped skin (darkened or lightly lifted
+`--skin-profile-surface`, never the theme's own `bg`/`bg2`), and the decorative
+brand-green highlights (active nav pill, own leaderboard row, mode icons, featured Arena
+card via `--sport-*`, referral hero) use `--skin-soft`. Accent-as-text on those surfaces
+(own row, back links, Daily status) uses `--skin-ink`, a lift of the accent toward
+`--text`, so deep accents stay readable. Real results keep `--success`/`--success-bg`. Product text, success/error/warning colors, focus, typography,
 layout and touch sizes remain product-owned. `skinTokens()` owns seven `--skin-*`
 variables. Titles use decorative color while keeping readable product text.
 Reviewed gradients belong to `appearance/decorations.ts`. Unknown gradients, CSS
@@ -58,13 +65,13 @@ achievements, completion, prices and equip rules remain backend-authoritative.
 | Slot | Rendering |
 | --- | --- |
 | theme | Decorative shell and scoped profile. Referral `formation: true` draws eleven players on own/public profiles and Shop try-on. |
-| frame | Reviewed avatar ring. General ring spinning stays off. Referral `tactics` accepts only 3 or 11 nodes, with one three-second ball movement. |
+| frame | Reviewed avatar ring. General ring spinning stays off. Referral `tactics` accepts only 3 or 11 nodes, with one three-second ball movement. Optional `motion` (`shine`, `pulse`, `orbit`) plays three times when the avatar appears, as `data-motion` on the ring. |
 | title | Localized backend label near the name, escaped as text. |
 | badge | Profile, public profile and supported identity/list surfaces. |
 | squares | Daily attempts and results; backend owns shared text. |
 | number | Identity string, including leading zero when supplied. |
 | celebration | Correct-answer feedback and explicit Shop try-on use the same two-second canvas effect. |
-| card | Backend shared image. Finishes: plain, night, foil, grain, tactics, eleven, ticket. Profiles and Shop show a labelled sample. |
+| card | Backend shared image. Finishes: plain, night, foil, grain, tactics, eleven, ticket, aurora, pixel, halftone. The last three decorate only the edges; the attempts/score band is pixel-identical to plain. Profiles and Shop show a labelled sample. |
 
 The Ultimo minuto collection (#143) adds a reviewed coral scoreboard texture and
 segmented avatar ring, with five purchasable core slots. Number 90 and the Stadium
@@ -74,8 +81,22 @@ The Mini App keeps structural backgrounds dark, so the plum colour tints scoped
 surfaces while coral marks the accent. Bundle ownership uses the existing prorated
 quote and all appearance styles pass through the reviewed parser.
 
+### Animated collections
+
+Seven collections add ambient theme motion: Aurora boreale, Coreografia, Sala giochi,
+Hanami, Beach soccer, Pallone cosmico and Derby sotto il diluvio. Each fills the five
+core slots, some add a card finish (aurora, halftone, pixel) and/or a celebration
+(petals, pixels, comets, bubbles, flares, lightning), and single numbers, titles,
+badges and the bouncing-ball celebration are sold separately. Theme `motion` is a
+reviewed id (`float`, `twinkle`, `breathe`) mapped by `THEME_MOTIONS` to the
+`--skin-motion` animation shorthand. It only moves (vertically, within a 24px
+oversize) or fades the decorative pattern layer of the shell, profiles, event
+boards and Shop stages. Surfaces clip vertical overflow, so motion never adds
+scroll. Unknown motion values are dropped by the parser.
+
 Formation entrance and ball movement are finite. `prefers-reduced-motion` disables
-these and canvas celebrations while keeping static decorations visible. Referral
+these, theme motion, frame flourishes and canvas celebrations while keeping static
+decorations visible. Referral
 cards show a tactical pitch and passing routes; their samples and shared PNGs are static.
 
 ## Faithful previews

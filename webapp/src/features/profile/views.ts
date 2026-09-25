@@ -382,6 +382,7 @@ export function renderProfileView(state: ProfileState): string {
           ringStyle: cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined,
           size: "large",
           tactics: cosmetics.frame.tactics,
+          ringMotion: cosmetics.frame.motion,
         })}
         <div class="hero-info">
           <h3 id="profile-heading" tabindex="-1" class="profile-player-name">

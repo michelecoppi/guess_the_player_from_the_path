@@ -18,6 +18,12 @@ new dated section below.
 
 ### Added
 
+- Shop: seven animated collections (Aurora boreale, Coreografia, Sala giochi, Hanami, Beach
+  soccer, Pallone cosmico, Derby sotto il diluvio) with ambient theme motion, bounded frame
+  flourishes (shine, pulse, orbit), three new card finishes (aurora, halftone, pixel), seven
+  new celebrations, and single numbers, titles and badges; every Mini App tab now follows the
+  worn theme (cards, nav, highlights) instead of stock slate and green
+  ([miniapp-appearance.md](docs/miniapp-appearance.md)).
 - Shared results end with an invitation line carrying the sharer's personal invite link
   (`?start=ref_…`), so a friend who joins from a shared result counts as their referral; the
   Mini App Daily page adds a "Copy" button for sharing outside Telegram
