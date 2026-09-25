@@ -67,6 +67,8 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | ↳ Experimentation platform |
 | [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement and targeted optimization |
 | [#23](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/23) | Documentation and AI-agent protocol |
+| [#146](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/146) | Remove the leftovers of the old Mini App and `/app/v2`, align the docs |
+| [#147](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/147) | Move group-round rules from the handler into the `groups` domain |
 
 ## Status flow and WIP limit
 
@@ -129,6 +131,11 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-25: the owner asked for #146 and #147. #146 cleans up after the #115 rollout
+  (the Vite Mini App is `/app`; the old page, `/app/v2` and the legacy client tooling are
+  gone) and realigns the docs that still described two frontends. #147 is the remaining
+  `groups` domain debt recorded in `tools/architecture.py`; no dependency between them.
 
 - 2026-09-24: the owner's two new visual shop collections and four standalone
   cosmetics were split into #143 and #144. Each collection has its own rendering

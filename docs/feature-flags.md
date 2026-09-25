@@ -8,9 +8,8 @@ gradual rollout and an emergency disable **without a deploy**, evaluated only on
 Out of scope, deliberately: experiments, variants, conversion metrics and A/B reporting
 ([#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52)), product
 analytics and cohorts ([#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)),
-an Admin UI for flags ([#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38)
-and the other Admin issues) and the `/app` → `/app/v2` switch
-([#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81)).
+and an Admin UI for flags ([#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38)
+and the other Admin issues).
 
 ## Architecture
 
@@ -203,7 +202,7 @@ HTTP/1.1 403
 {"detail": "feature_disabled", "code": "FEATURE_DISABLED", "feature": "shop"}
 ```
 
-The exception is handled, so it produces no traceback and no Sentry event. The V2 client
+The exception is handled, so it produces no traceback and no Sentry event. The Mini App client
 exposes it as `ApiError.code` / `isFeatureDisabled` (`webapp/src/api`).
 
 | Flag | When off | Deliberately **not** gated |
@@ -219,8 +218,7 @@ exposes it as `ApiError.code` / `isFeatureDisabled` (`webapp/src/api`).
 **Resolved exposure.** `/app/api/me` includes `"features": {"arena": true, …}` for the
 authenticated user: seven booleans, nothing else. `isFeatureEnabled(profile, key)` in
 `webapp/src/api` treats a missing block or key as enabled. The server remains the
-authority; the V2 Daily page shows a localized notice on `FEATURE_DISABLED`, and the legacy
-`/app` shows its generic error.
+authority; the Mini App Daily page shows a localized notice on `FEATURE_DISABLED`.
 
 **Telegram.** `@feature_gate(Flag.X)` wraps the handler object itself, so a command and the
 menu button that calls it cannot disagree. The notice is `feature.disabled` in
@@ -290,7 +288,7 @@ in the rollout stay in it as the percentage grows.
 - [`tests/test_feature_flags_emulator.py`](../tests/test_feature_flags_emulator.py): the real
   document, transactions, two replicas, a live API boundary and the CLI on the emulator.
 - `player_pipeline` regressions in [`tests/test_candidate_review.py`](../tests/test_candidate_review.py);
-  V2 contract in `tests/frontend/api.test.ts` and `tests/frontend/daily.test.ts`.
+  Mini App contract in `tests/frontend/api.test.ts` and `tests/frontend/daily.test.ts`.
 - Unit tests get a default-only flag service from `tests/conftest.py`; emulator tests read
   the stored document without cache.
 
@@ -303,7 +301,6 @@ in the rollout stay in it as the percentage grows.
   variants or metrics (#52).
 - No history of past values beyond `revision`, `updated_at`, `updated_by` (the weekly backup
   holds older snapshots).
-- The legacy `/app` does not read `features` and shows its generic error on 403; the V2 UI
-  does not hide navigation entries based on flags.
+- The Mini App does not hide navigation entries based on flags.
 - Offline scripts (`scripts/wikipedia/`, `scripts/import_players.py`) are not gated; they do
   not touch the Candidate pipeline runtime and only produce files reviewed through Git.

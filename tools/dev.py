@@ -70,12 +70,6 @@ def cmd_test_cov(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
-def cmd_test_node(extra_args: list[str]) -> int:
-    """Esegue i test client per la Mini App con Node.js."""
-    cmd = ["node", "--test", "tests/client.test.cjs"] + extra_args
-    return _run_cmd(cmd)
-
-
 def cmd_lint(extra_args: list[str]) -> int:
     """Esegue il linter ruff su tutto il repository."""
     cmd = [sys.executable, "-m", "ruff", "check", "."] + extra_args
@@ -209,7 +203,6 @@ def cmd_check(extra_args: list[str]) -> int:
         ("Build frontend (vite)", cmd_frontend_build, []),
         ("Integrita' dataset", cmd_dataset_check, []),
         ("Regressione dataset", cmd_dataset_regression_check, []),
-        ("Test client legacy (node)", cmd_test_node, []),
         ("Test frontend unitari", cmd_frontend_test, []),
         ("Unit test (pytest)", cmd_test, extra_args),
     ]
@@ -310,7 +303,6 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "check-api": (cmd_check_api, "Verifica i requisiti per l'avvio del server FastAPI bot.py (lifespan e code)"),
     "test": (cmd_test, "Esegue i test unitari con pytest"),
     "test-cov": (cmd_test_cov, "Esegue i test con report di copertura del codice"),
-    "test-node": (cmd_test_node, "Esegue i test client per la Mini App (richiede Node.js)"),
     "lint": (cmd_lint, "Controlla il codice con ruff"),
     "typecheck": (cmd_typecheck, "Verifica i tipi con mypy su services/ e domains/"),
     "syntax": (cmd_syntax, "Verifica la sintassi Python di tutti i moduli"),

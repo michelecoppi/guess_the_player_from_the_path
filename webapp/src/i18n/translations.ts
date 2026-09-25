@@ -20,9 +20,6 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       leaderboard: "Classifica",
     },
     shell: {
-      statusTitle: "Foundation Vite + TypeScript Attiva",
-      statusDesc: "Questa shell convalida il nuovo toolchain frontend senza alterare la Mini App legacy.",
-      toolchainProven: "Toolchain verificata: bundling, typecheck, stili scoped e integrazione Telegram.",
       activeTab: "Scheda attiva: {tab}",
       mockNotice: "Ambiente di sviluppo locale: mock Telegram attivo per l'utente {name}.",
     },
@@ -574,9 +571,6 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       leaderboard: "Leaderboard",
     },
     shell: {
-      statusTitle: "Vite + TypeScript Foundation Active",
-      statusDesc: "This shell validates the new frontend toolchain without altering the legacy Mini App.",
-      toolchainProven: "Toolchain verified: bundling, typecheck, scoped styles, and Telegram integration.",
       activeTab: "Active tab: {tab}",
       mockNotice: "Local development environment: Telegram mock active for user {name}.",
     },
@@ -1128,9 +1122,6 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       leaderboard: "Clasificación",
     },
     shell: {
-      statusTitle: "Fundación Vite + TypeScript Activa",
-      statusDesc: "Este shell valida la nueva cadena de herramientas sin alterar la Mini App heredada.",
-      toolchainProven: "Cadena verificada: empaquetado, typecheck, estilos y Telegram integrados.",
       activeTab: "Pestaña activa: {tab}",
       mockNotice: "Entorno local: simulador de Telegram activo para el usuario {name}.",
     },

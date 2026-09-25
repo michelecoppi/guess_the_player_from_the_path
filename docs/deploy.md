@@ -134,10 +134,8 @@ imposta da solo il pulsante **Play** del menu su quell'URL (`set_chat_menu_butto
 in alternativa si può configurare a mano da @BotFather → `/mybots` → il bot → *Bot Settings* →
 *Menu Button*. Telegram accetta solo HTTPS, che Cloud Run fornisce già.
 
-La Mini App V2 è servita dallo stesso servizio su `<PUBLIC_BASE_URL>/app/v2` (bundle compilato
-nel Dockerfile), ma **nessun pulsante la apre**: `/app` resta il default finché l'issue di
-rollout successiva a [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81)
-non la cambia. Vedi [miniapp.md](miniapp.md).
+La Mini App è il bundle Vite compilato nel Dockerfile e servito su `<PUBLIC_BASE_URL>/app`
+(se il bundle manca, `/app` risponde 503). Vedi [miniapp.md](miniapp.md).
 
 ### Termini e privacy in BotFather
 

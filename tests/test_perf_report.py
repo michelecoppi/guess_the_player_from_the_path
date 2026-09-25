@@ -24,7 +24,8 @@ ENTRIES = [
     request_log("/webhook", 5.2, "i1", "2026-09-16T08:00:05Z"),
     request_log("/webhook", 0.2, "i1", "2026-09-16T08:01:00Z"),
     request_log("/webhook", 0.4, "i1", "2026-09-16T08:02:00Z"),
-    request_log("/app/v2/assets/index-abc123.js", 0.01, "i1", "2026-09-16T08:02:01Z", "GET"),
+    request_log("/app/assets/index-def456.js", 0.01, "i1", "2026-09-16T08:02:01Z", "GET"),
+    request_log("/app/v2/assets/index-abc123.js", 0.01, "i1", "2026-09-16T08:02:02Z", "GET"),
     event("api.request.completed", "2026-09-16T08:00:05Z", route="/app/api/me", duration_ms=4800, cold_start=True),
     event("api.request.completed", "2026-09-16T08:01:00Z", route="/app/api/me", duration_ms=300,
           firestore_reads=14, firestore_ms=40),
@@ -49,7 +50,7 @@ def test_snapshot_separates_cold_starts_and_aggregates_every_source():
 
     webhook = snapshot["edge"]["POST /webhook"]
     assert webhook["count"] == 3 and webhook["cold_count"] == 1 and webhook["warm"]["p95"] == 400
-    assert "GET /app/v2/assets/*" in snapshot["edge"]
+    assert snapshot["edge"]["GET /app/assets/*"]["count"] == 2  # old /app/v2 logs land in the same group
 
     assert snapshot["container_startup"]["before_app_ms"]["p50"] == 4500
     assert snapshot["container_startup"]["lifespan_ms"]["p50"] == 300

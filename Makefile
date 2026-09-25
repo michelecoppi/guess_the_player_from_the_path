@@ -7,7 +7,7 @@
 
 PYTHON ?= python
 
-.PHONY: help check-env check-api test test-cov test-node lint typecheck syntax dataset-check check api admin webapp emulator frontend-dev frontend-build frontend-typecheck frontend-test
+.PHONY: help check-env check-api test test-cov lint typecheck syntax dataset-check check api admin webapp emulator frontend-dev frontend-build frontend-typecheck frontend-test
 
 help:
 	@$(PYTHON) -m tools.dev --help
@@ -23,9 +23,6 @@ test:
 
 test-cov:
 	@$(PYTHON) -m pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing
-
-test-node:
-	node --test tests/client.test.cjs
 
 lint:
 	@$(PYTHON) -m ruff check .

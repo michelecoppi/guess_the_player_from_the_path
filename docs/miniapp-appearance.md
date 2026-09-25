@@ -1,7 +1,6 @@
 # Mini App appearance
 
-Primary cosmetic contract (#66, #115, #122). The Vite Mini App is served at `/app`;
-`/app/v2` redirects there. Project #2 remains the source of work status.
+Primary cosmetic contract (#66, #115, #122). The Vite Mini App is served at `/app`. Project #2 remains the source of work status.
 
 ## Theme and token ownership
 
