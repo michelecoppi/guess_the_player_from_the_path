@@ -207,7 +207,7 @@ another. It is derived from the `/start` argument by
 | `/start` argument | `acquisition_channel` |
 | --- | --- |
 | none (bot opened directly) | `direct` |
-| `ref_…` | `referral` |
+| `ref_…` (a referral link, including the one at the end of every shared result, #150) | `referral` |
 | `duel_…` | `duel` |
 | `lega_…` | `league` |
 | `src_<source>` with `<source>` in `CAMPAIGN_SOURCES` (`tiktok`, `instagram`, `youtube`, `reddit`, `x`, `threads`, `facebook`, `telegram_group`, `creator`, `producthunt`, `directory`, `qr`; case-insensitive) | `<source>` |

@@ -248,6 +248,11 @@ card da condividere. I contatori stanno sul documento della sfida (`players_coun
   gruppo, ed e' l'unica riga che non puo' spoilerare niente. Le sfide recuperate
   dall'archivio si condividono marcate come tali, cosi' in un gruppo dove quella di oggi e'
   ancora aperta non sembrano il risultato di oggi.
+  L'ultima riga invita a provare con il **link invito di chi condivide** ("Riesci a fare
+  meglio? 👉 `t.me/<bot>?start=ref_…`", tradotta in IT/ES/EN): chi si iscrive da li' conta
+  come suo invito ai fini dei premi referral e nelle analytics arriva come `referral`. Senza
+  `BOT_TOKEN`/`BOT_USERNAME` resta il link del bot. Nella mini app, accanto a "Condividi",
+  **📋 Copia** mette lo stesso testo negli appunti per WhatsApp, Instagram o X (#150).
 - **Archivio** (`handlers/archive_handler.py`): rigiocare i giorni passati **senza punti**.
   Aprire un giorno mette l'utente in "modalita' archivio" (`archive_day` sul suo documento,
   non in memoria: su Cloud Run l'istanza puo' sparire fra un messaggio e l'altro), e da li' le

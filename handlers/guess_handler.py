@@ -20,6 +20,7 @@ import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from domains.referrals import service as referrals
 from domains.shop import service as shop
 from handlers.archive_handler import process_archive_answer
 from handlers.events_handler import process_event_answer
@@ -135,7 +136,7 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
         return
 
     if result["status"] == "wrong":
-        await _reply_wrong(message, lang, challenge, result, user_data)
+        await _reply_wrong(message, lang, challenge, result, user_data, link=referrals.invite_link(user_id))
         return
 
     bonus_message = t(lang, "guess.bonus", bonus=result["bonus"]) if result["bonus"] else ""
@@ -152,12 +153,12 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
         text,
         reply_markup=_share_keyboard(
             lang, result["attempts_used"], streak, hints=result["hints_used"],
-            symbols=shop.squares_symbols(user_data),
+            symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
         ),
     )
 
 
-async def _reply_wrong(message, lang, challenge, result, user_data):
+async def _reply_wrong(message, lang, challenge, result, user_data, link=None):
     """Il messaggio dopo una risposta sbagliata.
 
     Non e' mai solo un "no": porta il confronto con il calciatore scritto, e un bottone che
@@ -181,11 +182,11 @@ async def _reply_wrong(message, lang, challenge, result, user_data):
     # gruppo, e non rivela niente della soluzione.
     await message.reply_text(
         t(lang, "guess.wrong_last") + comparison,
-        reply_markup=_lost_keyboard(lang, result["attempts_used"], hints_used, user_data),
+        reply_markup=_lost_keyboard(lang, result["attempts_used"], hints_used, user_data, link=link),
     )
 
 
-def _lost_keyboard(lang, attempts_used, hints_used, user_data):
+def _lost_keyboard(lang, attempts_used, hints_used, user_data, link=None):
     """Condivisione e, per chi non ha le notifiche, il bottone per attivarle.
 
     Il secondo bottone e' li' perche' il messaggio dice "te lo dico a mezzanotte": a chi le
@@ -193,7 +194,7 @@ def _lost_keyboard(lang, attempts_used, hints_used, user_data):
     rows = []
     share = _share_button(
         lang, attempts_used, streak=0, solved=False, hints=hints_used,
-        symbols=shop.squares_symbols(user_data),
+        symbols=shop.squares_symbols(user_data), link=link,
     )
     if share:
         rows.append([share])
@@ -202,12 +203,13 @@ def _lost_keyboard(lang, attempts_used, hints_used, user_data):
     return InlineKeyboardMarkup(rows) if rows else None
 
 
-def _share_button(lang, attempts_used, streak, solved, hints=0, symbols=None):
+def _share_button(lang, attempts_used, streak, solved, hints=0, symbols=None, link=None):
+    """`link` e' il link invito di chi condivide (#150); senza, il link nudo del bot."""
     text = share_text(
         lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=solved, streak=streak,
-        hints=hints, symbols=symbols,
+        hints=hints, symbols=symbols, link=link,
     )
-    url = share_url(text)
+    url = share_url(text, link)
     if not url:
         return None
     return InlineKeyboardButton(t(lang, "share.button"), url=url)
@@ -255,17 +257,18 @@ async def share_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     pinned = trophies.showcase(user_data, lang)
     image = (await asyncio.to_thread(card_image, user_data, lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints, honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else ""))
     text = share_text(lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved,
-                      streak=streak, hints=hints, symbols=shop.squares_symbols(user_data))
+                      streak=streak, hints=hints, symbols=shop.squares_symbols(user_data),
+                      link=referrals.invite_link(user.id))
     await query.message.reply_photo(photo=image, caption=text)
 
 
-def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=None):
+def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=None, link=None):
     """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta.
 
     Vale anche per chi non ci e' arrivato (`solved=False`, cioe' "X/3"): la sconfitta e'
     meta' di quello che si condivide in un gruppo, ed e' l'unica riga che non puo'
     spoilerare niente."""
-    button = _share_button(lang, attempts_used, streak, solved, hints, symbols)
+    button = _share_button(lang, attempts_used, streak, solved, hints, symbols, link)
     card = _card_button(lang, attempts_used, streak, solved, hints)
     rows = [row for row in ([button] if button else [], [card]) if row]
     return InlineKeyboardMarkup(rows) if rows else None

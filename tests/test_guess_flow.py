@@ -227,6 +227,22 @@ def test_a_lost_day_can_be_shared_too(firebase, shareable):
     assert "X%2F3" in url  # "X/3", cioe' giornata non risolta
 
 
+def test_the_chat_shares_with_the_player_invite_link(firebase, shareable, monkeypatch):
+    """#150: il link in fondo alla condivisione e' l'invito di chi gioca, non quello nudo
+    del bot."""
+    from domains.referrals import service as referrals
+
+    monkeypatch.setattr(referrals, "BOT_USERNAME", "guess_the_player_bot")
+    monkeypatch.setattr(referrals, "BOT_TOKEN", "123:abc")
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0}
+    update, message = make_update("/guess ronaldo", user_id=42)
+    asyncio.run(guess_handler.guess(update, None))
+
+    url = message.markups[0].inline_keyboard[0][0].url
+    assert f"start%3D{referrals.code_for(42)}" in url
+    assert "Riesci%20a%20fare%20meglio" in url
+
+
 def test_attempts_left_over_do_not_show_the_share_button(firebase, shareable):
     update, message = make_update("/guess ronaldo")
     asyncio.run(guess_handler.guess(update, None))

@@ -12,6 +12,7 @@ strumenti di sviluppo puo' leggere quello che gli mandiamo.
 Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.py), mai il
 client: nessuna di queste funzioni riceve un id da fuori.
 """
+from domains.referrals import service as referrals
 from domains.shop import service as shop
 from services import feature_flags, firebase_service, game, trophies
 from services import product_analytics as analytics
@@ -351,16 +352,17 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
     symbols = shop.squares_symbols(user_data)
     if not is_daily_play(day, today):
         result = game.play_archive(user_id, day, answer, MAX_ARCHIVE_ATTEMPTS)
-        return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True, symbols=symbols)
+        return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True, symbols=symbols,
+                               link=referrals.invite_link(user_id))
 
     result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"),
                              surface="miniapp")
     if result.get("status") == "correct":
         result["answer"] = firebase_service.get_display_name_for_day(today)
-    return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols)
+    return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols, link=referrals.invite_link(user_id))
 
 
-def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols=None):
+def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols=None, link=None):
     """Aggiunge la card da condividere quando la partita si e' chiusa.
 
     La compone il server e non la pagina: cosi' i quadratini, la lampadina degli indizi e la
@@ -383,6 +385,7 @@ def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols
         archive=archive,
         hints=result.get("hints_used", 0),
         symbols=symbols,
+        link=link,
     )
-    result["share"] = {"text": text, "url": share_url(text)}
+    result["share"] = {"text": text, "url": share_url(text, link)}
     return result

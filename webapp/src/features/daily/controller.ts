@@ -186,6 +186,7 @@ export class DailyController {
       this.updateState({
         feedback: result,
         cardImage: null,
+        copyNotice: null,
         inputValue: "",
         status: nextStatus,
       });
@@ -268,6 +269,26 @@ export class DailyController {
       tg.openTelegramLink(url);
     } else if (typeof window !== "undefined") {
       window.open(url, "_blank", "noopener");
+    }
+  }
+
+  /**
+   * Copies the shared text to the clipboard (#150): the Telegram share sheet only reaches
+   * Telegram chats, this is how the result gets to WhatsApp, Instagram or X.
+   */
+  public async copyShareText(): Promise<boolean> {
+    const text = this.state.feedback?.share?.text;
+    if (!text) return false;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        this.updateState({ copyNotice: t("daily.copied") });
+        return true;
+      }
+      throw new Error("Clipboard API unavailable");
+    } catch {
+      this.updateState({ copyNotice: t("daily.copyError") });
+      return false;
     }
   }
 

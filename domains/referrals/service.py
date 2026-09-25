@@ -33,6 +33,14 @@ def code_for(user_id):
     return f"ref_{user_id}_{signature}"
 
 
+def invite_link(user_id):
+    """Il link invito personale, o None se il bot non sa ancora com'e' fatto (manca
+    `BOT_USERNAME` o `BOT_TOKEN`): chi lo usa ripiega sul link nudo del bot."""
+    if not (BOT_USERNAME and BOT_TOKEN):
+        return None
+    return f"https://t.me/{BOT_USERNAME}?start={code_for(user_id)}"
+
+
 def inviter_from_code(code):
     match = re.fullmatch(r"ref_([1-9][0-9]{0,15})_([a-f0-9]{20})", code or "")
     if not match or not BOT_TOKEN:
@@ -176,7 +184,7 @@ def dashboard(user_id, lang="it", cursor=None, user=None):
                      "status": entry.get("status"), "joined_day": entry.get("joined_day")})
     user = user if user is not None else fs.get_user_data(user_id) or {}
     return {"qualified": user.get("referral_qualified", 0), "required_days": REQUIRED_DAYS,
-            "link": f"https://t.me/{BOT_USERNAME}?start={code_for(user_id)}" if BOT_USERNAME and BOT_TOKEN else None,
+            "link": invite_link(user_id),
             "friends": rows, "next_cursor": snapshots[19].id if len(snapshots) > 20 else None,
             "rewards": [{"target": target, "items": [shop._card(shop.get_item(i), user, lang, shop.equipped(user)) for i in ids]}
                         for target, ids in REWARDS.items()]}

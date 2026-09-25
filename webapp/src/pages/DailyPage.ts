@@ -78,9 +78,17 @@ function renderMatchReport(state: DailyState, feedback?: DailyGuessResult): stri
       <div><strong>${attempts}<small> / ${state.challenge?.max_attempts ?? 5}</small></strong><span>${v("attemptsUsed")}</span></div>
     </div>
     <p class="report-note">${escapeHtml(won ? v("next") : t("daily.outOfAttempts"))}</p>
-    ${feedback?.share ? `<button class="btn" id="share">${icon("share")}${escapeHtml(t("daily.share"))}</button>` : ""}
+    ${feedback?.share ? `<button class="btn" id="share">${icon("share")}${escapeHtml(t("daily.share"))}</button>${renderCopy(state)}` : ""}
     ${renderResultCard(state)}
   </section>`;
+}
+
+/** "Copy the result" and its outcome, next to the Telegram share button (#150). */
+function renderCopy(state: DailyState): string {
+  const notice = state.copyNotice
+    ? `<p class="share-copy-notice" role="status">${escapeHtml(state.copyNotice)}</p>`
+    : "";
+  return `<button class="btn ghost" style="margin-top: 10px;" id="share-copy">📋 ${escapeHtml(t("daily.copyResult"))}</button>${notice}`;
 }
 
 function renderFeedback(
@@ -105,7 +113,7 @@ function renderFeedback(
     }
 
     const shareHtml = feedback.share
-      ? `<button class="btn ghost" style="margin-top: 10px;" id="share">${escapeHtml(t("daily.share"))}</button>${renderResultCard(state)}`
+      ? `<button class="btn ghost" style="margin-top: 10px;" id="share">${escapeHtml(t("daily.share"))}</button>${renderCopy(state)}${renderResultCard(state)}`
       : "";
 
     return `
@@ -237,6 +245,14 @@ export function attachDailyEventListeners(
     share.onclick = (event: MouseEvent) => {
       event.preventDefault();
       controller.openShareUrl();
+    };
+  }
+
+  const copy = container.querySelector<HTMLButtonElement>("#share-copy");
+  if (copy) {
+    copy.onclick = (event: MouseEvent) => {
+      event.preventDefault();
+      void controller.copyShareText();
     };
   }
 

@@ -504,3 +504,93 @@ test("DailyController: a FEATURE_DISABLED refusal shows a localized notice inste
     setLanguage("it");
   }
 });
+
+function withClipboard(writeText: (text: string) => Promise<void>): () => void {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", {
+    value: { clipboard: { writeText } },
+    configurable: true,
+    writable: true,
+  });
+  return () => {
+    if (previous) Object.defineProperty(globalThis, "navigator", previous);
+    else delete (globalThis as any).navigator;
+  };
+}
+
+function finishedController(share?: { text: string; url: string }): DailyController {
+  const controller = new DailyController();
+  (controller as any).state.feedback = { status: "correct", attempts_used: 2, share };
+  return controller;
+}
+
+test("DailyController: copying the result puts the shared text on the clipboard (#150)", async () => {
+  setLanguage("it");
+  const copied: string[] = [];
+  const restore = withClipboard(async (text) => {
+    copied.push(text);
+  });
+  try {
+    const text = "⚽ Guess the Player #214\n🟥🟩⬜ 2/3\nRiesci a fare meglio? 👉 https://t.me/bot?start=ref_1_x";
+    const controller = finishedController({ text, url: "https://t.me/share/url" });
+
+    assert.equal(await controller.copyShareText(), true);
+    assert.deepEqual(copied, [text]);
+    assert.equal(controller.getState().copyNotice, "Risultato copiato: incollalo dove vuoi.");
+  } finally {
+    restore();
+  }
+});
+
+test("DailyController: a refused clipboard shows how to copy by hand (#150)", async () => {
+  setLanguage("en");
+  const restore = withClipboard(async () => {
+    throw new Error("denied");
+  });
+  try {
+    const controller = finishedController({ text: "x", url: "https://t.me/share/url" });
+
+    assert.equal(await controller.copyShareText(), false);
+    assert.equal(controller.getState().copyNotice, "Couldn't copy: long-press the text to copy it.");
+    assert.equal(await finishedController(undefined).copyShareText(), false);
+  } finally {
+    restore();
+    setLanguage("it");
+  }
+});
+
+test("DailyPage: the copy button sits next to share and shows its outcome (#150)", () => {
+  setLanguage("it");
+  const { container, cleanup } = setupGlobalDom();
+  let copyCalls = 0;
+  const state = {
+    status: "correct" as const,
+    challenge: createTestDailyChallenge({ solved: true, attempts_used: 2 }),
+    squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+    inputValue: "",
+    copyNotice: "Risultato copiato: incollalo dove vuoi.",
+    feedback: { status: "correct" as const, attempts_used: 2, share: { text: "t", url: "https://t.me/share" } },
+  };
+  const mockController = {
+    getState: () => state,
+    copyShareText: async () => {
+      copyCalls++;
+      return true;
+    },
+  } as unknown as DailyController;
+  try {
+    container.innerHTML = renderDailyPage(state as any);
+    attachDailyEventListeners(container, mockController);
+
+    const copy = container.querySelector<HTMLButtonElement>("#share-copy");
+    assert.ok(container.querySelector("#share"));
+    assert.ok(copy);
+    assert.match(copy.textContent ?? "", /Copia il risultato/);
+    assert.match(container.querySelector(".share-copy-notice")?.textContent ?? "", /Risultato copiato/);
+
+    copy.click();
+    assert.equal(copyCalls, 1);
+  } finally {
+    cleanup();
+  }
+});

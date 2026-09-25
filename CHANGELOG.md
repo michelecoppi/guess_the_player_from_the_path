@@ -18,6 +18,10 @@ new dated section below.
 
 ### Added
 
+- Shared results end with an invitation line carrying the sharer's personal invite link
+  (`?start=ref_…`), so a friend who joins from a shared result counts as their referral; the
+  Mini App Daily page adds a "Copy" button for sharing outside Telegram
+  ([#150](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/150)).
 - `scripts/refresh_player_careers.py`: career refresh from Wikipedia for all active players
   (`--all`, resumable with `--resume`), for single players by id or name (`--player`) or from an
   id list, with `--dry-run` ([player-data-pipeline.md](docs/player-data-pipeline.md)).
