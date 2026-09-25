@@ -78,6 +78,12 @@ new dated section below.
 
 ### Changed
 
+- Removed the leftovers of the old Mini App: the `/app/v2` path (the Vite Mini App has been
+  `/app` since #115), the `window.PlayerClient` legacy bridge, the `test-node` command for the
+  deleted `tests/client.test.cjs`, and the `legacy` label of the startup beacon. The
+  environment validator checks the Vite sources instead of the deleted HTML/JS files, and
+  the docs describe one frontend
+  ([#146](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/146)).
 - Bot: `/info` is merged into `/help`, which now only explains the game (daily challenge,
   attempts, hints, points, streak, what's in the mini app) in IT/ES/EN and shows a single
   button to open the mini app, without the full menu keyboard or the command list. `/app`

@@ -55,7 +55,8 @@ _STARTUP_LINES = (
     ("Application startup complete", "app_ready"),
 )
 # Paths with ids or hashed file names are grouped so they aggregate.
-_PATH_GROUPS = ((re.compile(r"^/app/v2/assets/.+"), "/app/v2/assets/*"),)
+# Older logs still carry the retired /app/v2 prefix (#146).
+_PATH_GROUPS = ((re.compile(r"^/app(/v2)?/assets/.+"), "/app/assets/*"),)
 
 
 def log_filter(service: str = DEFAULT_SERVICE) -> str:

@@ -10,7 +10,6 @@ def test_commands_table_has_all_required_tasks():
         "check-api",
         "test",
         "test-cov",
-        "test-node",
         "lint",
         "typecheck",
         "syntax",

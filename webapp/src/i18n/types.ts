@@ -26,9 +26,6 @@ export interface TranslationSchema {
     leaderboard: string;
   };
   shell: {
-    statusTitle: string;
-    statusDesc: string;
-    toolchainProven: string;
     activeTab: string;
     mockNotice: string;
   };

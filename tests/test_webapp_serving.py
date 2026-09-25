@@ -32,12 +32,10 @@ def test_webapp_serving_and_revalidation():
     assert revalidated.status_code == 304
 
 
-def test_webapp_v2_redirects_to_app():
-    """The old /app/v2 preview path still lands on the real mini app, not a dead link."""
+def test_the_retired_app_v2_path_is_gone():
+    """/app/v2 was only the preview path of the current mini app (#146)."""
     client = TestClient(bot.app, follow_redirects=False)
-    response = client.get("/app/v2")
-    assert response.status_code == 308
-    assert response.headers["location"] == "/app"
+    assert client.get("/app/v2").status_code == 404
 
 
 def test_webapp_assets_serving_and_security():

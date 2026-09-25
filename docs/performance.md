@@ -22,7 +22,7 @@ il codice sta in [`services/performance.py`](../services/performance.py).
 | Letture/scritture Firestore per richiesta | wrapper sui metodi GAPIC del client Firestore | `firestore_reads`, `firestore_gets`, `firestore_queries`, `firestore_writes`, `firestore_ms` su `api.request.completed`; header `Server-Timing: app;dur=…, fs;dur=…;desc="reads=N"` |
 | Query lente | stesso wrapper | `firestore.query.slow` (WARNING) oltre 500 ms: `kind`, `collection` (solo il nome della collection, mai un path con id), `documents`, `duration_ms` |
 | Durata degli handler Telegram | worker `/internal/telegram-update` | `telegram.update.completed`: `duration_ms` del solo `process_update`, con `command`/`update_type`/`handler` già legati e l'uso di Firestore dell'update |
-| Avvio della Mini App sul telefono | legacy `webapp/index.html` + `webapp/client.js`, V2 `webapp/src/telemetry/startup.ts` | `POST /app/api/perf` → `miniapp.startup.measured`: `app` (`legacy`/`v2`), `outcome`, `ttfb_ms`, `dom_ready_ms`, `first_data_ms`, `api_me_ms`, `api_me_server_ms`, `transfer_kb` |
+| Avvio della Mini App sul telefono | `webapp/src/telemetry/startup.ts` | `POST /app/api/perf` → `miniapp.startup.measured`: `app` (sempre `v2`: l'etichetta storica della Mini App Vite; `legacy` non è più accettato, #146), `outcome`, `ttfb_ms`, `dom_ready_ms`, `first_data_ms`, `api_me_ms`, `api_me_server_ms`, `transfer_kb` |
 | Superamento dei budget | middleware | `performance.budget.exceeded` (WARNING): `route`, `metric` (`latency_ms` \| `firestore_reads`), `value`, `budget` |
 
 Note sul conteggio Firestore:
@@ -41,7 +41,7 @@ Il beacon della Mini App (`/app/api/perf`) richiede la firma di `initData` e pas
 bucket, ma **non legge il documento utente**: una misura non costa letture. Il server tiene
 solo le chiavi numeriche note, limitate a 0–120 000; qualunque altro campo inviato dal client
 viene scartato, e nel log non finiscono id né testo. Il client lo invia una volta per
-apertura, dopo il primo caricamento dei dati, senza bloccare l'interfaccia; nella V2 non
+apertura, dopo il primo caricamento dei dati, senza bloccare l'interfaccia; non
 parte con il mock di sviluppo.
 
 ## Baseline
@@ -230,12 +230,10 @@ mantiene al massimo 10.000 utenti con espulsione LRU. I limiti valgono per proce
 repliche, riavvii ed espulsioni rinnovano il budget. Per un tetto globale servirebbe
 uno store condiviso; impostare anche un massimo di istanze Cloud Run.
 
-HTML, CSS legale e modulo client hanno ETag SHA-256 e
+La pagina della Mini App e il CSS legale hanno ETag SHA-256 e
 `Cache-Control: public, max-age=0, must-revalidate`: l'apertura successiva rivalida e
-riceve 304 senza corpo quando il contenuto è invariato. Gli asset della V2 hanno nomi con
-hash e `Cache-Control: public, max-age=31536000, immutable`. `webapp/client.js` contiene
-escape HTML, iniziali, merge del profilo e il calcolo delle metriche di avvio, verificati con
-`node --test` anche in CI.
+riceve 304 senza corpo quando il contenuto è invariato. Gli asset (`/app/assets/*`) hanno nomi con
+hash e `Cache-Control: public, max-age=31536000, immutable`.
 
 Gli endpoint che usano Firestore sincrono sono funzioni `def`: FastAPI li esegue
 nel pool di thread, lasciando libero il ciclo asincrono per le altre richieste.
@@ -267,5 +265,5 @@ start qui sopra.
   cold start, fasi del container, budget e confronto fra istantanee.
 - [`tests/test_webapp_performance.py`](../tests/test_webapp_performance.py): una lettura
   Firestore bloccata non blocca `/ping`, `/me` legge l'utente una volta sola.
-- `tests/frontend/startup-timing.test.ts` e `tests/client.test.cjs`: metriche di avvio
+- `tests/frontend/startup-timing.test.ts`: metriche di avvio
   derivate dalla timeline di Performance, un solo invio per apertura, nessun errore visibile.

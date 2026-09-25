@@ -171,7 +171,8 @@ def test_startup_phases_emit_one_record(records):  # noqa: F811
 
 
 @pytest.mark.parametrize("payload", [
-    None, {}, {"app": "v3", "metrics": {"ttfb_ms": 1}}, {"app": "v2", "metrics": "fast"},
+    None, {}, {"app": "v3", "metrics": {"ttfb_ms": 1}}, {"app": "legacy", "metrics": {"ttfb_ms": 1}},
+    {"app": "v2", "metrics": "fast"},
     {"app": "v2", "metrics": {"ttfb_ms": -1, "api_me_ms": float("nan"), "dom_ready_ms": 10**9, "x": 5}},
     {"app": "v2", "metrics": {"first_data_ms": True}},
 ])
@@ -181,10 +182,10 @@ def test_unusable_miniapp_reports_are_rejected(payload):
 
 def test_miniapp_report_keeps_only_known_bounded_numbers():
     fields = performance.miniapp_startup_fields({
-        "app": "legacy", "outcome": "weird", "user_id": 42,
+        "app": "v2", "outcome": "weird", "user_id": 42,
         "metrics": {"first_data_ms": 812.345, "ttfb_ms": 120, "name": "Anna", "transfer_kb": 0},
     })
-    assert fields == {"app": "legacy", "first_data_ms": 812.3, "ttfb_ms": 120.0, "transfer_kb": 0.0, "outcome": "ok"}
+    assert fields == {"app": "v2", "first_data_ms": 812.3, "ttfb_ms": 120.0, "transfer_kb": 0.0, "outcome": "ok"}
 
 
 def test_perf_endpoint_requires_a_signature_and_reads_nothing(server, monkeypatch, records):  # noqa: F811

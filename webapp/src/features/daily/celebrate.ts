@@ -1,6 +1,5 @@
 /**
  * Canvas particle celebration effect on correct guess.
- * Exactly matches the visual experience of legacy webapp/index.html.
  */
 
 export type CelebrationKind =

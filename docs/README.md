@@ -33,8 +33,8 @@ English. Both are equally authoritative when listed as primary below.
 | Event templates | [event-templates.md](event-templates.md) | Template schema v2 (filters, rules, rewards, schedule), event types, validation in CI/Admin/runtime, what is copied onto an event, creating or editing a template |
 | Daily and game modes | [game-modes.md](game-modes.md) | Daily lifecycle, Archive, Training, Arena duels, group rounds, Events, leaderboards/leagues, referral |
 | Player-facing rules and commands | [README](../README.md) | How to play, commands, shop, dataset schema, admin commands |
-| Mini App | [miniapp.md](miniapp.md) | Legacy `/app` vs V2 `/app/v2`, API contract and auth, V2 structure, rollout gate (#81) |
-| Mini App V2 appearance | [miniapp-appearance.md](miniapp-appearance.md) | Structural dark-only contract, token ownership, eight cosmetic slots |
+| Mini App | [miniapp.md](miniapp.md) | The Vite Mini App on `/app`, API contract and auth, frontend structure |
+| Mini App appearance | [miniapp-appearance.md](miniapp-appearance.md) | Structural dark-only contract, token ownership, eight cosmetic slots |
 | Admin | [admin.md](admin.md) | Telegram admin commands vs Streamlit Admin, boundaries, capabilities, open #12 sub-issues |
 | Firestore | [firestore.md](firestore.md) | Collections, what belongs in Firestore, credentials, concurrency, emulator strategy |
 | Deployment | [deploy.md](deploy.md) | Cloud Run, Workload Identity Federation, service env vars, Cloud Scheduler, backup workflow setup, manual deploy/rollback |

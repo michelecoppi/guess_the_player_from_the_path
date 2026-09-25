@@ -35,7 +35,6 @@ import {
   isMockTelegramEnvironment,
 } from "@/telegram/webapp";
 import { resolveLanguage, setLanguage } from "@/i18n";
-import { exposeLegacyBridge } from "@/utils/legacy-bridge";
 import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
 import { TrainingController } from "@/features/training/controller";
@@ -101,7 +100,6 @@ export class App {
       return this.shopController.equip(itemId);
     });
     this.lastArenaSubview = this.arenaController.getState().subview;
-    exposeLegacyBridge();
 
     this.shopController.onAppearanceChanged = (appearance) => {
       this.profileController.syncAppearance(appearance);

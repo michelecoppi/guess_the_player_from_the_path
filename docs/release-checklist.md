@@ -21,7 +21,7 @@ pragmatically to a single-service Telegram Mini App product — not to every com
 
 | Bump | When |
 | --- | --- |
-| **MAJOR** | A breaking change to the Mini App API contract (`/app/api/*`) or bot behaviour a client depends on; a Firestore schema change that is not backward-compatible with the previous release's code; removing a user-facing feature; switching the `/app` default to V2 ([#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) rollout) |
+| **MAJOR** | A breaking change to the Mini App API contract (`/app/api/*`) or bot behaviour a client depends on; a Firestore schema change that is not backward-compatible with the previous release's code; removing a user-facing feature; changing which frontend `/app` serves |
 | **MINOR** | A new user-facing feature, game mode, Mini App screen, or backward-compatible API addition |
 | **PATCH** | Bug fixes, dependency bumps, backend/infra changes with no user-visible contract change, documentation released alongside a code change |
 
@@ -179,18 +179,13 @@ document is deliberately not duplicating).
       `security-exceptions.json` reviewed and still justified ([security.md](security.md)).
 - [ ] **Backend tests** — covered by the CI run above (`pytest` with coverage gate); no
       separate run needed if CI is green on the exact SHA.
-- [ ] **Frontend tests** — covered by the CI run above (`node --test`, `npm run
-      test:frontend`).
+- [ ] **Frontend tests** — covered by the CI run above (`npm run test:frontend`).
 - [ ] **Vite production build** — covered by CI (`npm run build`); if deploying manually
       instead of via `deploy.yml`, run `python -m tools.dev release-check` locally and
       confirm `npm run build` succeeds from the same SHA before deploying — the Dockerfile
       re-builds it, but a red build should be caught here, not in `gcloud run deploy`.
-- [ ] **Legacy `/app` regression** — manual smoke: open `/app` in Telegram or a browser,
-      play one Daily guess, confirm no console errors. `/app` is the production default
-      until [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81).
-- [ ] **`/app/v2` regression** — same smoke on `/app/v2`
-      ([miniapp.md](miniapp.md)). Both exist in production; both must work regardless of
-      which is the default.
+- [ ] **`/app` regression** — manual smoke: open `/app` in Telegram or a browser,
+      play one Daily guess, confirm no console errors ([miniapp.md](miniapp.md)).
 - [ ] **Dataset validation** — covered by CI (`data/*.json` schema check,
       `scripts/dataset_report.py --strict`).
 - [ ] **Dataset regression** — covered by CI (`scripts.dataset_regression --check` against
@@ -417,7 +412,7 @@ leave the next Daily unavailable. Daily selection logic itself is out of scope f
 Only for releases touching Shop/payments — manual/safe verification, **never** a real paid
 transaction in CI or as part of this checklist:
 
-- catalog loads (`/shop` in both `/app` and `/app/v2`);
+- catalog loads (`/shop` in chat and the Shop tab in `/app`);
 - purchase initiation reaches Telegram's payment sheet (no completed charge needed to
   verify this);
 - a delivery/reconciliation check on a *past* known purchase (via `/admin_support_reply` /
@@ -462,7 +457,6 @@ Run against the live deployed revision, not the CI emulator. Required rows first
 | Telegram bot | Required | `/start` in Telegram gets a response |
 | Daily | Required | `/show` returns today's challenge |
 | `/app` | Required | Opens, one guess submits successfully |
-| `/app/v2` | Required | Opens, one guess submits successfully |
 | Authenticated API | Required | One `/app/api/*` call succeeds with a real Telegram `initData` |
 | Arena/Training | Conditional | If those modes were touched — one round each |
 | Leaderboard | Conditional | If ranking/leagues were touched |
@@ -524,21 +518,13 @@ no secrets are added to image metadata, and none should be. `version` (also from
 the formal release label, useful for a human-readable "what's live," but §2.1 is explicit
 that it is not itself proof of a commit — `revision` is.
 
-## 15. Mini App V2 release context
+## 15. Mini App release context
 
-Documented here because a future rollout issue will use this checklist, and getting the
-state wrong would misdirect that work:
-
-- V2 functional migration is complete; the [#61](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/61)
-  redesign is complete.
-- `/app` (legacy) is still the production default — the Telegram menu button and any
-  existing user-facing links point at it.
-- `/app/v2` is a released, reachable candidate for the default, not a preview environment —
-  both variants must pass §5/§11 on every release, not just the one currently linked.
-- [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) is the
-  final V2 review gate. The rollout/switch itself (making `/app/v2` the default) is a
-  **separate future issue**, not part of #49, and will use this checklist when it happens —
-  it is a MAJOR release under §1 (a default user-facing surface change).
+- The Vite + TypeScript Mini App is the only frontend and is served on `/app`
+  (rollout #115 after the #81 review). The old HTML/JS page and the `/app/v2` path were
+  removed (#146), so §5/§11 smoke-test `/app` only.
+- Anything that changes which frontend `/app` serves, or removes a user-facing Mini App
+  entry point, is a MAJOR release under §1.
 
 ## Adopting this process
 
@@ -558,4 +544,4 @@ Not implemented by this document or its tooling — see the linked issues:
 states the release gate),
 [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51)
 (feature flags), [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)
-(analytics), and the V2 rollout issue referenced in §15.
+(analytics).
