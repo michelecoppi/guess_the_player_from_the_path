@@ -54,7 +54,7 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 | Composition root | [`bot.py`](../bot.py), [`config.py`](../config.py) | Initialises observability and analytics, builds the PTB `Application` and the FastAPI app and wires them with a `TelegramBridge`; holds no routes or rules |
 | Bot app | [`apps/bot/application.py`](../apps/bot/application.py) | PTB `Application` with its shared HTTP client, registration of every Telegram handler (in order), webhook/command/menu-button setup and shutdown |
 | API app | [`apps/api/`](../apps/api/) | `app.py` factory (lifespan with secret validation, `FeatureDisabled` mapping, middleware, routers), `observe.py` (request middleware), `internal.py` (webhook and Cloud Tasks/Scheduler workers), `miniapp.py` (Mini App JSON API, `initData` auth, rate limit, flags), `static.py` (`/`, `/ping`, Mini App pages and assets, legal pages), `bridge.py` (what the API needs from the bot) |
-| Telegram handlers | [`handlers/`](../handlers/) | Translate Telegram updates/callbacks into service calls and localized replies; some flows (for example group rounds in `handlers/group_handler.py`) still keep rules here |
+| Telegram handlers | [`handlers/`](../handlers/) | Translate Telegram updates/callbacks into service calls and localized replies |
 | Application services | [`services/`](../services/) | Game rules ([`game.py`](../services/game.py), [`matching.py`](../services/matching.py), [`hints.py`](../services/hints.py), [`streak.py`](../services/streak.py)), content generation, Mini App projections ([`webapp_api.py`](../services/webapp_api.py)), arena/events, shop, trophies, referrals, leagues, i18n, image rendering |
 | Persistence | [`services/firebase_service.py`](../services/firebase_service.py) (client, collection names, facade/re-exports) + [`services/repos/`](../services/repos/) (per-area repositories) | All Firestore reads/writes and transactions |
 | Durable background work | [`services/task_queue.py`](../services/task_queue.py), [`services/work_receipts.py`](../services/work_receipts.py), [`services/broadcast_store.py`](../services/broadcast_store.py), [`handlers/daily_job.py`](../handlers/daily_job.py), [`services/monthly_closure.py`](../services/monthly_closure.py) | Cloud Tasks enqueueing with deterministic names, per-update receipts/locks, paged broadcast and monthly close |
@@ -85,9 +85,11 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 - Domain code is moving from the technical layers (`handlers/`, `services/`,
   `admin_pages/`) into domain packages under `domains/`, one domain at a time. Already
   moved (#111): the Candidate pipeline and its source adapters (`domains/players/`), the
-  shop (`domains/shop/`) and referrals (`domains/referrals/`). Everything else is still in
+  shop (`domains/shop/`), referrals (`domains/referrals/`) and group rounds
+  (`domains/groups/`, #147). Everything else is still in
   the flat `services/` package. `services/repos/` was extracted from `firebase_service.py`,
-  which still re-exports repository functions (including `domains/shop/repository.py`) so
+  which still re-exports repository functions (including `domains/shop/repository.py` and
+  `domains/groups/repository.py`) so
   existing imports and test monkeypatches keep working.
 - There is no dependency-injection container; modules import each other and tests
   replace collaborators with in-memory fakes or monkeypatching.
@@ -114,7 +116,7 @@ describes the components, not their files.
 | Domain | `users` | User documents, streaks, leaderboards and seasons, monthly closure, trophies | `repos/users`, `repos/seasons`, `streak`, `monthly_closure`, `trophies` |
 | Domain | `shop` | Cosmetics catalogue, purchases, looks, shop editor | `domains/shop/` (`service`, `repository`, `editor`) |
 | Domain | `referrals` | Referral links, qualification and rewards | `domains/referrals/service.py` |
-| Domain | `groups` | Group rounds (rules still partly in `handlers/group_handler.py`) | `repos/groups` |
+| Domain | `groups` | Group rounds: rules and Firestore access | `domains/groups/` (`service`, `repository`) |
 | Domain | `leagues` | Private leagues | `leagues`, `repos/leagues` |
 | Infrastructure | — | Technical services without product rules: Firestore client and facade, feature flags, observability, performance, Cloud Tasks, receipts, backup, version, dates, i18n, fonts | `firebase_service`, `repos/bulk`, `repos/file_lock`, `feature_flags`, `observability`, `performance`, `task_queue`, `work_receipts`, `broadcast_store`, `alerts`, `backup_status`, `firestore_backup/`, `version`, `dates`, `i18n`, `content_i18n`, `fonts` |
 
@@ -130,7 +132,8 @@ Checked on the real import graph, imports inside functions included, by
 4. Infrastructure never imports a domain.
 5. A domain imports another domain only along a declared edge, and the declared graph is
    acyclic. Bottom to top: `players` → `daily`, `analytics` → `game` → `events` → `users` →
-   `shop` → `referrals`; `groups` and `leagues` depend on no other domain. An arrow reads
+   `shop` → `referrals`; `groups` uses `players` and `game` (answer matching, feedback and
+   training material), `leagues` depends on no other domain. An arrow reads
    "is used by": `game` may import `players`, `daily` and `analytics`, never the reverse.
 
 Existing violations are recorded, with the reason, in `KNOWN_VIOLATIONS` instead of being
@@ -191,7 +194,8 @@ its checks, done) →
 a pure composition root, done) →
 [#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111) (players
 Candidate pipeline, shop and referrals moved into `domains/`, with the procedure above, done).
-The remaining domains (`game`, `daily`, `events`, `users`, `groups`, `leagues`, `analytics` and
+Group rounds followed in #147 (`domains/groups/`). The remaining domains (`game`, `daily`,
+`events`, `users`, `leagues`, `analytics` and
 the rest of `players`) move with that procedure when a PR next works in them; the recorded
 debt in `KNOWN_VIOLATIONS` is paid down the same way.
 
@@ -241,7 +245,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Area | Current implementation | Primary document |
 | --- | --- | --- |
 | Daily challenge, Archive | `services/daily_generator.py`, `services/daily_planner.py`, `services/daily_challenge.py`, `services/game.py`, `services/past_challenges.py`, `handlers/guess_handler.py`, `handlers/archive_handler.py` | [game-modes.md](game-modes.md) |
-| Training, Arena duels, group rounds | `services/arena.py`, `services/practice_content.py`, `handlers/training_handler.py`, `handlers/group_handler.py` | [game-modes.md](game-modes.md) |
+| Training, Arena duels, group rounds | `services/arena.py`, `services/practice_content.py`, `handlers/training_handler.py`, `domains/groups/`, `handlers/group_handler.py` | [game-modes.md](game-modes.md) |
 | Events | `services/event_generator.py`, `services/event_rules.py`, `services/event_config.py`, `services/event_template_editor.py`, `services/app_events.py`, `services/manual_event_service.py`, `handlers/events_handler.py` | [game-modes.md](game-modes.md#events) |
 | Difficulty | `services/difficulty.py`, `services/difficulty_calibration.py`, `data/config.json` | [difficolta.md](difficolta.md) |
 | Leaderboard, seasons, private leagues | `services/repos/users.py`, `services/repos/seasons.py`, `services/leagues.py`, `services/monthly_closure.py`, `handlers/top_users_handler.py`, `handlers/league_handler.py` | [game-modes.md](game-modes.md#leaderboards-seasons-and-leagues) |

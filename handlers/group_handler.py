@@ -1,42 +1,22 @@
-"""Partita di gruppo: un round alla volta, vince chi risponde per primo.
-
-Non e' la sfida di oggi ripubblicata nel gruppo, ed e' la scelta che regge tutto il resto:
-la risposta comparirebbe in chiaro davanti a chi non ha ancora giocato, e brucerebbe la
-giornata anche a chi non stava guardando. Il round pesca invece dallo stesso materiale
-dell'allenamento (services/practice_content.py): calciatori riservati, che come sfida del
-giorno non escono mai, e sfide gia' passate, che sono pubbliche per costruzione.
-
-Le altre tre conseguenze della stessa scelta:
-
-- **i punti restano nel gruppo** (`group_rounds/{chat}/players/{utente}`) e non toccano ne'
-  la classifica generale ne' quella del mese: un gruppo creato con un account secondario non
-  sposta niente di quello che conta;
-- **si risponde con `/guess`**, non a messaggio libero. Leggere i messaggi liberi di un
-  gruppo vorrebbe dire spegnere la privacy mode in BotFather, cioe' ricevere *tutti* i
-  messaggi di *tutti* i gruppi in cui il bot e' dentro. I comandi arrivano lo stesso;
-- **non serve essersi registrati**: in gruppo non c'e' niente da salvare sull'utente, e
-  chiedere /start prima di poter giocare toglierebbe alla modalita' l'unica cosa che la
-  rende utile, cioe' che chi passa di li' possa rispondere e basta.
+"""Adattatore Telegram della partita di gruppo: `/round`, `/guess` in un gruppo e
+`/standings`. Le regole (materiale che non spoilera, tentativi, chi vince, punti che restano
+nel gruppo) stanno in `domains/groups/service.py`; qui si legge l'update e si scrive la
+risposta localizzata.
 """
 import asyncio
 import html
-import logging
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from domains.groups import service as groups
 from handlers.legend_handler import legend_keyboard
-from services import firebase_service, practice_content
 from services import product_analytics as analytics
-from services.difficulty import points_for_difficulty
-from services.guess_feedback import build_comparison, comparison_text
+from services.guess_feedback import comparison_text
 from services.i18n import difficulty_label, resolve_language, t
-from services.matching import find_match
 from services.path_image import render_career_path_image
 from services.share import bot_link
 
-MAX_GROUP_ATTEMPTS = 3
-STANDINGS_SIZE = 10
 NEW_ROUND = "grp_new"
 
 
@@ -77,29 +57,26 @@ async def group_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text(t(lang, "group.private_hint"))
         return
 
-    chat_id = message.chat.id
-    previous = (await asyncio.to_thread(firebase_service.get_group_round, chat_id)) or {}
-    challenge = (await asyncio.to_thread(practice_content.pick, exclude_keys=previous.get("recent_keys", [])))
-    if not challenge or not challenge.get("career_path"):
+    opened = await asyncio.to_thread(groups.open_round, message.chat.id)
+    if not opened:
         await message.reply_text(t(lang, "group.empty"))
         return
 
-    round_doc = (await asyncio.to_thread(firebase_service.start_group_round, chat_id, challenge))
     # Who opened it, never which group: a group id would identify the chat (#139).
     if update.effective_user:
         analytics.capture(analytics.Event.GROUP_ROUND_STARTED, user_id=update.effective_user.id)
 
-    difficulty = difficulty_label(lang, challenge.get("difficulty"))
-    career_path = challenge["career_path"]
-    photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty.upper(), footer=f"{difficulty} ({points_for_difficulty(challenge.get('difficulty'))})", lang=lang))
+    difficulty = difficulty_label(lang, opened.difficulty)
+    career_path = opened.career_path
+    photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty.upper(), footer=f"{difficulty} ({opened.points})", lang=lang))
     await message.reply_photo(
         photo=photo,
         caption=t(
             lang, "group.round_opened",
-            number=round_doc["number"],
+            number=opened.number,
             difficulty=difficulty,
-            points=points_for_difficulty(challenge.get("difficulty")),
-            attempts=MAX_GROUP_ATTEMPTS,
+            points=opened.points,
+            attempts=groups.MAX_GROUP_ATTEMPTS,
         ),
         reply_markup=_challenge_keyboard(lang),
         parse_mode="HTML",
@@ -110,57 +87,33 @@ async def process_group_answer(update: Update, context: ContextTypes.DEFAULT_TYP
     """Un `/guess` arrivato da un gruppo. La chiama guess_handler."""
     message = update.effective_message
     lang = _lang_for(update)
-    chat_id = message.chat.id
-
-    round_doc = (await asyncio.to_thread(firebase_service.get_group_round, chat_id))
-    if not round_doc or not round_doc.get("correct_answers"):
-        await message.reply_text(t(lang, "group.no_round"))
-        return
-
-    if not user_answer:
-        await message.reply_text(t(lang, "group.usage"), parse_mode="HTML")
-        return
-
-    if round_doc.get("solved_by"):
-        await message.reply_text(
-            t(lang, "group.already_solved", winner=_safe(round_doc.get("solved_name"))),
-            parse_mode="HTML",
-        )
-        return
-
     user = update.effective_user
     name = _display_name(user)
-    number = round_doc.get("number", 0)
 
-    attempt = (await asyncio.to_thread(firebase_service.begin_group_attempt, chat_id, user.id, number, name, MAX_GROUP_ATTEMPTS))
-    if not attempt["ok"]:
+    outcome = await asyncio.to_thread(groups.submit_answer, message.chat.id, user.id, name, user_answer)
+
+    if outcome.status == "no_round":
+        await message.reply_text(t(lang, "group.no_round"))
+    elif outcome.status == "usage":
+        await message.reply_text(t(lang, "group.usage"), parse_mode="HTML")
+    elif outcome.status == "already_solved":
+        # Senza nome: il round l'ha appena preso qualcun altro, vincendo la transazione.
+        winner = _safe(outcome.winner) if outcome.winner is not None else "?"
+        await message.reply_text(t(lang, "group.already_solved", winner=winner), parse_mode="HTML")
+    elif outcome.status == "no_attempts":
         await message.reply_text(t(lang, "group.no_attempts", name=_safe(name)), parse_mode="HTML")
-        return
-
-    logging.info(f"[GROUP] {chat_id} round {number}: tentativo di {user.id} ({len(user_answer)} caratteri)")
-
-    if not find_match(user_answer, round_doc.get("correct_answers", [])):
-        comparison = comparison_text(lang, build_comparison(user_answer, round_doc.get("player_id")))
+    elif outcome.status == "wrong":
         await message.reply_text(
-            t(lang, "group.wrong", name=_safe(name), attempts_left=attempt["attempts_left"]) + comparison,
+            t(lang, "group.wrong", name=_safe(name), attempts_left=outcome.attempts_left)
+            + comparison_text(lang, outcome.comparison),
             parse_mode="HTML",
         )
-        return
-
-    # Due risposte giuste nello stesso istante, in un gruppo, sono la norma: il round lo
-    # prende chi vince la transazione, esattamente come il bonus del primo sulla sfida di
-    # oggi.
-    if not (await asyncio.to_thread(firebase_service.claim_group_round, chat_id, number, user.id, name)):
-        await message.reply_text(t(lang, "group.already_solved", winner="?"), parse_mode="HTML")
-        return
-
-    points = points_for_difficulty(round_doc.get("difficulty"))
-    (await asyncio.to_thread(firebase_service.add_group_points, chat_id, user.id, name, points))
-    await message.reply_text(
-        t(lang, "group.correct", name=_safe(name), points=points, number=number),
-        reply_markup=_challenge_keyboard(lang),
-        parse_mode="HTML",
-    )
+    else:
+        await message.reply_text(
+            t(lang, "group.correct", name=_safe(name), points=outcome.points, number=outcome.number),
+            reply_markup=_challenge_keyboard(lang),
+            parse_mode="HTML",
+        )
 
 
 async def group_standings(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -172,18 +125,18 @@ async def group_standings(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text(t(lang, "group.private_hint"))
         return
 
-    players = (await asyncio.to_thread(firebase_service.get_group_leaderboard, message.chat.id, limit=STANDINGS_SIZE))
-    if not players:
+    rows = await asyncio.to_thread(groups.standings, message.chat.id)
+    if not rows:
         await message.reply_text(t(lang, "group.standings_empty"))
         return
 
     text = t(lang, "group.standings_title")
-    for position, player in enumerate(players, start=1):
-        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(position, f"{position}.")
+    for row in rows:
+        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(row["position"], f"{row['position']}.")
         text += t(
             lang, "group.standings_line",
-            medal=medal, name=_safe(player.get("name")),
-            points=player.get("points", 0), rounds=player.get("rounds_won", 0),
+            medal=medal, name=_safe(row["name"]),
+            points=row["points"], rounds=row["rounds_won"],
         )
 
     await message.reply_text(

@@ -109,6 +109,11 @@ new dated section below.
   now also cover `referrals`, `app_duels`, `group_rounds`, `monthly_closures`, `daily_jobs` and
   subcollections under missing parent documents, and the weekly workflow uploads only a
   validated file ([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50)).
+- Group rounds: the rules (opening a round on training material, attempts, who wins,
+  points, standings) moved from `handlers/group_handler.py` into `domains/groups/service.py`,
+  and the repository from `services/repos/groups.py` to `domains/groups/repository.py`. The
+  handler only renders replies; bot behaviour is unchanged
+  ([#147](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/147)).
 
 ### Fixed
 

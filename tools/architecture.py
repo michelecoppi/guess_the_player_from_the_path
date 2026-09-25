@@ -153,8 +153,8 @@ COMPONENTS: dict[str, str] = {
     "domains.shop": "shop",
     # --- referrals ---------------------------------------------------------------------------
     "domains.referrals": "referrals",
-    # --- groups: group rounds (rules still partly in handlers/group_handler.py) -------------
-    "services.repos.groups": "groups",
+    # --- groups: group rounds (rules and repository, #147) -----------------------------------
+    "domains.groups": "groups",
     # --- leagues -----------------------------------------------------------------------------
     "services.leagues": "leagues",
     "services.repos.leagues": "leagues",
@@ -167,7 +167,8 @@ COMPONENTS: dict[str, str] = {
 # must stay acyclic: when two domains need each other, the call becomes a hook or the shared
 # part moves down a level. Layering, bottom to top:
 # players -> daily, analytics -> game -> events -> users -> shop -> referrals.
-# groups and leagues stand alone (their rules still live mostly in handlers).
+# groups plays on training material and judges answers like every mode (players, game);
+# leagues stands alone.
 DOMAIN_DEPENDENCIES: dict[str, frozenset[str]] = {
     "players": frozenset(),
     "daily": frozenset({"players"}),
@@ -177,7 +178,7 @@ DOMAIN_DEPENDENCIES: dict[str, frozenset[str]] = {
     "users": frozenset({"events"}),
     "shop": frozenset({"users"}),
     "referrals": frozenset({"daily", "shop", "analytics"}),
-    "groups": frozenset(),
+    "groups": frozenset({"players", "game"}),
     "leagues": frozenset(),
 }
 
