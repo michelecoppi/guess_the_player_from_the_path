@@ -1,4 +1,4 @@
-"""Firestore groups repository. Shared dependencies live in the compatibility facade."""
+"""Firestore repository of the groups domain. Shared dependencies live in the compatibility facade."""
 import logging
 
 from firebase_admin import firestore

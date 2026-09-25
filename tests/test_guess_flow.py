@@ -157,9 +157,9 @@ def test_missing_challenge_does_not_consume_an_attempt(firebase, monkeypatch):
 def test_guess_in_a_group_never_touches_the_daily_challenge(firebase, monkeypatch):
     """In un gruppo /guess risponde al round del gruppo, mai alla sfida di oggi: la
     risposta comparirebbe in chiaro davanti a chi non ha ancora giocato."""
-    from handlers import group_handler
+    from domains.groups import repository as groups_repository
 
-    monkeypatch.setattr(group_handler.firebase_service, "get_group_round", lambda chat_id: None)
+    monkeypatch.setattr(groups_repository, "get_group_round", lambda chat_id: None)
     update, message = make_update("/guess messi")
     update.message.chat = SimpleNamespace(type="group", id=-100123)
     asyncio.run(guess_handler.guess(update, None))

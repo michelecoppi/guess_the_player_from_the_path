@@ -299,7 +299,7 @@ subito con "👀 Rivela", visto che quella giornata è passata. I tentativi sono
 infiniti anche per una ragione meno ovvia: un campo che accetta nomi all'infinito e risponde
 "stessa nazionalità, ruolo diverso" sarebbe un modo comodo per sondare il dataset.
 
-**Partita di gruppo** (`/round`, `handlers/group_handler.py`): un round alla volta nel
+**Partita di gruppo** (`/round`, regole in `domains/groups/service.py`): un round alla volta nel
 gruppo, vince chi risponde per primo, punti per difficoltà come nel gioco vero. **Non** è la
 sfida di oggi ripubblicata — la risposta comparirebbe in chiaro davanti a chi non ha ancora
 giocato, bruciando la giornata anche a chi non stava guardando. Le altre tre conseguenze della stessa scelta:

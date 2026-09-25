@@ -134,10 +134,13 @@ automatically. Duels do not affect the global leaderboard.
 
 ## Group rounds
 
-**Current state.** Chat only, in Telegram groups: `handlers/group_handler.py`
-(`/round`, `/standings`) with `group_rounds/{chat_id}` and its `players` subcollection.
-Points stay inside the group. Rules still live in the handler plus
-`services/repos/groups.py`.
+**Current state.** Chat only, in Telegram groups: `/round`, `/standings` and `/guess` in a
+group, with `group_rounds/{chat_id}` and its `players` subcollection. Points stay inside the
+group. The rules (training material that cannot spoil today, three attempts per round,
+the first correct answer claims the round in a transaction, points by difficulty) live in
+[`domains/groups/service.py`](../domains/groups/service.py), Firestore access in
+[`domains/groups/repository.py`](../domains/groups/repository.py);
+`handlers/group_handler.py` only reads the update and renders the localized reply (#147).
 
 ## Events
 
