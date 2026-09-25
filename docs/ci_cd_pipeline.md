@@ -37,10 +37,9 @@ fallisce); il file del workflow resta la fonte esatta:
 
 | Step | Cosa controlla | Comando |
 |---|---|---|
-| Frontend: dipendenze e type check | la Mini App V2 compila senza errori di tipo | `npm ci`, `npm run typecheck` |
-| Frontend: build | il bundle Vite di `/app/v2` si costruisce | `npm run build` |
-| Test client legacy | le funzioni pure della mini app `/app` (`webapp/client.js`) e l'allineamento delle stringhe | `node --test tests/client.test.cjs` |
-| Test frontend V2 | test unitari TypeScript | `npm run test:frontend` |
+| Frontend: dipendenze e type check | la Mini App compila senza errori di tipo | `npm ci`, `npm run typecheck` |
+| Frontend: build | il bundle Vite di `/app` si costruisce | `npm run build` |
+| Test frontend | test unitari TypeScript, compreso l'allineamento delle stringhe IT/EN/ES | `npm run test:frontend` |
 | Audit dipendenze frontend | vulnerabilità npm di livello alto | `npm audit --audit-level=high` |
 | Controllo sintassi | i moduli Python compilano | `python -m compileall -q bot.py config.py apps domains services handlers scripts admin_pages admin_ui.py tools` |
 | Lint | regole `E`, `F`, `W`, `I` di ruff (`E501` disattivato) | `ruff check .` |
@@ -81,7 +80,7 @@ Passi: checkout dello stesso commit testato (`ref: ${{ github.event.workflow_run
 autenticazione GCP via `google-github-actions/auth@v2` (Workload Identity Federation), poi
 `gcloud run deploy guess-the-player --source . --project guess-the-player-from-path-bot --region
 europe-west1 --max-instances 10 --quiet`. La build dell'immagine ([`Dockerfile`](../Dockerfile))
-compila anche il bundle Vite della Mini App V2 in uno stage Node separato.
+compila anche il bundle Vite della Mini App in uno stage Node separato.
 
 **Perché WIF e non una chiave di service account**: una chiave scaricata è un segreto di lunga
 durata che, se trapela, resta valido finché non lo revochi a mano. WIF fa scambiare a GitHub

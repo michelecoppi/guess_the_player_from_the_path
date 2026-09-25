@@ -19,7 +19,7 @@ docs or tests.
 | **Admin commands** | `/admin_*` and `/admin_refund` check `ADMIN_TELEGRAM_IDS` | `tests/test_admin_permissions.py` |
 | **Admin Control Center** | Not deployed, no login: access equals possession of the machine, `.env` and Firebase key. Candidate review mutations additionally verify an `AdminIdentity` in `ADMIN_TELEGRAM_IDS` inside `CandidateReviewService` | `tests/test_candidate_review.py`, `tests/test_admin_player_review.py` |
 | **Candidate/provenance → production** | Candidate data and provenance stay in `data/candidates/`; only authorized approval writes `data/players.json`; production never contains source URLs, raw payloads or lineage | [player-data-pipeline.md](player-data-pipeline.md), candidate tests |
-| **Filesystem containment** | `/app/v2/assets/{path}` resolves the path and requires it to stay inside `webapp/dist/assets` (403/404 otherwise); legacy static routes serve a fixed allowlist of file names; the review service rejects unsafe backup paths | `tests/test_webapp_v2_serving.py` |
+| **Filesystem containment** | `/app/assets/{path}` resolves the path and requires it to stay inside `webapp/dist/assets` (403/404 otherwise); the legal pages are a fixed set of routes; the review service rejects unsafe backup paths | `tests/test_webapp_serving.py` |
 | **Container** | Runs as non-root user `app` (uid 1001); no runtime writes needed | `tests/test_docker_packaging.py` |
 
 ### Telegram Stars payments

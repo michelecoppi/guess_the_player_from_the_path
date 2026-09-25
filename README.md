@@ -100,7 +100,7 @@ costa un punto. Chi non ci arriva scopre chi era a mezzanotte, o con `/solution`
 chiusa.
 
 Si gioca in due posti, con le stesse identiche regole: la **chat del bot** e la **mini app**
-(`webapp/index.html`), che aggiunge il completamento automatico sui nomi e il calendario delle
+(`webapp/src/`, Vite + TypeScript), che aggiunge il completamento automatico sui nomi e il calendario delle
 giornate passate. Le regole stanno in un modulo solo (`services/game.py`), quindi non esistono
 due versioni del punteggio da tenere allineate.
 
@@ -584,16 +584,13 @@ lingue.
 
 ### Mini app Telegram
 
-> Questa sezione descrive la mini app **legacy** su `/app`, che è ancora quella aperta dai
-> pulsanti del bot. La nuova Mini App V2 (Vite + TypeScript) è servita su `/app/v2` e
-> diventerà il default solo con un'issue di rollout dopo
-> [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81): vedi
-> [`docs/miniapp.md`](docs/miniapp.md).
-
-`webapp/index.html` e' una pagina sola servita dallo stesso servizio FastAPI su `/app`, con
-cinque schede: **Gioca**, **Archivio**, **Statistiche**, **Leghe**, **Negozio**. Non e' piu'
-una vetrina:
-ci si gioca davvero, con le stesse regole della chat.
+La mini app e' scritta in Vite + TypeScript (`webapp/src/`, entry `index.html` alla radice),
+compilata in `webapp/dist/` e servita dallo stesso servizio FastAPI su `/app`: e' quella che
+aprono il pulsante **Play** e i bottoni del bot. La barra in basso ha cinque destinazioni:
+**Daily**, **Arena** (allenamento, duelli, eventi), **Classifica** (generale e leghe),
+**Negozio**, **Profilo**. L'archivio si apre dall'Arena, gli inviti dal Profilo, segnalazioni
+e pagine legali dal menu in alto. Struttura e contratto con il backend: [`docs/miniapp.md`](docs/miniapp.md).
+Ci si gioca davvero, con le stesse regole della chat.
 
 Cosa aggiunge rispetto al bot, e perche':
 
@@ -609,8 +606,9 @@ Cosa aggiunge rispetto al bot, e perche':
   `solved_in` sul documento utente, scritti quando si indovina, quindi non costa nessuna lettura;
 - **gestione delle leghe**: creare, entrare, uscire, classifica completa e invito con il
   selettore di chat nativo di Telegram;
-- **integrazione con l'app**: tema di Telegram (`--tg-theme-*`) e vibrazione su risposta
-  giusta o sbagliata. Il bottone per rispondere e' in pagina, sotto il campo, e non il
+- **integrazione con l'app**: vibrazione su risposta giusta o sbagliata; l'aspetto e' scuro
+  per costruzione e lo decidono i cosmetici, non il tema di Telegram
+  ([`docs/miniapp-appearance.md`](docs/miniapp-appearance.md)). Il bottone per rispondere e' in pagina, sotto il campo, e non il
   `MainButton` di sistema: quello sta sopra la tastiera ma a tastiera chiusa finisce sotto
   la barra delle schede, dove nessuno lo cerca, ed era l'unico posto dell'app in cui il
   bottone non stava dove si era appena scritto;
@@ -656,7 +654,7 @@ Elenco parziale; quello completo sta nelle rotte di `bot.py` (vedi [`docs/miniap
 - **Scheduler e code**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana; gli update Telegram e il broadcast passano da **Cloud Tasks** ([`docs/runtime-hardening.md`](docs/runtime-hardening.md))
 - **Immagini**: percorso, banner evento, palmarès e avatar sono generati a runtime con **Pillow** (`services/path_image.py`), con un font TrueType di sistema (`fonts-dejavu-core` nel Dockerfile). Nessuna immagine ospitata fuori dal progetto
 - **Dataset calciatori**: JSON locale versionato in `data/players.json`
-- **Mini app**: legacy statica su `/app` (default) e V2 Vite + TypeScript su `/app/v2`, entrambe autenticate con la firma `initData` di Telegram ([`docs/miniapp.md`](docs/miniapp.md))
+- **Mini app**: Vite + TypeScript su `/app`, autenticata con la firma `initData` di Telegram ([`docs/miniapp.md`](docs/miniapp.md))
 
 ## Architettura dell'automazione
 
@@ -763,15 +761,15 @@ Serve a **guardare** i cosmetici prima di venderli: un tema, una cornice o una c
 giudicano addosso a una pagina vera, non su un francobollo nella scheda del negozio e ancor
 meno su sei stringhe esadecimali dentro `data/shop.json`.
 
-E' la pagina vera (`webapp/index.html`) servita dalle funzioni vere (`services/webapp_api.py`,
+E' la mini app vera (il bundle in `webapp/dist/`, quindi prima `npm run build`) servita dalle funzioni vere (`services/webapp_api.py`,
 `domains/shop/service.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
 in memoria. L'utente finto ha gia' **tutto** il catalogo e cinque trofei, cosi' ogni oggetto
 si indossa con un click e ogni traguardo e' sbloccato; il negozio funziona ma "Compra"
 consegna subito, senza fattura, perche' non c'e' niente da pagare.
 
 Non tocca il database, non chiede credenziali e non serve Telegram: il finto `initData` lo
-inietta il server nella pagina servita, quindi `webapp/index.html` resta il file di
-produzione e non una sua variante. Si chiude e non resta niente.
+inietta il server nella pagina servita, quindi il bundle resta quello di produzione e non
+una sua variante. Si chiude e non resta niente.
 
 Due comode: `POST /app/api/preview/wear {"bundle": "pacchetto_neve"}` indossa un'intera
 collezione in un colpo, e `POST /app/api/preview/reset` rimette l'utente finto com'era.
@@ -1125,9 +1123,8 @@ viene toccata, la risposta rivelata solo a tentativi finiti), leghe private (cod
 classifica, link d'invito che iscrive da `/start`), firma `initData` della mini app (dato
 manomesso, token sbagliato, dati scaduti) e allineamento delle tre lingue: se una chiave o un
 segnaposto manca in una traduzione, la CI se ne accorge — sia per i messaggi del bot
-(`tests/test_i18n_keys.py`) sia per le stringhe della mini app, che stanno in
-`webapp/strings.js` proprio perché `node --test` possa caricarle e confrontarle
-(`tests/client.test.cjs`).
+(`tests/test_i18n_keys.py`) sia per le stringhe della mini app
+(`webapp/src/i18n/translations.ts`, confrontate da `tests/frontend/i18n.test.ts`).
 
 ### Le transazioni, su un Firestore vero
 

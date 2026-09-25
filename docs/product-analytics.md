@@ -534,15 +534,13 @@ decision, not an oversight:
 
 - The issue's own guidance is to prefer server-side for authoritative actions and treat
   client-side as optional/secondary, "if time allows."
-- Server-side coverage alone already reaches both surfaces (chat and Mini App legacy `/app`)
+- Server-side coverage alone already reaches both surfaces (chat and Mini App `/app`)
   for every game mode, because the authoritative game logic (`services/game.py`,
   `services/arena.py`, `domains/referrals/service.py`, `domains/shop/service.py`) is shared between them —
   instrumenting it once covers both, with a `surface` property distinguishing them.
-- Adding a `posthog-js` adapter to the V2 frontend (`webapp/src/`) would only add coverage
-  for genuinely UI-only moments (a Shop item preview animation starting, a tab becoming
-  visible) that are not currently worth a dedicated event, and V2 is **not** the production
-  default (`/app` legacy remains default; the V2 switch is gated behind #81, out of scope
-  here per the task boundaries).
+- Adding a `posthog-js` adapter to the Mini App frontend (`webapp/src/`) would only add
+  coverage for genuinely UI-only moments (a Shop item preview animation starting, a tab
+  becoming visible) that are not currently worth a dedicated event.
 
 **If frontend tracking is added later**, follow this contract (not implemented, documented
 for whoever picks it up):
@@ -550,7 +548,7 @@ for whoever picks it up):
 - One adapter module under `webapp/src/` (e.g. `analytics/`), no direct `posthog.init()`/
   `posthog.capture()` calls from individual page components.
 - Initialize the client only when a public, non-secret PostHog project token is intentionally
-  present in the V2 build config — never embed `POSTHOG_API_KEY` (the server-side key) in
+  present in the Mini App build config — never embed `POSTHOG_API_KEY` (the server-side key) in
   frontend code.
 - Disable automatic person/profile collection (`person_profiles: 'identified_only'` or
   equivalent) and do not enable autocapture or session replay (same reasoning as §2).

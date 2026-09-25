@@ -28,8 +28,7 @@ Gameplay rules as seen by a player are described in the root [README](../README.
 │ bot.py  — composition root: apps/bot (PTB Application) + apps/api (FastAPI app)       │
 │   /webhook ──enqueue──► Cloud Tasks ──► /internal/telegram-update ──► handlers/*       │
 │   /internal/daily-job  (Cloud Scheduler)   /internal/broadcast, /internal/monthly-close │
-│   /app      legacy Mini App (webapp/index.html + *.js)     ← production default        │
-│   /app/v2   Mini App V2 (Vite build in webapp/dist)        ← available, not default    │
+│   /app      Mini App (Vite build in webapp/dist), assets at /app/assets/*              │
 │   /app/api/* Mini App JSON API (initData-authenticated)                                │
 │   /terms, /privacy  static legal pages                                                 │
 │                    │                                                                   │
@@ -63,8 +62,7 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 | Candidate ingestion pipeline | `services/candidate_*.py`, [`domains/players/adapters/`](../domains/players/adapters/), [`domains/players/candidates/repository.py`](../domains/players/candidates/repository.py) | External-source acquisition, normalization, validation, provenance and human review before promotion to `data/players.json` |
 | Admin Control Center | [`admin_ui.py`](../admin_ui.py), [`admin_pages/`](../admin_pages/) | Local Streamlit UI over the same services; see [admin.md](admin.md) |
 | Telegram admin commands | [`handlers/admin_handler.py`](../handlers/admin_handler.py), `/admin_refund` in [`handlers/shop_handler.py`](../handlers/shop_handler.py) | In-chat operations restricted to `ADMIN_TELEGRAM_IDS` |
-| Legacy Mini App (`/app`) | `webapp/index.html`, `webapp/client.js`, `webapp/strings.js`, `webapp/arena.*`, `webapp/referrals.*` | Current production Mini App, plain HTML/JS without bundler |
-| Mini App V2 (`/app/v2`) | [`webapp/src/`](../webapp/src/), [`vite.config.ts`](../vite.config.ts) | Vite + TypeScript Mini App; see [miniapp.md](miniapp.md) |
+| Mini App (`/app`) | [`webapp/src/`](../webapp/src/), [`vite.config.ts`](../vite.config.ts) | Vite + TypeScript Mini App; see [miniapp.md](miniapp.md) |
 | Tooling | [`tools/`](../tools/), [`Makefile`](../Makefile), [`dev.ps1`](../dev.ps1) | Environment validator, dev runner, security audit |
 | CI/CD | [`.github/workflows/`](../.github/workflows/) | See [ci_cd_pipeline.md](ci_cd_pipeline.md) and [deploy.md](deploy.md) |
 
@@ -268,7 +266,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 
 | Stage | Current state | Primary document |
 | --- | --- | --- |
-| Build | `gcloud run deploy --source .` builds the [`Dockerfile`](../Dockerfile) with Cloud Build: stage 1 `npm ci && npm run build` (V2 bundle), stage 2 Python 3.11 runtime with `requirements.txt` | [deploy.md](deploy.md) |
+| Build | `gcloud run deploy --source .` builds the [`Dockerfile`](../Dockerfile) with Cloud Build: stage 1 `npm ci && npm run build` (Mini App bundle), stage 2 Python 3.11 runtime with `requirements.txt` | [deploy.md](deploy.md) |
 | Test | `ci.yml` on every PR and push to `main` | [ci_cd_pipeline.md](ci_cd_pipeline.md) |
 | Deploy | `deploy.yml` runs only after a successful CI run on `main`, via Workload Identity Federation, `--max-instances 10` | [deploy.md](deploy.md) |
 | Runtime | One Cloud Run service (`europe-west1`), Firestore, two Cloud Tasks queues, one Cloud Scheduler job; env vars/secrets set on the service, not in the workflow | [deploy.md](deploy.md), [runtime-hardening.md](runtime-hardening.md) |
@@ -297,7 +295,7 @@ code does not restore data.
 | [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31) | Data-driven, automatable events | Implemented: validated template schema v2 (filters, rules, rewards, rotation/fixed/manual schedule) in `services/event_config.py`, Admin template editor ([event-templates.md](event-templates.md)) |
 | [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | Implemented: per-request Firestore cost, cold-start and handler timings, Mini App startup beacon, budgets, baseline/trend report ([performance.md](performance.md)). Further optimisations are decided there from data |
 | [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) sub-issues #33, #34, #36–#39 | Admin expansion | See [admin.md](admin.md) |
-| [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) | Final V2 review before switch | `/app` is still the default; see [miniapp.md](miniapp.md) |
+| [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) | Final V2 review before switch | Done: the Vite Mini App became `/app` (#115); the old page and `/app/v2` were removed (#146); see [miniapp.md](miniapp.md) |
 
 The Project board, not this table, is authoritative for status, priority and
 dependencies.

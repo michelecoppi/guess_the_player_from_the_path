@@ -9,7 +9,7 @@ Questa guida documenta l'ambiente di sviluppo locale per **Guess the Player**, i
 | Strumento | Versione richiesta | Perché serve |
 |---|---|---|
 | **Python** | **>= 3.11** | Richiesto da `asyncio.timeout` in `bot.py`, sintassi moderne e `pyproject.toml` |
-| **Node.js** | **>= 20** (consigliata 22) | Esecuzione dei test client senza bundler (`node --test tests/client.test.cjs`) |
+| **Node.js** | **>= 20** (consigliata 22) | Build, type check e test della Mini App (`npm ci`, `npm run build`, `npm run test:frontend`) |
 | **Java JRE/JDK** | **>= 17** (consigliata 21) | Runtime necessario per eseguire l'emulatore Firestore locale di Google Cloud |
 | **Google Cloud SDK (`gcloud`)** | Qualsiasi recente | Gestione ed esecuzione dell'emulatore Firestore locale (`cloud-firestore-emulator`) |
 
@@ -92,7 +92,6 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | `make check-api` | `python -m tools.dev check-api`<br>`.\dev.ps1 check-api` | Valida i requisiti completi per l'avvio del server FastAPI `bot.py` |
 | `make test` | `python -m tools.dev test`<br>`.\dev.ps1 test` | Esegue i test unitari veloci con `pytest -q` |
 | `make test-cov` | `python -m tools.dev test-cov`<br>`.\dev.ps1 test-cov` | Esegue i test con report di code coverage nel terminale |
-| `make test-node` | `python -m tools.dev test-node`<br>`.\dev.ps1 test-node` | Esegue i test client Node.js per la Mini App (`tests/client.test.cjs`) |
 | `make lint` | `python -m tools.dev lint`<br>`.\dev.ps1 lint` | Verifica lo stile del codice con `ruff check .` |
 | `make typecheck` | `python -m tools.dev typecheck`<br>`.\dev.ps1 typecheck` | Controllo tipi statici con `mypy services/ domains/` |
 | `make syntax` | `python -m tools.dev syntax`<br>`.\dev.ps1 syntax` | Verifica sintassi con `compileall` su tutti i moduli |
@@ -102,11 +101,11 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | — | `python -m tools.dev architecture` | Mappa dei domini e confini di dipendenza (#28): componenti, debito registrato, violazioni; `--graph`, `--module <modulo>` (vedi [architecture.md § 3](architecture.md#3-composition-root-and-domain-boundaries)) |
 | — | `python -m tools.dev perf-report --fetch --days 7` | Report di baseline/trend delle prestazioni dai log Cloud Logging (sola lettura; `--input`, `--save`, `--compare`, vedi [performance.md](performance.md)) |
 | — | `python -m tools.dev security-check` | Audit di sicurezza come in CI: pip-audit, detect-secrets, npm audit (vedi [security.md](security.md)) |
-| `make check` | `python -m tools.dev check`<br>`.\dev.ps1 check` | Esegue la **suite standard di validazione locale**: ambiente, sintassi, ruff, mypy, typecheck/build/test frontend, test client legacy, integrità e regressione dataset, pytest |
+| `make check` | `python -m tools.dev check`<br>`.\dev.ps1 check` | Esegue la **suite standard di validazione locale**: ambiente, sintassi, ruff, mypy, typecheck/build/test frontend, integrità e regressione dataset, pytest |
 | `make emulator` | `python -m tools.dev emulator`<br>`.\dev.ps1 emulator` | Avvia l'emulatore Firestore locale su porta 8571 |
 | `make api` | `python -m tools.dev api`<br>`.\dev.ps1 api` | Avvia il server FastAPI (`bot.py`) con `--reload` su porta 8000 |
 | `make admin` | `python -m tools.dev admin`<br>`.\dev.ps1 admin` | Avvia la dashboard Streamlit su `admin_ui.py` |
-| `make webapp` | `python -m tools.dev webapp`<br>`.\dev.ps1 webapp` | Avvia l'anteprima isolata della Mini App su `http://localhost:8888/app` (e V2 su `/app/v2`) |
+| `make webapp` | `python -m tools.dev webapp`<br>`.\dev.ps1 webapp` | Avvia l'anteprima isolata della Mini App su `http://localhost:8888/app` (richiede prima `npm run build`) |
 | `make frontend-dev` | `python -m tools.dev frontend-dev`<br>`npm run dev` | Avvia il server di sviluppo Vite con hot reload su `http://localhost:5173` |
 | `make frontend-build` | `python -m tools.dev frontend-build`<br>`npm run build` | Compila il bundle di produzione frontend con Vite e TypeScript (`webapp/dist/`) |
 | `make frontend-typecheck` | `python -m tools.dev frontend-typecheck`<br>`npm run typecheck` | Controllo statico dei tipi TypeScript per il frontend (`tsc --noEmit`) |
@@ -151,15 +150,11 @@ make webapp
 # oppure: python -m tools.dev webapp
 ```
 
-Apri il browser su:
+Apri il browser su (richiede prima `npm run build`):
 ```
 http://localhost:8888/app
 ```
-oppure per la Mini App V2 (Vite + TypeScript; richiede prima `npm run build`):
-```
-http://localhost:8888/app/v2
-```
-In produzione il default resta `/app`: vedi [miniapp.md](miniapp.md) per l'architettura delle due Mini App e il gate di rollout.
+Vedi [miniapp.md](miniapp.md) per l'architettura della Mini App.
 Questo avvia un server FastAPI leggero (`scripts/preview_webapp.py`) che inietta un finto utente con tutti i cosmetici già sbloccati, conservando tutto in memoria.
 
 ---
@@ -215,7 +210,7 @@ make api
 Il server risponde su `http://localhost:8000`:
 - `GET /`: verifica stato (`{"message": "Bot attivo!"}`)
 - `GET /ping`: health check
-- `GET /app`: serve la pagina principale della Mini App (`webapp/index.html`)
+- `GET /app`: serve la Mini App compilata (`webapp/dist/index.html`)
 - `POST /app/api/*`: endpoint API della Mini App
 - `POST /webhook`: endpoint per ricevere update webhook da Telegram (richiede `WEBHOOK_SECRET`)
 

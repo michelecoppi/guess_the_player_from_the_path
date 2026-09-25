@@ -9,7 +9,7 @@ let currentLanguage: SupportedLanguage = "it";
 
 /**
  * Resolves a language code to one of the supported languages ("it", "es", "en").
- * Exactly replicates the rule used by server and legacy webapp.
+ * Same rule as the server (`services/i18n.py`).
  */
 export function resolveLanguage(code?: string | null): SupportedLanguage {
   if (!code) return "en";

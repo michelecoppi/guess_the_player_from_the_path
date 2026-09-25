@@ -14,7 +14,7 @@ test("collectStartupMetrics reads navigation, the first /me call and its Server-
   const perf = timeline({
     navigation: [{ responseStart: 180.04, domContentLoadedEventEnd: 420.2, transferSize: 2048 }],
     resource: [
-      { name: "https://bot.example/app/v2/assets/index.js", duration: 90, transferSize: 102400 },
+      { name: "https://bot.example/app/assets/index.js", duration: 90, transferSize: 102400 },
       {
         name: "https://bot.example/app/api/me", duration: 350.44, transferSize: 1024,
         serverTiming: [{ name: "fs", duration: 80 }, { name: "app", duration: 120.25 }],

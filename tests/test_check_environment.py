@@ -44,17 +44,11 @@ def temp_project(tmp_path):
 
     # Webapp directory
     webapp_dir = tmp_path / "webapp"
-    webapp_dir.mkdir()
-    for name in [
-        "index.html",
-        "client.js",
-        "strings.js",
-        "arena.js",
-        "referrals.js",
-        "legal.css",
-        "terms.html",
-        "privacy.html",
-    ]:
+    (webapp_dir / "src").mkdir(parents=True)
+    (webapp_dir / "dist").mkdir()
+    (webapp_dir / "dist" / "index.html").write_text("<!-- built -->", encoding="utf-8")
+    (tmp_path / "index.html").write_text("<!-- test -->", encoding="utf-8")
+    for name in ["src/main.ts", "legal.css", "terms.html", "privacy.html"]:
         (webapp_dir / name).write_text("/* test */", encoding="utf-8")
 
     # .env
@@ -117,11 +111,19 @@ def test_datasets_check_fails_on_corrupted_json(temp_project):
 
 
 def test_datasets_check_fails_on_missing_webapp_assets(temp_project):
-    (temp_project / "webapp" / "index.html").unlink()
+    (temp_project / "webapp" / "src" / "main.ts").unlink()
     validator = EnvironmentValidator(project_root=temp_project, mode="dev")
     validator.check_datasets_and_files()
     failures = [r for r in validator.results if r.status == CheckStatus.FAIL]
-    assert any("Static Files" in f.name for f in failures)
+    assert any("Static Files" in f.name and "webapp/src/main.ts" in f.message for f in failures)
+
+
+def test_webapp_check_does_not_require_the_retired_legacy_client(temp_project):
+    """The pre-Vite files (webapp/client.js, strings.js, ...) no longer exist (#146)."""
+    validator = EnvironmentValidator(project_root=temp_project, mode="dev")
+    validator.check_datasets_and_files()
+    static = [r for r in validator.results if r.name == "Static Files"]
+    assert [r.status for r in static] == [CheckStatus.PASS]
 
 
 def test_telegram_config_validation(temp_project, monkeypatch):

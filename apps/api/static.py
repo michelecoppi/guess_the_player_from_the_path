@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, Response
 
 from services import version
 
@@ -86,13 +86,6 @@ def webapp_page(request: Request):
     if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
         return Response(status_code=304, headers=headers)
     return Response(content, media_type="text/html", headers=headers)
-
-
-@router.get("/app/v2")
-def webapp_v2_redirect():
-    """La V2 e' diventata /app (#81/#115): un vecchio link o preferito porta comunque alla
-    mini app vera, non a una pagina morta."""
-    return RedirectResponse("/app", status_code=308)
 
 
 @router.get("/app/assets/{file_path:path}")

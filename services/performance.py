@@ -360,7 +360,8 @@ def claim_first_request() -> bool:
 # ---------------------------------------------------------------------------
 
 MINIAPP_METRICS = ("ttfb_ms", "dom_ready_ms", "first_data_ms", "api_me_ms", "api_me_server_ms", "transfer_kb")
-MINIAPP_APPS = frozenset({"legacy", "v2"})
+# "v2" is the label the Mini App has always sent; the pre-Vite "legacy" client is gone (#146).
+MINIAPP_APPS = frozenset({"v2"})
 _MAX_METRIC_VALUE = 120_000
 
 
