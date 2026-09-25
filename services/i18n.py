@@ -338,6 +338,7 @@ TRANSLATIONS = {
         "share.button_card": "📸 La figurina",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.cta": "Riesci a fare meglio? 👉 {link}",
         "share.archive_title": "🗄 Guess the Player #{number} (archivio)",
 
         "feedback.header": "🔎 Rispetto a {name}:",
@@ -767,6 +768,7 @@ TRANSLATIONS = {
         "share.button_card": "📸 El cromo",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.cta": "¿Puedes hacerlo mejor? 👉 {link}",
         "share.archive_title": "🗄 Guess the Player #{number} (archivo)",
 
         "feedback.header": "🔎 Comparado con {name}:",
@@ -1196,6 +1198,7 @@ TRANSLATIONS = {
         "share.button_card": "📸 The card",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.cta": "Can you do better? 👉 {link}",
         "share.archive_title": "🗄 Guess the Player #{number} (archive)",
 
         "feedback.header": "🔎 Compared with {name}:",

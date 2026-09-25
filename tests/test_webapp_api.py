@@ -317,6 +317,20 @@ def test_the_shared_card_never_carries_the_answer(share_link):
     assert "messi" not in card["share"]["text"].lower()
 
 
+@pytest.mark.parametrize("day", [None, "2026-09-01"])
+def test_the_miniapp_shares_with_the_player_invite_link(firebase, monkeypatch, share_link, day):
+    """#150: chi arriva dalla condivisione conta come invito di chi ha condiviso, sia dalla
+    sfida di oggi sia dall'archivio."""
+    monkeypatch.setattr(webapp_api.referrals, "invite_link", lambda uid: f"https://t.me/bot?start=ref_{uid}_x")
+    monkeypatch.setattr(webapp_api.game, "play_daily", lambda *a, **kw: {"status": "wrong", "attempts_left": 0, "attempts_used": 3})
+    monkeypatch.setattr(webapp_api.game, "play_archive", lambda *a: {"status": "wrong", "attempts_left": 0, "attempts_used": 3})
+
+    share = webapp_api.play(42, USER, "messi", day=day, today=DAY)["share"]
+
+    assert share["text"].endswith("👉 https://t.me/bot?start=ref_42_x")
+    assert "url=https%3A%2F%2Ft.me%2Fbot%3Fstart%3Dref_42_x" in share["url"]
+
+
 @pytest.fixture
 def share_link(monkeypatch):
     """Senza BOT_USERNAME non c'e' nessun link da condividere: nei test lo diamo per

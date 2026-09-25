@@ -64,6 +64,8 @@ export interface DailyState {
   feedback?: DailyGuessResult | null;
   cardImage?: string | null;
   cardLoading?: boolean;
+  /** Outcome of the last "copy the result" tap (#150), shown under the buttons. */
+  copyNotice?: string | null;
   squaresSymbols: SquareSymbols;
   inputValue: string;
 }

@@ -66,6 +66,9 @@ export interface TranslationSchema {
     younger: string;
     sameYear: string;
     share: string;
+    copyResult: string;
+    copied: string;
+    copyError: string;
     answerWas: string;
     showCard: string;
     cardHint: string;

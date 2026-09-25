@@ -16,6 +16,7 @@ import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from domains.referrals import service as referrals
 from domains.shop import service as shop
 from handlers.legend_handler import legend_keyboard
 from services import firebase_service
@@ -183,7 +184,7 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
             t(lang, "archive.correct", date=to_display(day_iso), attempts=attempt["attempts_used"]),
             reply_markup=_share_keyboard(
                 lang, day_iso, attempt["attempts_used"], solved=True,
-                symbols=shop.squares_symbols(user_data),
+                symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
             ),
         )
         return
@@ -205,20 +206,20 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
         t(lang, "archive.wrong_last", answer=answer),
         reply_markup=_share_keyboard(
             lang, day_iso, attempt["attempts_used"], solved=False,
-            symbols=shop.squares_symbols(user_data),
+            symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
         ),
     )
 
 
-def _share_keyboard(lang, day_iso, attempts_used, solved, symbols=None):
+def _share_keyboard(lang, day_iso, attempts_used, solved, symbols=None, link=None):
     """Come per la sfida di oggi, ma marcata come recuperata dall'archivio: chi la incolla
     in un gruppo non deve sembrare che abbia risolto quella di oggi. La striscia non
     c'entra (l'archivio non la muove) e non compare."""
     text = share_text(
         lang, challenge_number(day_iso), attempts_used, MAX_ARCHIVE_ATTEMPTS,
-        solved=solved, archive=True, symbols=symbols,
+        solved=solved, archive=True, symbols=symbols, link=link,
     )
-    url = share_url(text)
+    url = share_url(text, link)
     if not url:
         return None
     return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "share.button"), url=url)]])

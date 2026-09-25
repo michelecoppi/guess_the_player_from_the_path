@@ -34,7 +34,7 @@ from fastapi.responses import HTMLResponse, Response  # noqa: E402
 from domains.shop import service as shop  # noqa: E402
 from services import firebase_service, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number  # noqa: E402
-from services.share import card_image  # noqa: E402
+from services.share import card_image, share_text, share_url  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEBAPP_DIR = os.path.join(ROOT, "webapp")
@@ -425,6 +425,9 @@ async def league(payload: dict = Body(default={})):
     return {"status": "ok", "leagues": build_profile(USER_ID, lang=_lang())["leagues"]}
 
 
+PREVIEW_INVITE = "https://t.me/preview_bot?start=ref_424242_0123456789abcdef0123"
+
+
 @app.post("/app/api/guess")
 async def preview_guess(payload: dict = Body(default={})):
     answer = (payload.get("answer") or payload.get("guess") or "").strip()
@@ -446,10 +449,10 @@ async def preview_guess(payload: dict = Body(default={})):
             "best_streak": 31,
             "squares": "🟥🟩⬜⬜⬜",
             "answer": firebase_service.get_display_name_for_day(today_iso()),
-            "share": {
-                "text": "Guess the Player #462 2/5\n🟥🟩⬜⬜⬜",
-                "url": "https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fpreview_bot",
-            },
+            # Lo stesso testo della produzione, con un link invito finto (#150).
+            "share": {"text": share_text(_lang(), 462, 2, MAX_ATTEMPTS, streak=10, link=PREVIEW_INVITE),
+                      "url": share_url(share_text(_lang(), 462, 2, MAX_ATTEMPTS, streak=10, link=PREVIEW_INVITE),
+                                       PREVIEW_INVITE)},
         }
 
     STATE["user"]["daily_attempts"] = 1

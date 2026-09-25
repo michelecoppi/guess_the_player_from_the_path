@@ -156,6 +156,21 @@ def test_a_recovered_day_can_be_shared_as_an_archive_result(firebase, monkeypatc
     assert "archivio" in message.markups[0].inline_keyboard[0][0].url
 
 
+def test_an_archive_result_is_shared_with_the_player_invite_link(firebase, monkeypatch):
+    """#150: anche dall'archivio il link in fondo e' l'invito di chi gioca."""
+    from domains.referrals import service as referrals
+    from services import share
+
+    monkeypatch.setattr(share, "BOT_USERNAME", "guess_the_player_bot")
+    monkeypatch.setattr(referrals, "invite_link", lambda uid: f"https://t.me/guess_the_player_bot?start=ref_{uid}_x")
+    update, message = make_update("Messi")
+    asyncio.run(guess_handler.free_text_guess(update, None))
+
+    url = message.markups[0].inline_keyboard[0][0].url
+    uid = update.effective_user.id
+    assert f"url=https%3A%2F%2Ft.me%2Fguess_the_player_bot%3Fstart%3Dref_{uid}_x" in url
+
+
 def test_a_wrong_archive_answer_is_compared_too(firebase, monkeypatch):
     monkeypatch.setattr(
         archive_handler.firebase_service, "get_daily_path",
