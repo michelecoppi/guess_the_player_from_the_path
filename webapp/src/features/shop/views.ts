@@ -34,6 +34,13 @@ const CELEBRATION_GLYPH: Record<string, string> = {
   mud: "🟫",
   fireworks: "🎆",
   stadium_wave: "〰️",
+  petals: "🌸",
+  pixels: "👾",
+  comets: "☄️",
+  bubbles: "🫧",
+  flares: "🎇",
+  lightning: "⚡",
+  bounce: "⚽",
 };
 
 const SHOT_STOPS = [
@@ -149,7 +156,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
   if (kind === "frame") {
     const ring = typeof style.ring === "string" ? `background:${style.ring}` : undefined;
     const identityHtml = showIdentity
-      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame: style }).frame?.tactics })}
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame: style }).frame?.tactics, ringMotion: parseResolvedAppearance({ frame: style }).frame?.motion })}
          <div class="preview-name">${escapeHtml(previewDisplayName())}</div>`
       : "";
     return `
@@ -247,7 +254,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
     const unused = (squares.unused as string) || "";
 
     const identityHtml = showIdentity
-      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame }).frame?.tactics })}
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame }).frame?.tactics, ringMotion: parseResolvedAppearance({ frame }).frame?.motion })}
          <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml(badgeEmoji)}</div>`
       : badgeEmoji
         ? `<div class="emoji-preview">${escapeHtml(badgeEmoji)}</div>`
@@ -483,7 +490,7 @@ export function renderPreviewBar(state: ShopState): string {
       <p class="eyebrow">${escapeHtml(t('profile.title'))}</p>
       ${renderFormation(worn)}
       <div class="preview-person">
-        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: worn.frame?.tactics, size: "large" })}
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: worn.frame?.tactics, ringMotion: worn.frame?.motion, size: "large" })}
         <div class="preview-meta">
           <div class="preview-identity">
             ${worn.number ? `<span class="shirt">${escapeHtml(worn.number)}</span>` : ""}

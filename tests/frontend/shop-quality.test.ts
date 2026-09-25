@@ -17,7 +17,7 @@ test('all real frame, pattern, formation, tactics and card finishes survive appe
     const kind = item.kind as 'theme' | 'frame' | 'card';
     const style = item.style as Record<string, unknown>;
     const result = parseResolvedAppearance({ [kind]: style })[kind] as Record<string, unknown>;
-    for (const key of ['ring', 'pattern', 'formation', 'tactics', 'finish']) {
+    for (const key of ['ring', 'pattern', 'formation', 'tactics', 'finish', 'motion']) {
       if (style[key]) assert.ok(result[key], `${item.id}: missing ${key}`);
     }
   }
@@ -72,4 +72,54 @@ test('final minute collection and new slot items survive try-on parsing', () => 
   const celebration = catalogue.items.find(i => i.id === 'festa_onda_stadio')! as unknown as ShopCosmeticItem;
   assert.equal(createPreviewAppearance({}, number).number, '90');
   assert.equal(createPreviewAppearance({}, celebration).celebration, 'stadium_wave');
+});
+
+const NEW_COLLECTIONS = ['pacchetto_aurora', 'pacchetto_curva', 'pacchetto_arcade', 'pacchetto_hanami', 'pacchetto_spiaggia', 'pacchetto_galassia', 'pacchetto_temporale'];
+
+test('animated collections survive try-on parsing with their motion, pieces and extras', () => {
+  for (const id of NEW_COLLECTIONS) {
+    const raw = catalogue.items.find(i => i.id === id)!;
+    const pieces = (raw.grants || []).map(g => catalogue.items.find(i => i.id === g)!);
+    const appearance = createPreviewAppearance({}, { ...raw, contents: pieces } as unknown as ShopCosmeticItem, 'en');
+    assert.ok(appearance.theme?.pattern, `${id}: pattern`);
+    assert.ok(appearance.theme?.motion, `${id}: theme motion`);
+    assert.ok(appearance.frame?.ring && appearance.frame.motion, `${id}: animated ring`);
+    assert.ok(appearance.title?.label && appearance.badge, `${id}: identity`);
+    for (const piece of pieces) {
+      const style = piece.style as unknown as Record<string, string>;
+      if (piece.kind === 'celebration') assert.equal(appearance.celebration, style.effect, `${id}: celebration`);
+      if (piece.kind === 'card') assert.equal(appearance.card?.finish, style.finish, `${id}: card`);
+    }
+  }
+});
+
+test('theme motion becomes one reviewed animation token; unknown motion is ignored', async () => {
+  const { skinTokens } = await import('../../webapp/src/appearance');
+  const galaxy = catalogue.items.find(i => i.id === 'galassia')!.style as Record<string, unknown>;
+  assert.match(skinTokens(parseResolvedAppearance({ theme: galaxy }))['--skin-motion'] || '', /^skin-twinkle /);
+  for (const motion of ['spin 1s infinite', 'url(x)', 'sway; color:red', 42]) {
+    const parsed = parseResolvedAppearance({ theme: { ...galaxy, motion }, frame: { ring: '', motion } });
+    assert.equal(parsed.theme?.motion, undefined);
+    assert.equal(parsed.frame?.motion, undefined);
+    assert.equal(skinTokens(parsed)['--skin-motion'], undefined);
+  }
+});
+
+test('frame flourishes render as a bounded data attribute, never as free CSS', () => {
+  const ring = catalogue.items.find(i => i.id === 'cornice_pixel')!.style as unknown as Record<string, string>;
+  const html = renderAvatar({ name: 'M', ringStyle: `background:${ring.ring}`, ringMotion: 'orbit' });
+  assert.match(html, /class="ring" data-motion="orbit"/);
+  assert.doesNotMatch(renderAvatar({ name: 'M', ringStyle: 'background:red', ringMotion: 'spin" onload="x' }), /data-motion|onload/);
+});
+
+test('new celebrations run to completion without throwing and clean up their canvas', async () => {
+  const { celebrate } = await import('../../webapp/src/features/daily/celebrate');
+  const { cleanup } = setupGlobalDom();
+  try {
+    window.matchMedia = (() => ({ matches: false })) as unknown as typeof window.matchMedia;
+    for (const effect of ['petals', 'pixels', 'comets', 'bubbles', 'flares', 'lightning', 'bounce']) {
+      assert.ok(parseResolvedAppearance({ celebration: effect }).celebration, effect);
+      assert.doesNotThrow(() => celebrate(effect), effect);
+    }
+  } finally { cleanup(); }
 });

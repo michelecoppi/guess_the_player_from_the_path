@@ -1,0 +1,172 @@
+/* Cosmetic reach and motion (#66 contract, see docs/miniapp-appearance.md).
+   Loaded last. Two jobs:
+   1. Every tab follows the worn theme. Cards, the nav bar, inputs, borders and the
+      decorative "brand green" highlights are derived from the skin tokens, so a purchased
+      theme no longer ends at the header while slate cards and stock-green chips remain.
+      Derivations only darken/tint the decorative surface: product text, focus and the
+      semantic success/warn/danger colours stay product-owned.
+   2. Reviewed ambient theme motion and bounded frame flourishes, all disabled by
+      prefers-reduced-motion. */
+
+[data-cosmetic-shell],
+[data-cosmetic-profile],
+[data-cosmetic-preview] {
+  --skin-soft: color-mix(in srgb, var(--skin-accent) 18%, var(--skin-profile-surface));
+  --sport-surface: color-mix(in srgb, var(--skin-accent) 20%, var(--skin-profile-surface));
+  --sport-highlight: color-mix(in srgb, var(--skin-accent) 62%, #ffffff);
+  /* Accent as text on the dark surface: deep accents (Carta ingiallita, Domenica '90) would
+     sit near 3:1, so text uses a lift of the accent toward the product text colour. */
+  --skin-ink: color-mix(in srgb, var(--skin-accent) 58%, var(--text));
+}
+[data-cosmetic-shell] {
+  --bg: color-mix(in srgb, var(--skin-profile-surface), #000000 32%);
+  --bg-secondary: color-mix(in srgb, var(--skin-profile-surface), #000000 16%);
+  --card: color-mix(in srgb, var(--skin-profile-surface), #ffffff 5%);
+  --edge: color-mix(in srgb, var(--skin-accent-secondary) 45%, var(--skin-profile-surface));
+  --track: color-mix(in srgb, var(--skin-pitch) 60%, var(--skin-profile-surface));
+}
+
+/* Decorative highlights that used the success tint as a brand colour. Real results
+   (solved days, correct answers, success alerts) keep --success/--success-bg. */
+[data-cosmetic-shell] nav.app-nav button[aria-current="page"] > .icon,
+[data-cosmetic-shell] .row.me,
+[data-cosmetic-shell] .mode-icon,
+[data-cosmetic-shell] .training-entry .mode-icon,
+[data-cosmetic-shell] .training-icon-wrap,
+[data-cosmetic-shell] .arena-notice,
+[data-cosmetic-shell] .stop:last-child .transfer-node {
+  background: var(--skin-soft);
+}
+[data-cosmetic-shell] .training-entry .mode-icon,
+[data-cosmetic-shell] .training-icon-wrap { color: var(--accent); }
+[data-cosmetic-shell] .row.me,
+[data-cosmetic-shell] .back-link,
+[data-cosmetic-shell] .match-meta span:last-child { color: var(--skin-ink); }
+[data-cosmetic-shell] .events-entry .mode-icon { background: var(--warn-bg); }
+[data-cosmetic-shell] .story-level-card.current .story-level-mark,
+[data-cosmetic-shell] .story-step-dot.current { box-shadow: 0 0 0 3px var(--skin-soft); }
+@media (min-width: 900px) {
+  [data-cosmetic-shell] nav.app-nav button[aria-current="page"] { background: var(--skin-soft); }
+}
+[data-cosmetic-shell] .rf-hero,
+[data-cosmetic-shell] .rf-reveal {
+  background: radial-gradient(ellipse at 80% 10%, var(--sport-surface) 0%, var(--card) 55%, var(--bg) 100%);
+}
+/* Overscroll and the strip under a short page show the page surface, not stock slate. */
+html,
+body { background-color: var(--skin-profile-surface); }
+[data-cosmetic-shell] .app-nav {
+  background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+  border-top-color: var(--edge);
+}
+
+/* ---- Ambient theme motion ------------------------------------------------------------
+   --skin-motion is a reviewed shorthand (THEME_MOTIONS). It only moves or fades the
+   decorative pattern layer, which is taller than its surface so a vertical drift never shows an edge. */
+[data-cosmetic-shell]::before,
+[data-cosmetic-profile]::before,
+.blind-board::before,
+.link-board::before,
+.order-board::before,
+.shop-stage.theme-stage::before,
+.bundle-stage[data-cosmetic-preview]::before {
+  animation: var(--skin-motion, none);
+}
+/* The oversized layer must not add scroll height: clip vertically only, the horizontal
+   bleed is already bounded by the surface's clip-path. */
+[data-cosmetic-shell],
+[data-cosmetic-profile] { overflow: visible clip; }
+[data-cosmetic-shell]::before,
+[data-cosmetic-profile]::before { top: -24px; bottom: -24px; }
+.preview-profile[data-cosmetic-profile]::before { inset: -24px 0; }
+.blind-board::before,
+.link-board::before,
+.order-board::before { inset: -24px 0; }
+/* Shop stages paint their pattern on a layer too, so the catalogue shows the motion. */
+.shop-stage.theme-stage,
+.bundle-stage[data-cosmetic-preview] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-image: none;
+}
+.shop-stage.theme-stage::before,
+.bundle-stage[data-cosmetic-preview]::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -24px 0;
+  pointer-events: none;
+  background-image: var(--skin-profile-glow), var(--skin-pattern);
+}
+@keyframes skin-float {
+  from { transform: translate3d(0, -12px, 0); }
+  to { transform: translate3d(0, 12px, 0); }
+}
+@keyframes skin-breathe {
+  from { opacity: 1; }
+  to { opacity: 0.55; }
+}
+@keyframes skin-twinkle {
+  from { opacity: 1; }
+  to { opacity: 0.45; }
+}
+
+/* ---- Frame flourishes -----------------------------------------------------------------
+   Bounded: three plays each time an avatar appears, then the ring rests (no perpetual
+   spin, as before). */
+.ring[data-motion] { overflow: visible; }
+.ring[data-motion="pulse"] {
+  animation: ring-pulse 1.5s ease-in-out 3;
+}
+.ring[data-motion="shine"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.85) 50%, transparent 65%) no-repeat;
+  background-size: 260% 100%;
+  background-position: 120% 0;
+  animation: ring-shine 2.1s ease-in-out 3;
+}
+.ring[data-motion="orbit"]::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 41%;
+  top: -6%;
+  width: 18%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #dfe5ec 55%, #7d8896);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  transform-origin: 50% 311%;
+  animation: ring-orbit 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) 3 both;
+}
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; transform: scale(1); }
+  50% { box-shadow: 0 0 14px 3px color-mix(in srgb, var(--skin-accent) 70%, transparent); transform: scale(1.06); }
+}
+@keyframes ring-shine {
+  from { background-position: 120% 0; }
+  to { background-position: -20% 0; }
+}
+@keyframes ring-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-cosmetic-shell]::before,
+  [data-cosmetic-profile]::before,
+  .blind-board::before,
+  .link-board::before,
+  .order-board::before,
+  .shop-stage.theme-stage::before,
+  .bundle-stage[data-cosmetic-preview]::before,
+  .ring[data-motion],
+  .ring[data-motion]::after {
+    animation: none;
+  }
+  .ring[data-motion="orbit"]::after { display: none; }
+}

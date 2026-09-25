@@ -1,4 +1,5 @@
 import { escapeHtml, initials } from "@/utils/format";
+import { FRAME_MOTIONS } from "@/appearance/decorations";
 
 export interface AvatarProps {
   id?: string;
@@ -9,6 +10,8 @@ export interface AvatarProps {
   ringStyle?: string;
   spinRing?: boolean;
   tactics?: 3 | 11;
+  /** Reviewed bounded flourish (FRAME_MOTIONS); anything else is ignored. */
+  ringMotion?: string;
   extraClass?: string;
 }
 
@@ -20,7 +23,8 @@ export function renderAvatar(props: AvatarProps): string {
   let ringHtml = "";
   if (props.ringStyle) {
     const spinClass = props.spinRing ? " spin" : "";
-    ringHtml = `<div class="ring${spinClass}" style="${escapeHtml(props.ringStyle)}" aria-hidden="true"></div>`;
+    const motion = props.ringMotion && FRAME_MOTIONS.has(props.ringMotion) ? ` data-motion="${props.ringMotion}"` : "";
+    ringHtml = `<div class="ring${spinClass}"${motion} style="${escapeHtml(props.ringStyle)}" aria-hidden="true"></div>`;
   }
 
   const nodes = props.tactics === 3 || props.tactics === 11 ? props.tactics : 0;

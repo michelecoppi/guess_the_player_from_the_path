@@ -1,5 +1,5 @@
 {
-  "renderer_sha256": "fb84ed7155504b1fffec75e702263607c59f8a80dc41ecb1db72d98025377d3c",
+  "renderer_sha256": "6c34ed73532979658739636e9da5a98682439b2b2aba4dc5a6fbe290d5805b4c",
   "cards": [
     {
       "id": "figurina_classica",
@@ -62,6 +62,33 @@
         "paper": "#14222f",
         "ink": "#f6efdf",
         "glow": "#edbe7e"
+      }
+    },
+    {
+      "id": "figurina_aurora",
+      "style": {
+        "finish": "aurora",
+        "paper": "#06121a",
+        "ink": "#eafff8",
+        "glow": "#5ef0b0"
+      }
+    },
+    {
+      "id": "figurina_fanzine",
+      "style": {
+        "finish": "halftone",
+        "paper": "#1c0a0a",
+        "ink": "#fff1ec",
+        "glow": "#ff5a4d"
+      }
+    },
+    {
+      "id": "figurina_8bit",
+      "style": {
+        "finish": "pixel",
+        "paper": "#05070d",
+        "ink": "#eef3ff",
+        "glow": "#7cff4f"
       }
     }
   ]

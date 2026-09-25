@@ -99,7 +99,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
     <section class="public-profile-view" ${profileSurfaceAttributes(p.cosmetics)} aria-label="${escapeHtml(t("leaderboard.publicProfileTitle"))}">
       ${backBtn}
       <div class="card profile-hero mt-3">
-        ${renderAvatar({name:u.name,size:'large',tactics:cosmetics.frame.tactics,ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
+        ${renderAvatar({name:u.name,size:'large',tactics:cosmetics.frame.tactics,ringMotion:cosmetics.frame.motion,ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
         <div class="hero-info">
           <p class="eyebrow">${escapeHtml(t("leaderboard.publicProfileTitle"))}</p>
           <h2 id="public-profile-heading" tabindex="-1">

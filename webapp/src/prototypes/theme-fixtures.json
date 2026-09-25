@@ -961,5 +961,369 @@
         "glow": "#38bd82"
       }
     }
+  },
+  "aurora_boreale": {
+    "name": "Aurora boreale",
+    "description": "Notte artica sopra un campo del nord: nastri verdi e viola che si accendono e si affievoliscono piano dietro ogni schermata.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "aurora_boreale",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#06121a",
+        "bg2": "#0b1c26",
+        "card": "#102733",
+        "edge": "#1f4a57",
+        "text": "#eafff8",
+        "muted": "#9fc4bf",
+        "accent": "#5ef0b0",
+        "accentText": "#04150f",
+        "track": "#173a45",
+        "pattern": "radial-gradient(ellipse 70% 38% at 18% 8%, rgba(94,240,176,.16), transparent 70%), radial-gradient(ellipse 60% 30% at 82% 18%, rgba(166,120,255,.14), transparent 70%), repeating-linear-gradient(100deg, transparent 0 34px, rgba(94,240,176,.03) 34px 36px)",
+        "motion": "breathe"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "coreografia": {
+    "name": "Coreografia",
+    "description": "Rosso e bianco a quadri come i cartoncini di una curva: il mosaico si accende e si spegne piano.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "coreografia",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#140707",
+        "bg2": "#210c0c",
+        "card": "#2b1010",
+        "edge": "#5a2323",
+        "text": "#fff1ec",
+        "muted": "#d6a9a0",
+        "accent": "#ff5a4d",
+        "accentText": "#1a0505",
+        "track": "#3d1616",
+        "pattern": "repeating-linear-gradient(90deg, rgba(255,90,77,.06) 0 11px, transparent 11px 22px), repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 11px, transparent 11px 22px)",
+        "motion": "twinkle"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "sala_giochi": {
+    "name": "Sala giochi",
+    "description": "Il calcio dei cabinati anni '80: righe di scansione verdi che scorrono piano su un nero da monitor.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "sala_giochi",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#05070d",
+        "bg2": "#0b0f1c",
+        "card": "#10162a",
+        "edge": "#2a3a6e",
+        "text": "#eef3ff",
+        "muted": "#9fb0d8",
+        "accent": "#7cff4f",
+        "accentText": "#061404",
+        "track": "#1a2446",
+        "pattern": "repeating-linear-gradient(0deg, rgba(124,255,79,.05) 0 2px, transparent 2px 6px), repeating-linear-gradient(90deg, rgba(90,120,255,.04) 0 1px, transparent 1px 12px)",
+        "motion": "float"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "hanami": {
+    "name": "Hanami",
+    "description": "Primavera a Tokyo: petali rosa che scendono lenti su un viola notte.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "hanami",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#150d17",
+        "bg2": "#1f1322",
+        "card": "#29192d",
+        "edge": "#5a3a5c",
+        "text": "#fff0f6",
+        "muted": "#d9b3c7",
+        "accent": "#ff9ec7",
+        "accentText": "#2a0d1a",
+        "track": "#3a2440",
+        "pattern": "radial-gradient(ellipse 5px 3px at 8% 12%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 3px at 23% 64%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 6px 3px at 37% 28%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 2px at 49% 81%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 5px 3px at 58% 14%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 3px at 66% 52%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 6px 3px at 79% 33%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 5px 3px at 88% 71%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 2px at 15% 88%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 3px at 94% 11%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 3px 2px at 31% 45%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 2px at 72% 91%, rgba(255,158,199,.32), transparent)",
+        "motion": "float"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "beach_soccer": {
+    "name": "Beach soccer",
+    "description": "Sabbia calda al tramonto e cerchi d'acqua che si allargano: il campo si muove come la marea.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "beach_soccer",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#10151c",
+        "bg2": "#172029",
+        "card": "#1e2a35",
+        "edge": "#4d5a5e",
+        "text": "#fff6ea",
+        "muted": "#c7bca9",
+        "accent": "#ffc46b",
+        "accentText": "#251703",
+        "track": "#2b3a44",
+        "pattern": "repeating-radial-gradient(circle at 50% 120%, transparent 0 22px, rgba(94,214,224,.05) 22px 24px), linear-gradient(180deg, transparent 60%, rgba(255,196,107,.07))",
+        "motion": "float"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "galassia": {
+    "name": "Pallone cosmico",
+    "description": "Spazio profondo e stelle che brillano a intermittenza: il campo più lontano che esista.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "galassia",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#05040c",
+        "bg2": "#0c0a1c",
+        "card": "#131028",
+        "edge": "#2d2860",
+        "text": "#f3f0ff",
+        "muted": "#aaa3d6",
+        "accent": "#b69cff",
+        "accentText": "#110a2a",
+        "track": "#211c4a",
+        "pattern": "radial-gradient(circle at 6% 14%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 19% 71%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 27% 33%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 38% 88%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 44% 12%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 53% 57%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 61% 26%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 69% 79%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 77% 43%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 86% 9%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 92% 64%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 12% 47%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 33% 60%, #ffffff5c 1.5px, transparent 2.1px)",
+        "motion": "twinkle"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "derby_temporale": {
+    "name": "Derby sotto il diluvio",
+    "description": "Pioggia obliqua e riflettori che pulsano sull'acqua: il derby che nessuno voleva rinviare.",
+    "price": 12,
+    "rarity": "rare",
+    "appearance": {
+      "equipped": {
+        "theme": "derby_temporale",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#0b1016",
+        "bg2": "#121a23",
+        "card": "#18222d",
+        "edge": "#34465a",
+        "text": "#eef4fa",
+        "muted": "#a3b3c4",
+        "accent": "#9fd3ff",
+        "accentText": "#07131f",
+        "track": "#22303e",
+        "pattern": "repeating-linear-gradient(105deg, transparent 0 18px, rgba(159,211,255,.07) 18px 19px, transparent 19px 41px), radial-gradient(ellipse 80% 30% at 50% 0%, rgba(255,243,138,.06), transparent 70%)",
+        "motion": "breathe"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
   }
 }
