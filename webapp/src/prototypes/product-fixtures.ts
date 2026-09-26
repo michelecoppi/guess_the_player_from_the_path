@@ -48,7 +48,7 @@ export function shopFixture(): ShopState {
     ...item(kind as ShopCosmeticItem['kind'], ({theme:'Notturno',frame:'Senza cornice',title:'Senza titolo',badge:'Senza distintivo',squares:'Classici',number:'Senza numero',celebration:'Nessun effetto',card:'Figurina classica'} as Record<string,string>)[kind]!, {}, true),
     id:id!, price:0, full_price:0, free:true, featured:false, equipped:true,
   }));
-  return {view:'catalog',status:'ready',kindFilter:'all',priceFilter:'all',hideOwned:false,preview:null,buying:false,deliveryStatus:'idle',buyingItemId:null,equippingItemId:null,lookMutation:null,historyStatus:'ready',
+  return {view:'discover',status:'ready',kindFilter:'all',priceFilter:'all',hideOwned:false,searchQuery:'',visibleCount:24,selectedItemId:null,preview:null,buying:false,deliveryStatus:'idle',buyingItemId:null,equippingItemId:null,lookMutation:null,historyStatus:'ready',
     history:{purchases:[{name:'Fascia da capitano',day:'10/09/2026',stars:25,refunded:false,charge_id:'review-example'}],support_url:''},
     catalogue:{sections:items.map(i=>({kind:i.kind as 'frame',items:[defaults.find(d=>d.kind===i.kind)!,i]})),bundles:[],showcase:{week:'2026-W37',items:items.slice(0,3)},equipped:{...appearanceFixtures.default.equipped},owned:[...defaults,...items.filter(i=>i.owned)].map(i=>i.id),looks:[{name:'La domenica',equipped:{...appearanceFixtures.default.equipped}}]}};
 }

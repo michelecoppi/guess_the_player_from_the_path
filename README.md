@@ -349,6 +349,11 @@ festeggiamenti si possono provare e rispettano la preferenza di movimento ridott
 [Stelle di Telegram](https://core.telegram.org/bots/payments-stars): temi che ricolorano tutta
 la mini app, cornici per l'avatar, titoli sotto il nome, distintivi accanto al nome in
 classifica e i simboli della card che si incolla nei gruppi.
+Nella mini app **Scopri** presenta poche collezioni, **Catalogo** permette di cercare per
+nome e categoria, e **I miei oggetti** raccoglie il look indossato e quelli salvati.
+La scheda di ogni oggetto mostra dove appare, permette di provarlo temporaneamente e
+mostra il prezzo effettivo restituito dal server prima dell'acquisto. Traguardi e
+cronologia acquisti restano accessibili dallo Shop.
 
 La regola sta sopra il catalogo e non si negozia: **niente di quello che si compra cambia la
 partita.** Nessun punto, nessun tentativo in piu', nessun indizio scontato. Non e' prudenza: un
@@ -358,7 +363,7 @@ lo verifica sul catalogo (`test_nothing_on_sale_touches_the_game`), perche' e' i
 regola che si perde per strada un oggetto alla volta.
 
 Il catalogo e' **contenuto**, non codice: sta in `data/shop.json` come i calciatori e gli
-eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Cinque tipi di
+eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Otto tipi di
 oggetto (uno per "slot": se ne indossa uno per tipo), piu' i pacchetti; ogni tipo ha il suo
 oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
 
