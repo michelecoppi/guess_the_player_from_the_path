@@ -4,6 +4,7 @@ import "./styles/editorial.css";
 import "./styles/matchday.css";
 import "./styles/event-modes.css";
 import "./styles/cosmetic-effects.css";
+import "./styles/shop-redesign.css";
 import { bootstrap } from "./app/bootstrap";
 
 if (typeof document !== "undefined") {

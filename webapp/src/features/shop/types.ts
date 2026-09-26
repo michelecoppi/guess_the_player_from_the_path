@@ -130,7 +130,7 @@ export interface LookResponse {
   status: LookStatus;
 }
 
-export type ShopSubview = "catalog" | "wardrobe" | "achievements" | "history";
+export type ShopSubview = "discover" | "catalog" | "wardrobe" | "achievements" | "history";
 export type ShopKindFilter = "all" | CosmeticSlot | "bundle";
 export type ShopPriceFilter = "all" | "7" | "12" | "28" | "38";
 export type ShopDeliveryStatus = "idle" | "delivering" | "delivered" | "pending";
@@ -148,6 +148,9 @@ export interface ShopState {
   kindFilter: ShopKindFilter;
   priceFilter: ShopPriceFilter;
   hideOwned: boolean;
+  searchQuery: string;
+  visibleCount: number;
+  selectedItemId: string | null;
   preview: ShopPreviewState | null;
   buying: boolean;
   deliveryStatus: ShopDeliveryStatus;

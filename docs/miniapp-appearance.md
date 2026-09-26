@@ -102,6 +102,19 @@ these, theme motion, frame flourishes and canvas celebrations while keeping stat
 decorations visible. Referral
 cards show a tactical pitch and passing routes; their samples and shared PNGs are static.
 
+### Shop navigation (#153)
+
+The Mini App Shop opens on a short Discover page with a small set of featured
+collections and weekly picks. Catalogue is a separate searchable list with visible
+category chips, price and ownership filters, and 24 items per page. Each card opens
+a product detail that names the surface the cosmetic changes, shows the existing
+faithful preview and, for bundles, lists included pieces and their ownership.
+The displayed price is the server-calculated `price`, including bundle proration;
+no frontend price calculation or payment rule changes. My items holds the current
+outfit, saved looks and owned items. Achievements and purchase history remain
+available from secondary Shop navigation. Preview remains temporary and leaving
+Shop restores the authoritative appearance.
+
 ## Faithful previews
 
 `components/CosmeticArt.ts` is shared by Shop and profiles. Card samples use

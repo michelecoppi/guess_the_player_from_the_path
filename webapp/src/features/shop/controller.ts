@@ -79,12 +79,15 @@ export class ShopController {
     this.client = client;
     this.pollIntervalMs = options.pollIntervalMs ?? 900;
     this.state = {
-      view: "catalog",
+      view: "discover",
       status: "idle",
       catalogue: null,
       kindFilter: "all",
       priceFilter: "all",
       hideOwned: false,
+      searchQuery: "",
+      visibleCount: 24,
+      selectedItemId: null,
       preview: null,
       buying: false,
       deliveryStatus: "idle",
@@ -195,6 +198,9 @@ export class ShopController {
     this.state.view = view;
     this.state.kindFilter = "all";
     this.state.priceFilter = "all";
+    this.state.searchQuery = "";
+    this.state.visibleCount = 24;
+    this.state.selectedItemId = null;
 
     if (view === "history" && this.state.historyStatus === "idle") {
       void this.loadHistory();
@@ -204,15 +210,32 @@ export class ShopController {
   }
 
   public setKindFilter(kind: ShopKindFilter): void {
-    this.updateState({ kindFilter: kind });
+    this.updateState({ kindFilter: kind, visibleCount: 24 });
   }
 
   public setPriceFilter(price: ShopPriceFilter): void {
-    this.updateState({ priceFilter: price });
+    this.updateState({ priceFilter: price, visibleCount: 24 });
   }
 
   public setHideOwned(hide: boolean): void {
-    this.updateState({ hideOwned: hide });
+    this.updateState({ hideOwned: hide, visibleCount: 24 });
+  }
+
+  public setSearchQuery(query: string): void {
+    this.updateState({ searchQuery: query, visibleCount: 24 });
+  }
+
+  public showMore(): void {
+    this.updateState({ visibleCount: this.state.visibleCount + 24 });
+  }
+
+  public openDetail(itemId: string): void {
+    if (!this.allItems().some((item) => item.id === itemId)) return;
+    this.updateState({ selectedItemId: itemId });
+  }
+
+  public closeDetail(): void {
+    this.updateState({ selectedItemId: null });
   }
 
   // ---------------------------------------------------------------------------

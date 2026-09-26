@@ -139,15 +139,22 @@ test("review navigation and fixture interactions never call an API", () => {
     container.querySelector<HTMLButtonElement>('[data-action="close-profile"]')!.click();
     assert.equal(container.querySelector('.public-profile-view'),null);
     go("shop");
+    const openShopItem = (id: string) => {
+      container.querySelector<HTMLButtonElement>('[data-shop-view="catalog"]')!.click();
+      container.querySelector<HTMLButtonElement>(`[data-shop-detail="${id}"]`)!.click();
+    };
+    openShopItem("review-number");
     container.querySelector<HTMLButtonElement>('[data-equip="review-number"]')!.click();
     go("profile");
     assert.match(container.querySelector('#profile-heading')!.textContent!,/10/);
     go("shop");
+    openShopItem("review-title");
     container.querySelector<HTMLButtonElement>('[data-equip="review-title"]')!.click();
     go("profile");
     assert.match(container.querySelector('#app-content')!.textContent!,/Regista/);
     assert.match(container.querySelector('#profile-heading')!.textContent!,/10/);
     go("shop");
+    openShopItem("review-frame");
     container.querySelector<HTMLButtonElement>('[data-try="review-frame"]')!.click();
     assert.ok(container.querySelector('.preview-bar'));
     container.querySelector<HTMLButtonElement>('#shop-stop-preview')!.click();
