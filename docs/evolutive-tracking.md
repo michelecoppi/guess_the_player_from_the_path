@@ -69,6 +69,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#23](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/23) | Documentation and AI-agent protocol |
 | [#146](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/146) | Remove the leftovers of the old Mini App and `/app/v2`, align the docs |
 | [#147](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/147) | Move group-round rules from the handler into the `groups` domain |
+| [#155](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/155) | Restore contrast of the final career-stop number across cosmetic themes |
 
 ## Status flow and WIP limit
 

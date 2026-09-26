@@ -39,6 +39,7 @@
 }
 [data-cosmetic-shell] .training-entry .mode-icon,
 [data-cosmetic-shell] .training-icon-wrap { color: var(--accent); }
+[data-cosmetic-shell] .stop:last-child .transfer-node { color: var(--text); }
 [data-cosmetic-shell] .row.me,
 [data-cosmetic-shell] .back-link,
 [data-cosmetic-shell] .match-meta span:last-child { color: var(--skin-ink); }
