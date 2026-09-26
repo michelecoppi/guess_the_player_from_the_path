@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#153](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/153) | Mini App Shop: clearer navigation, search and cosmetic details |
 | [#128](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/128) | Timed event: Blind Career |
 | [#129](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/129) | Timed event: Find the link |
 | [#130](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/130) | Timed event: Order the career |
@@ -131,6 +132,10 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-26: #153 records the owner's Shop redesign request after the catalogue
+  expanded. It reorganizes the Mini App buying and wardrobe experience without
+  changing backend ownership, prices or payments.
 
 - 2026-09-25: the owner asked for #146 and #147. #146 cleans up after the #115 rollout
   (the Vite Mini App is `/app`; the old page, `/app/v2` and the legacy client tooling are

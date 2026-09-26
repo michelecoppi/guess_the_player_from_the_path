@@ -279,6 +279,13 @@ async def webapp_page(lang: str | None = None, referrals: int | None = None, sce
         STATE["user"]["last_played_day"] = None
         STATE["user"]["has_guessed_today"] = False
         STATE["user"]["daily_attempts"] = 0
+    elif scenario == "shop-newcomer":
+        # Let reviewers see real prices and try-on on an account without purchases.
+        STATE["user"]["cosmetics"]["owned"] = [
+            item["id"] for item in shop.all_items() if item.get("free")
+        ]
+        STATE["user"]["cosmetics"]["equipped"] = {}
+        STATE["user"]["cosmetics"]["looks"] = []
     if lang in ("it", "en", "es"):
         STATE["user"]["language"] = lang
     if referrals is not None:

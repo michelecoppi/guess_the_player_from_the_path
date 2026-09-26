@@ -535,7 +535,7 @@ test("5 & 6. Duplicate requests deduplicated; stale out-of-order response discar
   }
 });
 
-test("7 to 10. Showcase, sections, bundles, and featured collections rendered", async () => {
+test("7 to 10. Discover is curated and catalogue remains reachable", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();
   const catalogue = createMockShopCatalogue();
@@ -547,18 +547,18 @@ test("7 to 10. Showcase, sections, bundles, and featured collections rendered", 
 
     container.innerHTML = renderShopPage(controller.getState());
 
-    // 7. Weekly showcase strip
-    const showcase = container.querySelector("#shelf-showcase");
+    // A short discovery page, including featured collections and weekly picks.
+    const showcase = container.querySelector(".shop-section:nth-of-type(2)");
     assert.ok(showcase, "Showcase must be rendered");
-    assert.ok(showcase.textContent?.includes("Vetrina della settimana"));
-
-    // 8. Category shelves
-    assert.ok(container.querySelector("#shelf-theme"));
-    assert.ok(container.querySelector("#shelf-frame"));
-
-    // 9 & 10. Featured collections and regular bundles
+    assert.ok(container.textContent?.includes("Vetrina della settimana"));
     assert.ok(container.querySelector("#shelf-collections"));
-    assert.ok(container.querySelector("#shelf-bundle"));
+    assert.equal(container.querySelector("#shelf-bundle"), null);
+    assert.ok(container.querySelector('[data-shop-view="catalog"]'));
+
+    controller.setView("catalog");
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.ok(container.querySelector("#shop-search"));
+    assert.ok(container.querySelector('[data-item-id="pack_neon"]'));
   } finally {
     restoreFetch();
     cleanupDom();
@@ -579,17 +579,18 @@ test("11 to 16. Filter semantics: kind, price, hide-owned, and empty state", asy
   try {
     const controller = new ShopController();
     await controller.init();
+    controller.setView("catalog");
 
     // 11 & 12. Slot filter: only frames
     controller.setKindFilter("frame");
     container.innerHTML = renderShopPage(controller.getState());
-    assert.ok(container.querySelector("#shelf-frame"));
-    assert.equal(container.querySelector("#shelf-theme"), null);
+    assert.ok(container.querySelector('[data-item-id="cornice_oro"]'));
+    assert.equal(container.querySelector('[data-item-id="tema_neon"]'), null);
 
     // 13. Price filter: <= 12 (frame costs 55 so frame disappears)
     controller.setPriceFilter("12");
     container.innerHTML = renderShopPage(controller.getState());
-    assert.equal(container.querySelector("#shelf-frame"), null);
+    assert.equal(container.querySelector('[data-item-id="cornice_oro"]'), null);
 
     // 14. Hide owned: hides owned items in catalog
     controller.setKindFilter("theme");
@@ -597,7 +598,7 @@ test("11 to 16. Filter semantics: kind, price, hide-owned, and empty state", asy
     controller.setHideOwned(true);
     container.innerHTML = renderShopPage(controller.getState());
     // Free theme is owned, so it should be hidden; Neon theme is not owned, so visible
-    const items = container.querySelector("#shelf-theme")!.querySelectorAll(".shop-item");
+    const items = container.querySelectorAll(".shop-results .shop-tile");
     assert.equal(items.length, 1);
     assert.ok(items[0].textContent?.includes("Neon"));
 
@@ -606,8 +607,65 @@ test("11 to 16. Filter semantics: kind, price, hide-owned, and empty state", asy
     container.innerHTML = renderShopPage(controller.getState());
     assert.ok(container.textContent?.includes("Nessun oggetto con questi filtri."));
 
+    // Name search narrows the catalogue without changing server cards.
+    controller.setPriceFilter("all");
+    controller.setHideOwned(false);
+    controller.setKindFilter("all");
+    controller.setSearchQuery("neon");
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.ok(container.querySelector('[data-item-id="tema_neon"]'));
+    assert.equal(container.querySelector('[data-item-id="cornice_oro"]'), null);
+
     // 16. Backend cards remain completely unchanged
     assert.equal(catalogue.sections[0].items[0].name, "Classico");
+  } finally {
+    restoreFetch();
+    cleanupDom();
+    restoreTg();
+  }
+});
+
+test("Shop discovery, search, detail and catalogue paging stay connected", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup: cleanupDom } = setupGlobalDom();
+  const catalogue = createMockShopCatalogue();
+  const paidTheme = catalogue.sections[0].items[1];
+  catalogue.sections[0].items.push(...Array.from({ length: 30 }, (_, index) => ({
+    ...paidTheme,
+    id: `tema_extra_${index}`,
+    name: `Tema extra ${index}`,
+  })));
+  const { restore: restoreFetch } = captureFetchRequests(catalogue);
+
+  try {
+    const controller = new ShopController();
+    await controller.init();
+    container.innerHTML = renderShopPage(controller.getState());
+    attachShopEventListeners(container, controller);
+    (container.querySelector('[data-shop-view="catalog"]') as HTMLButtonElement).click();
+    assert.equal(controller.getState().view, "catalog");
+
+    container.innerHTML = renderShopPage(controller.getState());
+    attachShopEventListeners(container, controller);
+    assert.equal(container.querySelectorAll(".shop-results .shop-tile").length, 24);
+    (container.querySelector("#shop-show-more") as HTMLButtonElement).click();
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.ok(container.querySelectorAll(".shop-results .shop-tile").length > 24);
+
+    attachShopEventListeners(container, controller);
+    (container.querySelector('[data-shop-kind="theme"]') as HTMLButtonElement).click();
+    controller.setSearchQuery("neon");
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.equal(container.querySelectorAll(".shop-results .shop-tile").length, 1);
+    attachShopEventListeners(container, controller);
+    (container.querySelector('[data-shop-detail="tema_neon"]') as HTMLButtonElement).click();
+    assert.equal(controller.getState().selectedItemId, "tema_neon");
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.ok(container.querySelector(".shop-detail-price")?.textContent?.includes("25 ⭐"));
+    attachShopEventListeners(container, controller);
+    (container.querySelector("#shop-detail-back") as HTMLButtonElement).click();
+    assert.equal(controller.getState().selectedItemId, null);
+    assert.equal(controller.getState().searchQuery, "neon");
   } finally {
     restoreFetch();
     cleanupDom();
@@ -628,20 +686,31 @@ test("17 to 28. Acquisition models: free, paid, owned, equipped, achievements, t
   try {
     const controller = new ShopController();
     await controller.init();
+    controller.setView("catalog");
     container.innerHTML = renderShopPage(controller.getState());
 
     // 17 & 20. Free & equipped item (tema_classico)
     const classic = container.querySelector('[data-item-id="tema_classico"]');
-    assert.ok(classic?.querySelector(".worn-tag"));
+    assert.ok(classic?.textContent?.includes("Addosso"));
 
     // 18. Paid unowned item (tema_neon: 25 ⭐)
     const neon = container.querySelector('[data-item-id="tema_neon"]');
-    assert.ok(neon?.querySelector(".buy-btn"));
+    assert.ok(neon?.querySelector('[data-shop-detail="tema_neon"]'));
     assert.ok(neon?.textContent?.includes("25 ⭐"));
+    controller.openDetail("tema_neon");
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.ok(container.querySelector('[data-buy="tema_neon"]'));
+    controller.closeDetail();
+    container.innerHTML = renderShopPage(controller.getState());
 
     // 19. Owned unequipped item (cornice_oro)
     const oro = container.querySelector('[data-item-id="cornice_oro"]');
-    assert.ok(oro?.querySelector('[data-equip="cornice_oro"]'));
+    assert.ok(oro?.textContent?.includes("Già tuo"));
+    controller.openDetail("cornice_oro");
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.ok(container.querySelector('[data-equip="cornice_oro"]'));
+    controller.closeDetail();
+    container.innerHTML = renderShopPage(controller.getState());
 
     // Switch to achievements view
     controller.setView("achievements");
@@ -670,8 +739,11 @@ test("17 to 28. Acquisition models: free, paid, owned, equipped, achievements, t
 
     // 26 & 27. Partial bundle with prorated price
     const packNeon = container.querySelector('[data-item-id="pack_neon"]');
-    assert.ok(packNeon?.textContent?.includes("Prezzo per i soli pezzi mancanti"));
-    assert.ok(packNeon?.textContent?.includes("Ti mancano: Neon"));
+    assert.ok(packNeon?.textContent?.includes("45 ⭐"));
+    controller.openDetail("pack_neon");
+    container.innerHTML = renderShopPage(controller.getState());
+    assert.ok(container.textContent?.includes("Prezzo per i soli pezzi mancanti"));
+    assert.ok(container.querySelector(".shop-detail-pieces")?.textContent?.includes("Neon"));
   } finally {
     restoreFetch();
     cleanupDom();
@@ -1080,7 +1152,7 @@ test("80 to 86. Full localization across IT, EN, ES and accessible controls", as
 
     // 83 & 84. Accessibility: role="tab" and aria-selected
     const tabBtns = container.querySelectorAll('[role="tab"]');
-    assert.equal(tabBtns.length, 4);
+    assert.equal(tabBtns.length, 3);
     assert.equal(tabBtns[0].getAttribute("aria-selected"), "true");
 
     // 85. Touch targets min 44px
@@ -1529,6 +1601,9 @@ test("101. Saved Looks empty state renders shop.noSavedLooks in IT, EN, ES and n
     kindFilter: "all" as const,
     priceFilter: "all" as const,
     hideOwned: false,
+    searchQuery: "",
+    visibleCount: 24,
+    selectedItemId: null,
     preview: null,
     buying: false,
     deliveryStatus: "idle" as const,
@@ -1576,19 +1651,20 @@ test("102. Audit Shop runtime in EN and ES: no Italian-only copy, fake player da
   try {
     const controller = new ShopController();
     await controller.init();
+    controller.setView("catalog");
 
     for (const lang of ["en", "es"] as const) {
       setLanguage(lang);
       container.innerHTML = renderShopPage(controller.getState());
       const html = container.innerHTML;
 
-      // 1. Aria label for shortcuts is localized
+      // 1. Category navigation is localized
       if (lang === "en") {
-        assert.ok(html.includes('aria-label="Quick section navigation"'));
+        assert.ok(html.includes('aria-label="All categories"'));
       } else {
-        assert.ok(html.includes('aria-label="Navegación rápida de secciones"'));
+        assert.ok(html.includes('aria-label="Todas las categorías"'));
       }
-      assert.ok(!html.includes('aria-label="Navigazione rapida sezioni"'));
+      assert.ok(!html.includes('aria-label="Tutte le categorie"'));
 
       // 2. No Italian words or fake real-player data in theme preview
       assert.ok(!html.includes("Indovina"));

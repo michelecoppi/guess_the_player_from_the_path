@@ -18,6 +18,10 @@ new dated section below.
 
 ### Added
 
+- Mini App Shop: a curated Discover page, searchable catalogue with visible categories,
+  and product details showing the preview, where each item appears, bundle contents and
+  the server-calculated price. Owned items and saved looks now have a dedicated view
+  ([#153](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/153)).
 - Shop: seven animated collections (Aurora boreale, Coreografia, Sala giochi, Hanami, Beach
   soccer, Pallone cosmico, Derby sotto il diluvio) with ambient theme motion, bounded frame
   flourishes (shine, pulse, orbit), three new card finishes (aurora, halftone, pixel), seven

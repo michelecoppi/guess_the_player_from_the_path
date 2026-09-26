@@ -118,7 +118,7 @@ export function startReview(root:HTMLElement):void {
       active='arena';if(page==='Sfida archivio'){archive.view='challenge';archive.status='challenge_ready';archive.selectedDay=archive.challenge!.day;}
       if(state==='loading')archive.status='loading';html=renderArchivePage(archive);
     } else if(['Shop','Guardaroba','Traguardi','Acquisti'].includes(page)) {
-      active='shop';shop.view=page==='Guardaroba'?'wardrobe':page==='Traguardi'?'achievements':page==='Acquisti'?'history':'catalog';
+      active='shop';if(page!=='Shop')shop.view=page==='Guardaroba'?'wardrobe':page==='Traguardi'?'achievements':'history';
       if(state==='loading'||state==='error'){html=renderShopPage({...shop,status:state,catalogue:null});}else html=renderShopPage(shop);
     } else if(page==='Referral') {
       active='profile';if(state==='loading'||state==='error'){referral.status=state;referral.data=null;}referral.selectedRewardTarget=rewardTarget;referral.toast=referralNotice;html=renderReferralPage(referral);
@@ -138,9 +138,9 @@ export function startReview(root:HTMLElement):void {
       <label>Lingua<select id="review-language">${['it','en','es'].map(s=>`<option ${s===language?'selected':''}>${s}</option>`).join('')}</select></label>
       </div><p>Demo interattiva con dati locali: acquisti e inviti simulati, nessuna spesa o invio reale. Gli oggetti indossati restano fino al ricaricamento. Gli stati si applicano alle schermate che li supportano.</p></details>`;
     const change=(id:string,fn:(value:string)=>void)=>{root.querySelector<HTMLSelectElement>(id)!.onchange=e=>{fn((e.target as HTMLSelectElement).value);render();};};
-    change('#review-page',v=>{page=v;state='ready';publicProfile=null;shop.preview=null;});change('#review-state',v=>state=v as ReviewState);change('#review-appearance',v=>{outfit=v as AppearanceFixtureName;worn=appearanceFixtures[outfit];shop.preview=null;items.forEach(item=>item.equipped=false);});change('#review-language',v=>language=v as typeof language);change('#review-theme',v=>realTheme=v as ThemeId|'');
+    change('#review-page',v=>{page=v;state='ready';publicProfile=null;shop.preview=null;shop.selectedItemId=null;if(v==='Shop')shop.view='discover';});change('#review-state',v=>state=v as ReviewState);change('#review-appearance',v=>{outfit=v as AppearanceFixtureName;worn=appearanceFixtures[outfit];shop.preview=null;items.forEach(item=>item.equipped=false);});change('#review-language',v=>language=v as typeof language);change('#review-theme',v=>realTheme=v as ThemeId|'');
     root.querySelectorAll<HTMLElement>('[data-theme-open]').forEach(button=>button.onclick=()=>{realTheme=button.dataset.themeOpen as ThemeId;page='Profilo';render();window.scrollTo(0,0);});
-    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(b=>b.onclick=()=>{page=({play:'Daily',arena:'Arena',profile:'Profilo',leaderboard:'Classifica',shop:'Shop',archive:'Archivio',events:'Eventi',referral:'Referral',duels:'Duello',challenge:'Cerca utenti'} as Record<string,string>)[b.dataset.tab!]||b.dataset.tab!;state='ready';publicProfile=null;shop.preview=null;render();window.scrollTo(0,0);});
+    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(b=>b.onclick=()=>{page=({play:'Daily',arena:'Arena',profile:'Profilo',leaderboard:'Classifica',shop:'Shop',archive:'Archivio',events:'Eventi',referral:'Referral',duels:'Duello',challenge:'Cerca utenti'} as Record<string,string>)[b.dataset.tab!]||b.dataset.tab!;state='ready';publicProfile=null;shop.preview=null;shop.selectedItemId=null;if(page==='Shop')shop.view='discover';render();window.scrollTo(0,0);});
     const bind=(selector:string,fn:()=>void)=>root.querySelectorAll<HTMLElement>(selector).forEach(el=>el.onclick=e=>{e.preventDefault();fn();render();});
     bind('#submit',()=>state=root.querySelector<HTMLInputElement>('#answer')?.value.toLowerCase().includes('pirlo')?'correct':'wrong');bind('#hint',()=>state='hint');bind('#daily-retry',()=>state='ready');bind('#open-cabinet',()=>page='Trofei');bind('#close-cabinet',()=>page='Profilo');
     bind('[data-arena-nav="challenge"]',()=>page='Cerca utenti');
@@ -185,6 +185,13 @@ export function startReview(root:HTMLElement):void {
       root.querySelector('.toast')?.scrollIntoView?.({block:'nearest'});
     });
     const kind=root.querySelector<HTMLSelectElement>('#shop-kind');if(kind)kind.onchange=()=>{shop.kindFilter=kind.value as typeof shop.kindFilter;render();};
+    root.querySelectorAll<HTMLElement>('[data-shop-kind]').forEach(button=>button.onclick=()=>{shop.kindFilter=button.dataset.shopKind as typeof shop.kindFilter;shop.visibleCount=24;render();});
+    const shopSearch=root.querySelector<HTMLInputElement>('#shop-search');
+    if(shopSearch)shopSearch.oninput=()=>{shop.searchQuery=shopSearch.value;shop.visibleCount=24;const cursor=shopSearch.selectionStart;render();const next=root.querySelector<HTMLInputElement>('#shop-search');next?.focus({preventScroll:true});if(cursor!==null)next?.setSelectionRange(cursor,cursor);};
+    bind('#shop-show-more',()=>shop.visibleCount+=24);
+    bind('#shop-clear-filters',()=>{shop.kindFilter='all';shop.priceFilter='all';shop.hideOwned=false;shop.searchQuery='';});
+    root.querySelectorAll<HTMLElement>('[data-shop-detail]').forEach(button=>button.onclick=()=>{shop.selectedItemId=button.dataset.shopDetail!;render();});
+    bind('#shop-detail-back',()=>shop.selectedItemId=null);
     const price=root.querySelector<HTMLSelectElement>('#shop-price');if(price)price.onchange=()=>{shop.priceFilter=price.value as typeof shop.priceFilter;render();};
     const hideOwned=root.querySelector<HTMLInputElement>('#shop-hide-owned');if(hideOwned)hideOwned.onchange=()=>{shop.hideOwned=hideOwned.checked;render();};
     bind('#shop-stop-preview',()=>shop.preview=null);
@@ -211,7 +218,7 @@ export function startReview(root:HTMLElement):void {
     bind('#rf-refresh',()=>referralNotice='Progressi di esempio aggiornati.');
     if(page==='Referral')watchReferralMotion(root);
     bind('[data-arena-duel]',()=>page='Duello');bind('[data-arena-nav="training"]',()=>page='Allenamento');bind('[data-arena-nav="hub"]',()=>page='Arena');
-    root.querySelectorAll<HTMLElement>('[data-shop-view]').forEach(b=>b.onclick=()=>{page=({catalog:'Shop',wardrobe:'Guardaroba',achievements:'Traguardi',history:'Acquisti'} as Record<string,string>)[b.dataset.shopView!]!;render();});
+    root.querySelectorAll<HTMLElement>('[data-shop-view]').forEach(b=>b.onclick=()=>{const view=b.dataset.shopView!;shop.selectedItemId=null;if(view==='discover'||view==='catalog'){page='Shop';shop.view=view;}else page=({wardrobe:'Guardaroba',achievements:'Traguardi',history:'Acquisti'} as Record<string,string>)[view]!;render();});
     root.querySelectorAll<HTMLElement>('[data-event-open]').forEach((b,i)=>b.onclick=()=>{eventIndex=i;page='Dettaglio evento';render();});bind('#events-back',()=>page='Eventi');bind('#events-open-training',()=>page='Allenamento');
   }
   render();
