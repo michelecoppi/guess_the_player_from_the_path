@@ -15,6 +15,10 @@ export class LeaderboardController {
   private searchSeq = 0;
   private searchTimer: ReturnType<typeof setTimeout> | undefined;
 
+  public setSearchExpanded(expanded: boolean): void {
+    this.updateState({ searchExpanded: expanded });
+  }
+
   public setSearchQuery(query: string): void {
     clearTimeout(this.searchTimer);
     const seq = ++this.searchSeq;

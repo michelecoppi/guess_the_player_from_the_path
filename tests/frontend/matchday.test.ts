@@ -1,12 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderDailyPage } from '../../webapp/src/pages/DailyPage';
+import { renderDailyPage, attachDailyEventListeners } from '../../webapp/src/pages/DailyPage';
+import type { DailyController } from '../../webapp/src/features/daily/controller';
 import { renderProfileView } from '../../webapp/src/features/profile/views';
 import { renderHubView } from '../../webapp/src/features/arena/views';
 import { dailyFixture } from '../../webapp/src/prototypes/daily-fixtures';
 import { profileFixture, arenaFixture } from '../../webapp/src/prototypes/product-fixtures';
 import { createTestDom } from './helpers/dom';
 import { setLanguage } from '../../webapp/src/i18n';
+
+test('Daily answer shortcut focuses the real guess field and disappears on completion', () => {
+  const dom = createTestDom(renderDailyPage(dailyFixture('ready')));
+  try {
+    attachDailyEventListeners(dom.container, {} as DailyController);
+    const shortcut = dom.container.querySelector<HTMLButtonElement>('#daily-answer-dock')!;
+    const answer = dom.container.querySelector<HTMLInputElement>('#answer')!;
+    assert.equal(shortcut.getAttribute('aria-controls'), 'daily-interaction-card');
+    shortcut.click();
+    assert.equal(dom.container.ownerDocument.activeElement, answer);
+  } finally { dom.cleanup(); }
+  assert.doesNotMatch(renderDailyPage(dailyFixture('completed')), /daily-answer-dock/);
+});
 
 test('match report uses actual awards, escapes revealed names and preserves result actions', () => {
   const state = dailyFixture('correct');

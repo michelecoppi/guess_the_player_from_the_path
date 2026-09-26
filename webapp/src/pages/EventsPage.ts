@@ -245,7 +245,7 @@ export function renderEventsPage(controller: EventsController): string {
     : event.type === "blind_path"
     ? renderBlindPath(event)
     : event.career_path && event.career_path.length > 0
-      ? renderCareerPath({ stops: event.career_path })
+      ? `<section class="career-sheet event-career-sheet" aria-label="${v("career")}"><div class="sheet-heading"><div><h3>${v("career")}</h3><p class="career-caption">${v("clubCount").replace("{n}", String(event.career_path.length))}</p></div>${icon("career")}</div><div class="career-columns" aria-hidden="true"><span>${v("season")}</span><span>${v("club")}</span><span>${v("apps")}</span></div>${renderCareerPath({ stops: event.career_path })}</section>`
       : imageHtml;
 
   // Feedback presentation
@@ -330,6 +330,13 @@ export function renderEventsPage(controller: EventsController): string {
     : `<li>${t("events.leaderboardEmpty")}</li>`;
 
   const endDateHtml = renderEventEndDate(event.dates);
+  const isCareerPathEvent = !["order_career", "link_club", "blind_path"].includes(event.type)
+    && !!event.career_path?.length;
+  const playControls = `${hintHtml}
+      ${!event.progress.finished && event.available ? `<p class="event-attempts" aria-live="polite">${t("events.attempts")}: ${remaining}</p>` : ""}
+      ${feedbackHtml}
+      ${errorHtml}
+      ${interactiveHtml}`;
 
   return `
     <div class="event-header-actions">
@@ -347,12 +354,7 @@ export function renderEventsPage(controller: EventsController): string {
         <span>${t("events.score")}: ${event.progress.points}</span>
       </p>
       ${playerNameHtml}
-      ${contentHtml}
-      ${hintHtml}
-      ${!event.progress.finished && event.available ? `<p class="event-attempts" aria-live="polite">${t("events.attempts")}: ${remaining}</p>` : ""}
-      ${feedbackHtml}
-      ${errorHtml}
-      ${interactiveHtml}
+      ${isCareerPathEvent ? `<div class="event-play-layout">${contentHtml}<section class="answer-desk event-answer-desk" aria-label="${escapeHtml(t("events.formLabel"))}">${playControls}</section></div>` : `${contentHtml}${playControls}`}
       <section class="event-leaderboard-section">
         <h3>${t("events.leaderboard")}</h3>
         <ol class="event-leaderboard" aria-label="${t("events.leaderboard")}">
