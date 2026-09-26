@@ -38,6 +38,48 @@ def test_the_retired_app_v2_path_is_gone():
     assert client.get("/app/v2").status_code == 404
 
 
+def test_tiktok_verification_serves_only_the_exact_file(monkeypatch, tmp_path):
+    verification_dir = tmp_path / "site-verification"
+    verification_dir.mkdir()
+    filename = "tiktokAbC123.txt"
+    content = b"tiktok-developers-site-verification=AbC123\n"
+    (verification_dir / filename).write_bytes(content)
+    monkeypatch.setattr(static, "VERIFICATION_DIR", verification_dir)
+    client = TestClient(bot.app)
+
+    response = client.get(f"/{filename}")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    assert response.content == content
+
+    for path in (
+        "/tiktokMissing.txt",
+        "/tiktok.txt",
+        "/tiktokabc.html",
+        "/privacy.txt",
+        "/tiktok..%2Fterms.txt",
+        "/tiktok" + "x" * 129 + ".txt",
+    ):
+        assert client.get(path).status_code == 404, path
+
+    for path in ("/terms", "/privacy", "/legal.css"):
+        assert client.get(path).status_code == 200, path
+
+
+def test_tiktok_verification_does_not_follow_symlinks_outside_the_directory(monkeypatch, tmp_path):
+    verification_dir = tmp_path / "site-verification"
+    verification_dir.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("outside", encoding="utf-8")
+    try:
+        (verification_dir / "tiktokOutside.txt").symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("Creating symlinks requires extra privileges on this host")
+    monkeypatch.setattr(static, "VERIFICATION_DIR", verification_dir)
+
+    assert TestClient(bot.app).get("/tiktokOutside.txt").status_code == 404
+
+
 def test_webapp_assets_serving_and_security():
     client = TestClient(bot.app)
     assets_dir = os.path.join(static.DIST_DIR, "assets")
