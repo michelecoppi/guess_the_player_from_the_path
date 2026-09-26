@@ -43,6 +43,9 @@ card via `--sport-*`, referral hero) use `--skin-soft`. Accent-as-text on those 
 `--text`, so deep accents stay readable. Real results keep `--success`/`--success-bg`. Product text, success/error/warning colors, focus, typography,
 layout and touch sizes remain product-owned. `skinTokens()` owns seven `--skin-*`
 variables. Titles use decorative color while keeping readable product text.
+The last career-stop marker uses product text on `--skin-soft`. The first marker
+keeps `--skin-accent-text` on the solid accent. This preserves number contrast
+across themes in Daily, Training, Archive, Arena and Events.
 Reviewed gradients belong to `appearance/decorations.ts`. Unknown gradients, CSS
 keys and URLs are ignored; legacy grain maps to a local texture. Parsing is idempotent.
 
