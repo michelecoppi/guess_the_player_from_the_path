@@ -137,7 +137,7 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 
 - 2026-09-26: the owner requested #157 to prepare the game's Cloud Run origin for Promo Studio's
   TikTok developer app: a restricted URL verification file route and matching legal text in
-  three languages. The actual verification file will be supplied by TikTok later.
+  three languages. The owner supplied the TikTok verification file for inclusion in the PR.
 
 - 2026-09-26: #153 records the owner's Shop redesign request after the catalogue
   expanded. It reorganizes the Mini App buying and wardrobe experience without
