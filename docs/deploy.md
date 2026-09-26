@@ -167,6 +167,15 @@ la region e la durata dei backup. Se il codice cambia e loro no, descrivono un s
 esiste - che e' peggio che non avere l'informativa. `tests/test_legal_pages.py` controlla solo
 che le tre lingue restino allineate, non che dicano il vero.
 
+### Verifica URL di TikTok
+
+Per verificare il prefisso URL del servizio su developers.tiktok.com, metti il file `.txt`
+scaricato da TikTok in `webapp/site-verification/`, committalo e fai il deploy. Controlla che
+`<PUBLIC_BASE_URL>/<nome-file>.txt` restituisca il contenuto esatto, poi premi *Verify* su
+TikTok. Il Dockerfile copia la cartella nell'immagine insieme a `webapp/`; il file reale non va
+inventato. Per il modulo dell'app TikTok usa `<PUBLIC_BASE_URL>/terms` e
+`<PUBLIC_BASE_URL>/privacy`.
+
 ## 2. Cloud Scheduler (generazione contenuti)
 
 Un job HTTP chiama ogni notte l'endpoint interno con l'header di autorizzazione:

@@ -97,3 +97,14 @@ def test_the_privacy_policy_names_the_controller_and_the_real_deletion_command()
     for lang, text in blocks(page("privacy.html")).items():
         assert "Michele Coppi" in text, lang
         assert "/forgetme" in text, lang
+
+
+def test_tiktok_promotion_is_described_in_each_language():
+    for lang, text in blocks(page("privacy.html")).items():
+        assert "TikTok" in text, lang
+        assert re.search(r"Google Cloud\s+Secret Manager", text), lang
+        assert "26" in re.search(r'class="updated">(.*?)</p>', text).group(1), lang
+    for lang, text in blocks(page("terms.html")).items():
+        assert "TikTok" in text, lang
+        assert "Telegram" in text, lang
+        assert "26" in re.search(r'class="updated">(.*?)</p>', text).group(1), lang

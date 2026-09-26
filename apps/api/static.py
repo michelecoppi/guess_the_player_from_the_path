@@ -1,6 +1,7 @@
 """Static pages and assets: service root, health check, Mini App bundle, legal pages."""
 import hashlib
 import os
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -115,3 +116,20 @@ def webapp_assets(file_path: str, request: Request):
     if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
         return Response(status_code=304, headers=headers)
     return Response(content, media_type=media_type, headers=headers)
+
+
+VERIFICATION_DIR = Path(WEBAPP_DIR) / "site-verification"
+TIKTOK_FILENAME = re.compile(r"tiktok[A-Za-z0-9]{1,128}\.txt")
+
+
+@router.get("/{filename}")
+def tiktok_site_verification(filename: str):
+    if not TIKTOK_FILENAME.fullmatch(filename):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    base = VERIFICATION_DIR.resolve()
+    target = (base / filename).resolve()
+    if not target.is_relative_to(base) or not target.is_file():
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    return Response(target.read_bytes(), media_type="text/plain; charset=utf-8")

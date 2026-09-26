@@ -70,6 +70,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#23](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/23) | Documentation and AI-agent protocol |
 | [#146](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/146) | Remove the leftovers of the old Mini App and `/app/v2`, align the docs |
 | [#147](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/147) | Move group-round rules from the handler into the `groups` domain |
+| [#157](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/157) | TikTok URL verification and legal pages for Promo Studio |
 | [#155](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/155) | Restore contrast of the final career-stop number across cosmetic themes |
 
 ## Status flow and WIP limit
@@ -133,6 +134,10 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-26: the owner requested #157 to prepare the game's Cloud Run origin for Promo Studio's
+  TikTok developer app: a restricted URL verification file route and matching legal text in
+  three languages. The actual verification file will be supplied by TikTok later.
 
 - 2026-09-26: #153 records the owner's Shop redesign request after the catalogue
   expanded. It reorganizes the Mini App buying and wardrobe experience without
