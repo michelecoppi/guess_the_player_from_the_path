@@ -81,6 +81,15 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 Navigation: Daily, Arena (hub for duels, events, archive and training), Classifica,
 Shop, Profilo; referral lives under Profile.
 
+On narrow screens, an active Daily keeps a small answer shortcut above the fixed
+navigation while the career path is in view. It focuses the existing guess field and
+disappears when that field is visible or the challenge is complete. Standard path
+events use the same career-sheet and answer-desk presentation as Daily. Arena mode
+entries are compact on mobile; leaderboard search expands on request so the Top 10
+appears first. Shop keeps the Discover introduction and uses a shorter header and
+filters on mobile, especially in Catalogue. These are presentation changes; gameplay,
+event attempts, purchases and API contracts are unchanged.
+
 ## Appearance (summary)
 
 The Mini App is structurally dark-only: product-owned tokens define structure, readability and

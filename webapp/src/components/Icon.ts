@@ -20,6 +20,7 @@ const paths = {
   back: '<path d="M20 12H4m6-6-6 6 6 6"/>',
   more: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   arrow: '<path d="M4 12h16m-6-6 6 6-6 6"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>',
   hint: '<path d="M9 18h6m-5 3h4M8 14a6 6 0 1 1 8 0l-1 1H9l-1-1Z"/>',
   check: '<path d="m5 12 4 4L19 6"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',

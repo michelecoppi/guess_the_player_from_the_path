@@ -59,6 +59,17 @@ function createTestCard(overrides: Partial<EventCard> = {}): EventCard {
   };
 }
 
+test('path event shares the Daily career and answer presentation', () => {
+  const controller = new EventsController();
+  const card = createTestCard();
+  Object.assign(controller.getState(), { status: 'ready', events: [card], selectedCode: card.code });
+  const html = renderEventsPage(controller);
+  assert.match(html, /event-play-layout/);
+  assert.match(html, /career-sheet event-career-sheet/);
+  assert.match(html, /answer-desk event-answer-desk/);
+  assert.match(html, /id="events-answer"/);
+});
+
 test("Link Club displays only the two names and a club input, never the solution", () => {
   setLanguage("it");
   const controller = new EventsController();

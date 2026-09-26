@@ -61,6 +61,14 @@ test('Top 10 stays visible beside independent search results, including profiles
   assert.ok(renderLeaderboardView(state).includes('id="leaderboard-search"'));
 });
 
+test('ranking opens with the Top 10 visible and expands search on demand', () => {
+  const state = leaderboardFixture();
+  assert.match(renderLeaderboardView(state), /id="leaderboard-search-toggle" aria-expanded="false"/);
+  assert.doesNotMatch(renderLeaderboardView(state), /id="leaderboard-search"/);
+  state.searchExpanded = true;
+  assert.match(renderLeaderboardView(state), /id="leaderboard-search"/);
+});
+
 test('public outfit lists all eight categories and owned styles without equip actions', () => {
   const profile = profileFixture().profile!;
   const wardrobe = [{id: 'frame1', kind: 'frame', name: '<Capitano>'}];

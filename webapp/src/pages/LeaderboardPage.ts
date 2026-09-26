@@ -16,6 +16,12 @@ export function attachLeaderboardEventListeners(
   root: HTMLElement,
   controller: LeaderboardController,
 ): void {
+  const searchToggle = root.querySelector<HTMLButtonElement>('#leaderboard-search-toggle');
+  if (searchToggle) searchToggle.onclick = () => {
+    const expanded = searchToggle.getAttribute('aria-expanded') === 'true';
+    controller.setSearchExpanded(!expanded);
+    if (!expanded) root.querySelector<HTMLInputElement>('#leaderboard-search')?.focus();
+  };
   const search = root.querySelector<HTMLInputElement>('#leaderboard-search');
   if (search) search.oninput = () => controller.setSearchQuery(search.value);
   const retrySearch = root.querySelector<HTMLButtonElement>('#leaderboard-search-retry');

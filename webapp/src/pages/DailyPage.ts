@@ -20,6 +20,8 @@ import type {
 } from "@/features/daily/types";
 import type { DailyController } from "@/features/daily/controller";
 
+let answerDockObserver: IntersectionObserver | null = null;
+
 const CLUES: Record<string, (args: Record<string, any>) => string> = {
   "feedback.nationality_same": () => t("daily.sameNat"),
   "feedback.nationality_diff": () => t("daily.diffNat"),
@@ -179,6 +181,7 @@ export function renderDailyPage(state?: DailyState): string {
       <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>
       <div class="match-meta"><span>${escapeHtml(today.difficulty_label || t("daily.difficulty"))}</span><span><b>${today.points ?? 0}</b> ${escapeHtml(t("daily.points"))}</span><span>${escapeHtml(today.solved ? t("daily.solved") : done ? v("final") : t("daily.todayTitle"))}</span></div>
     </header>
+    ${done ? "" : `<button type="button" class="daily-answer-dock" id="daily-answer-dock" aria-controls="daily-interaction-card"><span>${v("answer")}</span><strong>${escapeHtml(t("daily.left"))} ${left}</strong>${icon("arrow")}</button>`}
     <div class="daily-layout">
       <section class="career-sheet" id="daily-career-card" aria-label="${v("career")}">
         <div class="sheet-heading"><div><h3>${v("career")}</h3><p class="career-caption">${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</p></div>${icon("career")}</div>
@@ -201,7 +204,19 @@ export function attachDailyEventListeners(
   container: HTMLElement,
   controller: DailyController,
 ): void {
+  answerDockObserver?.disconnect();
+  answerDockObserver = null;
+  const dock = container.querySelector<HTMLButtonElement>("#daily-answer-dock");
   const input = container.querySelector<HTMLInputElement>("#answer");
+  if (dock && input) {
+    dock.onclick = () => input.focus();
+    if (typeof IntersectionObserver !== "undefined") {
+      answerDockObserver = new IntersectionObserver(([entry]) => {
+        dock.hidden = entry.isIntersecting;
+      }, { rootMargin: "0px 0px -110px 0px" });
+      answerDockObserver.observe(input);
+    }
+  }
   if (input) {
     input.oninput = () => {
       controller.setInputValue(input.value);
