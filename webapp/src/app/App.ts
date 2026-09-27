@@ -32,8 +32,11 @@ import {
 import {
   initTelegram,
   getTelegramUser,
+  getTelegramWebApp,
   isMockTelegramEnvironment,
 } from "@/telegram/webapp";
+import { onSessionExpired } from "@/api/client";
+import { renderErrorState } from "@/components/ErrorState";
 import { resolveLanguage, setLanguage } from "@/i18n";
 import { v } from "@/i18n/visual";
 import { DailyController } from "@/features/daily/controller";
@@ -65,6 +68,8 @@ export class App {
   private lastArenaSubview: ArenaSubview;
   private firstLoad: Promise<void> = Promise.resolve();
   private resumeListenerAttached = false;
+  private sessionExpired = false;
+  private stopSessionExpiredListener: (() => void) | null = null;
 
   constructor(
     rootElement: HTMLElement,
@@ -270,10 +275,16 @@ export class App {
       this.activeTab = "arena";
     }
 
+    this.sessionExpired = false;
+    this.stopSessionExpiredListener ??= onSessionExpired(() => {
+      if (this.sessionExpired) return;
+      this.sessionExpired = true;
+      this.render();
+    });
     this.render();
     if (!this.resumeListenerAttached) {
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible" && this.activeTab === "play" &&
+        if (document.visibilityState === "visible" && this.activeTab === "play" && !this.sessionExpired &&
             this.dailyController.getState().status !== "submitting") {
           void this.dailyController.loadDailyData({ lightweight: true });
         }
@@ -625,7 +636,37 @@ export class App {
     }
   }
 
+  /** True once the server rejected the signed initData; only reopening the app recovers (#179). */
+  public isSessionExpired(): boolean {
+    return this.sessionExpired;
+  }
+
+  /**
+   * Replaces the whole shell: without #app-content the partial renderXContent() calls of
+   * requests still in flight become no-ops, so a late page error cannot cover this screen.
+   */
+  private renderSessionExpired(): void {
+    this.rootElement.innerHTML = `
+      <main id="session-expired" class="session-expired" role="region" aria-label="${v("pageContent")}">
+        ${renderErrorState({
+          title: v("sessionExpiredTitle"),
+          message: v("sessionExpiredMessage"),
+          retryLabel: v("sessionExpiredAction"),
+          retryButtonId: "session-expired-close",
+        })}
+      </main>
+    `;
+    this.rootElement.querySelector("#session-expired-close")?.addEventListener("click", () => {
+      // close() drops the user back in the bot chat, where the menu button opens a fresh session.
+      getTelegramWebApp()?.close();
+    });
+  }
+
   private render(): void {
+    if (this.sessionExpired) {
+      this.renderSessionExpired();
+      return;
+    }
     const user = getTelegramUser();
     const isMock = isMockTelegramEnvironment();
 

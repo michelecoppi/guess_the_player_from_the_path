@@ -573,6 +573,9 @@
   color: var(--muted);
   max-width: 380px;
 }
+.session-expired {
+  padding: max(24px, env(safe-area-inset-top)) 16px 24px;
+}
 nav.app-nav {
   position: fixed;
   left: 0;

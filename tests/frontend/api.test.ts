@@ -229,3 +229,31 @@ test("ApiError without a code is not a feature refusal", () => {
   assert.equal(err.code, undefined);
   assert.equal(err.isFeatureDisabled, false);
 });
+
+test("a 401 on an authenticated request notifies session-expired listeners (#179)", async () => {
+  const { onSessionExpired } = await import("../../webapp/src/api");
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ detail: "dati scaduti" }), { status: 401 })) as typeof fetch;
+  let notified = 0;
+  const stop = onSessionExpired(() => notified++);
+  const client = new ApiClient({ getAuthToken: () => "old_init_data" });
+  try {
+    await assert.rejects(client.post("/me"), (err: unknown) => {
+      assert.ok(err instanceof ApiError);
+      assert.equal(err.isSessionExpired, true);
+      return true;
+    });
+    assert.equal(notified, 1);
+
+    await assert.rejects(client.request("/public", { skipAuth: true }));
+    assert.equal(notified, 1, "unauthenticated requests do not signal an expired session");
+
+    stop();
+    await assert.rejects(client.post("/me"));
+    assert.equal(notified, 1, "unsubscribed listeners are not called");
+  } finally {
+    stop();
+    globalThis.fetch = originalFetch;
+  }
+});

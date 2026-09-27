@@ -40,6 +40,11 @@ and cards remain spoiler-free. Points continue to come from `points_awarded`.
   bot token, max age 24 h), applies the per-user token bucket
   ([`services/rate_limit.py`](../services/rate_limit.py)), and loads the user document
   (404 if the user never ran `/start`). The client never sends a user id.
+- A rejected `initData` (expired after 24 h or invalid) returns 401. Telegram keeps a
+  minimised Mini App alive, so this is what a session resumed the next day gets: the
+  `ApiClient` notifies `onSessionExpired` listeners and `App` replaces the whole shell
+  with a "Sessione scaduta" screen whose button calls `Telegram.WebApp.close()`;
+  reopening from the bot chat signs a fresh `initData` (#179).
 - Responses are explicit projections built in services (`services/webapp_api.py`,
   `services/arena.py`, `services/app_events.py`, `domains/shop/service.py`,
   `domains/referrals/service.py`, `services/trophies.py`). Answers, accepted aliases and

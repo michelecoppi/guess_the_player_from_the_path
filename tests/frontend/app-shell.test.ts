@@ -446,3 +446,32 @@ test("Cross-feature navigation sequence (Daily -> Arena -> Training -> Archive -
   }
 });
 
+
+test("an expired session replaces the app with a close-and-reopen screen (#179)", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  let closed = 0;
+  const { restore: restoreTg } = setupTestTelegram({ close: () => { closed++; } });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ detail: "dati scaduti" }), { status: 401 })) as typeof fetch;
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    assert.equal(app.isSessionExpired(), true);
+    assert.ok(container.querySelector("#session-expired"));
+    assert.equal(container.querySelector("#app-content"), null);
+    assert.equal(container.querySelector("nav.app-nav"), null);
+
+    // Navigating (e.g. a stale tap) keeps the expired screen instead of a broken page.
+    app.setTab("shop");
+    assert.ok(container.querySelector("#session-expired"));
+
+    (container.querySelector("#session-expired-close") as HTMLButtonElement).click();
+    assert.equal(closed, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+    cleanup();
+  }
+});
