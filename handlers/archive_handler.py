@@ -16,8 +16,10 @@ import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from domains.referrals import service as referrals
+from domains.shop import service as shop
 from handlers.legend_handler import legend_keyboard
-from services import firebase_service, shop
+from services import firebase_service
 from services.daily_challenge import challenge_number
 from services.dates import to_display
 from services.difficulty import points_for_difficulty
@@ -37,6 +39,11 @@ def _lang_for(update: Update, user_data=None):
     if user_data and user_data.get("language"):
         return user_data["language"]
     return resolve_language(getattr(update.effective_user, "language_code", None))
+
+
+def _today_keyboard(lang):
+    """Il bottone per uscire da una sfida d'archivio aperta: prima c'era solo /today."""
+    return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "archive.button_today"), callback_data=BACK_TO_TODAY)]])
 
 
 def _keyboard(days, solved_days, lang):
@@ -98,7 +105,7 @@ async def archive_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     result = (await asyncio.to_thread(firebase_service.get_archive_result, user_id, day_iso))
     if result and result.get("solved"):
-        await query.message.reply_text(t(lang, "archive.already_solved"))
+        await query.message.reply_text(t(lang, "archive.already_solved"), reply_markup=_today_keyboard(lang))
         return
 
     (await asyncio.to_thread(firebase_service.set_archive_day, user_id, day_iso))
@@ -110,11 +117,14 @@ async def _send_challenge(message, challenge, day_iso, lang):
     caption = t(lang, "archive.opened", date=to_display(day_iso))
 
     if not career_path:
-        await message.reply_text(caption)
+        await message.reply_text(caption, reply_markup=_today_keyboard(lang))
         return
 
     photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty_label(lang, challenge.get("difficulty")).upper(), footer=f"{to_display(day_iso)}  ({points_for_difficulty(challenge.get('difficulty'))})", lang=lang))
-    await message.reply_photo(photo=photo, caption=caption, reply_markup=legend_keyboard(lang))
+    await message.reply_photo(
+        photo=photo, caption=caption,
+        reply_markup=legend_keyboard(lang, extra_rows=[[InlineKeyboardButton(t(lang, "archive.button_today"), callback_data=BACK_TO_TODAY)]]),
+    )
 
 
 async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -164,7 +174,7 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
     attempt = (await asyncio.to_thread(firebase_service.begin_archive_attempt, user_id, day_iso, MAX_ARCHIVE_ATTEMPTS))
     if not attempt["ok"]:
         key = "archive.already_solved" if attempt["reason"] == "already_solved" else "archive.no_attempts"
-        await message.reply_text(t(lang, key))
+        await message.reply_text(t(lang, key), reply_markup=_today_keyboard(lang))
         return
 
     if find_match(user_answer, challenge.get("correct_answers", [])):
@@ -174,7 +184,7 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
             t(lang, "archive.correct", date=to_display(day_iso), attempts=attempt["attempts_used"]),
             reply_markup=_share_keyboard(
                 lang, day_iso, attempt["attempts_used"], solved=True,
-                symbols=shop.squares_symbols(user_data),
+                symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
             ),
         )
         return
@@ -196,20 +206,20 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
         t(lang, "archive.wrong_last", answer=answer),
         reply_markup=_share_keyboard(
             lang, day_iso, attempt["attempts_used"], solved=False,
-            symbols=shop.squares_symbols(user_data),
+            symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
         ),
     )
 
 
-def _share_keyboard(lang, day_iso, attempts_used, solved, symbols=None):
+def _share_keyboard(lang, day_iso, attempts_used, solved, symbols=None, link=None):
     """Come per la sfida di oggi, ma marcata come recuperata dall'archivio: chi la incolla
     in un gruppo non deve sembrare che abbia risolto quella di oggi. La striscia non
     c'entra (l'archivio non la muove) e non compare."""
     text = share_text(
         lang, challenge_number(day_iso), attempts_used, MAX_ARCHIVE_ATTEMPTS,
-        solved=solved, archive=True, symbols=symbols,
+        solved=solved, archive=True, symbols=symbols, link=link,
     )
-    url = share_url(text)
+    url = share_url(text, link)
     if not url:
         return None
     return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "share.button"), url=url)]])

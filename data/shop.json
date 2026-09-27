@@ -30,7 +30,7 @@
     {
       "id": "terra_rossa",
       "kind": "theme",
-      "price": 15,
+      "price": 7,
       "name": "Terra rossa",
       "name_i18n": {
         "es": "Tierra roja",
@@ -56,16 +56,16 @@
     {
       "id": "ghiaccio",
       "kind": "theme",
-      "price": 15,
+      "price": 7,
       "name": "Ghiaccio",
       "name_i18n": {
         "es": "Hielo",
         "en": "Ice"
       },
-      "description": "Chiarissimo. Per chi gioca alla luce del sole e odia gli schermi neri.",
+      "description": "Blu glaciale e riflessi freddi su una superficie scura: il campo dopo il gelo.",
       "description_i18n": {
-        "es": "Clarísimo. Para quien juega a plena luz y odia las pantallas negras.",
-        "en": "Bright and clean. For those who play in daylight and hate dark screens."
+        "es": "Azul glacial y reflejos fríos sobre una superficie oscura: el campo tras la helada.",
+        "en": "Glacial blue and cool highlights on a dark surface: the pitch after the frost."
       },
       "style": {
         "bg": "#eef4fa",
@@ -82,7 +82,7 @@
     {
       "id": "carta_ingiallita",
       "kind": "theme",
-      "price": 20,
+      "price": 10,
       "name": "Carta ingiallita",
       "name_i18n": {
         "es": "Papel amarillento",
@@ -108,7 +108,7 @@
     {
       "id": "neon",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Neon",
       "name_i18n": {
         "es": "Neón",
@@ -134,7 +134,7 @@
     {
       "id": "oro_notte",
       "kind": "theme",
-      "price": 30,
+      "price": 15,
       "name": "Oro di notte",
       "name_i18n": {
         "es": "Oro de noche",
@@ -178,7 +178,7 @@
     {
       "id": "fascia_capitano",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Fascia da capitano",
       "name_i18n": {
         "es": "Brazalete de capitán",
@@ -196,16 +196,16 @@
     {
       "id": "anello_oro",
       "kind": "frame",
-      "price": 20,
+      "price": 10,
       "name": "Anello d'oro",
       "name_i18n": {
         "es": "Anillo de oro",
         "en": "Gold ring"
       },
-      "description": "Oro lucido, con il riflesso che gira intorno.",
+      "description": "Oro lucido e riflessi chiari lungo il bordo del tuo avatar.",
       "description_i18n": {
-        "es": "Oro pulido, con el reflejo dando la vuelta.",
-        "en": "Polished gold, with the highlight running around it."
+        "es": "Oro pulido y reflejos claros en el borde de tu avatar.",
+        "en": "Polished gold with bright highlights along the edge of your avatar."
       },
       "style": {
         "ring": "conic-gradient(#b8892f, #f7e39c, #d9b45b, #fff3c4, #b8892f)"
@@ -214,7 +214,7 @@
     {
       "id": "arcobaleno",
       "kind": "frame",
-      "price": 20,
+      "price": 10,
       "name": "Arcobaleno",
       "name_i18n": {
         "es": "Arcoíris",
@@ -232,16 +232,16 @@
     {
       "id": "fuoco",
       "kind": "frame",
-      "price": 25,
+      "price": 12,
       "name": "Fuoco",
       "name_i18n": {
         "es": "Fuego",
         "en": "Fire"
       },
-      "description": "Gira davvero: un anello di fiamme arancioni intorno al tuo avatar.",
+      "description": "Un anello di riflessi arancioni e oro intorno al tuo avatar, come una curva accesa.",
       "description_i18n": {
-        "es": "Gira de verdad: un anillo de llamas naranjas alrededor de tu avatar.",
-        "en": "It actually spins: a ring of orange flames around your avatar."
+        "es": "Un anillo de reflejos naranjas y dorados alrededor de tu avatar, como una grada encendida.",
+        "en": "A ring of orange and gold highlights around your avatar, like a glowing terrace."
       },
       "style": {
         "ring": "conic-gradient(#ffd000, #ff8a00, #ff2d00, #ff8a00, #ffd000)",
@@ -270,7 +270,7 @@
     {
       "id": "talent_scout",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Talent scout",
       "name_i18n": {
         "es": "Ojeador",
@@ -293,7 +293,7 @@
     {
       "id": "memoria_di_ferro",
       "kind": "title",
-      "price": 20,
+      "price": 10,
       "name": "Memoria di ferro",
       "name_i18n": {
         "es": "Memoria de hierro",
@@ -316,7 +316,7 @@
     {
       "id": "re_dei_prestiti",
       "kind": "title",
-      "price": 20,
+      "price": 10,
       "name": "Re dei prestiti",
       "name_i18n": {
         "es": "Rey de las cesiones",
@@ -339,7 +339,7 @@
     {
       "id": "veterano",
       "kind": "title",
-      "price": 25,
+      "price": 12,
       "name": "Veterano del pallone",
       "name_i18n": {
         "es": "Veterano del balón",
@@ -404,7 +404,7 @@
     {
       "id": "distintivo_pallone",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Pallone",
       "name_i18n": {
         "es": "Balón",
@@ -422,7 +422,7 @@
     {
       "id": "distintivo_guanti",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Guanti",
       "name_i18n": {
         "es": "Guantes",
@@ -440,7 +440,7 @@
     {
       "id": "distintivo_binocolo",
       "kind": "badge",
-      "price": 15,
+      "price": 7,
       "name": "Binocolo",
       "name_i18n": {
         "es": "Prismáticos",
@@ -458,7 +458,7 @@
     {
       "id": "distintivo_cilindro",
       "kind": "badge",
-      "price": 15,
+      "price": 7,
       "name": "Cilindro",
       "name_i18n": {
         "es": "Chistera",
@@ -476,7 +476,7 @@
     {
       "id": "distintivo_diamante",
       "kind": "badge",
-      "price": 25,
+      "price": 7,
       "name": "Diamante",
       "name_i18n": {
         "es": "Diamante",
@@ -533,7 +533,7 @@
     {
       "id": "quadratini_pallone",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Pallone e croce",
       "name_i18n": {
         "es": "Balón y cruz",
@@ -553,7 +553,7 @@
     {
       "id": "quadratini_semaforo",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Semaforo",
       "name_i18n": {
         "es": "Semáforo",
@@ -573,7 +573,7 @@
     {
       "id": "quadratini_cuori",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Cuori",
       "name_i18n": {
         "es": "Corazones",
@@ -593,7 +593,7 @@
     {
       "id": "quadratini_stelle",
       "kind": "squares",
-      "price": 20,
+      "price": 10,
       "name": "Stelle",
       "name_i18n": {
         "es": "Estrellas",
@@ -613,16 +613,16 @@
     {
       "id": "pacchetto_esordio",
       "kind": "bundle",
-      "price": 30,
+      "price": 15,
       "name": "Pacchetto Esordio",
       "name_i18n": {
         "es": "Pack Debut",
         "en": "Debut pack"
       },
-      "description": "Terra rossa, fascia da capitano e distintivo pallone. Separati sarebbero 40 ⭐.",
+      "description": "Terra rossa, fascia da capitano e distintivo pallone. Separati sarebbero 19 ⭐.",
       "description_i18n": {
-        "es": "Tierra roja, brazalete de capitán y distintivo balón. Por separado serían 40 ⭐.",
-        "en": "Red clay, captain's armband and ball badge. Separately they'd be 40 ⭐."
+        "es": "Tierra roja, brazalete de capitán y distintivo balón. Por separado serían 19 ⭐.",
+        "en": "Red clay, captain's armband and ball badge. Separately they'd be 19 ⭐."
       },
       "grants": [
         "terra_rossa",
@@ -633,16 +633,16 @@
     {
       "id": "pacchetto_neon",
       "kind": "bundle",
-      "price": 60,
+      "price": 30,
       "name": "Pacchetto Neon",
       "name_i18n": {
         "es": "Pack Neón",
         "en": "Neon pack"
       },
-      "description": "Tema Neon, cornice Fuoco, distintivo Diamante e quadratini Stelle. Separati sarebbero 95 ⭐.",
+      "description": "Tema Neon, cornice Fuoco, distintivo Diamante e quadratini Stelle. Separati sarebbero 41 ⭐.",
       "description_i18n": {
-        "es": "Tema Neón, marco Fuego, distintivo Diamante y cuadrados Estrellas. Por separado serían 95 ⭐.",
-        "en": "Neon theme, Fire frame, Diamond badge and Stars squares. Separately they'd be 95 ⭐."
+        "es": "Tema Neón, marco Fuego, distintivo Diamante y cuadrados Estrellas. Por separado serían 41 ⭐.",
+        "en": "Neon theme, Fire frame, Diamond badge and Stars squares. Separately they'd be 41 ⭐."
       },
       "grants": [
         "neon",
@@ -654,7 +654,7 @@
     {
       "id": "pacchetto_sostenitore",
       "kind": "bundle",
-      "price": 75,
+      "price": 38,
       "name": "Pacchetto Sostenitore",
       "name_i18n": {
         "es": "Pack Mecenas",
@@ -675,7 +675,7 @@
     {
       "id": "collezione_completa",
       "kind": "bundle",
-      "price": 220,
+      "price": 110,
       "name": "Collezione originale",
       "name_i18n": {
         "es": "Colección original",
@@ -716,7 +716,7 @@
     {
       "id": "notti_europee",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Notti europee",
       "name_i18n": {
         "es": "Noches europeas",
@@ -743,16 +743,16 @@
     {
       "id": "riflettori",
       "kind": "frame",
-      "price": 25,
+      "price": 12,
       "name": "Riflettori",
       "name_i18n": {
         "es": "Reflectores",
         "en": "Floodlights"
       },
-      "description": "Quattro bagliori d’argento girano intorno al profilo, come i fari sopra il campo.",
+      "description": "Riflessi da grande serata, come i fari dello stadio intorno al tuo avatar.",
       "description_i18n": {
-        "es": "Cuatro destellos de plata giran alrededor del perfil, como los focos sobre el campo.",
-        "en": "Four silver highlights circle your profile like floodlights over the pitch."
+        "es": "Reflejos de una gran noche, como los focos del estadio alrededor de tu avatar.",
+        "en": "Big-night highlights, like stadium floodlights around your avatar."
       },
       "style": {
         "ring": "repeating-conic-gradient(#233e66 0deg 55deg, #bddcff 65deg, #ffffff 72deg, #233e66 90deg)",
@@ -762,7 +762,7 @@
     {
       "id": "regista_europeo",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Regista delle grandi notti",
       "name_i18n": {
         "es": "Director de las grandes noches",
@@ -785,7 +785,7 @@
     {
       "id": "distintivo_stadio",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Stadio",
       "name_i18n": {
         "es": "Estadio",
@@ -803,7 +803,7 @@
     {
       "id": "quadratini_europa",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Notte di gol",
       "name_i18n": {
         "es": "Noche de goles",
@@ -823,7 +823,7 @@
     {
       "id": "domenica_90",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Domenica ’90",
       "name_i18n": {
         "es": "Domingo del 90",
@@ -850,7 +850,7 @@
     {
       "id": "bordo_figurina",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bordo figurina",
       "name_i18n": {
         "es": "Borde de cromo",
@@ -868,7 +868,7 @@
     {
       "id": "numero_dieci",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Numero dieci",
       "name_i18n": {
         "es": "El diez",
@@ -891,7 +891,7 @@
     {
       "id": "distintivo_radiolina",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Radiolina",
       "name_i18n": {
         "es": "Radio de bolsillo",
@@ -909,7 +909,7 @@
     {
       "id": "quadratini_schedina",
       "kind": "squares",
-      "price": 10,
+      "price": 5,
       "name": "La schedina",
       "name_i18n": {
         "es": "La quiniela",
@@ -929,7 +929,7 @@
     {
       "id": "calcio_strada",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Calcio di strada",
       "name_i18n": {
         "es": "Fútbol callejero",
@@ -956,7 +956,7 @@
     {
       "id": "rete_campetto",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Rete del campetto",
       "name_i18n": {
         "es": "Red de la cancha",
@@ -974,7 +974,7 @@
     {
       "id": "re_campetto",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Re del campetto",
       "name_i18n": {
         "es": "Rey de la cancha",
@@ -997,7 +997,7 @@
     {
       "id": "distintivo_scarpetta",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Scarpetta",
       "name_i18n": {
         "es": "Bota",
@@ -1015,7 +1015,7 @@
     {
       "id": "quadratini_street",
       "kind": "squares",
-      "price": 10,
+      "price": 5,
       "name": "Gol sull’asfalto",
       "name_i18n": {
         "es": "Gol en el asfalto",
@@ -1035,16 +1035,16 @@
     {
       "id": "pacchetto_europa",
       "kind": "bundle",
-      "price": 65,
+      "price": 33,
       "name": "Notti europee · Set completo",
       "name_i18n": {
         "es": "Noches europeas · Set completo",
         "en": "European nights · Full set"
       },
-      "description": "Cinque dettagli da grande serata: tema, cornice animata, titolo, stadio e simboli. 65 ⭐ invece di 90 ⭐ acquistandoli singolarmente.",
+      "description": "Cinque dettagli da grande serata: tema, cornice a riflettori, titolo, stadio e simboli. 33 ⭐ invece di 43 ⭐ acquistandoli singolarmente.",
       "description_i18n": {
-        "es": "Cinco detalles de una gran noche: tema, marco animado, título, estadio y símbolos. 65 ⭐ en lugar de 90 ⭐ por separado.",
-        "en": "Five big-night details: theme, animated frame, title, stadium badge and symbols. 65 ⭐ instead of 90 ⭐ separately."
+        "es": "Cinco detalles de una gran noche: tema, marco de focos, título, estadio y símbolos. 33 ⭐ en lugar de 43 ⭐ por separado.",
+        "en": "Five big-night details: theme, floodlight frame, title, stadium badge and symbols. 33 ⭐ instead of 43 ⭐ separately."
       },
       "grants": [
         "notti_europee",
@@ -1058,16 +1058,16 @@
     {
       "id": "pacchetto_domenica",
       "kind": "bundle",
-      "price": 55,
+      "price": 28,
       "name": "Domenica ’90 · Set completo",
       "name_i18n": {
         "es": "Domingo del 90 · Set completo",
         "en": "Sunday ’90 · Full set"
       },
-      "description": "Il look delle domeniche alla radio: tema, bordo figurina, Numero dieci, radiolina e schedina. 55 ⭐ invece di 75 ⭐ singolarmente.",
+      "description": "Il look delle domeniche alla radio: tema, bordo figurina, Numero dieci, radiolina e schedina. 28 ⭐ invece di 36 ⭐ singolarmente.",
       "description_i18n": {
-        "es": "El look de los domingos de radio: tema, borde de cromo, El diez, radio y quiniela. 55 ⭐ en lugar de 75 ⭐ por separado.",
-        "en": "The look of radio Sundays: theme, sticker border, Number ten, radio and coupon symbols. 55 ⭐ instead of 75 ⭐ separately."
+        "es": "El look de los domingos de radio: tema, borde de cromo, El diez, radio y quiniela. 28 ⭐ en lugar de 36 ⭐ por separado.",
+        "en": "The look of radio Sundays: theme, sticker border, Number ten, radio and coupon symbols. 28 ⭐ instead of 36 ⭐ separately."
       },
       "grants": [
         "domenica_90",
@@ -1081,16 +1081,16 @@
     {
       "id": "pacchetto_strada",
       "kind": "bundle",
-      "price": 55,
+      "price": 28,
       "name": "Calcio di strada · Set completo",
       "name_i18n": {
         "es": "Fútbol callejero · Set completo",
         "en": "Street football · Full set"
       },
-      "description": "Dal cemento al profilo: tema, rete del campetto, titolo, scarpetta e simboli. 55 ⭐ invece di 75 ⭐ acquistandoli singolarmente.",
+      "description": "Dal cemento al profilo: tema, rete del campetto, titolo, scarpetta e simboli. 28 ⭐ invece di 36 ⭐ acquistandoli singolarmente.",
       "description_i18n": {
-        "es": "Del asfalto al perfil: tema, red de la cancha, título, bota y símbolos. 55 ⭐ en lugar de 75 ⭐ por separado.",
-        "en": "From the pavement to your profile: theme, court fence, title, boot and symbols. 55 ⭐ instead of 75 ⭐ separately."
+        "es": "Del asfalto al perfil: tema, red de la cancha, título, bota y símbolos. 28 ⭐ en lugar de 36 ⭐ por separado.",
+        "en": "From the pavement to your profile: theme, court fence, title, boot and symbols. 28 ⭐ instead of 36 ⭐ separately."
       },
       "grants": [
         "calcio_strada",
@@ -1358,7 +1358,7 @@
     {
       "id": "cinegiornale",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Cinegiornale 1966",
       "name_i18n": {
         "es": "Noticiario 1966",
@@ -1385,7 +1385,7 @@
     {
       "id": "bordo_pellicola",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bordo di pellicola",
       "name_i18n": {
         "es": "Borde de película",
@@ -1403,7 +1403,7 @@
     {
       "id": "telecronista",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Il telecronista",
       "name_i18n": {
         "es": "El comentarista",
@@ -1426,7 +1426,7 @@
     {
       "id": "distintivo_moviola",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Moviola",
       "name_i18n": {
         "es": "Repetición",
@@ -1444,7 +1444,7 @@
     {
       "id": "quadratini_moviola",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Ciak e forbici",
       "name_i18n": {
         "es": "Claqueta y tijeras",
@@ -1464,7 +1464,7 @@
     {
       "id": "pacchetto_cinegiornale",
       "kind": "bundle",
-      "price": 70,
+      "price": 35,
       "featured": true,
       "name": "Cinegiornale 1966 · Set completo",
       "name_i18n": {
@@ -1488,7 +1488,7 @@
     {
       "id": "giorno_di_mercato",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Giorno di mercato",
       "name_i18n": {
         "es": "Día de mercado",
@@ -1515,7 +1515,7 @@
     {
       "id": "nastro_mercato",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Nastro del mercato",
       "name_i18n": {
         "es": "Cinta de mercado",
@@ -1533,7 +1533,7 @@
     {
       "id": "uomo_mercato",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Uomo mercato",
       "name_i18n": {
         "es": "Hombre de mercado",
@@ -1556,7 +1556,7 @@
     {
       "id": "distintivo_ticker",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Ticker",
       "name_i18n": {
         "es": "Teletipo",
@@ -1574,7 +1574,7 @@
     {
       "id": "quadratini_mercato",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Rialzo e ribasso",
       "name_i18n": {
         "es": "Alza y baja",
@@ -1594,7 +1594,7 @@
     {
       "id": "pacchetto_mercato",
       "kind": "bundle",
-      "price": 55,
+      "price": 28,
       "featured": true,
       "name": "Giorno di mercato · Set completo",
       "name_i18n": {
@@ -1617,16 +1617,16 @@
     {
       "id": "notte_di_neve",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Notte di neve",
       "name_i18n": {
         "es": "Noche de nieve",
         "en": "Snow night"
       },
-      "description": "Blu di gennaio e fiocchi nel fascio dei riflettori. Il fondo non sta fermo: e' l'unico tema che si muove.",
+      "description": "Blu di gennaio e fiocchi sospesi nel fascio dei riflettori. Una notte invernale sul campo.",
       "description_i18n": {
-        "es": "Azul de enero y copos en el haz de los focos. El fondo no se queda quieto: es el único tema que se mueve.",
-        "en": "January blue and snow in the floodlight beam. The background does not sit still: it is the only theme that moves."
+        "en": "January blue and snowflakes suspended in the floodlight beam. A winter night on the pitch.",
+        "es": "Azul de enero y copos suspendidos en el haz de los focos. Una noche de invierno en el campo."
       },
       "style": {
         "bg": "#070d1a",
@@ -1638,22 +1638,22 @@
         "accent": "#7fc4ff",
         "accentText": "#05101f",
         "track": "#1a2a48",
-        "pattern": "repeating-radial-gradient(circle at 22% 10%, rgba(255,255,255,.14) 0 1.6px, transparent 2px 52px), repeating-radial-gradient(circle at 70% 40%, rgba(255,255,255,.1) 0 1.3px, transparent 2px 39px)"
+        "pattern": "radial-gradient(circle at 6% 12%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 24% 38%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 41% 9%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 58% 52%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 73% 21%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 88% 63%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 14% 79%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 46% 85%, #ffffff29 1.6px, transparent 2.1px), radial-gradient(circle at 33% 66%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 67% 8%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 81% 42%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 95% 74%, #ffffff1a 1.1px, transparent 1.6px), radial-gradient(circle at 19% 24%, #ffffff1a 1.1px, transparent 1.6px)"
       }
     },
     {
       "id": "anello_di_ghiaccio",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Anello di ghiaccio",
       "name_i18n": {
         "es": "Anillo de hielo",
         "en": "Ice ring"
       },
-      "description": "Ghiaccio che gira piano intorno all'avatar.",
+      "description": "Riflessi di ghiaccio azzurro e bianco lungo il bordo del tuo avatar.",
       "description_i18n": {
-        "es": "Hielo girando despacio alrededor del avatar.",
-        "en": "Ice turning slowly around the avatar."
+        "en": "Ice-blue and white highlights around the edge of your avatar.",
+        "es": "Reflejos de hielo azul y blanco en el borde de tu avatar."
       },
       "style": {
         "ring": "conic-gradient(#bfe6ff, #ffffff, #6ba8d8, #eaf6ff, #bfe6ff)",
@@ -1663,7 +1663,7 @@
     {
       "id": "guerriero_di_gennaio",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Guerriero di gennaio",
       "name_i18n": {
         "es": "Guerrero de enero",
@@ -1686,7 +1686,7 @@
     {
       "id": "distintivo_fiocco",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Fiocco",
       "name_i18n": {
         "es": "Copo",
@@ -1704,7 +1704,7 @@
     {
       "id": "quadratini_neve",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Campo innevato",
       "name_i18n": {
         "es": "Campo nevado",
@@ -1724,17 +1724,17 @@
     {
       "id": "pacchetto_neve",
       "kind": "bundle",
-      "price": 58,
+      "price": 29,
       "featured": true,
       "name": "Notte di neve · Set completo",
       "name_i18n": {
         "es": "Noche de nieve · Set completo",
         "en": "Snow night · Full set"
       },
-      "description": "Coppa, gennaio, fiocchi nel cono dei riflettori: il fondo si muove piano, ed e' l'unico set che lo fa.",
+      "description": "Tema invernale, cornice di ghiaccio, titolo, fiocco e simboli coordinati: il ricordo di una partita sotto la neve.",
       "description_i18n": {
-        "es": "Copa, enero, copos en el cono de los focos: el fondo se mueve despacio, y es el único set que lo hace.",
-        "en": "Cup night, January, snow in the floodlight beam: the background drifts, and it is the only set that does."
+        "en": "Winter theme, ice frame, title, snowflake and matching symbols: a memory of a match in the snow.",
+        "es": "Tema invernal, marco de hielo, título, copo y símbolos a juego: el recuerdo de un partido bajo la nieve."
       },
       "grants": [
         "notte_di_neve",
@@ -1747,7 +1747,7 @@
     {
       "id": "novembre_in_provincia",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Novembre in provincia",
       "name_i18n": {
         "es": "Noviembre de provincias",
@@ -1774,7 +1774,7 @@
     {
       "id": "bordo_di_zolle",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bordo di zolle",
       "name_i18n": {
         "es": "Borde de tepes",
@@ -1792,7 +1792,7 @@
     {
       "id": "uomo_dordine",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Uomo d'ordine",
       "name_i18n": {
         "es": "Hombre de orden",
@@ -1815,7 +1815,7 @@
     {
       "id": "distintivo_scarponi",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Scarponi",
       "name_i18n": {
         "es": "Botas",
@@ -1833,7 +1833,7 @@
     {
       "id": "quadratini_fango",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Campo pesante",
       "name_i18n": {
         "es": "Campo pesado",
@@ -1853,7 +1853,7 @@
     {
       "id": "pacchetto_fango",
       "kind": "bundle",
-      "price": 52,
+      "price": 26,
       "featured": true,
       "name": "Novembre in provincia · Set completo",
       "name_i18n": {
@@ -1876,7 +1876,7 @@
     {
       "id": "notte_sudamericana",
       "kind": "theme",
-      "price": 25,
+      "price": 12,
       "name": "Notte sudamericana",
       "name_i18n": {
         "es": "Noche sudamericana",
@@ -1903,16 +1903,16 @@
     {
       "id": "bandiere_di_curva",
       "kind": "frame",
-      "price": 15,
+      "price": 7,
       "name": "Bandiere di curva",
       "name_i18n": {
         "es": "Banderas de tribuna",
         "en": "Terrace flags"
       },
-      "description": "Spicchi blu e oro che girano come le bandiere dietro la porta.",
+      "description": "Spicchi blu e oro, come le bandiere della curva intorno al tuo avatar.",
       "description_i18n": {
-        "es": "Gajos azules y dorados girando como las banderas detrás del arco.",
-        "en": "Blue and gold wedges turning like the flags behind the goal."
+        "en": "Blue and gold wedges, like terrace flags around your avatar.",
+        "es": "Gajos azules y dorados, como las banderas de la grada alrededor de tu avatar."
       },
       "style": {
         "ring": "repeating-conic-gradient(#f2c74c 0deg 22deg, #123a72 22deg 45deg)"
@@ -1921,7 +1921,7 @@
     {
       "id": "il_dieci",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Il dieci",
       "name_i18n": {
         "es": "El diez",
@@ -1944,7 +1944,7 @@
     {
       "id": "distintivo_tromba",
       "kind": "badge",
-      "price": 10,
+      "price": 5,
       "name": "Tromba",
       "name_i18n": {
         "es": "Trompeta",
@@ -1962,7 +1962,7 @@
     {
       "id": "quadratini_fuochi",
       "kind": "squares",
-      "price": 15,
+      "price": 7,
       "name": "Fuochi in curva",
       "name_i18n": {
         "es": "Fuegos en la tribuna",
@@ -1982,7 +1982,7 @@
     {
       "id": "pacchetto_sudamerica",
       "kind": "bundle",
-      "price": 60,
+      "price": 30,
       "featured": true,
       "name": "Notte sudamericana · Set completo",
       "name_i18n": {
@@ -2023,7 +2023,7 @@
     {
       "id": "maglia_uno",
       "kind": "number",
-      "price": 10,
+      "price": 5,
       "name": "Numero 1",
       "name_i18n": {
         "es": "Número 1",
@@ -2041,7 +2041,7 @@
     {
       "id": "maglia_sette",
       "kind": "number",
-      "price": 10,
+      "price": 5,
       "name": "Numero 7",
       "name_i18n": {
         "es": "Número 7",
@@ -2059,7 +2059,7 @@
     {
       "id": "maglia_nove",
       "kind": "number",
-      "price": 10,
+      "price": 5,
       "name": "Numero 9",
       "name_i18n": {
         "es": "Número 9",
@@ -2077,7 +2077,7 @@
     {
       "id": "maglia_dieci",
       "kind": "number",
-      "price": 15,
+      "price": 7,
       "name": "Numero 10",
       "name_i18n": {
         "es": "Número 10",
@@ -2134,7 +2134,7 @@
     {
       "id": "figurina_notturna",
       "kind": "card",
-      "price": 55,
+      "price": 15,
       "name": "Figurina notturna",
       "name_i18n": {
         "es": "Cromo nocturno",
@@ -2155,7 +2155,7 @@
     {
       "id": "figurina_foil",
       "kind": "card",
-      "price": 75,
+      "price": 22,
       "name": "Figurina olografica",
       "name_i18n": {
         "es": "Cromo holográfico",
@@ -2199,7 +2199,7 @@
     {
       "id": "titolo_bandiera",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Bandiera",
       "name_i18n": {
         "es": "Bandera",
@@ -2222,7 +2222,7 @@
     {
       "id": "titolo_meteora",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Meteora",
       "name_i18n": {
         "es": "Meteorito",
@@ -2245,7 +2245,7 @@
     {
       "id": "titolo_svincolato",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Svincolato",
       "name_i18n": {
         "es": "Agente libre",
@@ -2268,7 +2268,7 @@
     {
       "id": "titolo_spogliatoio",
       "kind": "title",
-      "price": 15,
+      "price": 7,
       "name": "Uomo spogliatoio",
       "name_i18n": {
         "es": "Hombre de vestuario",
@@ -2557,6 +2557,1905 @@
         "distintivo_tromba",
         "quadratini_fuochi"
       ]
+    },
+    {
+      "id": "referral_intesa",
+      "kind": "frame",
+      "price": 0,
+      "rarity": "earned",
+      "name": "L’intesa",
+      "name_i18n": {
+        "en": "The connection",
+        "es": "La conexión"
+      },
+      "description": "Tre amici, cinque daily ciascuno. Tre nodi si passano il pallone intorno al tuo avatar. Solo con gli inviti.",
+      "description_i18n": {
+        "en": "Three friends, five daily finishes each. Three nodes pass a ball around your avatar. Referral exclusive.",
+        "es": "Tres amigos, cinco retos diarios completados cada uno. Tres nodos se pasan el balón alrededor de tu avatar. Exclusivo de invitaciones."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 3
+      },
+      "style": {
+        "ring": "linear-gradient(135deg,#9fffd0,#42cbb8)",
+        "tactics": 3
+      }
+    },
+    {
+      "id": "referral_lavagna",
+      "kind": "card",
+      "price": 0,
+      "rarity": "earned",
+      "name": "La lavagna del mister",
+      "name_i18n": {
+        "en": "The tactics board",
+        "es": "La pizarra del míster"
+      },
+      "description": "Cinque amici qualificati. Campo tattico e tracce di passaggio sulla tua card, nel profilo e nei risultati condivisi.",
+      "description_i18n": {
+        "en": "Five qualified friends. A tactics pitch and passing routes on your card, on your profile and shared results.",
+        "es": "Cinco amigos clasificados. Campo táctico y líneas de pase en tu tarjeta, en el perfil y en los resultados compartidos."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 5
+      },
+      "style": {
+        "finish": "tactics",
+        "paper": "#102925",
+        "ink": "#edfff6",
+        "glow": "#9fffd0"
+      }
+    },
+    {
+      "id": "referral_undici",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Il tuo undici",
+      "name_i18n": {
+        "en": "Your starting eleven",
+        "es": "Tu once inicial"
+      },
+      "description": "Dieci amici qualificati: tu e la tua formazione. Tema esclusivo con campo e undici giocatori che prendono posizione nel profilo.",
+      "description_i18n": {
+        "en": "Ten qualified friends: you and your team. An exclusive theme with eleven players taking their positions on your profile.",
+        "es": "Diez amigos clasificados: tú y tu equipo. Tema exclusivo con once jugadores tomando posición en tu perfil."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 10
+      },
+      "style": {
+        "bg": "#0a1a18",
+        "bg2": "#102925",
+        "card": "#16332e",
+        "edge": "#35584f",
+        "text": "#edfff6",
+        "muted": "#b1ccc2",
+        "accent": "#c8f48b",
+        "accentText": "#142214",
+        "track": "#294b42",
+        "pattern": "linear-gradient(90deg,rgba(159,255,208,.025) 1px,transparent 1px),linear-gradient(rgba(159,255,208,.025) 1px,transparent 1px)",
+        "formation": true
+      }
+    },
+    {
+      "id": "referral_undici_frame",
+      "kind": "frame",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Intesa perfetta",
+      "name_i18n": {
+        "en": "Perfect connection",
+        "es": "Conexión perfecta"
+      },
+      "description": "La cornice della formazione completa. Solo con dieci amici qualificati.",
+      "description_i18n": {
+        "en": "The full-team frame. Exclusive to ten qualified referrals.",
+        "es": "El marco del equipo completo. Exclusivo de diez amigos clasificados."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 10
+      },
+      "style": {
+        "ring": "linear-gradient(135deg,#c8f48b,#9fffd0)",
+        "tactics": 11
+      }
+    },
+    {
+      "id": "referral_undici_card",
+      "kind": "card",
+      "price": 0,
+      "rarity": "earned",
+      "name": "La formazione completa",
+      "name_i18n": {
+        "en": "The full team",
+        "es": "El equipo completo"
+      },
+      "description": "La tua card con la formazione al completo, nel profilo e sui risultati condivisi.",
+      "description_i18n": {
+        "en": "Your full-team card, on your profile and shared results.",
+        "es": "Tu tarjeta con el equipo completo, en el perfil y en resultados compartidos."
+      },
+      "achievement": {
+        "field": "referral_qualified",
+        "target": 10
+      },
+      "style": {
+        "finish": "eleven",
+        "paper": "#102925",
+        "ink": "#f2ffe4",
+        "glow": "#c8f48b"
+      }
+    },
+    {
+      "id": "traguardo_anni_90",
+      "kind": "badge",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Anni '90",
+      "name_i18n": {
+        "en": "The 90s",
+        "es": "Los 90"
+      },
+      "description": "Completa tutti i livelli del capitolo Anni '90 nella Modalita' Storia. Non si compra.",
+      "description_i18n": {
+        "en": "Clear every level of the 90s Story Mode chapter. Not for sale.",
+        "es": "Completa todos los niveles del capitulo Anos 90 en el Modo Historia. No se vende."
+      },
+      "style": {
+        "emoji": "📼"
+      },
+      "achievement": {
+        "field": "story_chapters_cleared",
+        "target": 1
+      }
+    },
+    {
+      "id": "traguardo_anni_90_perfetto",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "VHS anni '90",
+      "name_i18n": {
+        "en": "90s VHS",
+        "es": "VHS anos 90"
+      },
+      "description": "Guadagna tutte le 7 stelline del capitolo Anni '90, senza mai sbagliare un livello.",
+      "description_i18n": {
+        "en": "Earn all 7 stars in the 90s chapter without ever failing a level.",
+        "es": "Consigue las 7 estrellas del capitulo Anos 90 sin fallar nunca un nivel."
+      },
+      "style": {
+        "bg": "#1a0b2e",
+        "bg2": "#241041",
+        "card": "#2d1454",
+        "edge": "#4a2a7a",
+        "text": "#f5e8ff",
+        "muted": "#b79ddb",
+        "accent": "#00e5ff",
+        "accentText": "#00131a",
+        "track": "#3a1f66"
+      },
+      "achievement": {
+        "field": "story_anni_90_perfect",
+        "target": 1
+      }
+    },
+    {
+      "id": "traguardo_maglie_incrociate",
+      "kind": "badge",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Collezionista di maglie",
+      "name_i18n": { "en": "Jersey collector", "es": "Coleccionista de camisetas" },
+      "description": "Completa tutti i livelli di Maglie incrociate nella Modalità Storia. Non si compra.",
+      "description_i18n": {
+        "en": "Clear every level of Crossed jerseys in Story Mode. Not for sale.",
+        "es": "Completa todos los niveles de Camisetas cruzadas en el Modo Historia. No se vende."
+      },
+      "style": { "emoji": "🔀" },
+      "achievement": { "field": "story_maglie_incrociate_cleared", "target": 1 }
+    },
+    {
+      "id": "traguardo_maglie_incrociate_perfetto",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Due colori",
+      "name_i18n": { "en": "Two colours", "es": "Dos colores" },
+      "description": "Guadagna tutte le 7 stelline di Maglie incrociate. Blu e viola con dettagli verde acqua.",
+      "description_i18n": {
+        "en": "Earn all 7 stars in Crossed jerseys. Blue and violet with aqua accents.",
+        "es": "Consigue las 7 estrellas de Camisetas cruzadas. Azul y violeta con detalles aguamarina."
+      },
+      "style": {
+        "bg": "#111d2b",
+        "bg2": "#261d34",
+        "card": "#263042",
+        "edge": "#536076",
+        "text": "#f5f7fc",
+        "muted": "#aebbd0",
+        "accent": "#7ce2cc",
+        "accentText": "#102630",
+        "track": "#493a60",
+        "pattern": "linear-gradient(125deg, transparent 0 50%, rgba(166, 110, 213, .08) 50% 100%)"
+      },
+      "achievement": { "field": "story_maglie_incrociate_perfect", "target": 1 }
+    },
+    {
+      "id": "traguardo_notti_europee",
+      "kind": "badge",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Testimone delle finali",
+      "name_i18n": { "en": "Finals witness", "es": "Testigo de las finales" },
+      "description": "Completa tutti i livelli di Notti europee nella Modalità Storia. Non si compra.",
+      "description_i18n": {
+        "en": "Clear every level of European nights in Story Mode. Not for sale.",
+        "es": "Completa todos los niveles de Noches europeas en el Modo Historia. No se vende."
+      },
+      "style": { "emoji": "🎟️" },
+      "achievement": { "field": "story_notti_europee_cleared", "target": 1 }
+    },
+    {
+      "id": "traguardo_notti_europee_perfetto",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Luci della finale",
+      "name_i18n": { "en": "Final night lights", "es": "Luces de la final" },
+      "description": "Guadagna tutte le 7 stelline di Notti europee. Antracite e oro da finale.",
+      "description_i18n": {
+        "en": "Earn all 7 stars in European nights. Final-night charcoal and gold.",
+        "es": "Consigue las 7 estrellas de Noches europeas. Antracita y oro de una gran final."
+      },
+      "style": {
+        "bg": "#141d22",
+        "bg2": "#1e282c",
+        "card": "#2b3234",
+        "edge": "#846b46",
+        "text": "#fff5dc",
+        "muted": "#cbbd9b",
+        "accent": "#f2c46c",
+        "accentText": "#2b2116",
+        "track": "#554932",
+        "pattern": "radial-gradient(ellipse at 55% 0%, rgba(242, 196, 108, .12), transparent 70%)"
+      },
+      "achievement": { "field": "story_notti_europee_perfect", "target": 1 }
+    },
+    {
+      "id": "trasferta",
+      "kind": "theme",
+      "price": 12,
+      "name": "Biglietto da trasferta",
+      "name_i18n": {
+        "es": "Entrada visitante",
+        "en": "Away ticket"
+      },
+      "description": "Inchiostro blu, carta scura e righe da biglietto. La prossima fermata è lo stadio.",
+      "description_i18n": {
+        "es": "Tinta azul, papel oscuro y líneas de entrada. Próxima parada: el estadio.",
+        "en": "Blue ink, dark paper and ticket ruling. Next stop: the stadium."
+      },
+      "style": {
+        "bg": "#101a24",
+        "bg2": "#172431",
+        "card": "#1e2e3c",
+        "edge": "#79664e",
+        "text": "#f6efdf",
+        "muted": "#bdb9af",
+        "accent": "#edbe7e",
+        "accentText": "#20180e",
+        "track": "#635641",
+        "pattern": "repeating-linear-gradient(90deg, transparent 0 27px, rgba(237,190,126,.045) 27px 28px)"
+      }
+    },
+    {
+      "id": "cornice_trasferta",
+      "kind": "frame",
+      "price": 10,
+      "name": "Bordo perforato",
+      "name_i18n": {
+        "es": "Borde perforado",
+        "en": "Perforated edge"
+      },
+      "description": "Il bordo color carta di un biglietto conservato dopo la partita.",
+      "description_i18n": {
+        "es": "El borde de papel de una entrada guardada después del partido.",
+        "en": "The paper-coloured edge of a ticket kept after the match."
+      },
+      "style": {
+        "ring": "repeating-conic-gradient(#edbe7e 0deg 12deg, #302a26 12deg 16deg)"
+      }
+    },
+    {
+      "id": "titolo_trasferta",
+      "kind": "title",
+      "price": 5,
+      "name": "Sempre in trasferta",
+      "name_i18n": {
+        "es": "Siempre de visitante",
+        "en": "Always away"
+      },
+      "description": "Una sciarpa nello zaino e un altro stadio da ricordare.",
+      "description_i18n": {
+        "es": "Una bufanda en la mochila y otro estadio para recordar.",
+        "en": "A scarf in your bag and another stadium to remember."
+      },
+      "style": {
+        "label": "Sempre in trasferta",
+        "label_i18n": {
+          "en": "Always away",
+          "es": "Siempre de visitante"
+        },
+        "color": "#edbe7e"
+      }
+    },
+    {
+      "id": "card_trasferta",
+      "kind": "card",
+      "price": 15,
+      "name": "Il biglietto della partita",
+      "name_i18n": {
+        "es": "La entrada del partido",
+        "en": "Match ticket"
+      },
+      "description": "Il tuo risultato su un biglietto con matrice perforata e timbro. Da conservare e condividere.",
+      "description_i18n": {
+        "es": "Tu resultado en una entrada con talón perforado y sello. Para guardar y compartir.",
+        "en": "Your result on a ticket with a perforated stub and stamp. Keep it and share it."
+      },
+      "style": {
+        "finish": "ticket",
+        "paper": "#14222f",
+        "ink": "#f6efdf",
+        "glow": "#edbe7e"
+      }
+    },
+    {
+      "id": "pacchetto_trasferta",
+      "kind": "bundle",
+      "price": 32,
+      "name": "Biglietto da trasferta · Set viaggio",
+      "name_i18n": {
+        "es": "Entrada visitante · Set de viaje",
+        "en": "Away ticket · Travel set"
+      },
+      "description": "Tema, cornice, titolo e card coordinati. Quattro ricordi di trasferta: 32 Stelle invece di 42.",
+      "description_i18n": {
+        "es": "Tema, marco, título y tarjeta a juego. Cuatro recuerdos de visitante: 32 Estrellas en vez de 42.",
+        "en": "Matching theme, frame, title and card. Four away-day keepsakes: 32 Stars instead of 42."
+      },
+      "grants": [
+        "trasferta",
+        "cornice_trasferta",
+        "titolo_trasferta",
+        "card_trasferta"
+      ]
+    },
+    {
+      "id": "tabellone_acceso",
+      "kind": "theme",
+      "price": 12,
+      "name": "Tabellone acceso",
+      "name_i18n": {"en": "Lit scoreboard", "es": "Marcador encendido"},
+      "description": "Prugna profonda, luce corallo e righe da tabellone nell'ultimo minuto.",
+      "description_i18n": {"en": "Deep plum, coral light and scoreboard lines in the final minute.", "es": "Ciruela intensa, luz coral y líneas de marcador en el último minuto."},
+      "style": {
+        "bg": "#271129",
+        "bg2": "#381832",
+        "card": "#4a2141",
+        "edge": "#994b62",
+        "text": "#fff2e5",
+        "muted": "#d3a7ad",
+        "accent": "#ff824e",
+        "accentText": "#281023",
+        "track": "#68304d",
+        "pattern": "repeating-linear-gradient(0deg, transparent 0 28px, rgba(255,173,97,.06) 28px 29px)"
+      }
+    },
+    {
+      "id": "cornice_recupero",
+      "kind": "frame",
+      "price": 10,
+      "name": "Recupero",
+      "name_i18n": {"en": "Added time", "es": "Tiempo añadido"},
+      "description": "Segmenti luminosi di un cronometro avvolgono l'avatar.",
+      "description_i18n": {"en": "Luminous timer segments wrap around your avatar.", "es": "Segmentos luminosos de un cronómetro rodean tu avatar."},
+      "style": {"ring": "repeating-conic-gradient(#ff824e 0deg 24deg, #63213f 24deg 30deg)"}
+    },
+    {
+      "id": "titolo_novantesimo",
+      "kind": "title",
+      "price": 7,
+      "name": "Al novantesimo",
+      "name_i18n": {"en": "90th minute", "es": "Minuto 90"},
+      "description": "Per chi tiene viva la partita fino all'ultima azione.",
+      "description_i18n": {"en": "For those who keep the match alive until the final play.", "es": "Para quien mantiene vivo el partido hasta la última jugada."},
+      "style": {"label": "Al novantesimo", "label_i18n": {"en": "90th minute", "es": "Minuto 90"}, "color": "#ffae74"}
+    },
+    {
+      "id": "distintivo_fischio_finale",
+      "kind": "badge",
+      "price": 5,
+      "name": "Fischio finale",
+      "name_i18n": {"en": "Final whistle", "es": "Pitido final"},
+      "description": "Una bandierina da ultima azione accanto al tuo nome.",
+      "description_i18n": {"en": "A final-play flag beside your name.", "es": "Una banderita de la última jugada junto a tu nombre."},
+      "style": {"emoji": "🏁"}
+    },
+    {
+      "id": "quadratini_tempo_scaduto",
+      "kind": "squares",
+      "price": 7,
+      "name": "Tempo scaduto",
+      "name_i18n": {"en": "Time is up", "es": "Tiempo cumplido"},
+      "description": "Simboli da tabellone: punto per il gol, croce per l'errore, trattino per il tempo rimasto.",
+      "description_i18n": {"en": "Scoreboard symbols: dot for a goal, cross for a miss, dash for time left.", "es": "Símbolos de marcador: punto para el gol, cruz para el fallo y raya para el tiempo restante."},
+      "style": {"correct": "✦", "wrong": "×", "unused": "▫"}
+    },
+    {
+      "id": "pacchetto_ultimo_minuto",
+      "kind": "bundle",
+      "price": 32,
+      "name": "Ultimo minuto · Set completo",
+      "name_i18n": {"en": "Final minute · Full set", "es": "Último minuto · Set completo"},
+      "description": "Cinque pezzi coordinati, dal tabellone alla bandierina: 32 Stelle invece di 41.",
+      "description_i18n": {"en": "Five matching pieces, from scoreboard to final flag: 32 Stars instead of 41.", "es": "Cinco piezas a juego, del marcador a la bandera final: 32 Estrellas en vez de 41."},
+      "grants": ["tabellone_acceso", "cornice_recupero", "titolo_novantesimo", "distintivo_fischio_finale", "quadratini_tempo_scaduto"],
+      "featured": true
+    },
+    {
+      "id": "maglia_novanta",
+      "kind": "number",
+      "price": 7,
+      "name": "Numero 90",
+      "name_i18n": {"en": "Number 90", "es": "Número 90"},
+      "description": "Il minuto in cui la partita può ancora cambiare.",
+      "description_i18n": {"en": "The minute when the match can still change.", "es": "El minuto en que el partido aún puede cambiar."},
+      "style": {"number": "90"}
+    },
+    {
+      "id": "festa_onda_stadio",
+      "kind": "celebration",
+      "price": 7,
+      "name": "Onda di stadio",
+      "name_i18n": {"en": "Stadium wave", "es": "Ola del estadio"},
+      "description": "Una breve onda corallo attraversa lo schermo dopo la risposta giusta.",
+      "description_i18n": {"en": "A brief coral wave crosses the screen after a correct answer.", "es": "Una breve ola coral cruza la pantalla tras una respuesta correcta."},
+      "style": {"effect": "stadium_wave"}
+    },
+    {
+      "id": "aurora_boreale",
+      "kind": "theme",
+      "price": 12,
+      "name": "Aurora boreale",
+      "name_i18n": {
+        "es": "Aurora boreal",
+        "en": "Northern lights"
+      },
+      "description": "Notte artica sopra un campo del nord: nastri verdi e viola che si accendono e si affievoliscono piano dietro ogni schermata.",
+      "description_i18n": {
+        "es": "Noche ártica sobre un campo del norte: cintas verdes y violetas que se encienden y se apagan despacio detrás de cada pantalla.",
+        "en": "An Arctic night over a northern pitch: green and violet ribbons slowly glowing and fading behind every screen."
+      },
+      "style": {
+        "bg": "#06121a",
+        "bg2": "#0b1c26",
+        "card": "#102733",
+        "edge": "#1f4a57",
+        "text": "#eafff8",
+        "muted": "#9fc4bf",
+        "accent": "#5ef0b0",
+        "accentText": "#04150f",
+        "track": "#173a45",
+        "pattern": "radial-gradient(ellipse 70% 38% at 18% 8%, rgba(94,240,176,.16), transparent 70%), radial-gradient(ellipse 60% 30% at 82% 18%, rgba(166,120,255,.14), transparent 70%), repeating-linear-gradient(100deg, transparent 0 34px, rgba(94,240,176,.03) 34px 36px)",
+        "motion": "breathe"
+      }
+    },
+    {
+      "id": "cornice_aurora",
+      "kind": "frame",
+      "price": 10,
+      "name": "Anello polare",
+      "name_i18n": {
+        "es": "Anillo polar",
+        "en": "Polar ring"
+      },
+      "description": "Verde, azzurro e viola: quando compare, un lampo di luce attraversa la cornice.",
+      "description_i18n": {
+        "es": "Verde, celeste y violeta: al aparecer, un destello de luz recorre el marco.",
+        "en": "Green, cyan and violet: when it appears, a flash of light sweeps across the frame."
+      },
+      "style": {
+        "ring": "conic-gradient(from 200deg, #5ef0b0, #3fc4e8, #a678ff, #5ef0b0)",
+        "motion": "shine"
+      }
+    },
+    {
+      "id": "titolo_luce_del_nord",
+      "kind": "title",
+      "price": 7,
+      "name": "Luce del nord",
+      "name_i18n": {
+        "es": "Luz del norte",
+        "en": "Northern light"
+      },
+      "description": "Per chi indovina anche quando la notte dura sei mesi.",
+      "description_i18n": {
+        "es": "Para quien acierta aunque la noche dure seis meses.",
+        "en": "For those who guess right even when the night lasts six months."
+      },
+      "style": {
+        "label": "Luce del nord",
+        "label_i18n": {
+          "es": "Luz del norte",
+          "en": "Northern light"
+        },
+        "color": "#5ef0b0"
+      }
+    },
+    {
+      "id": "distintivo_aurora",
+      "kind": "badge",
+      "price": 5,
+      "name": "Cielo polare",
+      "name_i18n": {
+        "es": "Cielo polar",
+        "en": "Polar sky"
+      },
+      "description": "Una piccola aurora accanto al nome.",
+      "description_i18n": {
+        "es": "Una pequeña aurora junto a tu nombre.",
+        "en": "A small aurora next to your name."
+      },
+      "style": {
+        "emoji": "🌌"
+      }
+    },
+    {
+      "id": "quadratini_aurora",
+      "kind": "squares",
+      "price": 7,
+      "name": "Quadratini polari",
+      "name_i18n": {
+        "es": "Cuadritos polares",
+        "en": "Polar squares"
+      },
+      "description": "Una stella verde per la risposta giusta, una luna nuova per quella sbagliata.",
+      "description_i18n": {
+        "es": "Una estrella verde para la respuesta correcta, una luna nueva para la incorrecta.",
+        "en": "A green star for the right answer, a new moon for the wrong one."
+      },
+      "style": {
+        "correct": "✳️",
+        "wrong": "🌑",
+        "unused": "▫️"
+      }
+    },
+    {
+      "id": "figurina_aurora",
+      "kind": "card",
+      "price": 15,
+      "name": "Figurina aurora",
+      "name_i18n": {
+        "es": "Cromo aurora",
+        "en": "Aurora card"
+      },
+      "description": "Nastri di luce polare sopra e sotto il risultato, mai sopra i tentativi.",
+      "description_i18n": {
+        "es": "Cintas de luz polar arriba y abajo del resultado, nunca sobre los intentos.",
+        "en": "Ribbons of polar light above and below the result, never over the attempts."
+      },
+      "style": {
+        "finish": "aurora",
+        "paper": "#06121a",
+        "ink": "#eafff8",
+        "glow": "#5ef0b0"
+      }
+    },
+    {
+      "id": "pacchetto_aurora",
+      "kind": "bundle",
+      "price": 42,
+      "name": "Aurora boreale · Set completo",
+      "name_i18n": {
+        "es": "Aurora boreal · Set completo",
+        "en": "Northern lights · Full set"
+      },
+      "description": "Tema animato, anello polare, titolo, distintivo, quadratini e la figurina aurora.",
+      "description_i18n": {
+        "es": "Tema animado, anillo polar, título, insignia, cuadritos y el cromo aurora.",
+        "en": "Animated theme, polar ring, title, badge, squares and the aurora card."
+      },
+      "featured": true,
+      "grants": [
+        "aurora_boreale",
+        "cornice_aurora",
+        "titolo_luce_del_nord",
+        "distintivo_aurora",
+        "quadratini_aurora",
+        "figurina_aurora"
+      ]
+    },
+    {
+      "id": "coreografia",
+      "kind": "theme",
+      "price": 12,
+      "name": "Coreografia",
+      "name_i18n": {
+        "es": "Coreografía",
+        "en": "Tifo display"
+      },
+      "description": "Rosso e bianco a quadri come i cartoncini di una curva: il mosaico si accende e si spegne piano.",
+      "description_i18n": {
+        "es": "Rojo y blanco a cuadros como las cartulinas de una grada: el mosaico se enciende y se apaga despacio.",
+        "en": "Red and white checks like the cards of a tifo display: the mosaic gently flickers on and off."
+      },
+      "style": {
+        "bg": "#140707",
+        "bg2": "#210c0c",
+        "card": "#2b1010",
+        "edge": "#5a2323",
+        "text": "#fff1ec",
+        "muted": "#d6a9a0",
+        "accent": "#ff5a4d",
+        "accentText": "#1a0505",
+        "track": "#3d1616",
+        "pattern": "repeating-linear-gradient(90deg, rgba(255,90,77,.06) 0 11px, transparent 11px 22px), repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 11px, transparent 11px 22px)",
+        "motion": "twinkle"
+      }
+    },
+    {
+      "id": "cornice_sciarpa",
+      "kind": "frame",
+      "price": 10,
+      "name": "Sciarpa al collo",
+      "name_i18n": {
+        "es": "Bufanda al cuello",
+        "en": "Scarf ring"
+      },
+      "description": "A spicchi rossi e bianchi come una sciarpa alzata: batte tre volte quando compare.",
+      "description_i18n": {
+        "es": "Gajos rojos y blancos como una bufanda al aire: late tres veces al aparecer.",
+        "en": "Red and white segments like a raised scarf: it beats three times when it appears."
+      },
+      "style": {
+        "ring": "repeating-conic-gradient(#ff5a4d 0deg 15deg, #fff1ec 15deg 30deg)",
+        "motion": "pulse"
+      }
+    },
+    {
+      "id": "titolo_voce_curva",
+      "kind": "title",
+      "price": 7,
+      "name": "Voce della curva",
+      "name_i18n": {
+        "es": "Voz de la grada",
+        "en": "Voice of the stands"
+      },
+      "description": "Per chi il coro lo fa partire, non lo segue.",
+      "description_i18n": {
+        "es": "Para quien empieza el cántico, no quien lo sigue.",
+        "en": "For those who start the chant, not follow it."
+      },
+      "style": {
+        "label": "Voce della curva",
+        "label_i18n": {
+          "es": "Voz de la grada",
+          "en": "Voice of the stands"
+        },
+        "color": "#ff7a6b"
+      }
+    },
+    {
+      "id": "distintivo_megafono",
+      "kind": "badge",
+      "price": 5,
+      "name": "Megafono",
+      "name_i18n": {
+        "es": "Megáfono",
+        "en": "Megaphone"
+      },
+      "description": "Il megafono di chi guida il settore.",
+      "description_i18n": {
+        "es": "El megáfono de quien dirige la grada.",
+        "en": "The megaphone of whoever leads the stand."
+      },
+      "style": {
+        "emoji": "📣"
+      }
+    },
+    {
+      "id": "quadratini_curva",
+      "kind": "squares",
+      "price": 7,
+      "name": "Quadratini da curva",
+      "name_i18n": {
+        "es": "Cuadritos de grada",
+        "en": "Terrace squares"
+      },
+      "description": "Una sciarpa per la risposta giusta, una nuvola di fumo per quella sbagliata.",
+      "description_i18n": {
+        "es": "Una bufanda para la respuesta correcta, una nube de humo para la incorrecta.",
+        "en": "A scarf for the right answer, a puff of smoke for the wrong one."
+      },
+      "style": {
+        "correct": "🧣",
+        "wrong": "💨",
+        "unused": "◾"
+      }
+    },
+    {
+      "id": "figurina_fanzine",
+      "kind": "card",
+      "price": 15,
+      "name": "Figurina fanzine",
+      "name_i18n": {
+        "es": "Cromo fanzine",
+        "en": "Fanzine card"
+      },
+      "description": "Retino tipografico agli angoli, come una fanzine fotocopiata e venduta fuori dallo stadio.",
+      "description_i18n": {
+        "es": "Trama de puntos en las esquinas, como un fanzine fotocopiado vendido fuera del estadio.",
+        "en": "Halftone dots in the corners, like a photocopied fanzine sold outside the ground."
+      },
+      "style": {
+        "finish": "halftone",
+        "paper": "#1c0a0a",
+        "ink": "#fff1ec",
+        "glow": "#ff5a4d"
+      }
+    },
+    {
+      "id": "festa_fumogeni",
+      "kind": "celebration",
+      "price": 9,
+      "name": "Fumogeni",
+      "name_i18n": {
+        "es": "Bengalas",
+        "en": "Flares"
+      },
+      "description": "Dopo una risposta giusta, nuvole rosse e bianche salgono dal fondo dello schermo.",
+      "description_i18n": {
+        "es": "Tras una respuesta correcta, nubes rojas y blancas suben desde el fondo de la pantalla.",
+        "en": "After a right answer, red and white clouds rise from the bottom of the screen."
+      },
+      "style": {
+        "effect": "flares"
+      }
+    },
+    {
+      "id": "pacchetto_curva",
+      "kind": "bundle",
+      "price": 48,
+      "name": "Coreografia · Set completo",
+      "name_i18n": {
+        "es": "Coreografía · Set completo",
+        "en": "Tifo display · Full set"
+      },
+      "description": "Tema animato, sciarpa, titolo, megafono, quadratini, fumogeni e la figurina fanzine.",
+      "description_i18n": {
+        "es": "Tema animado, bufanda, título, megáfono, cuadritos, bengalas y el cromo fanzine.",
+        "en": "Animated theme, scarf ring, title, megaphone, squares, flares and the fanzine card."
+      },
+      "featured": true,
+      "grants": [
+        "coreografia",
+        "cornice_sciarpa",
+        "titolo_voce_curva",
+        "distintivo_megafono",
+        "quadratini_curva",
+        "figurina_fanzine",
+        "festa_fumogeni"
+      ]
+    },
+    {
+      "id": "sala_giochi",
+      "kind": "theme",
+      "price": 12,
+      "name": "Sala giochi",
+      "name_i18n": {
+        "es": "Salón recreativo",
+        "en": "Arcade"
+      },
+      "description": "Il calcio dei cabinati anni '80: righe di scansione verdi che scorrono piano su un nero da monitor.",
+      "description_i18n": {
+        "es": "El fútbol de las máquinas de los 80: líneas de barrido verdes que se deslizan sobre un negro de monitor.",
+        "en": "Eighties arcade football: green scanlines drifting slowly over monitor black."
+      },
+      "style": {
+        "bg": "#05070d",
+        "bg2": "#0b0f1c",
+        "card": "#10162a",
+        "edge": "#2a3a6e",
+        "text": "#eef3ff",
+        "muted": "#9fb0d8",
+        "accent": "#7cff4f",
+        "accentText": "#061404",
+        "track": "#1a2446",
+        "pattern": "repeating-linear-gradient(0deg, rgba(124,255,79,.05) 0 2px, transparent 2px 6px), repeating-linear-gradient(90deg, rgba(90,120,255,.04) 0 1px, transparent 1px 12px)",
+        "motion": "float"
+      }
+    },
+    {
+      "id": "cornice_pixel",
+      "kind": "frame",
+      "price": 10,
+      "name": "Cornice a pixel",
+      "name_i18n": {
+        "es": "Marco de píxeles",
+        "en": "Pixel ring"
+      },
+      "description": "Blocchi verdi e blu a gradini; quando compare, un pallone a pixel ci gira intorno tre volte.",
+      "description_i18n": {
+        "es": "Bloques verdes y azules escalonados; al aparecer, un balón de píxeles lo rodea tres veces.",
+        "en": "Stepped green and blue blocks; when it appears, a pixel ball circles it three times."
+      },
+      "style": {
+        "ring": "repeating-conic-gradient(#7cff4f 0deg 30deg, #10162a 30deg 45deg, #4f7cff 45deg 75deg, #10162a 75deg 90deg)",
+        "motion": "orbit"
+      }
+    },
+    {
+      "id": "titolo_giocatore_uno",
+      "kind": "title",
+      "price": 7,
+      "name": "Giocatore 1",
+      "name_i18n": {
+        "es": "Jugador 1",
+        "en": "Player 1"
+      },
+      "description": "Premi start. Il gettone lo metti tu.",
+      "description_i18n": {
+        "es": "Pulsa start. La ficha la pones tú.",
+        "en": "Press start. You bring the coin."
+      },
+      "style": {
+        "label": "Giocatore 1",
+        "label_i18n": {
+          "es": "Jugador 1",
+          "en": "Player 1"
+        },
+        "color": "#7cff4f"
+      }
+    },
+    {
+      "id": "distintivo_joystick",
+      "kind": "badge",
+      "price": 5,
+      "name": "Joystick",
+      "name_i18n": {
+        "es": "Joystick",
+        "en": "Joystick"
+      },
+      "description": "Un joystick accanto al nome, per chi è cresciuto a gettoni.",
+      "description_i18n": {
+        "es": "Un joystick junto al nombre, para quien creció a base de fichas.",
+        "en": "A joystick by your name, for those raised on coins."
+      },
+      "style": {
+        "emoji": "🕹️"
+      }
+    },
+    {
+      "id": "quadratini_arcade",
+      "kind": "squares",
+      "price": 7,
+      "name": "Quadratini arcade",
+      "name_i18n": {
+        "es": "Cuadritos arcade",
+        "en": "Arcade squares"
+      },
+      "description": "Un alieno per la risposta giusta, un teschio da game over per quella sbagliata.",
+      "description_i18n": {
+        "es": "Un alien para la respuesta correcta, una calavera de game over para la incorrecta.",
+        "en": "An alien for the right answer, a game-over skull for the wrong one."
+      },
+      "style": {
+        "correct": "👾",
+        "wrong": "💀",
+        "unused": "⬛"
+      }
+    },
+    {
+      "id": "figurina_8bit",
+      "kind": "card",
+      "price": 15,
+      "name": "Figurina 8-bit",
+      "name_i18n": {
+        "es": "Cromo 8 bits",
+        "en": "8-bit card"
+      },
+      "description": "Bordo a pixel, angoli a gradini e due palloni a pixel: il risultato resta pulito al centro.",
+      "description_i18n": {
+        "es": "Borde de píxeles, esquinas escalonadas y dos balones de píxeles: el resultado queda limpio en el centro.",
+        "en": "Pixel border, stepped corners and two pixel balls: the result stays clean in the middle."
+      },
+      "style": {
+        "finish": "pixel",
+        "paper": "#05070d",
+        "ink": "#eef3ff",
+        "glow": "#7cff4f"
+      }
+    },
+    {
+      "id": "festa_pixel",
+      "kind": "celebration",
+      "price": 9,
+      "name": "Esplosione a pixel",
+      "name_i18n": {
+        "es": "Explosión de píxeles",
+        "en": "Pixel burst"
+      },
+      "description": "Dopo una risposta giusta, quadratini a 8 bit schizzano dal centro e ricadono a scatti.",
+      "description_i18n": {
+        "es": "Tras una respuesta correcta, cuadritos de 8 bits salen del centro y caen a saltos.",
+        "en": "After a right answer, 8-bit squares burst from the centre and fall back in steps."
+      },
+      "style": {
+        "effect": "pixels"
+      }
+    },
+    {
+      "id": "pacchetto_arcade",
+      "kind": "bundle",
+      "price": 48,
+      "name": "Sala giochi · Set completo",
+      "name_i18n": {
+        "es": "Salón recreativo · Set completo",
+        "en": "Arcade · Full set"
+      },
+      "description": "Tema animato, cornice a pixel, titolo, joystick, quadratini, esplosione a pixel e figurina 8-bit.",
+      "description_i18n": {
+        "es": "Tema animado, marco de píxeles, título, joystick, cuadritos, explosión de píxeles y cromo 8 bits.",
+        "en": "Animated theme, pixel ring, title, joystick, squares, pixel burst and the 8-bit card."
+      },
+      "featured": true,
+      "grants": [
+        "sala_giochi",
+        "cornice_pixel",
+        "titolo_giocatore_uno",
+        "distintivo_joystick",
+        "quadratini_arcade",
+        "figurina_8bit",
+        "festa_pixel"
+      ]
+    },
+    {
+      "id": "hanami",
+      "kind": "theme",
+      "price": 12,
+      "name": "Hanami",
+      "name_i18n": {
+        "es": "Hanami",
+        "en": "Hanami"
+      },
+      "description": "Primavera a Tokyo: petali rosa che scendono lenti su un viola notte.",
+      "description_i18n": {
+        "es": "Primavera en Tokio: pétalos rosas que caen despacio sobre un violeta noche.",
+        "en": "Springtime in Tokyo: pink petals drifting slowly over a night violet."
+      },
+      "style": {
+        "bg": "#150d17",
+        "bg2": "#1f1322",
+        "card": "#29192d",
+        "edge": "#5a3a5c",
+        "text": "#fff0f6",
+        "muted": "#d9b3c7",
+        "accent": "#ff9ec7",
+        "accentText": "#2a0d1a",
+        "track": "#3a2440",
+        "pattern": "radial-gradient(ellipse 5px 3px at 8% 12%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 3px at 23% 64%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 6px 3px at 37% 28%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 2px at 49% 81%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 5px 3px at 58% 14%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 3px at 66% 52%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 6px 3px at 79% 33%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 5px 3px at 88% 71%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 2px at 15% 88%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 3px at 94% 11%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 3px 2px at 31% 45%, rgba(255,158,199,.32), transparent), radial-gradient(ellipse 4px 2px at 72% 91%, rgba(255,158,199,.32), transparent)",
+        "motion": "float"
+      }
+    },
+    {
+      "id": "cornice_sakura",
+      "kind": "frame",
+      "price": 10,
+      "name": "Anello di sakura",
+      "name_i18n": {
+        "es": "Anillo de sakura",
+        "en": "Sakura ring"
+      },
+      "description": "Rosa e bianco come un ramo in fiore: respira tre volte quando compare.",
+      "description_i18n": {
+        "es": "Rosa y blanco como una rama en flor: respira tres veces al aparecer.",
+        "en": "Pink and white like a branch in bloom: it breathes three times when it appears."
+      },
+      "style": {
+        "ring": "conic-gradient(#ffd6e7, #ff9ec7, #fff0f6, #ff7fb0, #ffd6e7)",
+        "motion": "pulse"
+      }
+    },
+    {
+      "id": "titolo_fioritura",
+      "kind": "title",
+      "price": 7,
+      "name": "Fioritura tardiva",
+      "name_i18n": {
+        "es": "Floración tardía",
+        "en": "Late bloomer"
+      },
+      "description": "Per chi ci arriva al terzo tentativo, ma ci arriva.",
+      "description_i18n": {
+        "es": "Para quien llega al tercer intento, pero llega.",
+        "en": "For those who get there on the third try, but get there."
+      },
+      "style": {
+        "label": "Fioritura tardiva",
+        "label_i18n": {
+          "es": "Floración tardía",
+          "en": "Late bloomer"
+        },
+        "color": "#ff9ec7"
+      }
+    },
+    {
+      "id": "distintivo_sakura",
+      "kind": "badge",
+      "price": 5,
+      "name": "Fiore di ciliegio",
+      "name_i18n": {
+        "es": "Flor de cerezo",
+        "en": "Cherry blossom"
+      },
+      "description": "Un fiore di ciliegio accanto al nome.",
+      "description_i18n": {
+        "es": "Una flor de cerezo junto a tu nombre.",
+        "en": "A cherry blossom next to your name."
+      },
+      "style": {
+        "emoji": "🌸"
+      }
+    },
+    {
+      "id": "quadratini_hanami",
+      "kind": "squares",
+      "price": 7,
+      "name": "Quadratini hanami",
+      "name_i18n": {
+        "es": "Cuadritos hanami",
+        "en": "Hanami squares"
+      },
+      "description": "Un fiore per la risposta giusta, una foglia secca per quella sbagliata.",
+      "description_i18n": {
+        "es": "Una flor para la respuesta correcta, una hoja seca para la incorrecta.",
+        "en": "A blossom for the right answer, a dry leaf for the wrong one."
+      },
+      "style": {
+        "correct": "🌸",
+        "wrong": "🍂",
+        "unused": "◽"
+      }
+    },
+    {
+      "id": "festa_petali",
+      "kind": "celebration",
+      "price": 9,
+      "name": "Pioggia di petali",
+      "name_i18n": {
+        "es": "Lluvia de pétalos",
+        "en": "Petal shower"
+      },
+      "description": "Dopo una risposta giusta, petali rosa scendono girando su se stessi.",
+      "description_i18n": {
+        "es": "Tras una respuesta correcta, pétalos rosas caen girando sobre sí mismos.",
+        "en": "After a right answer, pink petals spin their way down."
+      },
+      "style": {
+        "effect": "petals"
+      }
+    },
+    {
+      "id": "pacchetto_hanami",
+      "kind": "bundle",
+      "price": 36,
+      "name": "Hanami · Set completo",
+      "name_i18n": {
+        "es": "Hanami · Set completo",
+        "en": "Hanami · Full set"
+      },
+      "description": "Tema animato, anello di sakura, titolo, distintivo, quadratini e pioggia di petali.",
+      "description_i18n": {
+        "es": "Tema animado, anillo de sakura, título, insignia, cuadritos y lluvia de pétalos.",
+        "en": "Animated theme, sakura ring, title, badge, squares and petal shower."
+      },
+      "featured": true,
+      "grants": [
+        "hanami",
+        "cornice_sakura",
+        "titolo_fioritura",
+        "distintivo_sakura",
+        "quadratini_hanami",
+        "festa_petali"
+      ]
+    },
+    {
+      "id": "beach_soccer",
+      "kind": "theme",
+      "price": 12,
+      "name": "Beach soccer",
+      "name_i18n": {
+        "es": "Fútbol playa",
+        "en": "Beach soccer"
+      },
+      "description": "Sabbia calda al tramonto e cerchi d'acqua che si allargano: il campo si muove come la marea.",
+      "description_i18n": {
+        "es": "Arena caliente al atardecer y círculos de agua que se abren: el campo se mueve como la marea.",
+        "en": "Warm sand at sunset and widening water rings: the pitch moves like the tide."
+      },
+      "style": {
+        "bg": "#10151c",
+        "bg2": "#172029",
+        "card": "#1e2a35",
+        "edge": "#4d5a5e",
+        "text": "#fff6ea",
+        "muted": "#c7bca9",
+        "accent": "#ffc46b",
+        "accentText": "#251703",
+        "track": "#2b3a44",
+        "pattern": "repeating-radial-gradient(circle at 50% 120%, transparent 0 22px, rgba(94,214,224,.05) 22px 24px), linear-gradient(180deg, transparent 60%, rgba(255,196,107,.07))",
+        "motion": "float"
+      }
+    },
+    {
+      "id": "cornice_bagnasciuga",
+      "kind": "frame",
+      "price": 10,
+      "name": "Bagnasciuga",
+      "name_i18n": {
+        "es": "Orilla",
+        "en": "Shoreline ring"
+      },
+      "description": "Righe di sabbia e mare: un riflesso di sole ci passa sopra quando compare.",
+      "description_i18n": {
+        "es": "Rayas de arena y mar: un reflejo de sol pasa por encima al aparecer.",
+        "en": "Stripes of sand and sea: a glint of sun passes over it when it appears."
+      },
+      "style": {
+        "ring": "repeating-linear-gradient(0deg, #ffc46b 0 6px, #5ed6e0 6px 12px)",
+        "motion": "shine"
+      }
+    },
+    {
+      "id": "titolo_piedi_nudi",
+      "kind": "title",
+      "price": 7,
+      "name": "Piedi nudi",
+      "name_i18n": {
+        "es": "Pies descalzos",
+        "en": "Barefoot"
+      },
+      "description": "Rovesciate sulla sabbia e niente scarpini.",
+      "description_i18n": {
+        "es": "Chilenas en la arena y sin botas.",
+        "en": "Bicycle kicks on the sand and no boots."
+      },
+      "style": {
+        "label": "Piedi nudi",
+        "label_i18n": {
+          "es": "Pies descalzos",
+          "en": "Barefoot"
+        },
+        "color": "#ffc46b"
+      }
+    },
+    {
+      "id": "distintivo_spiaggia",
+      "kind": "badge",
+      "price": 5,
+      "name": "Ombrellone",
+      "name_i18n": {
+        "es": "Sombrilla",
+        "en": "Beach umbrella"
+      },
+      "description": "Un angolo di spiaggia accanto al nome.",
+      "description_i18n": {
+        "es": "Un rincón de playa junto a tu nombre.",
+        "en": "A corner of beach next to your name."
+      },
+      "style": {
+        "emoji": "🏖️"
+      }
+    },
+    {
+      "id": "quadratini_spiaggia",
+      "kind": "squares",
+      "price": 7,
+      "name": "Quadratini da spiaggia",
+      "name_i18n": {
+        "es": "Cuadritos de playa",
+        "en": "Beach squares"
+      },
+      "description": "Una conchiglia per la risposta giusta, un granchio per quella sbagliata.",
+      "description_i18n": {
+        "es": "Una concha para la respuesta correcta, un cangrejo para la incorrecta.",
+        "en": "A shell for the right answer, a crab for the wrong one."
+      },
+      "style": {
+        "correct": "🐚",
+        "wrong": "🦀",
+        "unused": "〰️"
+      }
+    },
+    {
+      "id": "festa_bolle",
+      "kind": "celebration",
+      "price": 9,
+      "name": "Bolle di mare",
+      "name_i18n": {
+        "es": "Burbujas de mar",
+        "en": "Sea bubbles"
+      },
+      "description": "Dopo una risposta giusta, bolle trasparenti salgono ondeggiando.",
+      "description_i18n": {
+        "es": "Tras una respuesta correcta, burbujas transparentes suben ondulando.",
+        "en": "After a right answer, clear bubbles wobble their way up."
+      },
+      "style": {
+        "effect": "bubbles"
+      }
+    },
+    {
+      "id": "pacchetto_spiaggia",
+      "kind": "bundle",
+      "price": 36,
+      "name": "Beach soccer · Set completo",
+      "name_i18n": {
+        "es": "Fútbol playa · Set completo",
+        "en": "Beach soccer · Full set"
+      },
+      "description": "Tema animato, bagnasciuga, titolo, ombrellone, quadratini e bolle di mare.",
+      "description_i18n": {
+        "es": "Tema animado, orilla, título, sombrilla, cuadritos y burbujas de mar.",
+        "en": "Animated theme, shoreline ring, title, umbrella, squares and sea bubbles."
+      },
+      "featured": true,
+      "grants": [
+        "beach_soccer",
+        "cornice_bagnasciuga",
+        "titolo_piedi_nudi",
+        "distintivo_spiaggia",
+        "quadratini_spiaggia",
+        "festa_bolle"
+      ]
+    },
+    {
+      "id": "galassia",
+      "kind": "theme",
+      "price": 12,
+      "name": "Pallone cosmico",
+      "name_i18n": {
+        "es": "Balón cósmico",
+        "en": "Cosmic ball"
+      },
+      "description": "Spazio profondo e stelle che brillano a intermittenza: il campo più lontano che esista.",
+      "description_i18n": {
+        "es": "Espacio profundo y estrellas que titilan: el campo más lejano que existe.",
+        "en": "Deep space and twinkling stars: the furthest pitch there is."
+      },
+      "style": {
+        "bg": "#05040c",
+        "bg2": "#0c0a1c",
+        "card": "#131028",
+        "edge": "#2d2860",
+        "text": "#f3f0ff",
+        "muted": "#aaa3d6",
+        "accent": "#b69cff",
+        "accentText": "#110a2a",
+        "track": "#211c4a",
+        "pattern": "radial-gradient(circle at 6% 14%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 19% 71%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 27% 33%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 38% 88%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 44% 12%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 53% 57%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 61% 26%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 69% 79%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 77% 43%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 86% 9%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 92% 64%, #ffffff5c 1.5px, transparent 2.1px), radial-gradient(circle at 12% 47%, #b69cff4d 1.0px, transparent 1.6px), radial-gradient(circle at 33% 60%, #ffffff5c 1.5px, transparent 2.1px)",
+        "motion": "twinkle"
+      }
+    },
+    {
+      "id": "cornice_nebulosa",
+      "kind": "frame",
+      "price": 10,
+      "name": "Nebulosa",
+      "name_i18n": {
+        "es": "Nebulosa",
+        "en": "Nebula ring"
+      },
+      "description": "Viola, oro e azzurro; quando compare, un pianeta ci orbita intorno tre volte.",
+      "description_i18n": {
+        "es": "Violeta, oro y azul; al aparecer, un planeta lo orbita tres veces.",
+        "en": "Violet, gold and blue; when it appears, a planet orbits it three times."
+      },
+      "style": {
+        "ring": "conic-gradient(from 90deg, #2d2860, #b69cff, #ffd98a, #6fd0ff, #2d2860)",
+        "motion": "orbit"
+      }
+    },
+    {
+      "id": "titolo_extraterrestre",
+      "kind": "title",
+      "price": 7,
+      "name": "Extraterrestre",
+      "name_i18n": {
+        "es": "Extraterrestre",
+        "en": "Out of this world"
+      },
+      "description": "Quello che si dice dei fuoriclasse veri.",
+      "description_i18n": {
+        "es": "Lo que se dice de los verdaderos cracks.",
+        "en": "What they say about the true greats."
+      },
+      "style": {
+        "label": "Extraterrestre",
+        "label_i18n": {
+          "es": "Extraterrestre",
+          "en": "Out of this world"
+        },
+        "color": "#b69cff"
+      }
+    },
+    {
+      "id": "distintivo_pianeta",
+      "kind": "badge",
+      "price": 5,
+      "name": "Pianeta",
+      "name_i18n": {
+        "es": "Planeta",
+        "en": "Planet"
+      },
+      "description": "Un pianeta con l'anello accanto al nome.",
+      "description_i18n": {
+        "es": "Un planeta con anillo junto a tu nombre.",
+        "en": "A ringed planet next to your name."
+      },
+      "style": {
+        "emoji": "🪐"
+      }
+    },
+    {
+      "id": "quadratini_cosmo",
+      "kind": "squares",
+      "price": 7,
+      "name": "Quadratini cosmici",
+      "name_i18n": {
+        "es": "Cuadritos cósmicos",
+        "en": "Cosmic squares"
+      },
+      "description": "Un pianeta per la risposta giusta, una cometa fuori rotta per quella sbagliata.",
+      "description_i18n": {
+        "es": "Un planeta para la respuesta correcta, un cometa sin rumbo para la incorrecta.",
+        "en": "A planet for the right answer, an off-course comet for the wrong one."
+      },
+      "style": {
+        "correct": "🪐",
+        "wrong": "☄️",
+        "unused": "▪️"
+      }
+    },
+    {
+      "id": "festa_comete",
+      "kind": "celebration",
+      "price": 9,
+      "name": "Pioggia di comete",
+      "name_i18n": {
+        "es": "Lluvia de cometas",
+        "en": "Comet shower"
+      },
+      "description": "Dopo una risposta giusta, comete con la coda attraversano lo schermo in diagonale.",
+      "description_i18n": {
+        "es": "Tras una respuesta correcta, cometas con estela cruzan la pantalla en diagonal.",
+        "en": "After a right answer, comets with glowing tails cross the screen diagonally."
+      },
+      "style": {
+        "effect": "comets"
+      }
+    },
+    {
+      "id": "pacchetto_galassia",
+      "kind": "bundle",
+      "price": 36,
+      "name": "Pallone cosmico · Set completo",
+      "name_i18n": {
+        "es": "Balón cósmico · Set completo",
+        "en": "Cosmic ball · Full set"
+      },
+      "description": "Tema animato, nebulosa, titolo, pianeta, quadratini e pioggia di comete.",
+      "description_i18n": {
+        "es": "Tema animado, nebulosa, título, planeta, cuadritos y lluvia de cometas.",
+        "en": "Animated theme, nebula ring, title, planet, squares and comet shower."
+      },
+      "featured": true,
+      "grants": [
+        "galassia",
+        "cornice_nebulosa",
+        "titolo_extraterrestre",
+        "distintivo_pianeta",
+        "quadratini_cosmo",
+        "festa_comete"
+      ]
+    },
+    {
+      "id": "derby_temporale",
+      "kind": "theme",
+      "price": 12,
+      "name": "Derby sotto il diluvio",
+      "name_i18n": {
+        "es": "Derbi bajo el diluvio",
+        "en": "Derby in the downpour"
+      },
+      "description": "Pioggia obliqua e riflettori che pulsano sull'acqua: il derby che nessuno voleva rinviare.",
+      "description_i18n": {
+        "es": "Lluvia oblicua y focos que laten sobre el agua: el derbi que nadie quiso aplazar.",
+        "en": "Slanted rain and floodlights pulsing on the water: the derby nobody wanted to postpone."
+      },
+      "style": {
+        "bg": "#0b1016",
+        "bg2": "#121a23",
+        "card": "#18222d",
+        "edge": "#34465a",
+        "text": "#eef4fa",
+        "muted": "#a3b3c4",
+        "accent": "#9fd3ff",
+        "accentText": "#07131f",
+        "track": "#22303e",
+        "pattern": "repeating-linear-gradient(105deg, transparent 0 18px, rgba(159,211,255,.07) 18px 19px, transparent 19px 41px), radial-gradient(ellipse 80% 30% at 50% 0%, rgba(255,243,138,.06), transparent 70%)",
+        "motion": "breathe"
+      }
+    },
+    {
+      "id": "cornice_lampo",
+      "kind": "frame",
+      "price": 10,
+      "name": "Cornice del lampo",
+      "name_i18n": {
+        "es": "Marco del relámpago",
+        "en": "Lightning ring"
+      },
+      "description": "Pioggia azzurra e scariche gialle: si illumina tre volte quando compare.",
+      "description_i18n": {
+        "es": "Lluvia azul y descargas amarillas: se ilumina tres veces al aparecer.",
+        "en": "Blue rain and yellow bolts: it lights up three times when it appears."
+      },
+      "style": {
+        "ring": "repeating-conic-gradient(#9fd3ff 0deg 8deg, #18222d 8deg 20deg, #fff38a 20deg 24deg, #18222d 24deg 36deg)",
+        "motion": "pulse"
+      }
+    },
+    {
+      "id": "titolo_diluvio",
+      "kind": "title",
+      "price": 7,
+      "name": "Nato nel diluvio",
+      "name_i18n": {
+        "es": "Nacido en el diluvio",
+        "en": "Born in the downpour"
+      },
+      "description": "Per chi gioca meglio quando il campo è una piscina.",
+      "description_i18n": {
+        "es": "Para quien juega mejor cuando el campo es una piscina.",
+        "en": "For those who play best when the pitch is a pool."
+      },
+      "style": {
+        "label": "Nato nel diluvio",
+        "label_i18n": {
+          "es": "Nacido en el diluvio",
+          "en": "Born in the downpour"
+        },
+        "color": "#9fd3ff"
+      }
+    },
+    {
+      "id": "distintivo_temporale",
+      "kind": "badge",
+      "price": 5,
+      "name": "Temporale",
+      "name_i18n": {
+        "es": "Tormenta",
+        "en": "Thunderstorm"
+      },
+      "description": "Una nuvola carica accanto al nome.",
+      "description_i18n": {
+        "es": "Una nube cargada junto a tu nombre.",
+        "en": "A loaded storm cloud next to your name."
+      },
+      "style": {
+        "emoji": "⛈️"
+      }
+    },
+    {
+      "id": "quadratini_temporale",
+      "kind": "squares",
+      "price": 7,
+      "name": "Quadratini del temporale",
+      "name_i18n": {
+        "es": "Cuadritos de tormenta",
+        "en": "Storm squares"
+      },
+      "description": "Un fulmine per la risposta giusta, una goccia per quella sbagliata.",
+      "description_i18n": {
+        "es": "Un rayo para la respuesta correcta, una gota para la incorrecta.",
+        "en": "A bolt for the right answer, a raindrop for the wrong one."
+      },
+      "style": {
+        "correct": "⚡",
+        "wrong": "💧",
+        "unused": "☁️"
+      }
+    },
+    {
+      "id": "festa_fulmine",
+      "kind": "celebration",
+      "price": 9,
+      "name": "Colpo di fulmine",
+      "name_i18n": {
+        "es": "Rayo",
+        "en": "Lightning strike"
+      },
+      "description": "Dopo una risposta giusta, un lampo illumina lo schermo e due fulmini lo attraversano.",
+      "description_i18n": {
+        "es": "Tras una respuesta correcta, un destello ilumina la pantalla y dos rayos la cruzan.",
+        "en": "After a right answer, a flash lights the screen and two bolts strike across it."
+      },
+      "style": {
+        "effect": "lightning"
+      }
+    },
+    {
+      "id": "pacchetto_temporale",
+      "kind": "bundle",
+      "price": 36,
+      "name": "Derby sotto il diluvio · Set completo",
+      "name_i18n": {
+        "es": "Derbi bajo el diluvio · Set completo",
+        "en": "Derby in the downpour · Full set"
+      },
+      "description": "Tema animato, cornice del lampo, titolo, distintivo, quadratini e colpo di fulmine.",
+      "description_i18n": {
+        "es": "Tema animado, marco del relámpago, título, insignia, cuadritos y rayo.",
+        "en": "Animated theme, lightning ring, title, badge, squares and lightning strike."
+      },
+      "featured": true,
+      "grants": [
+        "derby_temporale",
+        "cornice_lampo",
+        "titolo_diluvio",
+        "distintivo_temporale",
+        "quadratini_temporale",
+        "festa_fulmine"
+      ]
+    },
+    {
+      "id": "festa_rimbalzi",
+      "kind": "celebration",
+      "price": 9,
+      "name": "Palloni che rimbalzano",
+      "name_i18n": {
+        "es": "Balones que rebotan",
+        "en": "Bouncing balls"
+      },
+      "description": "Dopo una risposta giusta, una pioggia di palloni cade e rimbalza sul fondo dello schermo.",
+      "description_i18n": {
+        "es": "Tras una respuesta correcta, una lluvia de balones cae y rebota en el fondo de la pantalla.",
+        "en": "After a right answer, a shower of footballs drops and bounces off the bottom of the screen."
+      },
+      "style": {
+        "effect": "bounce"
+      }
+    },
+    {
+      "id": "maglia_tre",
+      "kind": "number",
+      "price": 5,
+      "name": "Maglia numero 3",
+      "name_i18n": {
+        "es": "Camiseta número 3",
+        "en": "Shirt number 3"
+      },
+      "description": "Il terzino sinistro che spinge sempre.",
+      "description_i18n": {
+        "es": "El lateral izquierdo que siempre sube.",
+        "en": "The left-back who always pushes forward."
+      },
+      "style": {
+        "number": "3"
+      }
+    },
+    {
+      "id": "maglia_otto",
+      "kind": "number",
+      "price": 5,
+      "name": "Maglia numero 8",
+      "name_i18n": {
+        "es": "Camiseta número 8",
+        "en": "Shirt number 8"
+      },
+      "description": "La mezzala che corre per due.",
+      "description_i18n": {
+        "es": "El interior que corre por dos.",
+        "en": "The box-to-box midfielder who runs for two."
+      },
+      "style": {
+        "number": "8"
+      }
+    },
+    {
+      "id": "maglia_undici",
+      "kind": "number",
+      "price": 5,
+      "name": "Maglia numero 11",
+      "name_i18n": {
+        "es": "Camiseta número 11",
+        "en": "Shirt number 11"
+      },
+      "description": "L'ala che salta l'uomo e crossa.",
+      "description_i18n": {
+        "es": "El extremo que regatea y centra.",
+        "en": "The winger who beats a man and crosses."
+      },
+      "style": {
+        "number": "11"
+      }
+    },
+    {
+      "id": "maglia_ventuno",
+      "kind": "number",
+      "price": 7,
+      "name": "Maglia numero 21",
+      "name_i18n": {
+        "es": "Camiseta número 21",
+        "en": "Shirt number 21"
+      },
+      "description": "Il regista che vede passaggi che gli altri non vedono.",
+      "description_i18n": {
+        "es": "El mediocentro que ve pases que nadie más ve.",
+        "en": "The playmaker who sees passes nobody else sees."
+      },
+      "style": {
+        "number": "21"
+      }
+    },
+    {
+      "id": "maglia_novantanove",
+      "kind": "number",
+      "price": 7,
+      "name": "Maglia numero 99",
+      "name_i18n": {
+        "es": "Camiseta número 99",
+        "en": "Shirt number 99"
+      },
+      "description": "Il numero di chi non ha voluto un numero normale.",
+      "description_i18n": {
+        "es": "El número de quien no quiso uno normal.",
+        "en": "The number of someone who didn't want a normal one."
+      },
+      "style": {
+        "number": "99"
+      }
+    },
+    {
+      "id": "maglia_doppio_zero",
+      "kind": "number",
+      "price": 7,
+      "name": "Maglia numero 00",
+      "name_i18n": {
+        "es": "Camiseta número 00",
+        "en": "Shirt number 00"
+      },
+      "description": "Due zeri: il portiere eccentrico, o chi parte da capo.",
+      "description_i18n": {
+        "es": "Doble cero: el portero excéntrico, o quien empieza de cero.",
+        "en": "Double zero: the eccentric keeper, or someone starting over."
+      },
+      "style": {
+        "number": "00"
+      }
+    },
+    {
+      "id": "titolo_tiki_taka",
+      "kind": "title",
+      "price": 7,
+      "name": "Tiki-taka",
+      "name_i18n": {
+        "es": "Tiki-taka",
+        "en": "Tiki-taka"
+      },
+      "description": "Mille passaggi corti e la palla non la vedono mai.",
+      "description_i18n": {
+        "es": "Mil pases cortos y nunca ven el balón.",
+        "en": "A thousand short passes and they never see the ball."
+      },
+      "style": {
+        "label": "Tiki-taka",
+        "label_i18n": {
+          "es": "Tiki-taka",
+          "en": "Tiki-taka"
+        },
+        "color": "#7fd6ff"
+      }
+    },
+    {
+      "id": "titolo_catenaccio",
+      "kind": "title",
+      "price": 7,
+      "name": "Catenaccio",
+      "name_i18n": {
+        "es": "Catenaccio",
+        "en": "Catenaccio"
+      },
+      "description": "Uno a zero e tutti dietro la linea della palla.",
+      "description_i18n": {
+        "es": "Uno a cero y todos detrás del balón.",
+        "en": "One-nil and everyone behind the ball."
+      },
+      "style": {
+        "label": "Catenaccio",
+        "label_i18n": {
+          "es": "Catenaccio",
+          "en": "Catenaccio"
+        },
+        "color": "#c9b27c"
+      }
+    },
+    {
+      "id": "titolo_falso_nueve",
+      "kind": "title",
+      "price": 7,
+      "name": "Falso nueve",
+      "name_i18n": {
+        "es": "Falso nueve",
+        "en": "False nine"
+      },
+      "description": "Parte centravanti, finisce a centrocampo.",
+      "description_i18n": {
+        "es": "Empieza de delantero centro, acaba en el medio.",
+        "en": "Starts at centre-forward, ends up in midfield."
+      },
+      "style": {
+        "label": "Falso nueve",
+        "label_i18n": {
+          "es": "Falso nueve",
+          "en": "False nine"
+        },
+        "color": "#ff9f6b"
+      }
+    },
+    {
+      "id": "titolo_trequartista",
+      "kind": "title",
+      "price": 7,
+      "name": "Trequartista",
+      "name_i18n": {
+        "es": "Enganche",
+        "en": "Number ten"
+      },
+      "description": "Tra le linee, dove nessuno ti marca.",
+      "description_i18n": {
+        "es": "Entre líneas, donde nadie te marca.",
+        "en": "Between the lines, where nobody marks you."
+      },
+      "style": {
+        "label": "Trequartista",
+        "label_i18n": {
+          "es": "Enganche",
+          "en": "Number ten"
+        },
+        "color": "#f2d16b"
+      }
+    },
+    {
+      "id": "titolo_bomber",
+      "kind": "title",
+      "price": 7,
+      "name": "Bomber di provincia",
+      "name_i18n": {
+        "es": "Goleador de pueblo",
+        "en": "Small-town striker"
+      },
+      "description": "Trenta gol l'anno, sempre nella stessa squadra.",
+      "description_i18n": {
+        "es": "Treinta goles por temporada, siempre en el mismo club.",
+        "en": "Thirty goals a season, always for the same club."
+      },
+      "style": {
+        "label": "Bomber di provincia",
+        "label_i18n": {
+          "es": "Goleador de pueblo",
+          "en": "Small-town striker"
+        },
+        "color": "#ff7a6b"
+      }
+    },
+    {
+      "id": "distintivo_corona",
+      "kind": "badge",
+      "price": 5,
+      "name": "Corona",
+      "name_i18n": {
+        "es": "Corona",
+        "en": "Crown"
+      },
+      "description": "Per chi comanda la classifica, o almeno ci prova.",
+      "description_i18n": {
+        "es": "Para quien manda en la tabla, o al menos lo intenta.",
+        "en": "For whoever rules the table, or at least tries."
+      },
+      "style": {
+        "emoji": "👑"
+      }
+    },
+    {
+      "id": "distintivo_razzo",
+      "kind": "badge",
+      "price": 5,
+      "name": "Razzo",
+      "name_i18n": {
+        "es": "Cohete",
+        "en": "Rocket"
+      },
+      "description": "Un tiro da trenta metri che non è ancora atterrato.",
+      "description_i18n": {
+        "es": "Un disparo de treinta metros que aún no ha aterrizado.",
+        "en": "A thirty-yard shot that still hasn't landed."
+      },
+      "style": {
+        "emoji": "🚀"
+      }
+    },
+    {
+      "id": "distintivo_polpo",
+      "kind": "badge",
+      "price": 5,
+      "name": "Polpo",
+      "name_i18n": {
+        "es": "Pulpo",
+        "en": "Octopus"
+      },
+      "description": "Otto braccia: il portiere che le prende tutte.",
+      "description_i18n": {
+        "es": "Ocho brazos: el portero que para todo.",
+        "en": "Eight arms: the keeper who saves everything."
+      },
+      "style": {
+        "emoji": "🐙"
+      }
+    },
+    {
+      "id": "distintivo_leone",
+      "kind": "badge",
+      "price": 5,
+      "name": "Leone",
+      "name_i18n": {
+        "es": "León",
+        "en": "Lion"
+      },
+      "description": "Per chi non molla un pallone.",
+      "description_i18n": {
+        "es": "Para quien no suelta un balón.",
+        "en": "For those who never give up a ball."
+      },
+      "style": {
+        "emoji": "🦁"
+      }
+    },
+    {
+      "id": "distintivo_fuoco",
+      "kind": "badge",
+      "price": 5,
+      "name": "In fiamme",
+      "name_i18n": {
+        "es": "En llamas",
+        "en": "On fire"
+      },
+      "description": "Tre giornate giuste di fila e il nome brucia.",
+      "description_i18n": {
+        "es": "Tres jornadas acertadas seguidas y tu nombre arde.",
+        "en": "Three right days in a row and your name is on fire."
+      },
+      "style": {
+        "emoji": "🔥"
+      }
     }
   ]
 }

@@ -90,6 +90,8 @@ def record_daily_history(user_id, day_iso, solved, attempts, hints=0):
         "attempts": attempts,
         "hints": hints,
     })
+    from domains.referrals import service as referrals
+    referrals.record_completion(user_id, day_iso)
 
 
 def get_daily_history(user_id, limit=60):

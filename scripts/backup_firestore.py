@@ -1,122 +1,107 @@
-"""Export JSON di Firestore, da eseguire a mano o dal workflow settimanale.
+"""Export Firestore in un file JSON tipizzato e validato (formato v2, vedi docs/backup-recovery.md).
 
-Perche' non l'export gestito di Firestore: quello richiede il piano Blaze e un bucket. Qui
-il database e' piccolo (utenti, un documento per giorno di gioco, qualche evento) e un JSON
-per volta e' un backup che si legge, si mette in un artifact di GitHub Actions e si
-ripristina con un ciclo for. Il valore di un backup e' che qualcuno lo esegua davvero.
+Perche' non l'export gestito di Firestore: quello richiede il piano Blaze e un bucket. Il
+database e' piccolo e un JSON per volta e' un backup che si legge, si mette in un artifact di
+GitHub Actions e si ripristina con `scripts/restore_firestore.py`.
 
-A differenza del backup dentro `scripts/migrate_firestore.py` - che copre solo le quattro
-collezioni toccate dalla migrazione, e senza sotto-collezioni - qui si esporta **tutto
-quello che serve per ricostruire**: leghe con i membri, eventi con i partecipanti, utenti
-con il loro archivio. Le sotto-collezioni sono la meta' dei dati del gioco (i partecipanti
-a un evento, i punti di lega): un backup senza sarebbe un backup finto.
+Cosa si esporta lo decide `services/firestore_backup/inventory.py`, non questo script: tutte le
+collezioni durevoli con le loro sotto-collezioni (anche quelle sotto un documento padre che
+non esiste piu'), e nessuno stato effimero (`work_receipts`, `update_locks`). Una collezione
+che nessuno ha classificato viene esportata lo stesso e segnalata.
 
-    python scripts/backup_firestore.py                       # in backup/
-    python scripts/backup_firestore.py --out /tmp --quiet    # per gli script
-    python scripts/backup_firestore.py --collections users   # solo una collezione
+Il file si scrive come `.partial`, si rilegge dal disco, si valida per intero (struttura,
+conteggi, digest, decodifica di ogni valore) e solo allora prende il nome definitivo: un
+export non valido non lascia dietro un file che sembra un backup.
+
+    python scripts/backup_firestore.py                                   # in backup/, credenziali del bot
+    python scripts/backup_firestore.py --out /tmp --quiet                # stampa solo il percorso
+    FIRESTORE_EMULATOR_HOST=127.0.0.1:8571 python scripts/backup_firestore.py --project demo-gtp
 """
+from __future__ import annotations
+
 import argparse
 import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from services import firebase_service  # noqa: E402
-
-# Le collezioni di primo livello del gioco. `admin_settings` c'e' perche' contiene i
-# giocatori sospesi (/admin_block): si perderebbe un dato che non sta in nessun file.
-# `purchases` e' il registro dei pagamenti in Stelle: e' l'unico posto dove sta l'id
-# della transazione Telegram, cioe' l'unica cosa con cui si puo' rimborsare qualcuno.
-COLLECTIONS = (
-    "users",
-    "daily_path",
-    "events",
-    "seasons",
-    "leagues",
-    "father_son_pairs",
-    "admin_settings",
-    "purchases",
-)
+from services import observability  # noqa: E402
+from services.firestore_backup import archive, exporter, restore  # noqa: E402
 
 DEFAULT_OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backup")
 
 
-def jsonable(value):
-    """Firestore restituisce datetime, riferimenti e tipi suoi: qui diventano stringhe."""
-    if isinstance(value, dict):
-        return {key: jsonable(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [jsonable(item) for item in value]
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    return str(value)
+def source_client(project: str | None):
+    """(client, project, emulator?). The emulator needs an explicit project; otherwise the
+    bot's own credentials (key file or ADC, e.g. Workload Identity Federation) are used."""
+    if os.environ.get(restore.EMULATOR_ENV):
+        if not project:
+            raise SystemExit("--project is required with FIRESTORE_EMULATOR_HOST")
+        from google.cloud import firestore
+
+        return firestore.Client(project=project), project, True
+    from services import firebase_service
+
+    client = firebase_service.db
+    if project and client.project != project:
+        raise SystemExit(f"credentials resolve project {client.project!r}, not {project!r}")
+    return client, client.project, False
 
 
-def export_document(doc, with_subcollections=True):
-    """Il documento e, sotto la chiave `_subcollections`, quello che ha appeso."""
-    payload = {"_data": jsonable(doc.to_dict() or {})}
-    if not with_subcollections:
-        return payload
-
-    subcollections = {}
-    for subcollection in doc.reference.collections():
-        entries = {sub.id: export_document(sub) for sub in subcollection.stream()}
-        if entries:
-            subcollections[subcollection.id] = entries
-    if subcollections:
-        payload["_subcollections"] = subcollections
-    return payload
-
-
-def export(db, collections=COLLECTIONS, with_subcollections=True):
-    dump = {}
-    for name in collections:
-        documents = {
-            doc.id: export_document(doc, with_subcollections)
-            for doc in db.collection(name).stream()
-        }
-        dump[name] = documents
-        logging.info(f"[BACKUP] {name}: {len(documents)} documenti")
-    return dump
-
-
-def write_dump(dump, out_dir):
+def write_archive(backup: dict, out_dir: str) -> str:
     os.makedirs(out_dir, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    path = os.path.join(out_dir, f"firestore-{stamp}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(dump, f, ensure_ascii=False, indent=2)
-    return path
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    final = os.path.join(out_dir, f"firestore-{backup['source_project']}-{stamp}.json")
+    partial = final + ".partial"
+    with open(partial, "w", encoding="utf-8") as handle:
+        json.dump(backup, handle, ensure_ascii=False, indent=1, sort_keys=True, allow_nan=False)
+    try:
+        archive.require_valid(partial)
+    except Exception:
+        os.remove(partial)
+        raise
+    os.replace(partial, final)
+    return final
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Esporta Firestore in un file JSON")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Esporta Firestore in un backup JSON v2 validato")
     parser.add_argument("--out", default=DEFAULT_OUT_DIR, help="cartella di destinazione")
-    parser.add_argument("--collections", nargs="*", default=list(COLLECTIONS), help="collezioni da esportare")
-    parser.add_argument("--no-subcollections", action="store_true", help="salta le sotto-collezioni")
+    parser.add_argument("--project", help="progetto atteso (obbligatorio con l'emulatore)")
+    parser.add_argument("--collections", nargs="*", help="solo queste collezioni (backup parziale)")
     parser.add_argument("--quiet", action="store_true", help="stampa solo il percorso del file")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    logging.basicConfig(
-        level=logging.WARNING if args.quiet else logging.INFO, format="%(levelname)s %(message)s"
-    )
+    observability.init("backup")
+    if args.quiet:
+        logging.getLogger().setLevel(logging.WARNING)
+    client, project, emulator = source_client(args.project)
+    try:
+        backup = exporter.export_archive(client, source_project=project, source_emulator=emulator,
+                                         requested=args.collections)
+        path = write_archive(backup, args.out)
+    except archive.BackupValidationError as exc:
+        observability.log_event("backup.export.invalid", 40, component="backup", errors=len(exc.report.errors))
+        print("BACKUP NON VALIDO, nessun file scritto:", file=sys.stderr)
+        for error in exc.report.errors:
+            print(f"  - {error}", file=sys.stderr)
+        return 1
+    except (exporter.ExportError, ValueError) as exc:
+        print(f"BACKUP FALLITO: {exc}", file=sys.stderr)
+        return 1
 
-    dump = export(
-        firebase_service.db,
-        collections=args.collections,
-        with_subcollections=not args.no_subcollections,
-    )
-    path = write_dump(dump, args.out)
-
-    total = sum(len(documents) for documents in dump.values())
-    logging.info(f"[BACKUP] {total} documenti scritti in {path}")
+    observability.log_event("backup.export.written", component="backup", total_documents=backup["total_documents"],
+                            complete=backup["complete"], unclassified=len(backup["inventory"]["unclassified"]))
+    if not args.quiet:
+        meta = archive.summary(backup)
+        print(json.dumps({key: meta[key] for key in ("format_version", "created_at", "source_project", "complete",
+                                                     "document_counts", "total_documents")}, indent=1))
     print(path)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

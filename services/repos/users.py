@@ -3,6 +3,7 @@ import copy
 import logging
 
 from firebase_admin import firestore
+from google.cloud.firestore_v1.field_path import FieldPath
 
 from services.dates import normalize_day, shift_iso, today_iso
 from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
@@ -61,7 +62,7 @@ def missing_user_fields(data, user_id=None, first_name=None, language=None):
     return missing
 
 
-def save_user(user_id, first_name, language=DEFAULT_LANGUAGE):
+def save_user(user_id, first_name, language=DEFAULT_LANGUAGE, referral_code=None):
     """Crea l'utente se non esiste, e completa il documento se gli mancano dei campi.
 
     E' una transazione: due /start ravvicinati non possono piu' creare due documenti per la
@@ -81,8 +82,17 @@ def save_user(user_id, first_name, language=DEFAULT_LANGUAGE):
     def _create(transaction):
         snapshot = ref.get(transaction=transaction)
         if not snapshot.exists:
+            attribution = None
+            if referral_code:
+                from domains.referrals import service as referrals
+                attribution = referrals.prepare_attribution(transaction, user_id, first_name, referral_code)
+                if attribution:
+                    transaction.set(referrals.ref(user_id), attribution)
             transaction.set(ref, fs.new_user_document(user_id, first_name, language))
-            return {"created": True, "language": language, "repaired": []}
+            result = {"created": True, "language": language, "repaired": []}
+            if attribution:
+                result["referral_attached"] = True
+            return result
 
         existing = snapshot.to_dict() or {}
         missing = fs.missing_user_fields(
@@ -118,25 +128,38 @@ def get_user_data(user_id):
 
 
 def delete_user_data(user_id):
-    """Cancella dati personali e di gioco, conservando i registri degli acquisti."""
+    """Cancella dati personali e di gioco, conservando i registri degli acquisti.
+
+    L'ordine e' la parte che conta, e conta solo quando qualcosa si rompe a meta'. Prima le
+    lapidi referral, l'uscita dalle leghe e il documento utente: sono le scritture che
+    rendono il conto inutilizzabile e i dati non piu' riconducibili a una persona. Solo
+    dopo lo sgombero del resto, che da quel punto in poi sono righe orfane di un utente che
+    non c'e' piu'. Prima si faceva al contrario, con la delete del profilo per ultima: un
+    guasto a meta' lasciava un account **vivo** con meta' della sua storia gia' cancellata,
+    e l'utente si sentiva rispondere che la cancellazione non era riuscita.
+
+    Ogni passo e' ripetibile e nessuno pretende che il documento utente esista ancora:
+    rilanciarla dopo un guasto riprende da dov'era.
+
+    Lo sgombero passa da `bulk.sweep` e non da un ciclo sullo stream della query: il perche'
+    sta li'. Le sotto-collezioni di chi gioca da un anno sono centinaia di documenti.
+    """
+    from domains.referrals import service as referrals
     from services import firebase_service as fs
+    from services.repos import bulk
     user_id = int(user_id)
     ref = fs.user_ref(user_id)
     snapshot = ref.get()
     user_data = snapshot.to_dict() if snapshot.exists else {}
     deleted = {"profile": 0, "archive": 0, "history": 0, "leagues": 0,
-               "events": 0, "groups": 0}
+               "events": 0, "groups": 0, "duels": 0}
 
-    # Firestore non elimina le sotto-collezioni insieme al documento padre.
-    for subcollection, key in (
-        (fs.ARCHIVE_SUBCOLLECTION, "archive"),
-        (fs.HISTORY_SUBCOLLECTION, "history"),
-    ):
-        for doc in ref.collection(subcollection).stream():
-            doc.reference.delete()
-            deleted[key] += 1
+    # Le righe referral portano il nome di chi e' stato invitato: restano le sole lapidi.
+    referrals.erase_user(user_id)
 
-    # Uscire tramite la normale operazione mantiene corretto members_count.
+    # Uscire tramite la normale operazione mantiene corretto members_count, ed e' una
+    # transazione: va fatto finche' il documento utente c'e', perche' leave_league gli
+    # toglie il codice dall'elenco. Le leghe di un utente sono poche e si contano.
     for code in dict.fromkeys(user_data.get("leagues") or []):
         league = fs.get_league(code)
         if fs.leave_league(code, user_id):
@@ -144,34 +167,64 @@ def delete_user_data(user_id):
         if league and league.get("owner_id") == user_id:
             fs.league_ref(code).update({"owner_id": None})
 
+    if snapshot.exists:
+        ref.delete()
+        deleted["profile"] = 1
+
+    def drop(writer, doc):
+        writer.delete(doc.reference)
+
+    # Firestore non elimina le sotto-collezioni insieme al documento padre: restano al loro
+    # posto anche dopo la delete qui sopra, ed e' per questo che si possono sgomberare dopo.
+    for subcollection, key in (
+        (fs.ARCHIVE_SUBCOLLECTION, "archive"),
+        (fs.HISTORY_SUBCOLLECTION, "history"),
+    ):
+        deleted[key] = bulk.sweep(ref.collection(subcollection), drop)
+
     # Elimina anche copie orfane o create prima dell'elenco users.leagues.
     for collection_name, key in (
         (fs.PARTICIPANTS_SUBCOLLECTION, "events"),
         (fs.GROUP_PLAYERS_SUBCOLLECTION, "groups"),
     ):
-        query = fs.db.collection_group(collection_name).where("telegram_id", "==", user_id)
-        for doc in query.stream():
-            doc.reference.delete()
-            deleted[key] += 1
+        deleted[key] = bulk.sweep(
+            fs.db.collection_group(collection_name).where("telegram_id", "==", user_id), drop)
 
-    # Per le iscrizioni orfane va corretto anche il contatore della lega.
-    orphan_members = fs.db.collection_group(fs.MEMBERS_SUBCOLLECTION).where(
-        "telegram_id", "==", user_id
-    )
-    for doc in orphan_members.stream():
-        league = doc.reference.parent.parent
-        doc.reference.delete()
-        league.update({"members_count": firestore.Increment(-1)})
-        deleted["leagues"] += 1
+    # Per le iscrizioni orfane va corretto anche il contatore della lega. Due iscrizioni
+    # nella stessa lega sono due Increment sullo stesso documento, e il BulkWriter le puo'
+    # mandare in parallelo: e' commutativo, il totale torna comunque.
+    def leave(writer, doc):
+        writer.delete(doc.reference)
+        writer.update(doc.reference.parent.parent, {"members_count": firestore.Increment(-1)})
+
+    deleted["leagues"] += bulk.sweep(
+        fs.db.collection_group(fs.MEMBERS_SUBCOLLECTION).where("telegram_id", "==", user_id),
+        leave)
 
     # Il round corrente conserva sul padre nome e id dell'ultimo vincitore.
-    query = fs.db.collection(fs.GROUP_ROUNDS_COLLECTION).where("solved_by", "==", user_id)
-    for doc in query.stream():
-        doc.reference.update({"solved_by": None, "solved_name": None})
+    bulk.sweep(fs.db.collection(fs.GROUP_ROUNDS_COLLECTION).where("solved_by", "==", user_id),
+               lambda writer, doc: writer.update(doc.reference,
+                                                 {"solved_by": None, "solved_name": None}))
 
-    if snapshot.exists:
-        ref.delete()
-        deleted["profile"] = 1
+    # Anche i duelli privati contengono il nome del partecipante e le sue partite. Il
+    # testa a testa vive invece sul profilo dell'avversario, e li' il nome va cancellato a
+    # mano: si arriva agli avversari passando dai duelli, che sono la sola traccia di chi
+    # ha giocato con chi. Le partite piu' vecchie di sette giorni non hanno piu' il loro
+    # duello, quindi conservano il nome: sono irraggiungibili senza un indice per coppia.
+    # `FieldPath` e non la stringa col punto: un id Telegram inizia con una cifra, e un
+    # segmento che inizia con una cifra in un percorso di campo va fra apici inversi.
+    name_of_the_erased = FieldPath("app_duel_record", str(user_id), "name").to_api_repr()
+
+    def drop_duel(writer, doc):
+        duel = doc.to_dict() or {}
+        for member in dict.fromkeys(duel.get("members") or []):
+            if member != user_id:
+                writer.update(fs.user_ref(member), {name_of_the_erased: firestore.DELETE_FIELD})
+        writer.delete(doc.reference)
+
+    deleted["duels"] = bulk.sweep(
+        fs.db.collection("app_duels").where("members", "array_contains", user_id), drop_duel)
+
     logging.info(f"[PRIVACY] Dati utente {user_id} cancellati: {deleted}")
     return deleted
 
@@ -284,9 +337,9 @@ def take_daily_hint(user_id, day_iso, max_hints, max_attempts):
 def _newly_earned(data, **after):
     """I traguardi che scattano con questi contatori aggiornati e non sono ancora scritti.
 
-    L'import sta qui dentro e non in cima al modulo perche' services/shop.py importa questo:
+    L'import sta qui dentro e non in cima al modulo perche' domains/shop/service.py importa questo:
     al momento della chiamata sono caricati tutti e due, all'import no."""
-    from services import shop
+    from domains.shop import service as shop
     return shop.newly_earned({**(data or {}), **after})
 
 
@@ -444,13 +497,14 @@ def _public_user(data):
         "language": data.get("language", DEFAULT_LANGUAGE),
         # I cosmetici viaggiano con la classifica perche' e' li' che si vede il distintivo,
         # e il documento e' gia' stato letto per i punti: non costa una lettura in piu'.
-        # Qui restano gli id grezzi, il simbolo lo ricava chi disegna (services/shop.py):
+        # Qui restano gli id grezzi, il simbolo lo ricava chi disegna (domains/shop/service.py):
         # questo modulo non deve sapere niente del catalogo, o non potrebbe piu' essere
         # quello che il catalogo chiama per scrivere.
         "cosmetics": data.get("cosmetics") or {},
         "players_guessed": data.get("players_guessed", 0),
         "best_streak": data.get("best_streak", 0),
         "archive_solved": data.get("archive_solved", 0),
+        "referral_qualified": data.get("referral_qualified", 0),
     }
 
 

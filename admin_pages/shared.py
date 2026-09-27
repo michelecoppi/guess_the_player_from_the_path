@@ -1,5 +1,6 @@
 """Shared widgets, queries and dataset editor helpers."""
 import asyncio as asyncio
+import logging
 import os as os
 from datetime import datetime
 
@@ -7,19 +8,40 @@ import streamlit as st
 
 from config import ADMIN_TELEGRAM_IDS as ADMIN_TELEGRAM_IDS
 from config import BOT_TOKEN as BOT_TOKEN
+from domains.players.candidates.model import CandidateState as CandidateState
+from domains.players.candidates.repository import (
+    FileCandidatePlayerRepository as FileCandidatePlayerRepository,
+)
+from domains.players.candidates.review import AdminIdentity as AdminIdentity
+from domains.players.candidates.review import CandidateReviewService as CandidateReviewService
+from domains.players.candidates.review import ReviewAuthError as ReviewAuthError
+from domains.players.candidates.review import ReviewForbiddenError as ReviewForbiddenError
+from domains.players.candidates.review import ReviewStatus as ReviewStatus
+from domains.referrals import service as referrals
+from domains.shop import editor as shop_editor
+from domains.shop import service as shop  # noqa: F401 - re-exported for admin_pages/shop.py
+from domains.shop.editor import ShopEditError as ShopEditError
+from services import backup_status as backup_status
 from services import content_admin as content_admin
+from services import daily_planner as daily_planner
 from services import dataset_editor as dataset_editor
+from services import difficulty_calibration, observability
+from services import event_config as event_config
+from services import event_template_editor as event_template_editor
 from services import firebase_service as firebase_service
+from services import product_analytics_query as product_analytics_query
 from services.content_admin import ContentAdminError as ContentAdminError
 from services.daily_challenge import MAX_ATTEMPTS as MAX_ATTEMPTS
 from services.daily_generator import ensure_daily_buffer as ensure_daily_buffer
 from services.dataset_editor import DatasetEditError as DatasetEditError
 from services.dataset_health import build_report
 from services.dates import ITALY_TZ as ITALY_TZ
+from services.dates import parse_iso as parse_iso
 from services.dates import to_display as to_display
 from services.dates import to_iso as to_iso
 from services.dates import today_iso as today_iso
 from services.difficulty import DIFFICULTY_ORDER as DIFFICULTY_ORDER
+from services.difficulty import band_cutoffs_100 as band_cutoffs_100
 from services.difficulty import compute_difficulty as compute_difficulty
 from services.difficulty import compute_difficulty_score as compute_difficulty_score
 from services.difficulty import explain_difficulty as explain_difficulty
@@ -89,7 +111,16 @@ def guarded(action, success_message):
         st.error(str(e))
     except DatasetEditError as e:
         st.error(str(e))
+    except ShopEditError as e:
+        st.error(str(e))
+    except event_template_editor.TemplateEditError as e:
+        st.error(str(e))
+    except daily_planner.PlannerError as e:
+        st.error(str(e))
     except Exception as e:  # noqa: BLE001 - in dashboard l'errore va mostrato, non nascosto
+        # Gli errori di dominio sopra sono rifiuti attesi; questo e' un guasto da guardare.
+        observability.log_event("admin.action.failed", logging.ERROR, exc_info=e, component="admin",
+                                surface="streamlit", error_type=type(e).__name__)
         st.error(f"Errore: {type(e).__name__}: {e}")
     else:
         after_write(success_message(result) if callable(success_message) else success_message)
@@ -162,6 +193,35 @@ def save_player_changes(changes, career_changes=None):
     return result
 
 
+# Colonna modificabile della tabella shop -> campo dell'oggetto (domains/shop/editor.py).
+SHOP_COLUMN_FIELDS = {"prezzo": "price", "nome": "name", "bloccato": "locked"}
+
+
+def collect_shop_changes(before_rows, edited):
+    changes = {}
+    for before, after in zip(before_rows, as_records(edited)):
+        fields = {}
+        for column, field in SHOP_COLUMN_FIELDS.items():
+            new_value = after.get(column)
+            if new_value is None:
+                continue
+            if field == "price":
+                new_value = int(new_value)
+            elif field == "locked":
+                new_value = bool(new_value)
+            if new_value != before[column]:
+                fields[field] = new_value
+        if fields:
+            changes[before["id"]] = fields
+    return changes
+
+
+def save_shop_changes(changes):
+    result = shop_editor.apply_item_changes(changes)
+    st.session_state["shop_rev"] = st.session_state.get("shop_rev", 0) + 1
+    return result
+
+
 def save_difficulty_settings(thresholds, weights):
     result = dataset_editor.update_difficulty_settings(thresholds, weights)
     _reset_dataset_editors()
@@ -226,6 +286,17 @@ def cached_buffer_health(today):
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_daily_plan(start_day, days, mode, variants, today):
+    """La proposta del planner: `variants` e' una tupla di (giorno, intero) per restare hashable."""
+    return daily_planner.plan_calendar(days=days, start_day=start_day, mode=mode, today=today, variants=dict(variants))
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_planner_exclusions():
+    return firebase_service.get_planner_exclusions()
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_events(limit):
     return firebase_service.get_recent_events(limit=limit)
 
@@ -241,6 +312,16 @@ def cached_overview():
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_daily_stats(day):
+    return firebase_service.get_daily_stats(day)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_failed_jobs(limit):
+    return firebase_service.list_failed_jobs(limit=limit)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_blocked_ids():
     return firebase_service.get_blocked_player_ids()
 
@@ -253,6 +334,31 @@ def cached_top_users(field, limit):
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
 def cached_leagues(limit):
     return firebase_service.list_leagues(limit=limit)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_groups(limit):
+    return firebase_service.list_groups(limit=limit)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_referral_overview():
+    return referrals.admin_overview()
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_referral_top_inviters(limit):
+    return firebase_service.get_top_users("referral_qualified", limit)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_core_metrics(days):
+    return product_analytics_query.fetch_core_metrics(product_analytics_query.settings(), days)
+
+
+@st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
+def cached_difficulty_calibration(days, today):
+    return difficulty_calibration.load_report(days, today=today)
 
 
 @st.cache_data(ttl=CACHE_TTL_SECONDS, show_spinner=False)
@@ -281,5 +387,34 @@ def player_picker(key, label="Giocatore dal dataset"):
         return None
     choice = st.selectbox(label, list(options), key=key, index=None, placeholder="Cerca per nome o id…")
     return options.get(choice) if choice else None
+
+
+# ---------------------------------------------------------------------------
+# Candidate review queue (#15 / #35): la Admin riusa CandidateReviewService
+# così com'è — nessuna logica di dominio (FSM, validazione, conflitti di
+# provenienza, CAS) viene duplicata qui. Repository, dataset e config sono
+# esattamente quelli della pipeline di ingestion, mai percorsi o ID inventati.
+# ---------------------------------------------------------------------------
+
+@st.cache_resource(show_spinner=False)
+def get_review_service() -> CandidateReviewService:
+    """Istanza condivisa del servizio di review, sul repository file-backed reale
+    (`data/candidates/`, lo stesso usato dalla pipeline di ingestion) e sul dataset
+    di produzione e sulla directory di backup di default del servizio stesso."""
+    return CandidateReviewService(candidate_repo=FileCandidatePlayerRepository())
+
+
+def get_admin_identity() -> AdminIdentity | None:
+    """AdminIdentity per chi opera da questa dashboard locale.
+
+    Riusa la stessa fonte di configurazione del bot Telegram (ADMIN_TELEGRAM_IDS,
+    da `config.py`/`.env`): non esiste un login separato per la dashboard, quindi
+    chi la lancia in locale (con le credenziali del progetto già in mano) opera
+    come il primo amministratore configurato. Nessun ID è mai inventato: se la
+    configurazione manca, ritorna None e il chiamante deve bloccare le mutazioni.
+    """
+    if not ADMIN_TELEGRAM_IDS:
+        return None
+    return AdminIdentity(user_id=ADMIN_TELEGRAM_IDS[0], username="admin_ui")
 
 

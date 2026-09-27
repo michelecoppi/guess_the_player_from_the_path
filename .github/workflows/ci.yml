@@ -21,18 +21,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "npm"
 
-      - name: Test client senza bundler
-        run: node --test tests/client.test.cjs
+      - name: Installa dipendenze frontend
+        run: npm ci
+
+      - name: Type check frontend (TypeScript)
+        run: npm run typecheck
+
+      - name: Compila il bundle frontend (Vite)
+        run: npm run build
+
+      - name: Test frontend unitari
+        run: npm run test:frontend
+
+      - name: Audit dipendenze frontend (npm audit)
+        run: npm audit --audit-level=high
 
       - name: Controllo sintassi
-        run: python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py
+        run: python -m compileall -q bot.py config.py apps domains services handlers scripts admin_pages admin_ui.py tools
 
       - name: Lint (ruff)
         run: ruff check .
 
-      - name: Type check (mypy su services/)
-        run: mypy services/
+      - name: Type check (mypy su services/ e domains/)
+        run: mypy services/ domains/
+
+      - name: Audit sicurezza e segreti (pip-audit, detect-secrets, npm-audit)
+        run: python -m tools.security
 
       - name: Valida i dataset JSON
         run: |
@@ -46,5 +62,40 @@ jobs:
       - name: Controlla integrita e salute del dataset calciatori
         run: python scripts/dataset_report.py --strict
 
+      - name: Verifica regressioni del dataset calciatori
+        run: python -m scripts.dataset_regression --check
+
+      # Le transazioni (bonus al primo che indovina, consegna di un acquisto in Stelle,
+      # ricevute degli update) non si provano su un finto: un finto fa succedere quello che
+      # gli abbiamo detto di far succedere, quindi non si accorgerebbe di una transazione
+      # scritta male. Qui gira un Firestore vero, che gira sulla JVM.
+      #
+      # setup-gcloud e non la gcloud gia' presente sul runner: quella e' installata da apt e
+      # rifiuta `components install`. Se questo passo fallisce, i test delle transazioni non
+      # si saltano in silenzio - la fixture in tests/conftest.py fallisce quando c'e' CI.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Avvia l'emulatore Firestore
+        run: |
+          gcloud components install cloud-firestore-emulator --quiet
+          nohup gcloud emulators firestore start --host-port=127.0.0.1:8571 > /tmp/firestore.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -s -o /dev/null http://127.0.0.1:8571/; then
+              echo "emulatore pronto"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "l'emulatore non e' partito entro 60 secondi"
+          cat /tmp/firestore.log
+          exit 1
+
       - name: Esegui i test (con coverage)
-        run: pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70
+        env:
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8571
+        run: pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing --cov-fail-under=70

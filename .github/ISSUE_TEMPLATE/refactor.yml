@@ -1,0 +1,31 @@
+name: "\U0001F527 Refactor / tech debt"
+description: Internal restructuring with no intended behavior change.
+title: "[Refactor] "
+labels: []
+body:
+  - type: textarea
+    id: motivazione
+    attributes:
+      label: Motivazione / Motivation
+      description: What's costly or risky about the current state (maintenance cost, coupling, missing tests, ...)?
+    validations:
+      required: true
+  - type: textarea
+    id: ambito
+    attributes:
+      label: Ambito / Scope
+      description: What changes structurally. Confirm what stays behaviorally identical.
+    validations:
+      required: true
+  - type: textarea
+    id: rischio
+    attributes:
+      label: Rischio e mitigazione / Risk and mitigation
+      description: How will you verify behavior didn't change (existing tests, new tests, manual checks)?
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Set Work Type = `Refactor` on the Project. Size honestly — split before
+        starting if this is genuinely Size 8.

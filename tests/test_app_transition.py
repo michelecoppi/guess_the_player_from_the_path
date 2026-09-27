@@ -4,10 +4,35 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from handlers import daily_job, help_handler, keyboards, menu_handler, start_handler
+from handlers import daily_job, keyboards, menu_handler, start_handler
 from services.i18n import SUPPORTED_LANGUAGES, t
 
 APP_URL = "https://example.com/app"
+
+
+@pytest.mark.parametrize("lang", SUPPORTED_LANGUAGES)
+def test_friend_invite_registers_then_opens_exact_duel(monkeypatch, lang):
+    import config
+
+    monkeypatch.setattr(config, "WEBAPP_URL", APP_URL)
+    registered = []
+
+    def save(uid, name, language):
+        registered.append(uid)
+        return {"language": lang, "created": True}
+
+    monkeypatch.setattr(start_handler, "save_user", save)
+    reply = AsyncMock()
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=42, first_name="A&B", language_code=lang),
+                             effective_chat=SimpleNamespace(type="private"),
+                             effective_message=SimpleNamespace(reply_text=reply))
+    code = "a" * 24
+    asyncio.run(start_handler.start(update, SimpleNamespace(args=["duel_" + code])))
+    assert registered == [42]
+    assert reply.await_count == 1
+    button = reply.call_args.kwargs["reply_markup"].inline_keyboard[0][0]
+    assert button.web_app.url == APP_URL + "?duel=" + code
+    assert button.text == t(lang, "app.duel")
 
 
 @pytest.mark.parametrize("lang", SUPPORTED_LANGUAGES)
@@ -17,7 +42,7 @@ def test_app_is_first_and_chat_actions_remain_available(monkeypatch, lang):
     assert rows[0][0].web_app.url == APP_URL
     assert rows[0][0].text == t(lang, "menu.app")
     assert any(button.callback_data == "menu_play" for row in rows for button in row)
-    assert [command.command for command in keyboards.bot_commands(lang)][:2] == ["start", "app"]
+    assert [command.command for command in keyboards.bot_commands(lang)][0] == "start"
 
 
 def test_unconfigured_app_has_no_invites_or_buttons(monkeypatch):
@@ -28,7 +53,7 @@ def test_unconfigured_app_has_no_invites_or_buttons(monkeypatch):
     assert all(not b.web_app for row in keyboards.menu_keyboard("it").inline_keyboard for b in row)
 
 
-@pytest.mark.parametrize("handler", [menu_handler.menu, help_handler.help])
+@pytest.mark.parametrize("handler", [menu_handler.menu])
 @pytest.mark.parametrize("chat_type", ["private", "group"])
 def test_invitation_is_only_shown_in_private_chat(monkeypatch, handler, chat_type):
     monkeypatch.setattr(keyboards, "WEBAPP_URL", APP_URL)
@@ -55,9 +80,24 @@ def test_start_promotes_app_without_losing_league_invites(monkeypatch):
                              effective_message=SimpleNamespace(reply_text=reply))
     context = SimpleNamespace(args=[start_handler.DEEP_LINK_PREFIX + "ABC23X"])
     asyncio.run(start_handler.start(update, context))
-    assert t("it", "app.intro") in reply.call_args.args[0]
     assert "A&amp;B" in reply.call_args.args[0]
+    button = reply.call_args.kwargs["reply_markup"].inline_keyboard[0][0]
+    assert button.web_app.url == APP_URL
     join.assert_awaited_once_with(update, context, code="ABC23X")
+
+
+def test_start_shows_only_the_app_button(monkeypatch):
+    monkeypatch.setattr(keyboards, "WEBAPP_URL", APP_URL)
+    monkeypatch.setattr(start_handler, "save_user", lambda *a, **kw: {"language": "it", "created": True})
+    reply = AsyncMock()
+    update = SimpleNamespace(effective_user=SimpleNamespace(id=42, first_name="Gio", language_code="it"),
+                             effective_chat=SimpleNamespace(type="private"),
+                             effective_message=SimpleNamespace(reply_text=reply))
+    asyncio.run(start_handler.start(update, SimpleNamespace(args=[])))
+    keyboard = reply.call_args.kwargs["reply_markup"]
+    assert len(keyboard.inline_keyboard) == 1
+    assert len(keyboard.inline_keyboard[0]) == 1
+    assert keyboard.inline_keyboard[0][0].web_app.url == APP_URL
 
 
 def test_daily_notification_contains_app_invitation(monkeypatch):

@@ -11,6 +11,8 @@ Il nome del calciatore non compare mai: e' la risposta.
 import colorsys
 import hashlib
 import io
+import math
+from collections.abc import Callable
 
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -484,11 +486,148 @@ def _finish_grain(img, paper, glow):
     return Image.blend(grey, out, 0.55)
 
 
-FINISHES = {
+def _finish_ticket(img, paper, glow):
+    """A kept match ticket: paper edge, perforated stub and an admission stamp."""
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    line = tuple(round(paper[i] * .55 + glow[i] * .45) for i in range(3))
+    draw.rounded_rectangle((24, 24, w - 24, h - 24), radius=22, outline=glow, width=3)
+    for y in range(48, h - 48, 24):
+        draw.ellipse((16, y - 5, 32, y + 5), fill=paper, outline=line)
+        draw.ellipse((w - 32, y - 5, w - 16, y + 5), fill=paper, outline=line)
+    for x in range(44, w - 44, 20):
+        draw.line((x, 220, x + 8, 220), fill=line, width=2)
+    draw.ellipse((w - 130, 54, w - 54, 130), outline=line, width=3)
+    draw.line((w - 115, 110, w - 70, 72), fill=line, width=3)
+    for i, x in enumerate(range(55, 150, 5)):
+        draw.rectangle((x, 60, x + (1 if i % 3 else 3), 124), fill=line)
+    return img
+
+
+def _finish_tactics(img, paper, glow, eleven=False):
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    line = tuple(round(paper[i] * .72 + glow[i] * .28) for i in range(3))
+    draw.rounded_rectangle((25, 25, w - 25, h - 25), radius=16, outline=line, width=2)
+    draw.line((25, h / 2, w - 25, h / 2), fill=line, width=2)
+    draw.ellipse((w / 2 - 65, h / 2 - 65, w / 2 + 65, h / 2 + 65), outline=line, width=2)
+    points = [(0.12, .2), (.88, .27), (.12, .5), (.88, .67), (.12, .82)]
+    if eleven:
+        points += [(.88, .13), (.12, .35), (.88, .43), (.12, .66), (.88, .82), (.5, .94)]
+    for i, (x, y) in enumerate(points):
+        x, y = round(w * x), round(h * y)
+        draw.ellipse((x - 11, y - 11, x + 11, y + 11), outline=glow, width=2)
+        if i:
+            px, py = points[i - 1]
+            # Pass marks stay in the background behind the result typography.
+            for t in range(0, 100, 5):
+                a, b = t / 100, min(t + 2, 100) / 100
+                draw.line((w * px + (x - w * px) * a, h * py + (y - h * py) * a,
+                           w * px + (x - w * px) * b, h * py + (y - h * py) * b), fill=line, width=1)
+    return img
+
+
+# Le finiture qui sotto decorano solo i bordi: la fascia dei tentativi e del punteggio
+# (y 250-720) resta identica a quella della card semplice, come per il biglietto.
+_RESULT_BAND = (250, 720)
+
+
+def _finish_aurora(img, paper, glow):
+    """Nastri di aurora polare sopra e sotto il risultato.
+
+    Le onde si disegnano come linee spesse, si sfocano molto e si mescolano alla carta con
+    una maschera che vale zero nella fascia del risultato: la luce resta in cielo e sul
+    fondo, mai sopra i tentativi."""
+    w, h = img.size
+    violet = (166, 120, 255)
+    ribbons = Image.new("RGB", img.size, paper)
+    draw = ImageDraw.Draw(ribbons)
+    for index, (base, amplitude, color, width) in enumerate([
+        (70, 34, glow, 46), (150, 26, violet, 34), (200, 18, glow, 20),
+        (h - 110, 30, violet, 40), (h - 45, 24, glow, 36),
+    ]):
+        points = [(x, base + amplitude * math.sin(x / 95 + index * 1.7)) for x in range(-40, w + 60, 20)]
+        draw.line(points, fill=color, width=width, joint="curve")
+    ribbons = ribbons.filter(ImageFilter.GaussianBlur(28))
+    mask = Image.new("L", (1, h))
+    top, bottom = _RESULT_BAND
+    for y in range(h):
+        if y < top:
+            value = 170 * min(1.0, (top - y) / 90)
+        elif y > bottom:
+            value = 120 * min(1.0, (y - bottom) / 120)
+        else:
+            value = 0
+        mask.putpixel((0, y), int(value))
+    return Image.composite(ribbons, img, mask.resize(img.size))
+
+
+def _pixel_ball(draw, left, top, cell, ink, dark):
+    """Un pallone 8x8 disegnato a quadratini, come nei cabinati."""
+    rows = ["..####..", ".#oo#o#.", "#o##oo##", "#oooo#o#", "#o#oooo#", "##oo##o#", ".#o#oo#.", "..####.."]
+    for r, row in enumerate(rows):
+        for c, value in enumerate(row):
+            if value == ".":
+                continue
+            box = (left + c * cell, top + r * cell, left + (c + 1) * cell - 1, top + (r + 1) * cell - 1)
+            draw.rectangle(box, fill=dark if value == "#" else ink)
+
+
+def _finish_pixel(img, paper, glow):
+    """Un bordo a blocchi con gli angoli a gradini, come la cornice di un videogioco."""
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    dim = tuple(round(paper[i] * .55 + glow[i] * .45) for i in range(3))
+    blue = (79, 124, 255)
+    cell = 16
+    for x in range(0, w, cell):
+        for y in (16, h - 32):
+            draw.rectangle((x, y, x + cell - 3, y + cell - 3), fill=glow if (x // cell) % 2 else dim)
+    for y in range(0, h, cell):
+        for x in (16, w - 32):
+            draw.rectangle((x, y, x + cell - 3, y + cell - 3), fill=blue if (y // cell) % 2 else dim)
+    for corner_x, corner_y, dx, dy in ((40, 40, 1, 1), (w - 40, 40, -1, 1), (40, h - 40, 1, -1), (w - 40, h - 40, -1, -1)):
+        for step in range(3):
+            x0 = corner_x + dx * step * cell
+            y0 = corner_y + dy * (2 - step) * cell
+            draw.rectangle((min(x0, x0 + dx * (cell - 3)), min(y0, y0 + dy * (cell - 3)),
+                            max(x0, x0 + dx * (cell - 3)), max(y0, y0 + dy * (cell - 3))), fill=glow)
+    _pixel_ball(draw, 70, 110, 6, (245, 248, 255), (20, 24, 36))
+    _pixel_ball(draw, w - 118, 110, 6, (245, 248, 255), (20, 24, 36))
+    for y in range(h - 250, h - 40, 6):
+        draw.line((48, y, w - 48, y), fill=tuple(round(paper[i] * .9 + glow[i] * .1) for i in range(3)))
+    return img
+
+
+def _finish_halftone(img, paper, glow):
+    """Retino tipografico negli angoli e un contorno stampato fuori registro."""
+    draw = ImageDraw.Draw(img)
+    w, h = img.size
+    dot = tuple(round(paper[i] * .45 + glow[i] * .55) for i in range(3))
+    reach = 280
+    for y in range(0, h + 22, 22):
+        for x in range((y // 22) % 2 * 11, w + 22, 22):
+            near = min(math.hypot(x, y), math.hypot(w - x, h - y))
+            radius = 9 * (1 - near / reach)
+            if radius > 0.6:
+                draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=dot)
+    off = (93, 208, 255)
+    draw.rectangle((36, 36, w - 30, h - 30), outline=off, width=4)
+    draw.rectangle((30, 30, w - 36, h - 36), outline=glow, width=4)
+    return img
+
+
+FINISHES: dict[str, Callable[..., Image.Image]] = {
+    "ticket": _finish_ticket,
+    "aurora": _finish_aurora,
+    "pixel": _finish_pixel,
+    "halftone": _finish_halftone,
     "plain": _finish_plain,
     "night": _finish_night,
     "foil": _finish_foil,
     "grain": _finish_grain,
+    "tactics": _finish_tactics,
+    "eleven": lambda img, paper, glow: _finish_tactics(img, paper, glow, eleven=True),
 }
 
 
@@ -499,7 +638,7 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     Non dice mai chi era il calciatore, esattamente come la riga di testo: la si incolla in
     un gruppo dove qualcuno non ha ancora giocato.
 
-    `style` e' lo `style` del cosmetico `card` indossato (services/shop.py): tre colori e una
+    `style` e' lo `style` del cosmetico `card` indossato (domains/shop/service.py): tre colori e una
     finitura. Se manca, si ripiega sui colori del tema di partenza - una figurina mezza
     disegnata sarebbe peggio di una senza finitura.
 

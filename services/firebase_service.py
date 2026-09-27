@@ -48,6 +48,10 @@ PARTICIPANTS_SUBCOLLECTION = "participants"
 SEASONS_COLLECTION = "seasons"
 ADMIN_SETTINGS_COLLECTION = "admin_settings"
 DATASET_OVERRIDES_DOC = "dataset_overrides"
+# Flag operativi (#51): services/feature_flags.py, docs/feature-flags.md.
+FEATURE_FLAGS_DOC = "feature_flags"
+# Esclusioni del planner delle sfide (#30): services/daily_planner.py.
+DAILY_PLANNER_DOC = "daily_planner"
 FATHER_SON_COLLECTION = "father_son_pairs"
 ARCHIVE_SUBCOLLECTION = "archive"
 HISTORY_SUBCOLLECTION = "history"
@@ -88,7 +92,9 @@ class _LazyFirestoreClient:
                 if _LazyFirestoreClient._client is None:
                     if not firebase_admin._apps:
                         firebase_admin.initialize_app(_credentials())
-                    _LazyFirestoreClient._client = firestore.client()
+                    # Conta letture e scritture per richiesta (#32); non cambia nient'altro.
+                    from services import performance
+                    _LazyFirestoreClient._client = performance.instrument_firestore(firestore.client())
         return _LazyFirestoreClient._client
 
     def __getattr__(self, name):
@@ -116,6 +122,7 @@ db = _LazyFirestoreClient()
 # L'annotazione serve a mypy: da quando c'e' `cosmetics` i valori non sono piu' tutti
 # dello stesso tipo, e senza tipo esplicito l'inferenza si ferma.
 USER_FIELD_DEFAULTS: dict[str, Any] = {
+    "referral_qualified": 0,
     "chat_id": -1,
     "notifications_enabled": False,
     "monthly_points": 0,
@@ -137,11 +144,22 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
     "training_attempts": 0,
     "training_solved": 0,
     "event_key": None,
+    # Modalita' Storia (services/story.py): progresso per capitolo (livello raggiunto,
+    # stelline, checkpoint) e i due contatori che ne guadagnano i cosmetici.
+    "app_story": {},
+    "story_chapters_cleared": 0,
+    "story_perfect_chapters": 0,
+    "story_anni_90_cleared": 0,
+    "story_anni_90_perfect": 0,
+    "story_maglie_incrociate_cleared": 0,
+    "story_maglie_incrociate_perfect": 0,
+    "story_notti_europee_cleared": 0,
+    "story_notti_europee_perfect": 0,
     "leagues": [],
     # Cosmetici comprati in Stelle, traguardi guadagnati giocando, trofei appesi al profilo,
     # e cosa ha addosso adesso.
     # `owned` non elenca gli oggetti gratuiti: quelli li hanno tutti per definizione
-    # (services/shop.py), e scriverli qui vorrebbe dire ripassare su ogni utente ogni volta
+    # (domains/shop/service.py), e scriverli qui vorrebbe dire ripassare su ogni utente ogni volta
     # che se ne aggiunge uno. `earned` invece si scrive, ed e' separato da `owned` perche' i
     # due rispondono a domande diverse: da `owned` si ritira quando si rimborsa un acquisto.
     "cosmetics": {"owned": [], "earned": [], "pinned": [], "equipped": {}},
@@ -151,7 +169,7 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 # I traguardi del negozio
 #
-# Un traguardo (services/shop.py, gli oggetti con `achievement`) si ricava da un contatore.
+# Un traguardo (domains/shop/service.py, gli oggetti con `achievement`) si ricava da un contatore.
 # Finche' resta solo un calcolo e' anche reversibile: basta alzare un obiettivo in
 # data/shop.json, o rinominare un id, e chi stava sotto la soglia nuova si ritrova senza un
 # distintivo che aveva gia' guadagnato - senza aver fatto niente, e senza che nessuno se ne
@@ -168,8 +186,13 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
 # raccoglie. Un obiettivo appeso a un campo che non e' in questa lista non verrebbe mai messo
 # al sicuro, e resterebbe per sempre alla merce' del calcolo. C'e' un test che lo verifica.
 HARVESTED_FIELDS = frozenset({
+    "referral_qualified",
     "points_totali", "monthly_points", "players_guessed", "current_streak", "best_streak",
     "bonus_first_guessed", "archive_solved", "training_solved",
+    "story_chapters_cleared", "story_perfect_chapters",
+    "story_anni_90_cleared", "story_anni_90_perfect", "story_maglie_incrociate_cleared",
+    "story_maglie_incrociate_perfect", "story_notti_europee_cleared",
+    "story_notti_europee_perfect",
 })
 
 
@@ -180,6 +203,10 @@ from services.repos.admin import block_player_id as block_player_id
 from services.repos.admin import delete_father_son_pair as delete_father_son_pair
 from services.repos.admin import get_admin_overview as get_admin_overview
 from services.repos.admin import get_blocked_player_ids as get_blocked_player_ids
+from services.repos.admin import get_planner_exclusions as get_planner_exclusions
+from services.repos.admin import remove_planner_exclusion as remove_planner_exclusion
+from services.repos.admin import set_planner_exclusion as set_planner_exclusion
+from services.repos.admin import list_failed_jobs as list_failed_jobs
 from services.repos.admin import list_father_son_pairs as list_father_son_pairs
 from services.repos.admin import mark_father_son_pairs_used as mark_father_son_pairs_used
 from services.repos.admin import unblock_player_id as unblock_player_id
@@ -196,7 +223,6 @@ from services.repos.archive import register_archive_solved as register_archive_s
 from services.repos.archive import set_archive_day as set_archive_day
 from services.repos.challenges import claim_daily_first_correct as claim_daily_first_correct
 from services.repos.challenges import count_day_winners as count_day_winners
-from services.repos.challenges import daily_path_exists as daily_path_exists
 from services.repos.challenges import daily_path_ref as daily_path_ref
 from services.repos.challenges import delete_daily_path as delete_daily_path
 from services.repos.challenges import get_daily_path as get_daily_path
@@ -204,7 +230,6 @@ from services.repos.challenges import get_daily_paths_range as get_daily_paths_r
 from services.repos.challenges import get_daily_stats as get_daily_stats
 from services.repos.challenges import get_display_name_for_day as get_display_name_for_day
 from services.repos.challenges import get_past_daily_paths as get_past_daily_paths
-from services.repos.challenges import get_recent_player_ids as get_recent_player_ids
 from services.repos.challenges import register_daily_outcome as register_daily_outcome
 from services.repos.challenges import save_daily_path as save_daily_path
 from services.repos.challenges import update_daily_path as update_daily_path
@@ -228,16 +253,19 @@ from services.repos.events import register_event_correct_guess as register_event
 from services.repos.events import save_event as save_event
 from services.repos.events import update_event as update_event
 from services.repos.events import update_users_trophies as update_users_trophies
-from services.repos.groups import add_group_points as add_group_points
-from services.repos.groups import begin_group_attempt as begin_group_attempt
-from services.repos.groups import claim_group_round as claim_group_round
-from services.repos.groups import get_group_leaderboard as get_group_leaderboard
-from services.repos.groups import get_group_round as get_group_round
-from services.repos.groups import group_player_ref as group_player_ref
-from services.repos.groups import group_round_ref as group_round_ref
-from services.repos.groups import start_group_round as start_group_round
+from domains.groups.repository import add_group_points as add_group_points
+from domains.groups.repository import begin_group_attempt as begin_group_attempt
+from domains.groups.repository import claim_group_round as claim_group_round
+from domains.groups.repository import delete_group_round as delete_group_round
+from domains.groups.repository import get_group_leaderboard as get_group_leaderboard
+from domains.groups.repository import get_group_round as get_group_round
+from domains.groups.repository import group_player_ref as group_player_ref
+from domains.groups.repository import group_round_ref as group_round_ref
+from domains.groups.repository import list_groups as list_groups
+from domains.groups.repository import start_group_round as start_group_round
 from services.repos.leagues import add_points_to_leagues as add_points_to_leagues
 from services.repos.leagues import create_league as create_league
+from services.repos.leagues import delete_league as delete_league
 from services.repos.leagues import get_league as get_league
 from services.repos.leagues import get_league_leaderboard as get_league_leaderboard
 from services.repos.leagues import join_league as join_league
@@ -246,16 +274,16 @@ from services.repos.leagues import leave_league as leave_league
 from services.repos.leagues import list_leagues as list_leagues
 from services.repos.leagues import member_ref as member_ref
 from services.repos.seasons import get_or_create_season as get_or_create_season
-from services.repos.shop import deliver_purchase as deliver_purchase
-from services.repos.shop import equip_cosmetic as equip_cosmetic
-from services.repos.shop import equip_look as equip_look
-from services.repos.shop import get_purchase as get_purchase
-from services.repos.shop import get_user_purchases as get_user_purchases
-from services.repos.shop import pin_trophies as pin_trophies
-from services.repos.shop import purchase_ref as purchase_ref
-from services.repos.shop import reserve_checkout as reserve_checkout
-from services.repos.shop import revoke_purchase as revoke_purchase
-from services.repos.shop import save_looks as save_looks
+from domains.shop.repository import deliver_purchase as deliver_purchase
+from domains.shop.repository import equip_cosmetic as equip_cosmetic
+from domains.shop.repository import equip_look as equip_look
+from domains.shop.repository import get_purchase as get_purchase
+from domains.shop.repository import get_user_purchases as get_user_purchases
+from domains.shop.repository import pin_trophies as pin_trophies
+from domains.shop.repository import purchase_ref as purchase_ref
+from domains.shop.repository import reserve_checkout as reserve_checkout
+from domains.shop.repository import revoke_purchase as revoke_purchase
+from domains.shop.repository import save_looks as save_looks
 from services.repos.users import _bump_counters as _bump_counters
 from services.repos.users import _newly_earned as _newly_earned
 from services.repos.users import _public_user as _public_user

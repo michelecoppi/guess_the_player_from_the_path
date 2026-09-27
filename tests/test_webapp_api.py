@@ -283,6 +283,21 @@ def test_a_guess_with_todays_date_is_still_todays_challenge(firebase, monkeypatc
     assert played == ["messi"]
 
 
+def test_daily_reveals_name_only_after_confirmed_win(firebase, monkeypatch, share_link):
+    for status in ("wrong", "refused", "no_challenge", "correct"):
+        monkeypatch.setattr(
+            webapp_api.game, "play_daily",
+            lambda *a, **kw: {"status": status, "attempts_left": 2, "attempts_used": 1},
+        )
+        result = webapp_api.play(42, USER, "messi", today=DAY)
+        if status == "correct":
+            assert result["answer"] == "Lionel Messi"
+            assert "messi" not in result["share"]["text"].lower()
+        else:
+            assert "answer" not in result
+        assert "correct_answers" not in result
+
+
 def test_the_share_card_appears_only_when_the_game_is_over(share_link):
     still_open = webapp_api.with_share_card({"status": "wrong", "attempts_left": 1, "attempts_used": 2}, "it", 3)
     assert "share" not in still_open
@@ -300,6 +315,20 @@ def test_the_share_card_appears_only_when_the_game_is_over(share_link):
 def test_the_shared_card_never_carries_the_answer(share_link):
     card = webapp_api.with_share_card({"status": "correct", "attempts_used": 1}, "it", 3)
     assert "messi" not in card["share"]["text"].lower()
+
+
+@pytest.mark.parametrize("day", [None, "2026-09-01"])
+def test_the_miniapp_shares_with_the_player_invite_link(firebase, monkeypatch, share_link, day):
+    """#150: chi arriva dalla condivisione conta come invito di chi ha condiviso, sia dalla
+    sfida di oggi sia dall'archivio."""
+    monkeypatch.setattr(webapp_api.referrals, "invite_link", lambda uid: f"https://t.me/bot?start=ref_{uid}_x")
+    monkeypatch.setattr(webapp_api.game, "play_daily", lambda *a, **kw: {"status": "wrong", "attempts_left": 0, "attempts_used": 3})
+    monkeypatch.setattr(webapp_api.game, "play_archive", lambda *a: {"status": "wrong", "attempts_left": 0, "attempts_used": 3})
+
+    share = webapp_api.play(42, USER, "messi", day=day, today=DAY)["share"]
+
+    assert share["text"].endswith("👉 https://t.me/bot?start=ref_42_x")
+    assert "url=https%3A%2F%2Ft.me%2Fbot%3Fstart%3Dref_42_x" in share["url"]
 
 
 @pytest.fixture

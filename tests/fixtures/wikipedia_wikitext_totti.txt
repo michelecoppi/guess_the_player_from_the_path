@@ -1,0 +1,28 @@
+{{Bio
+|Nome = Francesco
+|Cognome = Totti
+|Sesso = M
+|LuogoNascita = Roma
+|GiornoMeseNascita = 27 settembre
+|AnnoNascita = 1976
+|Nazionalità = italiano
+|Attività = calciatore
+|PostNazionalità = , di ruolo [[attaccante]]
+}}
+
+{{Sportivo
+|ruolo = Attaccante
+|codicenazione = {{ITA}}
+|squadre = {{Carriera sportivo
+|sport = Calcio
+|pos = Attaccante
+|aggiornato =
+|1992-1993|{{Calcio Roma}}|4 (0)
+|1993-2017|{{Calcio Roma}}|619 (250)
+}}
+|nazionale = {{Carriera sportivo nazionale
+|1992-1993|{{Naz ITA Under-16}}|3 (1)
+|1994-1996|{{Naz ITA Under-21}}|10 (2)
+|1998-2006|{{Naz ITA}}|58 (9)
+}}
+}}

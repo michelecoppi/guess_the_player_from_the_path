@@ -8,12 +8,19 @@ del giorno dopo risulti sballato.
 import asyncio
 import logging
 
-from telegram import Bot
 from telegram.error import Forbidden, RetryAfter
 
-from config import ADMIN_TELEGRAM_IDS, BOT_TOKEN
+from config import ADMIN_TELEGRAM_IDS
 from handlers.keyboards import app_keyboard
-from services import broadcast_store, firebase_service, monthly_closure, task_queue, work_receipts
+from services import (
+    broadcast_store,
+    firebase_service,
+    monthly_closure,
+    observability,
+    task_queue,
+    work_receipts,
+)
+from services.alerts import get_bot
 from services.daily_challenge import invalidate as invalidate_daily_cache
 from services.daily_generator import ensure_daily_buffer
 from services.daily_stats import solve_percent
@@ -21,27 +28,29 @@ from services.dates import now_italy, shift_iso, to_display, today_iso
 from services.event_generator import maybe_generate_event
 from services.i18n import DEFAULT_LANGUAGE, content_text, month_label, t
 
-_bot = None
 
-
-def get_bot():
-    """Il client Telegram si crea al primo utilizzo, come il client Firestore: cosi' il
-    modulo si puo' importare (e testare) senza avere BOT_TOKEN configurato."""
-    global _bot
-    if _bot is None:
-        _bot = Bot(BOT_TOKEN)
-    return _bot
+class TransientBroadcastError(RuntimeError):
+    """Una pagina di broadcast da ripetere: Cloud Tasks la riprova, non e' un guasto nuovo."""
 
 
 async def update_daily_challenge():
+    with observability.operation("daily.job", component="job", job="daily_job") as op:
+        return await _update_daily_challenge(op)
+
+
+async def _update_daily_challenge(op):
     now = now_italy()
     today = today_iso()
     yesterday = shift_iso(today, -1)
+    op["day"] = today
 
     payload = await asyncio.to_thread(broadcast_store.get_job, today)
+    op["resumed"] = payload is not None
     if payload is None:
-        await asyncio.to_thread(ensure_daily_buffer)
-        await asyncio.to_thread(maybe_generate_event, now)
+        generated = await asyncio.to_thread(ensure_daily_buffer)
+        event_code = await asyncio.to_thread(maybe_generate_event, now)
+        op["generated_days"] = len(generated or [])
+        op["event_created"] = bool(event_code)
         invalidate_daily_cache()
         finished_event = await asyncio.to_thread(firebase_service.get_event_trophy_day, yesterday)
         if finished_event:
@@ -60,6 +69,7 @@ async def update_daily_challenge():
         }
         payload = await asyncio.to_thread(broadcast_store.save_job, today, payload)
     monthly = payload.get("monthly_result") is not None
+    op["monthly"] = monthly
     path = "/internal/monthly-close" if monthly else "/internal/broadcast"
     key = f"monthly-{today}-start" if monthly else f"broadcast-{today}-start"
     await asyncio.to_thread(task_queue.enqueue, path, {"day": today}, key, broadcast=True)
@@ -67,6 +77,12 @@ async def update_daily_challenge():
 
 
 async def broadcast_batch(day, cursor=None):
+    with observability.operation("broadcast.batch", component="broadcast", job="broadcast",
+                                 retryable=(TransientBroadcastError,), day=day, first_page=cursor is None) as op:
+        return await _broadcast_batch(op, day, cursor)
+
+
+async def _broadcast_batch(op, day, cursor):
     payload = await asyncio.to_thread(broadcast_store.get_job, day)
     if payload is None:
         raise ValueError("Daily payload missing")
@@ -81,8 +97,9 @@ async def broadcast_batch(day, cursor=None):
     # Prima del controllo sugli errori: quello che e' partito e' partito, e al retry le
     # ricevute saltano questi utenti, quindi il totale non conta due volte nessuno.
     await asyncio.to_thread(broadcast_store.add_sent, day, sent)
+    op.update(sent=sent, errors=errors, has_next_page=bool(next_cursor))
     if errors:
-        raise RuntimeError("Transient broadcast failure; retry this page")
+        raise TransientBroadcastError("Transient broadcast failure; retry this page")
     if next_cursor:
         await asyncio.to_thread(task_queue.enqueue, "/internal/broadcast", {"day": day, "cursor": next_cursor},
                                 f"broadcast-{day}-{next_cursor}", broadcast=True)
@@ -98,6 +115,7 @@ async def _report_completion(day, payload):
     separate, e un "fatto" scritto prima del primo invio non direbbe niente."""
     total = (await asyncio.to_thread(broadcast_store.get_job, day) or {}).get("sent_total", 0)
     monthly = payload.get("monthly_result")
+    observability.log_event("broadcast.completed", day=day, sent_total=total, monthly=monthly is not None)
     await _notify_admins(
         f"✅ Giornata {to_display(day)} aggiornata. Notifiche inviate: {total}."
         + (f"\n🏆 Trofei assegnati per {payload['finished_event_name']}." if payload.get("finished_event_name") else "")
@@ -129,7 +147,13 @@ async def _broadcast(reference_day, yesterday_player, current_event, monthly_res
                 continue
             if status != "claimed":
                 if status == "uncertain":
-                    logging.error("Notification delivery uncertain: %s", receipt)
+                    observability.log_event("broadcast.delivery.uncertain", logging.ERROR, day=notification_day,
+                                            user_ref=observability.user_ref(user["user_id"]))
+                    await _notify_admins(
+                        f"⚠️ Notifica del {notification_day} interrotta a meta' per l'utente "
+                        f"{user['user_id']}: puo' essere gia' partita, quindi non viene riprovata. "
+                        f"Ricevuta: {receipt}."
+                    )
                 continue
         lang = user.get("language", DEFAULT_LANGUAGE)
         player_label = yesterday_player or t(lang, "job.player_fallback")
@@ -174,9 +198,12 @@ async def _broadcast(reference_day, yesterday_player, current_event, monthly_res
             if receipt:
                 await asyncio.to_thread(work_receipts.release, receipt)
             errors += 1
-        except Exception:
+        except Exception as exc:
             errors += 1
-            logging.error("Notification failed for user %s; delivery may be uncertain", chat_id)
+            # Un invio fallito rende la pagina da ripetere: l'errore vero, se persiste, arriva
+            # a Sentry come `broadcast.batch.retry` dopo qualche tentativo di Cloud Tasks.
+            observability.log_event("broadcast.delivery.failed", logging.WARNING, error_type=type(exc).__name__,
+                                    user_ref=observability.user_ref(user.get("user_id")))
 
     return sent, errors
 

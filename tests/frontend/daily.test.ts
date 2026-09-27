@@ -1,0 +1,656 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { DailyController } from "../../webapp/src/features/daily/controller";
+import { renderDailyPage, attachDailyEventListeners } from "../../webapp/src/pages/DailyPage";
+import {
+
+  setupGlobalDom,
+  setupTestTelegram,
+  mockFetchResponse,
+  mockFetchError,
+  captureFetchRequests,
+  createTestDailyChallenge,
+} from "./helpers";
+import { setLanguage } from "../../webapp/src/i18n";
+
+test("DailyController: initial loading and successful challenge load", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const challengeFixture = createTestDailyChallenge({
+    number: 42,
+    difficulty_label: "Difficile",
+    points: 150,
+    attempts_used: 1,
+    attempts_left: 4,
+    solved: false,
+  });
+
+  const restoreFetch = mockFetchResponse({
+    language: "it",
+    user: { name: "Marco", points: 200, streak: 5 },
+    today: challengeFixture,
+  });
+
+  try {
+    const controller = new DailyController();
+    assert.equal(controller.getState().status, "loading");
+
+    await controller.init();
+
+    const state = controller.getState();
+    assert.equal(state.status, "ready");
+    assert.equal(state.challenge?.number, 42);
+    assert.equal(state.challenge?.points, 150);
+    assert.equal(state.user?.name, "Marco");
+    assert.equal(state.user?.streak, 5);
+  } finally {
+    restoreFetch();
+    restoreTg();
+  }
+});
+
+test("first Daily load is lightweight and the one-time guide is dismissible", async () => {
+  const { cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const { requests, restore: restoreFetch } = captureFetchRequests({
+    language: "it",
+    user: { name: "Nuovo", players_guessed: 0 },
+    today: createTestDailyChallenge({ attempts_used: 0, attempts_left: 3 }),
+  });
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    assert.equal(requests[0].body.lightweight, true);
+    assert.equal(controller.getState().introVisible, true);
+    assert.match(renderDailyPage(controller.getState()), /daily-intro-dismiss/);
+    controller.dismissIntro();
+    assert.equal(controller.getState().introVisible, false);
+    const reopened = new DailyController();
+    await reopened.init();
+    assert.equal(reopened.getState().introVisible, false);
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Daily 409 reloads the new day and reports that no attempt was spent", async () => {
+  const { cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const originalFetch = globalThis.fetch;
+  let day = "2026-09-26";
+  const sent: Record<string, unknown>[] = [];
+  globalThis.fetch = (async (url: string, options: RequestInit) => {
+    const body = JSON.parse(String(options.body));
+    if (String(url).endsWith("/guess")) {
+      sent.push(body);
+      day = "2026-09-27";
+      return new Response(JSON.stringify({ detail: "daily_changed" }), { status: 409 });
+    }
+    return new Response(JSON.stringify({
+      user: { name: "Marco", players_guessed: 2 },
+      today: createTestDailyChallenge({ day }),
+    }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    assert.equal(await controller.submitGuess("Buffon"), null);
+    assert.equal(sent[0].expected_day, "2026-09-26");
+    assert.equal(controller.getState().challenge?.day, "2026-09-27");
+    assert.equal(controller.getState().status, "ready");
+    assert.match(controller.getState().errorMessage || "", /nuova giornata/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("DailyController: API contract sends initData in JSON body for me, guess, hint, card", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { requests, restore: restoreFetch } = captureFetchRequests({
+    status: "ok",
+    user: { name: "Marco" },
+    today: createTestDailyChallenge(),
+    attempts_used: 1,
+    attempts_left: 4,
+    hints_used: 0,
+    image: "data:image/png;base64,fake",
+  });
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+
+    // Verify /app/api/me payload
+    assert.ok(requests.length >= 1);
+    const meReq = requests[0];
+    assert.equal(meReq.url, "/app/api/me");
+    assert.equal(meReq.method, "POST");
+    assert.ok(meReq.body.initData, "me request must include initData in body");
+
+    // Guess submission
+    await controller.submitGuess("Buffon");
+    const guessReq = requests.find((r) => r.url === "/app/api/guess");
+    assert.ok(guessReq, "guess request was sent");
+    assert.equal(guessReq.body.answer, "Buffon");
+    assert.ok(guessReq.body.initData, "guess request must include initData in body");
+    assert.equal(guessReq.body.expected_day, createTestDailyChallenge().day);
+
+    // Hint request
+    await controller.takeHint();
+    const hintReq = requests.find((r) => r.url === "/app/api/hint");
+    assert.ok(hintReq, "hint request was sent");
+    assert.ok(hintReq.body.initData, "hint request must include initData in body");
+    assert.equal(hintReq.body.expected_day, createTestDailyChallenge().day);
+
+    // Card request
+    await controller.loadResultCard();
+    const cardReq = requests.find((r) => r.url === "/app/api/card");
+    assert.ok(cardReq, "card request was sent");
+    assert.ok(cardReq.body.initData, "card request must include initData in body");
+    assert.deepEqual(Object.keys(cardReq.body), ["initData"], "card result must come from server state");
+  } finally {
+    restoreFetch();
+    restoreTg();
+  }
+});
+
+test("DailyController: correct guess transitions state to correct and awards points", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+
+  let callCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string) => {
+    callCount++;
+    if (String(url).endsWith("/me")) {
+      return new Response(
+        JSON.stringify({
+          user: { name: "Marco", streak: 4 },
+          today: createTestDailyChallenge({ solved: callCount > 1, attempts_used: 2 }),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (String(url).endsWith("/guess")) {
+      return new Response(
+        JSON.stringify({
+          status: "correct",
+          attempts_used: 2,
+          attempts_left: 3,
+          points_awarded: 100,
+          bonus: 1,
+          streak: 4,
+          share: { text: "Guess the Player #42 2/5", url: "https://t.me/share/url?text=foo" },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    return new Response(JSON.stringify({}), { status: 200 });
+  }) as any;
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+
+    assert.equal(controller.getState().status, "ready");
+
+    const result = await controller.submitGuess("Gianluigi Buffon");
+    assert.ok(result);
+    assert.equal(result.status, "correct");
+    assert.equal(result.points_awarded, 100);
+
+    const state = controller.getState();
+    assert.equal(state.status, "correct");
+    assert.ok(state.feedback);
+    assert.equal(state.feedback.status, "correct");
+    assert.ok(state.feedback.share);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+  }
+});
+
+test("DailyController: incorrect guess updates attempts and renders comparison clues", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string) => {
+    if (String(url).endsWith("/me")) {
+      return new Response(
+        JSON.stringify({
+          user: { name: "Marco" },
+          today: createTestDailyChallenge({ solved: false, attempts_used: 2, attempts_left: 3 }),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (String(url).endsWith("/guess")) {
+      return new Response(
+        JSON.stringify({
+          status: "wrong",
+          attempts_used: 2,
+          attempts_left: 3,
+          hints_used: 0,
+          comparison: {
+            name: "Cannavaro",
+            clues: [
+              { key: "feedback.nationality_same" },
+              { key: "feedback.position_diff" },
+              { key: "feedback.birth_before", args: { year: 1973 } },
+            ],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    return new Response(JSON.stringify({}), { status: 200 });
+  }) as any;
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+
+    const result = await controller.submitGuess("Cannavaro");
+    assert.ok(result);
+    assert.equal(result.status, "wrong");
+    assert.equal(result.attempts_left, 3);
+
+    const state = controller.getState();
+    assert.equal(state.status, "incorrect");
+    assert.equal(state.feedback?.comparison?.name, "Cannavaro");
+    assert.equal(state.feedback?.comparison?.clues.length, 3);
+
+    const html = renderDailyPage(state);
+    assert.ok(html.includes("Sbagliato."));
+    assert.ok(html.includes("Tentativi rimasti: 3."));
+    assert.ok(html.includes("Cannavaro"));
+    assert.ok(html.includes("Stessa nazionalità"));
+    assert.ok(html.includes("Ruolo diverso"));
+    assert.ok(html.includes("Più vecchio del 1973"));
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+  }
+});
+
+test("DailyController: prevents double submit while request is in flight", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+
+  let guessRequests = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string) => {
+    if (String(url).endsWith("/me")) {
+      return new Response(
+        JSON.stringify({
+          user: { name: "Marco" },
+          today: createTestDailyChallenge(),
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    if (String(url).endsWith("/guess")) {
+      guessRequests++;
+      // simulate network latency
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return new Response(
+        JSON.stringify({
+          status: "wrong",
+          attempts_used: 2,
+          attempts_left: 3,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+    return new Response(JSON.stringify({}), { status: 200 });
+  }) as any;
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+
+    // Fire first guess
+    const p1 = controller.submitGuess("Player 1");
+    assert.equal(controller.getState().status, "submitting");
+
+    // Attempt second guess concurrently
+    const p2 = controller.submitGuess("Player 2");
+    assert.equal(await p2, null, "Concurrent second guess must be blocked");
+
+    await p1;
+    assert.equal(guessRequests, 1, "Only one guess network request should have been dispatched");
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+  }
+});
+
+test("DailyController: handles completed Daily and already-played state", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const restoreFetch = mockFetchResponse({
+    user: { name: "Marco" },
+    today: createTestDailyChallenge({
+      solved: true,
+      attempts_used: 1,
+      attempts_left: 4,
+    }),
+  });
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+
+    const state = controller.getState();
+    assert.equal(state.status, "completed");
+
+    const html = renderDailyPage(state);
+    assert.ok(html.includes("Indovinata"), "Status pill should show Indovinata");
+    assert.ok(!html.includes('id="submit"'), "Submit button must not be present when already completed");
+    assert.ok(!html.includes('id="hint"'), "Hint button must not be present when already completed");
+  } finally {
+    restoreFetch();
+    restoreTg();
+  }
+});
+
+test("DailyController: handles unavailable challenge and error with retry", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+
+  // 1. Unavailable challenge
+  let restoreFetch = mockFetchResponse({
+    user: { name: "Marco" },
+    today: { available: false, solved: false },
+  });
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    assert.equal(controller.getState().status, "unavailable");
+    const html = renderDailyPage(controller.getState());
+    assert.ok(html.includes("Nessuna sfida disponibile"));
+    restoreFetch();
+
+    // 2. Error state
+    restoreFetch = mockFetchError(500, "Server non raggiungibile");
+    await controller.loadDailyData();
+    assert.equal(controller.getState().status, "error");
+    const errorHtml = renderDailyPage(controller.getState());
+    assert.ok(errorHtml.includes("Server non raggiungibile"));
+    assert.ok(errorHtml.includes("daily-retry"));
+    restoreFetch();
+
+    // 3. Retry recovery
+    restoreFetch = mockFetchResponse({
+      user: { name: "Marco" },
+      today: createTestDailyChallenge(),
+    });
+    controller.retry();
+    await controller.loadDailyData();
+    assert.equal(controller.getState().status, "ready");
+  } finally {
+    restoreFetch();
+    restoreTg();
+  }
+});
+
+test("DailyPage: renders exact clues across Italian, English, and Spanish", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { cleanup } = setupGlobalDom();
+
+  const feedback = {
+    status: "wrong" as const,
+    attempts_used: 2,
+    attempts_left: 3,
+    comparison: {
+      name: "Zidane",
+      clues: [
+        { key: "feedback.nationality_diff" },
+        { key: "feedback.position_same" },
+        { key: "feedback.birth_same", args: { year: 1972 } },
+      ],
+    },
+  };
+
+  try {
+    // 1. Italian
+    setLanguage("it");
+    let html = renderDailyPage({
+      status: "incorrect",
+      challenge: createTestDailyChallenge({ solved: false }),
+      feedback,
+      squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+      inputValue: "",
+    });
+    assert.ok(html.includes("Rispetto a <b>Zidane</b>:"));
+    assert.ok(html.includes("Nazionalità diversa"));
+    assert.ok(html.includes("Stesso ruolo"));
+    assert.ok(html.includes("Stesso anno: 1972"));
+
+    // 2. English
+    setLanguage("en");
+    html = renderDailyPage({
+      status: "incorrect",
+      challenge: createTestDailyChallenge({ solved: false }),
+      feedback,
+      squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+      inputValue: "",
+    });
+    assert.ok(html.includes("Compared with <b>Zidane</b>:"));
+    assert.ok(html.includes("Different nationality"));
+    assert.ok(html.includes("Same position"));
+    assert.ok(html.includes("Same year: 1972"));
+
+    // 3. Spanish
+    setLanguage("es");
+    html = renderDailyPage({
+      status: "incorrect",
+      challenge: createTestDailyChallenge({ solved: false }),
+      feedback,
+      squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+      inputValue: "",
+    });
+    assert.ok(html.includes("Respecto a <b>Zidane</b>:"));
+    assert.ok(html.includes("Nacionalidad distinta"));
+    assert.ok(html.includes("Misma posición"));
+    assert.ok(html.includes("Mismo año: 1972"));
+  } finally {
+    setLanguage("it");
+    cleanup();
+    restoreTg();
+  }
+});
+
+test("DailyPage: DOM event wiring triggers controller guess, enter key, hint, and share", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { container, cleanup } = setupGlobalDom();
+
+  let submittedGuess: string | null = null;
+  let hintRequested = false;
+  let shareOpened = false;
+
+  const mockController = {
+    getState: () => ({
+      status: "ready" as const,
+      challenge: createTestDailyChallenge(),
+      squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+      inputValue: "",
+      feedback: {
+        status: "wrong" as const,
+        attempts_left: 3,
+        share: { text: "share text", url: "https://t.me/share" },
+      },
+    }),
+    setInputValue: (_v: string) => {},
+    submitGuess: async (val: string) => {
+      submittedGuess = val;
+      return null;
+    },
+    takeHint: async () => {
+      hintRequested = true;
+    },
+    loadResultCard: async () => {},
+    openShareUrl: () => {
+      shareOpened = true;
+    },
+    retry: () => {},
+  } as unknown as DailyController;
+
+  try {
+    container.innerHTML = renderDailyPage(mockController.getState() as any);
+    attachDailyEventListeners(container, mockController);
+
+    const input = container.querySelector<HTMLInputElement>("#answer");
+    const submitBtn = container.querySelector<HTMLButtonElement>("#submit");
+    const hintBtn = container.querySelector<HTMLButtonElement>("#hint");
+    const shareBtn = container.querySelector<HTMLButtonElement>("#share");
+
+    assert.ok(input);
+    assert.ok(submitBtn);
+    assert.ok(hintBtn);
+    assert.ok(shareBtn);
+
+    // Test click on submit
+    input.value = "Totti";
+    submitBtn.click();
+    assert.equal(submittedGuess, "Totti");
+
+    // Test enter key
+    input.value = "Baggio";
+    input.dispatchEvent(new (window as any).KeyboardEvent("keydown", { key: "Enter" }));
+    assert.equal(submittedGuess, "Baggio");
+
+    // Test hint click
+    hintBtn.click();
+    assert.equal(hintRequested, true);
+
+    // Test share click
+    shareBtn.click();
+    assert.equal(shareOpened, true);
+  } finally {
+    cleanup();
+    restoreTg();
+  }
+});
+
+test("DailyController: a FEATURE_DISABLED refusal shows a localized notice instead of the raw code", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  setLanguage("en");
+  let restoreFetch = mockFetchResponse({
+    user: { name: "Marco" },
+    today: createTestDailyChallenge(),
+    features: { daily_ui: false, hints: false },
+  });
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    restoreFetch();
+
+    restoreFetch = mockFetchResponse(
+      { detail: "feature_disabled", code: "FEATURE_DISABLED", feature: "daily_ui" },
+      403,
+    );
+    assert.equal(await controller.submitGuess("Buffon"), null);
+    assert.equal(controller.getState().errorMessage, "This feature is temporarily unavailable. Please try again later.");
+
+    controller.getState().errorMessage = undefined;
+    await controller.takeHint();
+    assert.equal(controller.getState().errorMessage, "This feature is temporarily unavailable. Please try again later.");
+    assert.ok(!renderDailyPage(controller.getState()).includes("feature_disabled"));
+  } finally {
+    restoreFetch();
+    restoreTg();
+    setLanguage("it");
+  }
+});
+
+function withClipboard(writeText: (text: string) => Promise<void>): () => void {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  Object.defineProperty(globalThis, "navigator", {
+    value: { clipboard: { writeText } },
+    configurable: true,
+    writable: true,
+  });
+  return () => {
+    if (previous) Object.defineProperty(globalThis, "navigator", previous);
+    else delete (globalThis as any).navigator;
+  };
+}
+
+function finishedController(share?: { text: string; url: string }): DailyController {
+  const controller = new DailyController();
+  (controller as any).state.feedback = { status: "correct", attempts_used: 2, share };
+  return controller;
+}
+
+test("DailyController: copying the result puts the shared text on the clipboard (#150)", async () => {
+  setLanguage("it");
+  const copied: string[] = [];
+  const restore = withClipboard(async (text) => {
+    copied.push(text);
+  });
+  try {
+    const text = "⚽ Guess the Player #214\n🟥🟩⬜ 2/3\nRiesci a fare meglio? 👉 https://t.me/bot?start=ref_1_x";
+    const controller = finishedController({ text, url: "https://t.me/share/url" });
+
+    assert.equal(await controller.copyShareText(), true);
+    assert.deepEqual(copied, [text]);
+    assert.equal(controller.getState().copyNotice, "Risultato copiato: incollalo dove vuoi.");
+  } finally {
+    restore();
+  }
+});
+
+test("DailyController: a refused clipboard shows how to copy by hand (#150)", async () => {
+  setLanguage("en");
+  const restore = withClipboard(async () => {
+    throw new Error("denied");
+  });
+  try {
+    const controller = finishedController({ text: "x", url: "https://t.me/share/url" });
+
+    assert.equal(await controller.copyShareText(), false);
+    assert.equal(controller.getState().copyNotice, "Couldn't copy: long-press the text to copy it.");
+    assert.equal(await finishedController(undefined).copyShareText(), false);
+  } finally {
+    restore();
+    setLanguage("it");
+  }
+});
+
+test("DailyPage: the copy button sits next to share and shows its outcome (#150)", () => {
+  setLanguage("it");
+  const { container, cleanup } = setupGlobalDom();
+  let copyCalls = 0;
+  const state = {
+    status: "correct" as const,
+    challenge: createTestDailyChallenge({ solved: true, attempts_used: 2 }),
+    squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+    inputValue: "",
+    copyNotice: "Risultato copiato: incollalo dove vuoi.",
+    feedback: { status: "correct" as const, attempts_used: 2, share: { text: "t", url: "https://t.me/share" } },
+  };
+  const mockController = {
+    getState: () => state,
+    copyShareText: async () => {
+      copyCalls++;
+      return true;
+    },
+  } as unknown as DailyController;
+  try {
+    container.innerHTML = renderDailyPage(state as any);
+    attachDailyEventListeners(container, mockController);
+
+    const copy = container.querySelector<HTMLButtonElement>("#share-copy");
+    assert.ok(container.querySelector("#share"));
+    assert.ok(copy);
+    assert.match(copy.textContent ?? "", /Copia il risultato/);
+    assert.match(container.querySelector(".share-copy-notice")?.textContent ?? "", /Risultato copiato/);
+
+    copy.click();
+    assert.equal(copyCalls, 1);
+  } finally {
+    cleanup();
+  }
+});

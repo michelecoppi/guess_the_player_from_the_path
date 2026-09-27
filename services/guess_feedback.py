@@ -20,33 +20,39 @@ from services.player_pool import find_player_by_answer, get_player_by_id
 
 
 def compare_players(guess_player, target_player):
-    """Gli indizi come lista di (chiave di traduzione, argomenti).
+    """Gli indizi come lista di {"key": chiave di traduzione, "args": argomenti}.
+
+    Mappe e non coppie, e non e' un vezzo: allenamento e duelli **salvano** il confronto
+    dentro la sessione (services/arena.py), e Firestore rifiuta un array dentro un array.
+    Una lista di coppie e' esattamente quello, e il rifiuto arrivava a transazione aperta:
+    il tentativo non veniva scalato e chi giocava vedeva il contatore fermo ogni volta che
+    scriveva un nome **presente nel dataset** - l'unico caso in cui un confronto esiste.
 
     Funzione pura: non sa niente di lingue ne' di Firestore, cosi' si prova su due
     dizionari. La resa testuale e' di `comparison_text`."""
-    clues: list[tuple[str, dict]] = []
+    clues: list[dict] = []
 
     guess_nationality = (guess_player.get("nationality") or "").strip().lower()
     target_nationality = (target_player.get("nationality") or "").strip().lower()
     if guess_nationality and target_nationality:
         same = guess_nationality == target_nationality
-        clues.append(("feedback.nationality_same" if same else "feedback.nationality_diff", {}))
+        clues.append({"key": "feedback.nationality_same" if same else "feedback.nationality_diff", "args": {}})
 
     guess_position = (guess_player.get("position") or "").strip().lower()
     target_position = (target_player.get("position") or "").strip().lower()
     if guess_position and target_position:
         same = guess_position == target_position
-        clues.append(("feedback.position_same" if same else "feedback.position_diff", {}))
+        clues.append({"key": "feedback.position_same" if same else "feedback.position_diff", "args": {}})
 
     guess_birth = guess_player.get("birth_year")
     target_birth = target_player.get("birth_year")
     if isinstance(guess_birth, int) and isinstance(target_birth, int):
         if target_birth == guess_birth:
-            clues.append(("feedback.birth_same", {"year": guess_birth}))
+            clues.append({"key": "feedback.birth_same", "args": {"year": guess_birth}})
         elif target_birth < guess_birth:
-            clues.append(("feedback.birth_before", {"year": guess_birth}))
+            clues.append({"key": "feedback.birth_before", "args": {"year": guess_birth}})
         else:
-            clues.append(("feedback.birth_after", {"year": guess_birth}))
+            clues.append({"key": "feedback.birth_after", "args": {"year": guess_birth}})
 
     return clues
 
@@ -87,5 +93,5 @@ def comparison_text(lang, comparison):
         return ""
 
     lines = [t(lang, "feedback.header", name=comparison["name"])]
-    lines += [t(lang, key, **kwargs) for key, kwargs in comparison["clues"]]
+    lines += [t(lang, clue["key"], **(clue.get("args") or {})) for clue in comparison["clues"]]
     return "\n\n" + "\n".join(lines)
