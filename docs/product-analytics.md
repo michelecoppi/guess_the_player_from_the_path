@@ -302,6 +302,14 @@ identifier is ever sent.
 | `group_round_started` | `handlers/group_handler.py::group_challenge` after the round is stored (`/round` or the "another round" button) | server | one per opened round; the identity is whoever opened it, never the chat | none | completion |
 | `notifications_changed` | `handlers/notify_handler.py::notify_callback`, only when the stored state actually flips | server | pressing "on" when already on fires nothing | `enabled` | completion |
 
+### Sharing
+
+Added by [#185](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/185).
+
+| Event | Trigger | Source | Idempotency | Properties | Intent/completion |
+| --- | --- | --- | --- | --- | --- |
+| `result_shared` | `POST /app/api/share/sent`, called by the Mini App only when the callback of Telegram's `WebApp.shareMessage` reports `sent = true` | server (on a client report) | one per confirmed native share; a dismissed share sheet fires nothing. The classic share link (`t.me/share/url`) has no confirmation and fires nothing | `surface` (`miniapp`), `method` (`share_message`) | completion — Telegram confirmed the send. A client can report a send that did not happen; it only inflates this count, nothing is rewarded on it |
+
 ### Referral
 
 | Event | Trigger | Source | Idempotency | Properties | Intent/completion |

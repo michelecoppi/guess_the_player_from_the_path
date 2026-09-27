@@ -47,6 +47,13 @@ export interface DailyCardResponse {
   image: string;
 }
 
+/** A message the bot prepared for WebApp.shareMessage (#185). */
+export interface PreparedShareResponse {
+  id: string;
+  /** Unix seconds; null when Telegram did not say. */
+  expires_at: number | null;
+}
+
 export interface DailyState {
   status: DailyStatus;
   errorMessage?: string;

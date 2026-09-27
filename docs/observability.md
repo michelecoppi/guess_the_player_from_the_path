@@ -176,6 +176,7 @@ also attached to the Sentry event as the sanitised `observability` context.
 | `monthly.close.batch.completed` / `.failed` | INFO / ERROR | One monthly-closure page: `processed`. |
 | `cloud_task.enqueue.failed` | ERROR | Creating a Cloud Task failed (`task_path`, `queue_kind`; never the payload). |
 | `payment.invoice.created` / `payment.invoice.refused` | INFO | Mini App invoice link created, or refused for a business reason. |
+| `share.prepared` / `share.prepare.throttled` / `share.prepare.failed` | INFO / WARNING / ERROR | Native share (#185): a `shareMessage` was prepared (`cached` = the card was already in the storage chat); Telegram asked to slow down (`retry_after`); upload or preparation failed (exception attached). The page falls back to the classic share link in the last two cases. |
 | `payment.precheckout.accepted` / `payment.precheckout.rejected` | INFO (WARNING for `invalid_payload`) | Pre-checkout decision and reason. |
 | `payment.delivery.completed` / `payment.delivery.failed` | INFO / ERROR | `successful_payment` delivery; `outcome` is `delivered` or `duplicate`; `failed` also for an unknown item (Stars taken, nothing delivered). |
 | `payment.refunded` / `payment.refund.rejected` | INFO / WARNING | `/admin_refund` result. |

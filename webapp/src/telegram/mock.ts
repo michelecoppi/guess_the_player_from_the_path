@@ -134,6 +134,10 @@ export function createMockTelegramWebApp(user: TelegramUser = DEFAULT_MOCK_USER)
     openInvoice(_url: string, callback?: (status: string) => void) {
       if (callback) callback("paid");
     },
+    shareMessage(msgId: string, callback?: (sent: boolean) => void) {
+      console.log(`[Telegram Mock] shareMessage: ${msgId}`);
+      callback?.(true);
+    },
     switchInlineQuery(query: string) {
       console.log(`[Telegram Mock] switchInlineQuery: ${query}`);
     },

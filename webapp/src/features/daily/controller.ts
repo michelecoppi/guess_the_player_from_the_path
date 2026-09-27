@@ -6,9 +6,12 @@ import {
   submitDailyGuess,
   requestDailyHint,
   fetchDailyCard,
+  prepareDailyShare,
+  reportDailyShared,
 } from "./api";
 import { celebrate } from "./celebrate";
 import type { DailyState, DailyGuessResult } from "./types";
+import type { TelegramWebApp } from "@/telegram/types";
 import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS, type ResolvedAppearance } from "@/appearance";
 export { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
 
@@ -20,6 +23,9 @@ export class DailyController {
   private loadSeq = 0;
   private appearanceSeq = 0;
   private introDismissed = false;
+  /** The message prepared for WebApp.shareMessage (#185); null until ready or when stale. */
+  private preparedShare: { id: string; expiresAt: number | null; appearanceSeq: number } | null = null;
+  private preparingShare = false;
 
   constructor(apiClient: ApiClient = api) {
     this.apiClient = apiClient;
@@ -109,6 +115,7 @@ export class DailyController {
         nextStatus = "ready";
       }
 
+      if (dayChanged) this.preparedShare = null;
       this.updateState({
         user: profile.user || null,
         challenge: today,
@@ -197,6 +204,9 @@ export class DailyController {
         inputValue: "",
         status: nextStatus,
       });
+      // A new result: whatever was prepared before shows something else.
+      this.preparedShare = null;
+      if (result.share) void this.prepareNativeShare();
 
       return result;
     } catch (err: any) {
@@ -265,6 +275,53 @@ export class DailyController {
       if (sessionGen !== appearanceGeneration() || cardAppearanceSeq !== this.appearanceSeq) return;
       this.updateState({ cardLoading: false });
     }
+  }
+
+  /**
+   * Prepares today's result for Telegram's native share (#185) as soon as the game ends, so
+   * the tap on "Share" opens it immediately, still inside the user's gesture. Silent on
+   * failure: without a prepared message the classic share link is used.
+   */
+  public async prepareNativeShare(): Promise<void> {
+    if (this.preparingShare || !supportsShareMessage(getTelegramWebApp())) return;
+    const seq = this.appearanceSeq;
+    this.preparingShare = true;
+    try {
+      const prepared = await prepareDailyShare(this.state.challenge?.day, this.apiClient);
+      if (seq === this.appearanceSeq) {
+        this.preparedShare = { id: prepared.id, expiresAt: prepared.expires_at, appearanceSeq: seq };
+      }
+    } catch {
+      // 503 (no storage chat, Telegram throttling) or network: keep the classic share.
+    } finally {
+      this.preparingShare = false;
+    }
+  }
+
+  /**
+   * The "Share" button: Telegram's native share of the prepared card when it is ready and
+   * still valid, otherwise the classic share link (and a fresh preparation for next time).
+   */
+  public shareResult(): void {
+    if (!this.state.feedback?.share) return;
+    const tg = getTelegramWebApp();
+    const prepared = this.preparedShare;
+    const fresh =
+      prepared !== null &&
+      prepared.appearanceSeq === this.appearanceSeq &&
+      (prepared.expiresAt === null || prepared.expiresAt * 1000 > Date.now() + 10_000);
+    if (tg && fresh && supportsShareMessage(tg)) {
+      try {
+        tg.shareMessage!(prepared.id, (sent) => {
+          if (sent) void reportDailyShared(this.apiClient).catch(() => undefined);
+        });
+        return;
+      } catch {
+        this.preparedShare = null;
+      }
+    }
+    this.openShareUrl();
+    if (!fresh) void this.prepareNativeShare();
   }
 
   public openShareUrl(): void {
@@ -339,7 +396,10 @@ export class DailyController {
     this.appearanceSeq++;
     this.state.squaresSymbols = appearanceSquares(appearance);
     this.state.cardImage = null;
+    // The prepared card shows the old look: prepare it again.
+    this.preparedShare = null;
     this.notify();
+    if (this.state.feedback?.share) void this.prepareNativeShare();
   }
 
   /** Call before logout/user replacement; also invalidates pending responses. */
@@ -347,10 +407,17 @@ export class DailyController {
     this.requestSeq++;
     this.loadSeq++;
     this.appearanceSeq++;
+    this.preparedShare = null;
     clearResolvedAppearance();
     this.introDismissed = false;
     this.updateState({ status: "loading", user: null, challenge: null, feedback: null,
       cardImage: null, cardLoading: false, errorMessage: undefined, inputValue: "",
       introVisible: false, squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
   }
+}
+
+/** Bot API 8.0+ clients expose shareMessage; older ones keep the classic share link. */
+function supportsShareMessage(tg: TelegramWebApp | null): tg is TelegramWebApp {
+  if (!tg || typeof tg.shareMessage !== "function") return false;
+  return typeof tg.isVersionAtLeast !== "function" || tg.isVersionAtLeast("8.0");
 }

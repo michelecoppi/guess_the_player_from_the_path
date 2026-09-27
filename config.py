@@ -13,6 +13,12 @@ PUBLIC_BASE_URL = (os.environ.get("PUBLIC_BASE_URL") or "").rstrip("/")
 WEBAPP_URL = f"{PUBLIC_BASE_URL}/app" if PUBLIC_BASE_URL else ""
 BOT_USERNAME = (os.environ.get("BOT_USERNAME") or "").lstrip("@")
 
+# Chat privata (di solito un canale) dove il bot carica le figurine da condividere con
+# `shareMessage` (#185): Telegram vuole la foto come file gia' caricato, e un URL pubblico della
+# card esporrebbe il nome di chi l'ha fatta. Senza, la mini app usa la condivisione classica.
+_share_storage_raw = (os.getenv("SHARE_STORAGE_CHAT_ID") or "").strip()
+SHARE_STORAGE_CHAT_ID = int(_share_storage_raw) if _share_storage_raw.lstrip("-").isdigit() else None
+
 _admin_ids_raw = os.getenv("ADMIN_TELEGRAM_IDS", "")
 ADMIN_TELEGRAM_IDS = [int(x) for x in _admin_ids_raw.split(",") if x.strip().isdigit()]
 
