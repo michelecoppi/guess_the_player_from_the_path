@@ -38,6 +38,7 @@ COUNTRY_NAMES = {
     "Belgio": {"es": "Bélgica", "en": "Belgium"},
     "Bhutan": {"es": "Bután", "en": "Bhutan"},
     "Bielorussia": {"es": "Bielorrusia", "en": "Belarus"},
+    "Bolivia": {"es": "Bolivia", "en": "Bolivia"},
     "Bosnia": {"es": "Bosnia", "en": "Bosnia"},
     "Brasile": {"es": "Brasil", "en": "Brazil"},
     "Bulgaria": {"es": "Bulgaria", "en": "Bulgaria"},

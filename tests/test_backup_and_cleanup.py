@@ -4,13 +4,12 @@ Sono le due cose che girano da sole su dati veri e cancellano roba: la parte che
 cosa sparisce e' una funzione pura apposta per poterla provare qui, senza Firestore.
 """
 import json
-from datetime import datetime
-from types import SimpleNamespace
+from datetime import datetime, timezone
 
 import pytest
 
-from scripts.backup_firestore import export, export_document, jsonable, write_dump
-from scripts.cleanup_daily_paths import classify
+from scripts.cleanup_daily_paths import classify, save_copy
+from services.firestore_backup import codec
 
 TODAY = "2026-09-08"
 CUTOFF = "2025-09-08"  # un anno prima
@@ -69,64 +68,19 @@ def test_a_challenge_kept_only_as_an_image_is_still_playable():
 
 
 # ---------------------------------------------------------------------------
-# Backup
+# Copia prima della cancellazione
 # ---------------------------------------------------------------------------
+# Il backup vero e proprio (export, formato, restore) e' provato in tests/test_backup_format.py,
+# tests/test_backup_restore_safety.py e, su un Firestore vero, tests/test_backup_restore_emulator.py.
 
-class FakeDoc:
-    def __init__(self, doc_id, data, subcollections=None):
-        self.id = doc_id
-        self._data = data
-        self.reference = SimpleNamespace(collections=lambda: subcollections or [])
-
-    def to_dict(self):
-        return self._data
-
-
-class FakeCollection:
-    def __init__(self, name, docs):
-        self.id = name
-        self._docs = docs
-
-    def stream(self):
-        return iter(self._docs)
-
-
-def test_the_backup_follows_subcollections():
-    """I partecipanti a un evento e i membri di una lega stanno in sotto-collezioni: un
-    export che si ferma al primo livello sarebbe un backup finto."""
-    participants = FakeCollection("participants", [FakeDoc("42", {"points": 7})])
-    event = FakeDoc("giramondo", {"name": "Giramondo"}, subcollections=[participants])
-
-    exported = export_document(event)
-
-    assert exported["_data"]["name"] == "Giramondo"
-    assert exported["_subcollections"]["participants"]["42"]["_data"]["points"] == 7
-
-
-def test_the_backup_covers_every_collection_asked_for():
-    db = SimpleNamespace(collection=lambda name: FakeCollection(name, [FakeDoc("1", {"a": 1})]))
-
-    dump = export(db, collections=("users", "daily_path"))
-
-    assert sorted(dump) == ["daily_path", "users"]
-    assert dump["users"]["1"]["_data"] == {"a": 1}
-
-
-def test_firestore_types_survive_the_json():
-    """Le date arrivano come datetime e i riferimenti come oggetti: senza conversione il
-    backup fallirebbe a meta' export, cioe' esattamente quando serve."""
-    converted = jsonable({"quando": datetime(2026, 9, 8, 12, 0), "ref": object(), "n": [1, None]})
-
-    assert converted["quando"] == "2026-09-08T12:00:00"
-    assert isinstance(converted["ref"], str)
-    assert converted["n"] == [1, None]
-
-
-def test_the_dump_is_written_as_readable_json(tmp_path):
-    path = write_dump({"users": {"1": {"_data": {"first_name": "Anna"}}}}, str(tmp_path))
+def test_the_copy_before_deleting_keeps_timestamps_typed(tmp_path):
+    """La copia usa la stessa codifica del backup: una data resta una data, non testo."""
+    stamp = datetime(2026, 9, 8, 12, 0, tzinfo=timezone.utc)
+    path = save_copy([("2024-03-01", {"day": "2024-03-01", "generated_at": stamp}, None)], str(tmp_path), "old")
 
     with open(path, encoding="utf-8") as f:
-        assert json.load(f)["users"]["1"]["_data"]["first_name"] == "Anna"
+        saved = json.load(f)["2024-03-01"]
+    assert codec.decode_fields(saved, "daily_path/*")["generated_at"] == stamp
 
 
 @pytest.mark.parametrize("day", ["2026-09-07", "2025-09-09"])

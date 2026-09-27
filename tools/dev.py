@@ -63,15 +63,10 @@ def cmd_test_cov(extra_args: list[str]) -> int:
         "pytest",
         "-q",
         "--cov=services",
+        "--cov=domains",
         "--cov=handlers",
         "--cov-report=term-missing",
     ] + extra_args
-    return _run_cmd(cmd)
-
-
-def cmd_test_node(extra_args: list[str]) -> int:
-    """Esegue i test client per la Mini App con Node.js."""
-    cmd = ["node", "--test", "tests/client.test.cjs"] + extra_args
     return _run_cmd(cmd)
 
 
@@ -82,8 +77,8 @@ def cmd_lint(extra_args: list[str]) -> int:
 
 
 def cmd_typecheck(extra_args: list[str]) -> int:
-    """Esegue il type checker mypy su services/."""
-    cmd = [sys.executable, "-m", "mypy", "services/"] + extra_args
+    """Esegue il type checker mypy su services/ e domains/."""
+    cmd = [sys.executable, "-m", "mypy", "services/", "domains/"] + extra_args
     return _run_cmd(cmd)
 
 
@@ -96,6 +91,8 @@ def cmd_syntax(extra_args: list[str]) -> int:
         "-q",
         "bot.py",
         "config.py",
+        "apps",
+        "domains",
         "services",
         "handlers",
         "scripts",
@@ -127,6 +124,36 @@ def cmd_dataset_baseline_update(extra_args: list[str]) -> int:
 def cmd_security_check(extra_args: list[str]) -> int:
     """Esegue l'audit di sicurezza: pip-audit, detect-secrets e npm-audit."""
     cmd = [sys.executable, "-m", "tools.security"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_release_version(extra_args: list[str]) -> int:
+    """Stampa la versione corrente (file VERSION)."""
+    cmd = [sys.executable, "-m", "tools.release", "version"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_release_check(extra_args: list[str]) -> int:
+    """Verifica la coerenza dei metadati di release (VERSION, CHANGELOG.md, file richiesti)."""
+    cmd = [sys.executable, "-m", "tools.release", "check"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_release_notes(extra_args: list[str]) -> int:
+    """Stampa le note di release da CHANGELOG.md (default: Unreleased)."""
+    cmd = [sys.executable, "-m", "tools.release", "notes"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_perf_report(extra_args: list[str]) -> int:
+    """Report di baseline/trend delle prestazioni dai log Cloud Logging (#32, sola lettura)."""
+    cmd = [sys.executable, "-m", "tools.perf_report"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_architecture(extra_args: list[str]) -> int:
+    """Mappa dei domini e confini di dipendenza (#28): stato, debito e violazioni."""
+    cmd = [sys.executable, "-m", "tools.architecture"] + extra_args
     return _run_cmd(cmd)
 
 
@@ -176,7 +203,6 @@ def cmd_check(extra_args: list[str]) -> int:
         ("Build frontend (vite)", cmd_frontend_build, []),
         ("Integrita' dataset", cmd_dataset_check, []),
         ("Regressione dataset", cmd_dataset_regression_check, []),
-        ("Test client legacy (node)", cmd_test_node, []),
         ("Test frontend unitari", cmd_frontend_test, []),
         ("Unit test (pytest)", cmd_test, extra_args),
     ]
@@ -277,9 +303,8 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "check-api": (cmd_check_api, "Verifica i requisiti per l'avvio del server FastAPI bot.py (lifespan e code)"),
     "test": (cmd_test, "Esegue i test unitari con pytest"),
     "test-cov": (cmd_test_cov, "Esegue i test con report di copertura del codice"),
-    "test-node": (cmd_test_node, "Esegue i test client per la Mini App (richiede Node.js)"),
     "lint": (cmd_lint, "Controlla il codice con ruff"),
-    "typecheck": (cmd_typecheck, "Verifica i tipi con mypy su services/"),
+    "typecheck": (cmd_typecheck, "Verifica i tipi con mypy su services/ e domains/"),
     "syntax": (cmd_syntax, "Verifica la sintassi Python di tutti i moduli"),
     "dataset-check": (cmd_dataset_check, "Controlla salute ed integrita' del dataset calciatori"),
     "check": (cmd_check, "Suite standard di validazione locale (ambiente, syntax, lint, mypy, frontend, dataset, test)"),
@@ -294,6 +319,11 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "dataset-regression-check": (cmd_dataset_regression_check, "Verifica regressioni del dataset rispetto alla baseline"),
     "dataset-baseline-update": (cmd_dataset_baseline_update, "Aggiorna data/dataset_baseline.json con le metriche attuali"),
     "security-check": (cmd_security_check, "Esegue audit di sicurezza (pip-audit, detect-secrets, npm-audit)"),
+    "release-version": (cmd_release_version, "Stampa la versione corrente dell'applicazione (file VERSION)"),
+    "release-check": (cmd_release_check, "Verifica coerenza VERSION/CHANGELOG.md prima di un rilascio (sola lettura)"),
+    "release-notes": (cmd_release_notes, "Stampa le note di release da CHANGELOG.md (default: Unreleased)"),
+    "architecture": (cmd_architecture, "Mappa dei domini e confini di dipendenza: debito e violazioni (--graph, --module)"),
+    "perf-report": (cmd_perf_report, "Baseline e trend delle prestazioni dai log Cloud Logging (sola lettura, --fetch o --input)"),
 }
 
 

@@ -191,10 +191,15 @@ def get_event_trophy_day(day_iso=None):
 
 
 def update_users_trophies(event_doc):
-    """Assegna il trofeo ai primi tre dell'evento."""
+    """Assegna il trofeo ai primi dell'evento: quanti lo decide il template
+    (`rewards.podium_trophies`, 3 per gli eventi precedenti a #31, 0 = nessun trofeo)."""
+    from services import event_config
     from services import firebase_service as fs
     event_code = event_doc.get("code")
-    podium = fs.get_event_leaderboard(event_code, limit=3)
+    positions = event_config.event_rewards(event_doc)["podium_trophies"]
+    if positions <= 0:
+        return []
+    podium = fs.get_event_leaderboard(event_code, limit=positions)
 
     assigned = []
     for position, participant in enumerate(podium, start=1):

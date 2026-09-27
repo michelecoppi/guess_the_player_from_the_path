@@ -1,3 +1,4 @@
+import { icon as renderIcon } from "./Icon";
 import { escapeHtml } from "@/utils/format";
 import { renderButton } from "./Button";
 
@@ -12,7 +13,7 @@ export interface EmptyStateProps {
 }
 
 export function renderEmptyState(props: EmptyStateProps): string {
-  const icon = props.icon || "📂";
+  const icon = props.icon || renderIcon("career");
   const titleHtml = props.title
     ? `<h3 class="empty-state-title">${escapeHtml(props.title)}</h3>`
     : "";

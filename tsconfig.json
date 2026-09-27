@@ -20,5 +20,5 @@
     }
   },
   "include": ["webapp/src/**/*", "vite.config.ts", "tests/frontend/**/*"],
-  "exclude": ["node_modules", "webapp/dist", "webapp/*.js", "tests/client.test.cjs"]
+  "exclude": ["node_modules", "webapp/dist"]
 }

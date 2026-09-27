@@ -79,3 +79,46 @@ def test_the_percentage_of_solvers_stays_out_of_the_shared_card():
     """E' un'informazione sulla **difficolta' di oggi**, e la card la legge anche chi non ha
     ancora giocato: dirla li' sarebbe mezzo spoiler."""
     assert "%" not in share_text("it", 142, 1, 3, hints=1, streak=3)
+
+
+# ---------------------------------------------------------------------------
+# Link invito e frase d'invito (#150)
+# ---------------------------------------------------------------------------
+
+INVITE = "https://t.me/guess_the_player_bot?start=ref_7_0123456789abcdef0123"
+
+
+def test_the_last_line_invites_with_the_sharer_link():
+    text = share_text("it", 214, 2, 3, link=INVITE)
+
+    assert text.splitlines()[-1] == f"Riesci a fare meglio? 👉 {INVITE}"
+
+
+@pytest.mark.parametrize("lang, invite", [("es", "¿Puedes hacerlo mejor?"), ("en", "Can you do better?")])
+def test_the_invite_line_is_translated(lang, invite):
+    assert share_text(lang, 214, 2, 3, link=INVITE).splitlines()[-1] == f"{invite} 👉 {INVITE}"
+
+
+def test_without_an_invite_link_the_bot_link_is_used(monkeypatch):
+    from services import share
+
+    monkeypatch.setattr(share, "BOT_USERNAME", "guess_the_player_bot")
+    assert share_text("it", 214, 2, 3).splitlines()[-1] == "Riesci a fare meglio? 👉 https://t.me/guess_the_player_bot"
+
+
+def test_without_any_link_there_is_no_invite_line(monkeypatch):
+    from services import share
+
+    monkeypatch.setattr(share, "BOT_USERNAME", "")
+    assert share_text("it", 214, 2, 3) == "⚽ Guess the Player #214\n🟥🟩⬜ 2/3"
+    assert share.share_url("x") is None
+
+
+def test_the_share_button_points_at_the_invite_link():
+    from urllib.parse import parse_qs, urlparse
+
+    from services import share
+
+    query = parse_qs(urlparse(share.share_url("testo", INVITE)).query)
+    assert query["url"] == [INVITE]
+    assert query["text"] == ["testo"]

@@ -9,19 +9,40 @@ import io
 import json
 import os
 import re
-import time
-import urllib.error
+import sys
 import urllib.parse
-import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from domains.players.adapters.http_client import HttpError, RetryingHttpClient  # noqa: E402
 
 API = "https://it.wikipedia.org/w/api.php"
-UA = "guess-the-player-dataset/1.0 (local dataset build; contact: repo owner)"
+# Stesso client degli adapter: User-Agent conforme alla policy Wikimedia (senza contatto si
+# finiva nella fascia "Unidentified", 10 richieste/minuto, e poi 429 a catena), un
+# intervallo minimo tra le richieste, retry con backoff e rispetto di Retry-After.
+_http = RetryingHttpClient()
 _cache = {}
+
+
+def _get_json(url):
+    return _http.get(url + "&maxlag=5").json()
 
 
 CACHE_DIR = os.environ.get("GTP_WIKI_CACHE") or os.path.join(
     os.path.dirname(os.path.abspath(__file__)), ".wikicache")
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+
+# I file di cache piu' vecchi di questo istante (epoch) vengono riscaricati. Di default la
+# cache non scade (build_wiki lavora su pagine stabili); refresh_careers la imposta
+# all'avvio, altrimenti dopo il mercato rileggerebbe carriere vecchie.
+_cache_cutoff = float(os.environ.get("GTP_WIKI_CACHE_NOT_BEFORE") or 0)
+
+
+def set_cache_cutoff(timestamp):
+    """Ignora i wikitext in cache salvati prima di `timestamp` (secondi epoch)."""
+    global _cache_cutoff
+    _cache_cutoff = float(timestamp)
 
 
 def _cache_path(title):
@@ -38,39 +59,24 @@ def wikitext(title):
     if title in _cache:
         return _cache[title]
     path = _cache_path(title)
-    if os.path.exists(path):
+    if os.path.exists(path) and os.path.getmtime(path) >= _cache_cutoff:
         text = io.open(path, encoding="utf-8").read()
         _cache[title] = text
         return text
 
     url = (API + "?action=parse&page=" + urllib.parse.quote(title)
            + "&prop=wikitext&format=json&formatversion=2&redirects=1")
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    data = None
-    for attempt in range(5):
-        try:
-            data = json.load(urllib.request.urlopen(req, timeout=30))
-            break
-        except urllib.error.HTTPError as exc:
-            if exc.code == 429:
-                wait = int(exc.headers.get("Retry-After") or 0) or (5 * (attempt + 1))
-                time.sleep(wait)
-                continue
-            if exc.code == 404:
-                raise LookupError(f"pagina non trovata: {title}")
-            if attempt == 4:
-                raise
-            time.sleep(3)
-        except Exception:
-            if attempt == 4:
-                raise
-            time.sleep(3)
-    if data is None or "parse" not in data:
+    try:
+        data = _get_json(url)
+    except HttpError as exc:
+        if exc.status_code == 404:
+            raise LookupError(f"pagina non trovata: {title}") from exc
+        raise
+    if not isinstance(data, dict) or "parse" not in data:
         raise LookupError(f"pagina non trovata: {title}")
     text = data["parse"]["wikitext"]
     io.open(path, "w", encoding="utf-8").write(text)
     _cache[title] = text
-    time.sleep(0.6)  # gentile con i server di Wikipedia
     return text
 
 
@@ -293,21 +299,11 @@ def search(query, limit=5):
         return _search_cache[query]
     url = (API + "?action=query&list=search&srsearch=" + urllib.parse.quote(query)
            + f"&srlimit={limit}&format=json&formatversion=2")
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    titles = []
-    for attempt in range(4):
-        try:
-            data = json.load(urllib.request.urlopen(req, timeout=30))
-            titles = [hit["title"] for hit in data.get("query", {}).get("search", [])]
-            break
-        except urllib.error.HTTPError as exc:
-            if exc.code == 429:
-                time.sleep(int(exc.headers.get("Retry-After") or 0) or 5 * (attempt + 1))
-                continue
-            break
-        except Exception:
-            time.sleep(2)
+    try:
+        data = _get_json(url)
+    except Exception:
+        return []  # errore transitorio: non va in cache come "nessun risultato"
+    titles = [hit["title"] for hit in data.get("query", {}).get("search", [])]
     _search_cache[query] = titles
     json.dump(_search_cache, io.open(_SEARCH_CACHE_PATH, "w", encoding="utf-8"))
-    time.sleep(0.6)
     return titles

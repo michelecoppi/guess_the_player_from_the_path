@@ -1,4 +1,5 @@
 import { escapeHtml, initials } from "@/utils/format";
+import { FRAME_MOTIONS } from "@/appearance/decorations";
 
 export interface AvatarProps {
   id?: string;
@@ -8,6 +9,9 @@ export interface AvatarProps {
   size?: "small" | "normal" | "large";
   ringStyle?: string;
   spinRing?: boolean;
+  tactics?: 3 | 11;
+  /** Reviewed bounded flourish (FRAME_MOTIONS); anything else is ignored. */
+  ringMotion?: string;
   extraClass?: string;
 }
 
@@ -19,8 +23,15 @@ export function renderAvatar(props: AvatarProps): string {
   let ringHtml = "";
   if (props.ringStyle) {
     const spinClass = props.spinRing ? " spin" : "";
-    ringHtml = `<div class="ring${spinClass}" style="${escapeHtml(props.ringStyle)}" aria-hidden="true"></div>`;
+    const motion = props.ringMotion && FRAME_MOTIONS.has(props.ringMotion) ? ` data-motion="${props.ringMotion}"` : "";
+    ringHtml = `<div class="ring${spinClass}"${motion} style="${escapeHtml(props.ringStyle)}" aria-hidden="true"></div>`;
   }
+
+  const nodes = props.tactics === 3 || props.tactics === 11 ? props.tactics : 0;
+  const tactics = nodes ? `<svg class="avatar-tactics" viewBox="0 0 100 100" aria-hidden="true">${Array.from({length:nodes}, (_,i) => {
+    const angle = (i / nodes * 2 * Math.PI) - Math.PI / 2;
+    return `<circle cx="${50 + 46 * Math.cos(angle)}" cy="${50 + 46 * Math.sin(angle)}" r="3"/>`;
+  }).join('')}<circle class="tactics-ball" cx="50" cy="4" r="2.5"/></svg>` : '';
 
   const avatarContent = props.photoUrl
     ? `<img src="${escapeHtml(props.photoUrl)}" alt="${escapeHtml(props.name || "Avatar")}" loading="lazy" />`
@@ -32,6 +43,7 @@ export function renderAvatar(props: AvatarProps): string {
   return `
     <div class="${classAttr}"${idAttr} aria-label="${escapeHtml(props.name || "User avatar")}">
       ${ringHtml}
+      ${tactics}
       <div class="avatar">
         ${avatarContent}
       </div>

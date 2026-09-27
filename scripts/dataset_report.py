@@ -1,7 +1,7 @@
 """Stampa lo stato di salute del dataset calciatori.
 
     python scripts/dataset_report.py
-    python scripts/dataset_report.py --strict    # esce con codice 1 se il dataset ha errori (usato in CI)
+    python scripts/dataset_report.py --strict    # esce con codice 1 se dataset o template evento hanno errori (CI)
     python scripts/dataset_report.py --pending   # le schede in attesa di revisione, carriera compresa
 """
 import argparse
@@ -70,8 +70,8 @@ def main():
     report = build_report()
     print(format_report_text(report))
 
-    if args.strict and report["dataset_problems"]:
-        print("\nDataset non valido: correggi i problemi elencati sopra.", file=sys.stderr)
+    if args.strict and (report["dataset_problems"] or report["template_problems"]):
+        print("\nDataset o template evento non validi: correggi i problemi elencati sopra.", file=sys.stderr)
         return 1
     return 0
 

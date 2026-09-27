@@ -1,5 +1,9 @@
 # Revisione del database Firestore
 
+> **Documento storico di revisione.** Spiega il *perché* del modello dati e le migrazioni
+> fatte; la tabella qui sotto non elenca le collection aggiunte dopo (acquisti, duelli,
+> referral, ricevute dei job, ecc.). La mappa corrente è in [firestore.md](firestore.md).
+
 Analisi del modello dati e dei pattern di accesso, **e degli interventi fatti**. Le stime di
 costo derivano dalle query che il codice esegue, non da metriche di produzione: non ho
 accesso all'istanza Firebase reale.

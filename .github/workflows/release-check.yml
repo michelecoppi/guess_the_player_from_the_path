@@ -1,0 +1,27 @@
+name: Release check
+
+# Runs only when a release tag is pushed (vX.Y.Z), see docs/release-checklist.md. This is
+# NOT a second test suite: by policy a tag is only ever created on a commit whose CI run
+# is already green (see docs/release-checklist.md § Exact-commit requirement), so this
+# workflow does not rebuild, lint or test the app. It validates release *metadata* on that
+# exact commit: VERSION matches the tag and CHANGELOG.md has a dated entry for it.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  release-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verifica VERSION e CHANGELOG.md per il tag
+        run: python -m tools.release check --tag "${GITHUB_REF_NAME}"
