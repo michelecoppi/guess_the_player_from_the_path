@@ -19,8 +19,13 @@ export function bootstrap(): App | null {
 
   app = new App(root);
   app.init();
+  // Shop, Story and Events are separate chunks (#187): fetch them once the Daily is on screen
+  // so opening them later is instant, without competing with the first load.
+  const started = app;
+  void started.whenFirstLoaded().finally(() => {
+    setTimeout(() => void started.prefetchLazyViews(), 1000);
+  });
   if (measured) {
-    const started = app;
     void started.whenFirstLoaded().then(
       () => reportStartup(started.getDailyController().getState().status === "error" ? "error" : "ok"),
       () => reportStartup("error"),

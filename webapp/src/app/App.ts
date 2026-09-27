@@ -7,6 +7,7 @@ import { renderDailyPage, attachDailyEventListeners } from "@/pages/DailyPage";
 import {
   renderArenaPage,
   attachArenaEventListeners,
+  registerStoryView,
   type ArenaSubview,
 } from "@/pages/ArenaPage";
 import {
@@ -22,10 +23,6 @@ import {
   attachArchiveEventListeners,
 } from "@/pages/ArchivePage";
 import {
-  renderShopPage,
-  attachShopEventListeners,
-} from "@/pages/ShopPage";
-import {
   renderReferralPage,
   attachReferralEventListeners,
 } from "@/pages/ReferralPage";
@@ -38,7 +35,7 @@ import {
 import type { TelegramBackButton, TelegramWebApp } from "@/telegram/types";
 import { onSessionExpired } from "@/api/client";
 import { renderErrorState } from "@/components/ErrorState";
-import { resolveLanguage, setLanguage } from "@/i18n";
+import { resolveLanguage, setLanguage, t } from "@/i18n";
 import { v } from "@/i18n/visual";
 import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
@@ -50,7 +47,20 @@ import { ProfileController } from "@/features/profile/controller";
 import { ShopController } from "@/features/shop/controller";
 import { ReferralController } from "@/features/referral/controller";
 import { EventsController } from "@/features/events/controller";
-import { renderEventsPage, attachEventsEventListeners } from "@/pages/EventsPage";
+import { renderLoadingState } from "@/components/LoadingState";
+import { lazyModule, type LazyModule } from "./lazy";
+
+// Shop, Story and Events views are separate chunks, fetched on first use or by
+// prefetchLazyViews() once the Daily is on screen (#187).
+const shopView = lazyModule(() => import("@/pages/ShopPage"));
+const eventsView = lazyModule(() => import("@/pages/EventsPage"));
+const storyView = lazyModule(() =>
+  import("@/features/story/views").then((views) => {
+    registerStoryView(views.renderStoryView);
+    return views;
+  }),
+);
+const LAZY_VIEWS: LazyModule<unknown>[] = [shopView, eventsView, storyView];
 
 export class App {
   private rootElement: HTMLElement;
@@ -405,7 +415,7 @@ export class App {
           typeof document !== "undefined" &&
           document.activeElement?.id === "training-answer";
 
-        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
+        mainEl.innerHTML = this.arenaPageHtml();
         attachArenaEventListeners(
           this.rootElement,
           this.arenaController,
@@ -430,7 +440,7 @@ export class App {
           typeof document !== "undefined" &&
           document.activeElement?.id === "story-answer";
 
-        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
+        mainEl.innerHTML = this.arenaPageHtml();
         attachArenaEventListeners(
           this.rootElement,
           this.arenaController,
@@ -438,6 +448,7 @@ export class App {
           this.storyController,
         );
         this.attachTabButtons(mainEl as HTMLElement);
+        this.attachLazyRetry(mainEl as HTMLElement);
 
         if (hadInputFocus && storyState.status !== "loading") {
           mainEl
@@ -462,7 +473,7 @@ export class App {
             ? (document.activeElement as HTMLInputElement).selectionStart
             : null;
 
-        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
+        mainEl.innerHTML = this.arenaPageHtml();
         attachArenaEventListeners(
           this.rootElement,
           this.arenaController,
@@ -565,9 +576,11 @@ export class App {
 
   private renderShopContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
-    if (mainEl && this.activeTab === "shop") {
-      mainEl.innerHTML = renderShopPage(this.shopController.getState());
-      attachShopEventListeners(this.rootElement, this.shopController);
+    const view = shopView.module;
+    // Until the chunk is in, the loading/retry state stays; the load re-renders the page.
+    if (mainEl && this.activeTab === "shop" && view) {
+      mainEl.innerHTML = view.renderShopPage(this.shopController.getState());
+      view.attachShopEventListeners(this.rootElement, this.shopController);
     }
   }
 
@@ -582,12 +595,13 @@ export class App {
 
   private renderEventsContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
-    if (mainEl && this.activeTab === "events") {
+    const view = eventsView.module;
+    if (mainEl && this.activeTab === "events" && view) {
       const hadInputFocus =
         typeof document !== "undefined" &&
         document.activeElement?.id === "events-answer";
-      mainEl.innerHTML = renderEventsPage(this.eventsController);
-      attachEventsEventListeners(
+      mainEl.innerHTML = view.renderEventsPage(this.eventsController);
+      view.attachEventsEventListeners(
         this.rootElement,
         this.eventsController,
         {
@@ -710,6 +724,62 @@ export class App {
     else this.setTab("play");
   }
 
+  /** Loads the Shop, Story and Events chunks ahead of use (after the Daily is on screen). */
+  public prefetchLazyViews(): Promise<void> {
+    return Promise.allSettled(LAZY_VIEWS.map((view) => view.load())).then(() => undefined);
+  }
+
+  private isStoryOpen(): boolean {
+    return this.isArenaTab(this.activeTab) && this.arenaController.getState().subview === "story";
+  }
+
+  private arenaPageHtml(): string {
+    const arenaState = this.arenaController.getState();
+    if (arenaState.subview === "story" && !storyView.module) {
+      return this.lazyPageHtml(storyView, () => "", () => this.isStoryOpen());
+    }
+    return renderArenaPage(arenaState, this.trainingController.getState(), this.storyController.getState());
+  }
+
+  /**
+   * The page of a lazily loaded view: rendered when its chunk is in, otherwise a loading state
+   * (starting the load) or, after a failed load, an error with a retry button. When the load
+   * settles the shell re-renders - only if that page is still the one on screen, so a prefetch
+   * finishing in the background never steals focus from the Daily.
+   */
+  private lazyPageHtml<T>(
+    view: LazyModule<T>,
+    render: (module: T) => string,
+    stillShown?: () => boolean,
+  ): string {
+    if (view.module) return render(view.module);
+    const tab = this.activeTab;
+    const shown = stillShown ?? (() => this.activeTab === tab);
+    if (view.failed) {
+      return renderErrorState({
+        title: t("common.error"),
+        message: v("viewLoadError"),
+        retryLabel: t("common.retry"),
+        retryButtonId: "lazy-view-retry",
+      });
+    }
+    const rerender = () => {
+      if (shown() && !this.sessionExpired) this.render();
+    };
+    void view.load().then(rerender, rerender);
+    return renderLoadingState({ message: t("common.loading") });
+  }
+
+  private attachLazyRetry(scope: HTMLElement): void {
+    scope.querySelector<HTMLButtonElement>("#lazy-view-retry")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      // Restarting the load clears the failure, so render() shows the spinner and re-renders
+      // the page when the chunk arrives.
+      LAZY_VIEWS.filter((view) => view.failed).forEach((view) => void view.load().catch(() => undefined));
+      this.render();
+    });
+  }
+
   private render(): void {
     if (this.sessionExpired) {
       this.renderSessionExpired();
@@ -727,11 +797,7 @@ export class App {
       case "arena":
       case "duels":
       case "challenge":
-        pageHtml = renderArenaPage(
-          this.arenaController.getState(),
-          this.trainingController.getState(),
-          this.storyController.getState(),
-        );
+        pageHtml = this.arenaPageHtml();
         break;
       case "profile":
         pageHtml = renderProfilePage(this.profileController.getState());
@@ -745,7 +811,7 @@ export class App {
         pageHtml = renderArchivePage(this.archiveController.getState());
         break;
       case "shop":
-        pageHtml = renderShopPage(this.shopController.getState());
+        pageHtml = this.lazyPageHtml(shopView, (view) => view.renderShopPage(this.shopController.getState()));
         break;
       case "referral":
         pageHtml = renderReferralPage(
@@ -754,7 +820,7 @@ export class App {
         );
         break;
       case "events":
-        pageHtml = renderEventsPage(this.eventsController);
+        pageHtml = this.lazyPageHtml(eventsView, (view) => view.renderEventsPage(this.eventsController));
         break;
       default:
         pageHtml = renderPrototype(
@@ -804,6 +870,7 @@ export class App {
 
   private attachEventListeners(): void {
     this.attachTabButtons(this.rootElement);
+    this.attachLazyRetry(this.rootElement);
 
     const details =
       this.rootElement.querySelector<HTMLDetailsElement>(".more-nav");
@@ -839,7 +906,7 @@ export class App {
         this.profileController,
       );
     } else if (this.activeTab === "shop") {
-      attachShopEventListeners(
+      shopView.module?.attachShopEventListeners(
         this.rootElement,
         this.shopController,
       );
@@ -850,7 +917,7 @@ export class App {
         (tab) => this.setTab(tab),
       );
     } else if (this.activeTab === "events") {
-      attachEventsEventListeners(
+      eventsView.module?.attachEventsEventListeners(
         this.rootElement,
         this.eventsController,
         {

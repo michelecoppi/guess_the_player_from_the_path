@@ -170,6 +170,11 @@ const copy = {
     "La app ha estado abierta demasiado tiempo. Ciérrala y vuelve a abrirla desde el chat del bot para continuar.",
   ],
   sessionExpiredAction: ["Chiudi e riapri", "Close and reopen", "Cerrar y volver a abrir"],
+  viewLoadError: [
+    "Non riesco a caricare questa sezione. Controlla la connessione e riprova.",
+    "This section could not be loaded. Check your connection and try again.",
+    "No se ha podido cargar esta sección. Comprueba la conexión e inténtalo de nuevo.",
+  ],
 } as const;
 export function v(key: keyof typeof copy): string {
   return copy[key][({ it: 0, en: 1, es: 2 } as const)[getLanguage()]];

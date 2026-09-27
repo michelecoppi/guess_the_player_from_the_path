@@ -161,6 +161,8 @@ test("Events and Archive link back to the Arena hub, also after their async load
 
   try {
     const app = new App(container);
+    // Events is a lazily loaded chunk (#187): this test is about its back link, not the spinner.
+    await app.prefetchLazyViews();
 
     app.setTab("events");
     // The load resolves after setTab()'s full render, so the back link clicked here comes
