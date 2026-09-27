@@ -3,33 +3,37 @@
 All tests use fixture files and a fake HttpClient — no real network calls.
 No writes to data/players.json.  No dependency on Wikipedia/Wikidata availability.
 """
+
 from __future__ import annotations
 
 import json
+import urllib.parse
 from pathlib import Path
 from typing import Any, Optional
 
 import pytest
 
-from services.adapters.base import (
+from domains.players.adapters.base import (
     AdapterError,
     AdapterErrorType,
     AdapterResult,
     AdapterSearchResult,
     PlayerSourceAdapter,
 )
-from services.adapters.candidate_integration import (
+from domains.players.adapters.candidate_integration import (
     populate_candidate_from_result,
     record_adapter_failure,
 )
-from services.adapters.http_client import HttpClient, HttpError, HttpResponse, UrllibHttpClient
-from services.adapters.wikidata import WikidataAdapter
-from services.adapters.wikipedia import WikipediaAdapter
-from services.candidate_player import (
-    CandidatePlayer,
-    CandidateState,
-    make_candidate_id,
+from domains.players.adapters.http_client import (
+    HttpClient,
+    HttpError,
+    HttpResponse,
+    RetryingHttpClient,
+    UrllibHttpClient,
 )
+from domains.players.adapters.wikidata import WikidataAdapter
+from domains.players.adapters.wikipedia import WikipediaAdapter
+from domains.players.candidates.model import CandidatePlayer, CandidateState, make_candidate_id
 
 # ── Fixture paths ────────────────────────────────────────────────────────
 
@@ -194,6 +198,121 @@ class TestHttpClient:
         assert len(client.requests) == 1
         assert "example" in client.requests[0]
 
+    def test_retrying_client_honours_retry_after(self):
+        class SequenceClient:
+            def __init__(self):
+                self.responses = [
+                    HttpError(
+                        429,
+                        "Too Many Requests",
+                        retryable=True,
+                        headers={"Retry-After": "7"},
+                    ),
+                    HttpResponse(200, '{"ok": true}'),
+                ]
+
+            def get(self, url, *, timeout=30):
+                response = self.responses.pop(0)
+                if isinstance(response, Exception):
+                    raise response
+                return response
+
+        waits = []
+        client = RetryingHttpClient(SequenceClient(), sleep_fn=waits.append, random_fn=lambda: 0)
+
+        response = client.get("https://example.test")
+
+        assert response.json() == {"ok": True}
+        assert waits == [7.0]
+
+    def test_retrying_client_handles_mediawiki_maxlag(self):
+        class SequenceClient:
+            def __init__(self):
+                self.responses = [
+                    HttpResponse(200, '{"error":{"code":"maxlag","info":"lagged"}}'),
+                    HttpResponse(200, '{"query":{}}'),
+                ]
+
+            def get(self, url, *, timeout=30):
+                return self.responses.pop(0)
+
+        waits = []
+        client = RetryingHttpClient(
+            SequenceClient(), base_delay=2, sleep_fn=waits.append, random_fn=lambda: 0
+        )
+
+        response = client.get("https://example.test")
+
+        assert response.json() == {"query": {}}
+        assert waits == [2.0]
+
+
+    def test_user_agent_has_contact_for_wikimedia_rate_limits(self, monkeypatch):
+        from domains.players.adapters.http_client import build_user_agent
+
+        monkeypatch.delenv("WIKIMEDIA_CONTACT", raising=False)
+        assert "(https://github.com/michelecoppi/guess_the_player_from_the_path)" in build_user_agent()
+
+        monkeypatch.setenv("WIKIMEDIA_CONTACT", "ops@example.org")
+        ua = build_user_agent()
+        assert ua.startswith("guess-the-player-dataset/")
+        assert "; ops@example.org)" in ua
+        assert UrllibHttpClient()._user_agent == ua
+
+    def test_process_throttle_spaces_requests(self):
+        from domains.players.adapters.http_client import _ProcessThrottle
+
+        now = [100.0]
+        waits = []
+
+        def sleep(seconds):
+            waits.append(seconds)
+            now[0] += seconds
+
+        throttle = _ProcessThrottle()
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+        now[0] += 0.25
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+        now[0] += 5
+        throttle.wait(1.0, sleep, clock=lambda: now[0])
+
+        assert waits == [0.75]
+
+    def test_retrying_client_throttles_only_the_real_network_by_default(self):
+        assert RetryingHttpClient()._min_interval == 1.0
+        assert RetryingHttpClient(FakeHttpClient())._min_interval == 0.0
+
+    def test_retrying_client_retries_timeouts(self):
+        class SequenceClient:
+            def __init__(self):
+                self.responses = [TimeoutError("read timed out"), HttpResponse(200, '{"ok": true}')]
+
+            def get(self, url, *, timeout=30):
+                response = self.responses.pop(0)
+                if isinstance(response, Exception):
+                    raise response
+                return response
+
+        waits = []
+        client = RetryingHttpClient(
+            SequenceClient(), base_delay=3, sleep_fn=waits.append, random_fn=lambda: 0
+        )
+
+        assert client.get("https://example.test").json() == {"ok": True}
+        assert waits == [3.0]
+
+    def test_retrying_client_gives_up_on_repeated_timeouts(self):
+        class TimeoutClient:
+            def get(self, url, *, timeout=30):
+                raise TimeoutError("read timed out")
+
+        waits = []
+        client = RetryingHttpClient(TimeoutClient(), max_retries=2, sleep_fn=waits.append)
+
+        with pytest.raises(TimeoutError):
+            client.get("https://example.test")
+        assert len(waits) == 2
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # WIKIPEDIA ADAPTER TESTS
@@ -203,7 +322,9 @@ class TestHttpClient:
 class TestWikipediaAdapter:
     """Tests for the Wikipedia adapter."""
 
-    def _make_adapter(self, client: Optional[FakeHttpClient] = None) -> tuple[WikipediaAdapter, FakeHttpClient]:
+    def _make_adapter(
+        self, client: Optional[FakeHttpClient] = None
+    ) -> tuple[WikipediaAdapter, FakeHttpClient]:
         c = client or FakeHttpClient()
         return WikipediaAdapter(http_client=c), c
 
@@ -233,6 +354,104 @@ class TestWikipediaAdapter:
         assert roma_stop["end_year"] == 2017
         assert roma_stop["apps"] == 619
         assert roma_stop["goals"] == 250
+
+    def test_fetch_players_batches_revisions_and_metadata(self):
+        wikitext = _load_fixture("wikipedia_wikitext_totti.txt")
+        adapter, client = self._make_adapter()
+        client.configure(
+            "api.php",
+            HttpResponse(
+                200,
+                json.dumps(
+                    {
+                        "query": {
+                            "pages": [
+                                {
+                                    "title": "Francesco Totti",
+                                    "pageprops": {"wikibase_item": "Q1835"},
+                                    "revisions": [
+                                        {
+                                            "revid": 123456,
+                                            "timestamp": "2026-09-19T08:00:00Z",
+                                            "slots": {"main": {"content": wikitext}},
+                                        }
+                                    ],
+                                }
+                            ],
+                        },
+                    }
+                ),
+            ),
+        )
+
+        results = adapter.fetch_players(["Francesco Totti"])
+
+        result = results["Francesco Totti"]
+        assert result.success is True
+        assert result.player_name == "Francesco Totti"
+        assert result.career
+        assert result.source_metadata["revision_id"] == 123456
+        assert result.source_metadata["wikidata_id"] == "Q1835"
+        assert "prop=revisions%7Cpageprops" in client.requests[0]
+
+    @staticmethod
+    def _bulk_page(title, wikitext):
+        return {
+            "title": title,
+            "revisions": [{"revid": 1, "slots": {"main": {"content": wikitext}}}],
+        }
+
+    def test_fetch_players_splits_chunk_that_times_out(self):
+        wikitext = _load_fixture("wikipedia_wikitext_totti.txt")
+        page = self._bulk_page
+
+        class SplittingClient:
+            def __init__(self):
+                self.batches = []
+
+            def get(self, url, *, timeout=30):
+                titles = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)["titles"][0].split("|")
+                self.batches.append(titles)
+                if len(titles) > 1 or titles == ["C"]:
+                    raise TimeoutError("read timed out")
+                return HttpResponse(200, json.dumps({"query": {"pages": [page(titles[0], wikitext)]}}))
+
+        client = SplittingClient()
+        results = WikipediaAdapter(http_client=client).fetch_players(["A", "B", "C"])
+
+        assert results["A"].success and results["B"].success
+        assert results["C"].success is False
+        assert results["C"].errors[0].retryable is True
+        assert client.batches == [["A", "B", "C"], ["A"], ["B", "C"], ["B"], ["C"]]
+
+    def test_fetch_players_does_not_split_on_server_error(self):
+        class FailingClient:
+            def __init__(self):
+                self.calls = 0
+
+            def get(self, url, *, timeout=30):
+                self.calls += 1
+                raise HttpError(503, "Service Unavailable", retryable=True)
+
+        client = FailingClient()
+        results = WikipediaAdapter(http_client=client).fetch_players(["A", "B", "C"])
+
+        assert client.calls == 1
+        assert all(not r.success and r.errors[0].retryable for r in results.values())
+
+    def test_fetch_club_reads_country_and_current_league(self):
+        page = "{{Squadra di calcio\n|nazione = {{KSA}}\n|campionato = [[Saudi Pro League]]\n}}"
+        adapter, client = self._make_adapter()
+        client.configure("Al-Hilal_Saudi", HttpResponse(200, json.dumps({"parse": {"wikitext": page}})))
+        client.configure(
+            "Al-Hilal%20Saudi", HttpResponse(200, json.dumps({"parse": {"wikitext": page}}))
+        )
+
+        assert adapter.fetch_club("Al-Hilal", "Al-Hilal Saudi Football Club") == (
+            "Arabia Saudita",
+            "Saudi Pro League",
+        )
+        assert not any("list=search" in url for url in client.requests)
 
     def test_fetch_with_loans_and_unicode(self):
         """Non-ASCII player name, loan markers, wiki links."""
@@ -305,6 +524,26 @@ class TestWikipediaAdapter:
         assert "url" in result.source_metadata
         assert "wikipedia.org" in result.source_metadata["url"]
 
+    def test_explicit_career_end_is_exposed_in_metadata(self):
+        wikitext = """
+{{Sportivo
+|ruolo = Attaccante
+|terminecarriera = 2 luglio 2026
+}}
+{{Bio
+|Nome = Mario
+|Cognome = Rossi
+|AnnoNascita = 1990
+}}
+"""
+        adapter, client = self._make_adapter()
+        client.configure("api.php", _wiki_api_response(wikitext))
+
+        result = adapter.fetch_player("Mario Rossi")
+
+        assert result.success is True
+        assert result.source_metadata["career_end"] == "2 luglio 2026"
+
     # ── Error handling ───────────────────────────────────────────────────
 
     def test_fetch_http_404(self):
@@ -330,7 +569,9 @@ class TestWikipediaAdapter:
 
     def test_fetch_http_500_server_error(self):
         adapter, client = self._make_adapter()
-        client.configure("api.php", HttpError(500, "Internal Server Error", url="https://wiki", retryable=True))
+        client.configure(
+            "api.php", HttpError(500, "Internal Server Error", url="https://wiki", retryable=True)
+        )
 
         result = adapter.fetch_player("Totti")
 
@@ -383,12 +624,19 @@ class TestWikipediaAdapter:
 
     def test_search_wikipedia_success_with_results(self):
         adapter, client = self._make_adapter()
-        search_response = HttpResponse(200, json.dumps({
-            "query": {"search": [
-                {"title": "Francesco Totti"},
-                {"title": "Totti (disambigua)"},
-            ]}
-        }))
+        search_response = HttpResponse(
+            200,
+            json.dumps(
+                {
+                    "query": {
+                        "search": [
+                            {"title": "Francesco Totti"},
+                            {"title": "Totti (disambigua)"},
+                        ]
+                    }
+                }
+            ),
+        )
         client.configure("api.php", search_response)
 
         search_res = adapter.search_player("Totti")
@@ -402,9 +650,7 @@ class TestWikipediaAdapter:
 
     def test_search_wikipedia_success_zero_results(self):
         adapter, client = self._make_adapter()
-        search_response = HttpResponse(200, json.dumps({
-            "query": {"search": []}
-        }))
+        search_response = HttpResponse(200, json.dumps({"query": {"search": []}}))
         client.configure("api.php", search_response)
 
         search_res = adapter.search_player("NonExistentPlayer12345")
@@ -440,7 +686,9 @@ class TestWikipediaAdapter:
 
     def test_search_wikipedia_http_failure(self):
         adapter, client = self._make_adapter()
-        client.configure("api.php", HttpError(500, "Internal Server Error", url="https://wiki", retryable=True))
+        client.configure(
+            "api.php", HttpError(500, "Internal Server Error", url="https://wiki", retryable=True)
+        )
 
         search_res = adapter.search_player("Totti")
 
@@ -471,7 +719,9 @@ class TestWikipediaAdapter:
 class TestWikidataAdapter:
     """Tests for the Wikidata adapter."""
 
-    def _make_adapter(self, client: Optional[FakeHttpClient] = None) -> tuple[WikidataAdapter, FakeHttpClient]:
+    def _make_adapter(
+        self, client: Optional[FakeHttpClient] = None
+    ) -> tuple[WikidataAdapter, FakeHttpClient]:
         c = client or FakeHttpClient()
         return WikidataAdapter(http_client=c), c
 
@@ -638,21 +888,30 @@ class TestWikidataAdapter:
                                         {
                                             "snaktype": "value",
                                             "property": "P1350",
-                                            "datavalue": {"type": "quantity", "value": {"amount": "+42", "unit": "1"}},
+                                            "datavalue": {
+                                                "type": "quantity",
+                                                "value": {"amount": "+42", "unit": "1"},
+                                            },
                                         }
                                     ],
                                     "P1351": [
                                         {
                                             "snaktype": "value",
                                             "property": "P1351",
-                                            "datavalue": {"type": "quantity", "value": {"amount": "+15", "unit": "1"}},
+                                            "datavalue": {
+                                                "type": "quantity",
+                                                "value": {"amount": "+15", "unit": "1"},
+                                            },
                                         }
                                     ],
                                     "P1642": [
                                         {
                                             "snaktype": "value",
                                             "property": "P1642",
-                                            "datavalue": {"type": "quantity", "value": {"amount": "+999", "unit": "1"}},
+                                            "datavalue": {
+                                                "type": "quantity",
+                                                "value": {"amount": "+999", "unit": "1"},
+                                            },
                                         }
                                     ],
                                 },
@@ -693,7 +952,10 @@ class TestWikidataAdapter:
                                         {
                                             "snaktype": "value",
                                             "property": "P1642",
-                                            "datavalue": {"type": "quantity", "value": {"amount": "+500", "unit": "1"}},
+                                            "datavalue": {
+                                                "type": "quantity",
+                                                "value": {"amount": "+500", "unit": "1"},
+                                            },
                                         }
                                     ],
                                 },
@@ -723,9 +985,7 @@ class TestWikidataAdapter:
 
     def test_search_wikidata_success_with_results(self):
         adapter, client = self._make_adapter()
-        search_resp = HttpResponse(200, json.dumps({
-            "search": [{"id": "Q170984"}, {"id": "Q12345"}]
-        }))
+        search_resp = HttpResponse(200, json.dumps({"search": [{"id": "Q170984"}, {"id": "Q12345"}]}))
         client.configure("api.php", search_resp)
 
         search_res = adapter.search_player("Totti")
@@ -738,9 +998,7 @@ class TestWikidataAdapter:
 
     def test_search_wikidata_success_zero_results(self):
         adapter, client = self._make_adapter()
-        search_resp = HttpResponse(200, json.dumps({
-            "search": []
-        }))
+        search_resp = HttpResponse(200, json.dumps({"search": []}))
         client.configure("api.php", search_resp)
 
         search_res = adapter.search_player("NonExistentPlayer12345")
@@ -946,12 +1204,15 @@ class TestCandidateIntegration:
     def test_multiple_failures_increment_retry(self):
         candidate = self._make_candidate()
         for _ in range(3):
-            record_adapter_failure(candidate, AdapterError(
-                error_type=AdapterErrorType.TRANSPORT,
-                message="connection reset",
-                source_name="wikipedia",
-                retryable=True,
-            ))
+            record_adapter_failure(
+                candidate,
+                AdapterError(
+                    error_type=AdapterErrorType.TRANSPORT,
+                    message="connection reset",
+                    source_name="wikipedia",
+                    retryable=True,
+                ),
+            )
 
         assert candidate.retry_count == 3
         assert candidate.can_retry() is False  # max_retries default is 3
@@ -959,12 +1220,15 @@ class TestCandidateIntegration:
 
     def test_non_retryable_error_no_retry_increment(self):
         candidate = self._make_candidate()
-        record_adapter_failure(candidate, AdapterError(
-            error_type=AdapterErrorType.NOT_FOUND,
-            message="not found",
-            source_name="wikipedia",
-            retryable=False,
-        ))
+        record_adapter_failure(
+            candidate,
+            AdapterError(
+                error_type=AdapterErrorType.NOT_FOUND,
+                message="not found",
+                source_name="wikipedia",
+                retryable=False,
+            ),
+        )
 
         # record_error with retryable=False does not increment
         assert candidate.retry_count == 0
@@ -1076,9 +1340,7 @@ class TestEndToEndAdapterFlow:
 
         # Run a full adapter → candidate flow
         client = FakeHttpClient()
-        client.configure("api.php", _wiki_api_response(
-            _load_fixture("wikipedia_wikitext_totti.txt")
-        ))
+        client.configure("api.php", _wiki_api_response(_load_fixture("wikipedia_wikitext_totti.txt")))
         adapter = WikipediaAdapter(http_client=client)
         result = adapter.fetch_player("Totti")
         cid = make_candidate_id("wikipedia", "Totti")
@@ -1086,9 +1348,9 @@ class TestEndToEndAdapterFlow:
         populate_candidate_from_result(candidate, result)
 
         if original_mtime is not None:
-            assert players_path.stat().st_mtime == original_mtime, (
-                "data/players.json was modified during adapter test!"
-            )
+            assert (
+                players_path.stat().st_mtime == original_mtime
+            ), "data/players.json was modified during adapter test!"
 
     def test_no_real_network_calls(self):
         """Verify the FakeHttpClient is used — no real URLs are contacted."""

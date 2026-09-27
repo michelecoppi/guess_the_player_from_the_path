@@ -22,7 +22,7 @@ English. Both are equally authoritative when listed as primary below.
 
 | Topic | Primary document | Covers |
 | --- | --- | --- |
-| Architecture | [architecture.md](architecture.md) | Components, responsibility boundaries, composition root, who reads/writes what, deployment topology summary, roadmap items that change the picture |
+| Architecture | [architecture.md](architecture.md) | Components, responsibility boundaries, composition root, domain map and enforced dependency rules (`tools/architecture.py`), who reads/writes what, deployment topology summary, roadmap items that change the picture |
 | Agent process | [agent-protocol.md](agent-protocol.md) | Never trust stale state, choosing work, work sequence, parallel agents, documentation update policy, decision traceability |
 | GitHub / product workflow | [evolutive-tracking.md](evolutive-tracking.md) | Project #2 fields, status flow, WIP limit, creating/splitting issues, dependency modeling, roadmap index |
 | Git mechanics | [github-workflow.md](github-workflow.md) | Branch naming, commits, `Closes`/`Refs`, review, merge, templates |
@@ -30,10 +30,11 @@ English. Both are equally authoritative when listed as primary below.
 | Player data pipeline | [player-data-pipeline.md](player-data-pipeline.md) | Production dataset invariant, legacy import, Candidate pipeline FSM, approval boundary, SOURCE_WRONG/retry, #13 audit |
 | Provenance | [provenance.md](provenance.md) | Field-level lineage model and public/internal boundary |
 | Difficulty and popularity | [difficolta.md](difficolta.md) | Popularity scale, difficulty formula, checklist before adding players |
+| Event templates | [event-templates.md](event-templates.md) | Template schema v2 (filters, rules, rewards, schedule), event types, validation in CI/Admin/runtime, what is copied onto an event, creating or editing a template |
 | Daily and game modes | [game-modes.md](game-modes.md) | Daily lifecycle, Archive, Training, Arena duels, group rounds, Events, leaderboards/leagues, referral |
 | Player-facing rules and commands | [README](../README.md) | How to play, commands, shop, dataset schema, admin commands |
-| Mini App | [miniapp.md](miniapp.md) | Legacy `/app` vs V2 `/app/v2`, API contract and auth, V2 structure, rollout gate (#81) |
-| Mini App V2 appearance | [miniapp-appearance.md](miniapp-appearance.md) | Structural dark-only contract, token ownership, eight cosmetic slots |
+| Mini App | [miniapp.md](miniapp.md) | The Vite Mini App on `/app`, API contract and auth, frontend structure |
+| Mini App appearance | [miniapp-appearance.md](miniapp-appearance.md) | Structural dark-only contract, token ownership, eight cosmetic slots |
 | Admin | [admin.md](admin.md) | Telegram admin commands vs Streamlit Admin, boundaries, capabilities, open #12 sub-issues |
 | Firestore | [firestore.md](firestore.md) | Collections, what belongs in Firestore, credentials, concurrency, emulator strategy |
 | Deployment | [deploy.md](deploy.md) | Cloud Run, Workload Identity Federation, service env vars, Cloud Scheduler, backup workflow setup, manual deploy/rollback |
@@ -43,9 +44,10 @@ English. Both are equally authoritative when listed as primary below.
 | Security | [security.md](security.md) | Trust boundaries, payments, secrets, automated security checks, known limits |
 | Operations | [operations.md](operations.md) | Scheduled/background work, manual responsibilities, backup and release state |
 | Backup and disaster recovery | [backup-recovery.md](backup-recovery.md) | Collection inventory, backup format v2, validation, guarded restore tool, recovery procedure, recovery points, periodic restore test |
+| Feature flags | [feature-flags.md](feature-flags.md) | `admin_settings/feature_flags` schema, supported keys and defaults, evaluation precedence, rollout bucketing, cache and last-known-good, operator CLI, emergency disable, runtime integration points |
 | Observability | [observability.md](observability.md) | Structured JSON logs, Sentry setup and env vars, component/event vocabulary, correlation ids, redaction policy |
-| Analytics | [operations.md § Analytics](operations.md#analytics) | No product analytics today; planned #29 |
-| Performance | [performance.md](performance.md) | Mini App API latency design, rate limiting, caching, `Server-Timing` |
+| Product analytics | [product-analytics.md](product-analytics.md) | PostHog integration, event taxonomy and semantics, pseudonymous identity, privacy review, server/client split, onboarding/referral/Shop funnels, metric definitions, dashboard reproduction, relationship with observability (#18), Admin Analytics (#39) and Experimentation (#52) |
+| Performance | [performance.md](performance.md) | What is measured (latency, cold start, Firestore reads, Telegram handlers, Mini App startup), production baseline, budgets, `perf-report` baseline/trend tool, optimisation decision log, Mini App API latency design |
 
 ## Historical and review evidence
 

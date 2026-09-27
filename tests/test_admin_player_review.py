@@ -1,5 +1,5 @@
 """Tests for the Admin Review Queue page (#35), the Streamlit glue over #15's
-``services.candidate_review.CandidateReviewService``.
+``domains.players.candidates.review.CandidateReviewService``.
 
 These tests exercise wiring, rendering and the mutation call sites only — the domain
 rules themselves (FSM transitions, validation, provenance conflicts, CAS, backups) are
@@ -20,10 +20,10 @@ from streamlit.testing.v1 import AppTest
 
 import admin_pages.player_review as player_review
 import admin_pages.shared as shared
-from services.adapters.base import AdapterResult
-from services.candidate_player import CandidatePlayer, CandidateState
-from services.candidate_review import AdminIdentity, CandidateReviewService
-from services.repos.candidates import FileCandidatePlayerRepository
+from domains.players.adapters.base import AdapterResult
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.repository import FileCandidatePlayerRepository
+from domains.players.candidates.review import AdminIdentity, CandidateReviewService
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

@@ -1,6 +1,5 @@
 /**
  * Pure gameplay calculation utilities.
- * Exactly matches and types the logic tested in tests/client.test.cjs.
  */
 
 export interface SquareSymbols {

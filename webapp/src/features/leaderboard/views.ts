@@ -1,3 +1,4 @@
+import { renderProfileCosmeticArt } from '@/components/CosmeticArt';
 import { renderStyleInventory } from "@/components/StyleInventory";
 import { v } from "@/i18n/visual";
 import { identityAppearance } from "@/appearance";
@@ -98,7 +99,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
     <section class="public-profile-view" ${profileSurfaceAttributes(p.cosmetics)} aria-label="${escapeHtml(t("leaderboard.publicProfileTitle"))}">
       ${backBtn}
       <div class="card profile-hero mt-3">
-        ${renderAvatar({name:u.name,size:'large',ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
+        ${renderAvatar({name:u.name,size:'large',tactics:cosmetics.frame.tactics,ringMotion:cosmetics.frame.motion,ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
         <div class="hero-info">
           <p class="eyebrow">${escapeHtml(t("leaderboard.publicProfileTitle"))}</p>
           <h2 id="public-profile-heading" tabindex="-1">
@@ -108,6 +109,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
           <p class="muted text-xs">${escapeHtml(tCount("common.trophiesCount", trophiesCount))}</p>
         </div>
       </div>
+      ${renderProfileCosmeticArt(p.cosmetics)}
       <div class="card">
         <h3 class="section-heading">${escapeHtml(t("leaderboard.numbers"))}</h3>
         <div class="stat-grid three-cols">
@@ -128,17 +130,19 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
  * Renders the global ranking tab.
  */
 function renderPlayerSearch(state: LeaderboardState): string {
+  const expanded = state.searchExpanded !== false && (!!state.searchExpanded || !!state.search?.query);
   const search = state.search;
   const result = search?.status === 'loading' ? `<p role="status">${escapeHtml(t('common.loading'))}</p>`
     : search?.status === 'error' ? `<p role="alert">${escapeHtml(v('searchError'))}</p><button class="btn ghost" id="leaderboard-search-retry">${escapeHtml(t('common.retry'))}</button>`
     : search?.status === 'ready' ? (search.results.length ? `<ul class="player-search-results" aria-label="${escapeHtml(v('results'))}">${search.results.map(user => `<li><button type="button" class="player-search-result" data-profile-id="${user.profile_id}"><span>${escapeHtml(user.name)} ${escapeHtml(user.badge || '')}</span><small>${user.points} ${escapeHtml(t('common.points'))}</small>${icon('arrow')}</button></li>`).join('')}</ul>` : `<p role="status">${escapeHtml(v('noPlayers'))}</p>`)
     : '';
-  return `<section class="player-search" aria-label="${escapeHtml(v('findPlayer'))}">
+  return `<div class="player-search-control"><button type="button" class="player-search-toggle" id="leaderboard-search-toggle" aria-expanded="${expanded}" aria-controls="leaderboard-player-search">${icon('search')}${escapeHtml(v('findPlayer'))}${icon('arrow')}</button></div>
+  ${expanded ? `<section class="player-search" id="leaderboard-player-search" aria-label="${escapeHtml(v('findPlayer'))}">
     <label for="leaderboard-search">${escapeHtml(v('findPlayer'))}</label>
     <input id="leaderboard-search" type="text" inputmode="search" autocomplete="off" maxlength="80" placeholder="${escapeHtml(v('searchPlaceholder'))}" value="${escapeHtml(search?.query || '')}" aria-describedby="leaderboard-search-hint">
     <p id="leaderboard-search-hint" class="muted">${escapeHtml(v('searchHint'))}</p>
     <div aria-live="polite">${result}</div>
-  </section>`;
+  </section>` : ''}`;
 }
 
 function renderGlobalTab(state: LeaderboardState): string {

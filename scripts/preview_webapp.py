@@ -2,9 +2,9 @@
 
 Serve a **guardare** i cosmetici prima di venderli. Un tema, una cornice o una figurina si
 giudicano solo addosso a una pagina vera: sulla scheda del negozio sono francobolli, e nel
-JSON sono sei stringhe esadecimali. Qui la pagina e' la stessa che vede un utente
-(`webapp/index.html`), servita dalle stesse funzioni del server vero
-(`services/webapp_api.py`, `services/shop.py`), con l'unica differenza che sotto non c'e'
+JSON sono sei stringhe esadecimali. Qui la pagina e' il bundle Vite vero (`webapp/dist/`,
+`npm run build` per compilarlo), servita dalle stesse funzioni del server vero
+(`services/webapp_api.py`, `domains/shop/service.py`), con l'unica differenza che sotto non c'e'
 Firestore ma un dizionario in memoria.
 
     python scripts/preview_webapp.py        # poi http://localhost:8888/app
@@ -22,17 +22,19 @@ import json
 import os
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ.setdefault("BOT_TOKEN", "preview-bot-token")
 
-from fastapi import Body, FastAPI  # noqa: E402
+from fastapi import Body, FastAPI, HTTPException  # noqa: E402
 from fastapi.responses import HTMLResponse, Response  # noqa: E402
 
-from services import firebase_service, shop, trophies  # noqa: E402
+from domains.shop import service as shop  # noqa: E402
+from services import firebase_service, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number  # noqa: E402
-from services.share import card_image  # noqa: E402
+from services.share import card_image, share_text, share_url  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEBAPP_DIR = os.path.join(ROOT, "webapp")
@@ -53,6 +55,17 @@ def _new_user():
     buyable = [item["id"] for item in shop.all_items()
                if item.get("kind") != "bundle" and not item.get("achievement")
                and not item.get("completes") and not item.get("trophy")]
+    from services import story
+
+    # The first two chapters are cleared so both new episodes can be inspected in the
+    # real Story menu. The third stays playable; rewards are owned for Shop preview.
+    story_progress = {}
+    for chapter in story.chapters()[:2]:
+        session = story._new_session(chapter)
+        session["level"] = len(chapter["levels"])
+        session["stars"] = [True] * len(chapter["levels"])
+        session["finished"] = True
+        story_progress[chapter["id"]] = session
     return {
         "first_name": "Marco",
         "telegram_id": USER_ID,
@@ -66,6 +79,9 @@ def _new_user():
         "best_streak": 31,
         "archive_solved": 63,
         "training_solved": 44,
+        "story_chapters_cleared": len(story_progress),
+        "story_perfect_chapters": len(story_progress),
+        "app_story": story_progress,
         "solved_in": {"1": 41, "2": 68, "3": 45},
         "last_played_day": None,
         "has_guessed_today": False,
@@ -84,7 +100,9 @@ def _new_user():
             "MON_June_2_2025_1",
         ],
         "leagues": ["AMICI"],
-        "cosmetics": {"owned": buyable, "earned": [], "equipped": {}, "looks": []},
+        "cosmetics": {"owned": buyable,
+                      "earned": [item["id"] for item in shop.all_items() if item.get("achievement")],
+                      "equipped": {}, "looks": []},
     }
 
 
@@ -104,7 +122,7 @@ def _challenge():
     return {
         "player_id": player["id"],
         "correct_answers": player.get("aliases") or [player["id"]],
-        "difficulty": "media",
+        "difficulty": "medium",
         "career_path": player["career"],
         "first_correct_user": False,
     }
@@ -116,6 +134,11 @@ LEADERBOARD = [
     {"telegram_id": 22, "username": "Sara", "points": 774},
     {"telegram_id": 23, "username": "Dario", "points": 610},
     {"telegram_id": 24, "username": "Elisa", "points": 588},
+    {"telegram_id": 25, "username": "Luca", "points": 542},
+    {"telegram_id": 26, "username": "Sofia", "points": 497},
+    {"telegram_id": 27, "username": "Matteo", "points": 463},
+    {"telegram_id": 28, "username": "Chiara", "points": 421},
+    {"telegram_id": 29, "username": "Davide", "points": 386},
 ]
 
 
@@ -176,6 +199,10 @@ def _fake_firestore():
     }
     for name, stub in stubs.items():
         setattr(firebase_service, name, stub)
+    # Feature flag (#51): niente documento, quindi i default del repository (tutto acceso),
+    # senza che il servizio provi a leggere Firestore.
+    from services import feature_flags
+    feature_flags.set_service(feature_flags.FeatureFlagService(lambda: None))
 
 
 _fake_firestore()
@@ -192,8 +219,8 @@ def _lang():
 # Il finto Telegram. La pagina si rifiuta di disegnare senza `initData` firmato - ed e'
 # giusto cosi', e' quello che impedisce di chiedere i dati di un altro - quindi in anteprima
 # gliene diamo uno finto insieme alle poche funzioni che chiama davvero. Si inietta qui e non
-# in webapp/index.html: la pagina servita in produzione non deve sapere che esiste
-# un'anteprima, e cosi' quello che si guarda e' il file vero, non una sua variante.
+# nel bundle: la pagina servita in produzione non deve sapere che esiste un'anteprima, e cosi'
+# quello che si guarda e' il file vero, non una sua variante.
 TELEGRAM_SHIM = """<script>
 window.Telegram = { WebApp: {
   initData: "preview",
@@ -213,7 +240,7 @@ window.addEventListener("load", function () {
     setTimeout(function () {
       var inp = document.querySelector("#answer");
       if (inp) {
-        inp.value = mode === "solved" ? "Vitolo" : "Messi";
+        inp.value = mode === "solved" ? "solve" : "Messi";
         inp.dispatchEvent(new Event("input", { bubbles: true }));
         var btn = document.querySelector("#submit");
         if (btn) btn.click();
@@ -225,66 +252,9 @@ window.addEventListener("load", function () {
 
 
 
-@app.get("/", response_class=HTMLResponse)
-@app.get("/app", response_class=HTMLResponse)
-async def page(lang: str | None = None, referrals: int | None = None, scenario: str | None = None):
-    if scenario == "solved":
-        from services.dates import today_iso
-        STATE["user"]["last_played_day"] = today_iso()
-        STATE["user"]["has_guessed_today"] = True
-        STATE["user"]["daily_attempts"] = 2
-    elif scenario == "wrong":
-        from services.dates import today_iso
-        STATE["user"]["last_played_day"] = today_iso()
-        STATE["user"]["has_guessed_today"] = False
-        STATE["user"]["daily_attempts"] = 1
-    elif scenario == "reset":
-        STATE["user"]["last_played_day"] = None
-        STATE["user"]["has_guessed_today"] = False
-        STATE["user"]["daily_attempts"] = 0
-    if lang in ("it", "en", "es"):
-        STATE["user"]["language"] = lang
-    if referrals is not None:
-        STATE["user"]["referral_qualified"] = max(0, min(referrals, 10))
-    with open(os.path.join(WEBAPP_DIR, "index.html"), encoding="utf-8") as f:
-        html = f.read()
-    shim = TELEGRAM_SHIM % (USER_ID, _lang())
-    return HTMLResponse(html.replace("<body>", "<body>" + shim, 1))
-
-
 def _page(name):
     with open(os.path.join(WEBAPP_DIR, name), encoding="utf-8") as f:
         return HTMLResponse(f.read())
-
-
-def _script(name):
-    with open(os.path.join(WEBAPP_DIR, name), encoding="utf-8") as f:
-        return Response(f.read(), media_type="text/javascript")
-
-
-@app.get("/app/client.js")
-async def client_logic():
-    """La stessa rotta del server vero (bot.py): senza, la pagina si carica a meta' perche'
-    `index.html` cerca qui le funzioni pure che usa gia' nella prima riga di script."""
-    return _script("client.js")
-
-
-@app.get("/app/strings.js")
-async def client_strings():
-    """Come sopra per le stringhe nelle tre lingue: senza, `L` resta indefinita e la
-    pagina non disegna niente."""
-    return _script("strings.js")
-
-
-@app.get("/app/arena.js")
-async def client_arena():
-    return _script("arena.js")
-
-
-@app.get("/app/arena.css")
-async def client_arena_css():
-    with open(os.path.join(WEBAPP_DIR, "arena.css"), encoding="utf-8") as f:
-        return Response(f.read(), media_type="text/css")
 
 
 @app.get("/privacy", response_class=HTMLResponse)
@@ -306,8 +276,9 @@ async def legal_css():
 DIST_DIR = os.path.join(WEBAPP_DIR, "dist")
 
 
-@app.get("/app/v2", response_class=HTMLResponse)
-async def webapp_v2_page(lang: str | None = None, scenario: str | None = None):
+@app.get("/", response_class=HTMLResponse)
+@app.get("/app", response_class=HTMLResponse)
+async def webapp_page(lang: str | None = None, referrals: int | None = None, scenario: str | None = None):
     if scenario == "solved":
         from services.dates import today_iso
         STATE["user"]["last_played_day"] = today_iso()
@@ -322,12 +293,21 @@ async def webapp_v2_page(lang: str | None = None, scenario: str | None = None):
         STATE["user"]["last_played_day"] = None
         STATE["user"]["has_guessed_today"] = False
         STATE["user"]["daily_attempts"] = 0
+    elif scenario == "shop-newcomer":
+        # Let reviewers see real prices and try-on on an account without purchases.
+        STATE["user"]["cosmetics"]["owned"] = [
+            item["id"] for item in shop.all_items() if item.get("free")
+        ]
+        STATE["user"]["cosmetics"]["equipped"] = {}
+        STATE["user"]["cosmetics"]["looks"] = []
     if lang in ("it", "en", "es"):
         STATE["user"]["language"] = lang
+    if referrals is not None:
+        STATE["user"]["referral_qualified"] = max(0, min(referrals, 10))
     dist_index = os.path.join(DIST_DIR, "index.html")
     if not os.path.exists(dist_index):
         return HTMLResponse(
-            "<h2>Mini App V2 non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
+            "<h2>Mini App non compilata</h2><p>Esegui <code>npm run build</code> per compilare il bundle Vite.</p>",
             status_code=503,
         )
     with open(dist_index, encoding="utf-8") as f:
@@ -338,8 +318,8 @@ async def webapp_v2_page(lang: str | None = None, scenario: str | None = None):
     return HTMLResponse(html + shim)
 
 
-@app.get("/app/v2/assets/{file_path:path}")
-async def webapp_v2_assets(file_path: str):
+@app.get("/app/assets/{file_path:path}")
+async def webapp_assets(file_path: str):
     base_assets = Path(DIST_DIR).resolve() / "assets"
     try:
         target = (base_assets / file_path).resolve()
@@ -365,19 +345,9 @@ async def me(payload: dict = Body(default={})):
     return build_profile(USER_ID, lang=_lang())
 
 
-@app.get("/app/referrals.js")
-def referrals_script():
-    return _script("referrals.js")
-
-
-@app.get("/app/referrals.css")
-def referrals_style():
-    return Response(open(os.path.join(WEBAPP_DIR, "referrals.css"), encoding="utf-8").read(), media_type="text/css")
-
-
 @app.post("/app/api/referrals")
 def referrals_preview():
-    from services.referrals import REWARDS
+    from domains.referrals.service import REWARDS
     user = firebase_service.get_user_data(USER_ID)
     names = ["Giulia", "Sara", "Dario", "Elisa", "Paolo", "Davide", "Sofia", "Matteo", "Chiara", "Nico"]
     return {"qualified": user.get("referral_qualified", 0), "required_days": 5,
@@ -476,28 +446,34 @@ async def league(payload: dict = Body(default={})):
     return {"status": "ok", "leagues": build_profile(USER_ID, lang=_lang())["leagues"]}
 
 
+PREVIEW_INVITE = "https://t.me/preview_bot?start=ref_424242_0123456789abcdef0123"
+
+
 @app.post("/app/api/guess")
 async def preview_guess(payload: dict = Body(default={})):
     answer = (payload.get("answer") or payload.get("guess") or "").strip()
     if not answer:
         return {"status": "error", "reason": "empty_guess"}
 
-    if answer.lower() in ("vitolo", "correct", "solve"):
+    aliases = _challenge()["correct_answers"]
+    if answer.lower() in {str(name).lower() for name in aliases} | {"correct", "solve"}:
+        from services.dates import today_iso
+        STATE["user"]["last_played_day"] = today_iso()
         STATE["user"]["has_guessed_today"] = True
         STATE["user"]["daily_attempts"] = 2
         return {
             "status": "correct",
             "attempts_used": 2,
             "attempts_left": 3,
-            "points": 100,
+            "points_awarded": 4,
             "streak": 10,
             "best_streak": 31,
             "squares": "🟥🟩⬜⬜⬜",
-            "player_name": "Vitolo",
-            "share": {
-                "text": "Guess the Player #462 2/5\n🟥🟩⬜⬜⬜",
-                "url": "https://t.me/share/url?url=https%3A%2F%2Ft.me%2Fpreview_bot",
-            },
+            "answer": firebase_service.get_display_name_for_day(today_iso()),
+            # Lo stesso testo della produzione, con un link invito finto (#150).
+            "share": {"text": share_text(_lang(), 462, 2, MAX_ATTEMPTS, streak=10, link=PREVIEW_INVITE),
+                      "url": share_url(share_text(_lang(), 462, 2, MAX_ATTEMPTS, streak=10, link=PREVIEW_INVITE),
+                                       PREVIEW_INVITE)},
         }
 
     STATE["user"]["daily_attempts"] = 1
@@ -528,6 +504,55 @@ async def preview_hint(payload: dict = Body(default={})):
 
 
 
+def _fake_story_firestore():
+    """Modalita' Storia usa transazioni Firestore vere (services/story.py::_run), non i
+    semplici stub sopra: si dà allo stesso modo dei test (tests/test_story_flow.py), cosi'
+    la logica che gira qui e' quella vera e non una sua imitazione."""
+    from firebase_admin import firestore as firestore_module
+
+    from services import story
+
+    class MemoryRef:
+        def get(self, transaction=None):
+            return SimpleNamespace(exists=True, to_dict=lambda: STATE["user"])
+
+    class MemoryTransaction:
+        def set(self, ref, data, merge=False):
+            STATE["user"] = data
+
+    story.fs.user_ref = lambda uid: MemoryRef()
+    story.fs.db = SimpleNamespace(transaction=lambda: MemoryTransaction())
+    firestore_module.transactional = lambda fn: fn
+
+
+_fake_story_firestore()
+
+
+@app.post("/app/api/arena")
+async def preview_arena(payload: dict = Body(default={})):
+    from services import story
+
+    mode, action = payload.get("mode"), payload.get("action", "get")
+    if mode != "story":
+        from scripts.preview_arena import create_handler
+
+        if not hasattr(app.state, "arena_preview"):
+            app.state.arena_preview = create_handler(_lang)
+        if app.state.arena_preview is None:
+            raise HTTPException(status_code=409, detail="unavailable")
+        return app.state.arena_preview(payload)
+    try:
+        if action == "list":
+            return story.list_chapters(USER_ID, _lang())
+        chapter_id = payload.get("chapter_id")
+        if not chapter_id:
+            raise story.StoryError("invalid")
+        return story.chapter(USER_ID, chapter_id, action, payload.get("answer"),
+                              payload.get("revision"), _lang())
+    except story.StoryError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+
+
 @app.post("/app/api/preview/reset")
 async def reset(payload: dict = Body(default={})):
     STATE["user"] = _new_user()
@@ -548,10 +573,6 @@ async def wear(payload: dict = Body(default={})):
 
 def main():
     import uvicorn
-
-    from scripts.preview_arena import install
-
-    install(app, STATE, _lang)
 
     catalogue = len(shop.all_items())
     print(f"Anteprima mini app su http://localhost:{PORT}/app")

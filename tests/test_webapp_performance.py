@@ -8,6 +8,9 @@ import httpx
 import pytest
 
 import config
+from apps.api import miniapp
+from domains.shop import service as shop
+from services import firebase_service
 
 
 @pytest.fixture
@@ -28,8 +31,8 @@ def test_slow_firestore_read_does_not_block_other_requests(server, monkeypatch):
         assert release.wait(3), "Database read blocked the event loop"
         return 42, {"first_name": "Anna"}
 
-    monkeypatch.setattr(server, "_webapp_user", slow_user)
-    monkeypatch.setattr(server.shop, "catalogue_for", lambda *args: {"sections": []})
+    monkeypatch.setattr(miniapp, "_webapp_user", slow_user)
+    monkeypatch.setattr(shop, "catalogue_for", lambda *args: {"sections": []})
 
     async def exercise():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as client:
@@ -55,9 +58,9 @@ def test_profile_route_reads_user_only_once(server, monkeypatch):
         reads.append(uid)
         return {"first_name": "Anna"}
 
-    monkeypatch.setattr(server, "user_id_from_init_data", lambda *args: 42)
-    monkeypatch.setattr(server.firebase_service, "get_user_data", read_user)
-    monkeypatch.setattr(server.firebase_service, "get_daily_path", lambda *args: None)
+    monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
+    monkeypatch.setattr(firebase_service, "get_user_data", read_user)
+    monkeypatch.setattr(firebase_service, "get_daily_path", lambda *args: None)
 
     async def exercise():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as client:
@@ -70,23 +73,18 @@ def test_profile_route_reads_user_only_once(server, monkeypatch):
     assert reads == [42]
 
 
-def test_arena_routes_require_authentication_and_serve_assets(server):
+def test_arena_routes_require_authentication(server):
     async def exercise():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as client:
             for mode in ("training", "duel", "events"):
                 response = await client.post("/app/api/arena", json={"mode": mode, "user_id": 42})
                 assert response.status_code == 401
-            for asset in ("arena.js", "arena.css"):
-                response = await client.get(f"/app/{asset}")
-                assert response.status_code == 200
-                cached = await client.get(f"/app/{asset}", headers={"If-None-Match": response.headers["etag"]})
-                assert cached.status_code == 304
     asyncio.run(exercise())
 
 
 def test_arena_route_uses_signed_identity_language_and_structured_errors(server, monkeypatch):
     from services import arena
-    monkeypatch.setattr(server, "_webapp_user", lambda payload, cost: (42, {"language": "es"}))
+    monkeypatch.setattr(miniapp, "_webapp_user", lambda payload, cost: (42, {"language": "es"}))
     calls = []
 
     def train(uid, action, answer, revision, lang):

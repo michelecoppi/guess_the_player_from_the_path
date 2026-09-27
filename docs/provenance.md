@@ -19,7 +19,7 @@ The **Player-Data Provenance** system (#27) provides field-level lineage for eve
 
 ## 2. Provenance Domain Schema
 
-The provenance model is implemented in `services/candidate_provenance.py` and serialized inside `CandidatePlayer.provenance`.
+The provenance model is implemented in `domains/players/candidates/provenance.py` and serialized inside `CandidatePlayer.provenance`.
 
 ```text
 CandidatePlayer
@@ -134,7 +134,7 @@ When merging data from both Wikipedia and Wikidata:
 
 ### Consumption by #15 Review Queue
 
-The Review Queue (#15, surfaced in the Admin by #35; see [player-data-pipeline.md](player-data-pipeline.md)) consumes provenance along these lines (`services/candidate_review.py` is authoritative):
+The Review Queue (#15, surfaced in the Admin by #35; see [player-data-pipeline.md](player-data-pipeline.md)) consumes provenance along these lines (`domains/players/candidates/review.py` is authoritative):
 1. `candidate.provenance.has_conflicts()` to identify candidate profiles requiring conflict resolution.
 2. `field_provenance.observations` to display side-by-side source comparisons to the reviewer (e.g., "Wikipedia says X, Wikidata says Y").
 3. `candidate.provenance.get_provenance_for_path(finding.field_path)` to immediately display which source generated a problematic or missing value when inspecting validation findings.

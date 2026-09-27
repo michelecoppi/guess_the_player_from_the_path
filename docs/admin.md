@@ -21,7 +21,7 @@ which reach production only through a PR and deploy.
   `services/content_admin.py` (challenge/event rules, e.g. today's challenge cannot be
   deleted, a running event is deactivated rather than deleted, moving an event moves
   its contents and trophy day), `services/dataset_editor.py` (validated dataset edits
-  with backups), `services/candidate_review.py` (Review Queue), plus the same
+  with backups), `domains/players/candidates/review.py` (Review Queue), plus the same
   generators, `firebase_service` and `manual_event_service` used by the bot.
 - New Admin features must add or reuse a service function and test it there; the
   Streamlit page should only collect input, confirm, call the service and render the
@@ -37,11 +37,12 @@ which reach production only through a PR and deploy.
 | Page | Shows | Can change |
 | --- | --- | --- |
 | 📊 Stato generale (`overview.py`) | Today's challenge with solution, buffer coverage, current event, dataset health, users | Generate missing challenges/events |
+| 🗓️ Planner sfide (`planner.py`) | Proposed 7–90-day calendar with actions, bands, relaxed rules, per-day candidate funnel, planner exclusions | Another player for a day (preview), exclude/readmit players, lock/unlock future days, apply the plan ([game-modes.md](game-modes.md#daily-planner)) |
 | 📅 Sfide giornaliere (`challenges.py`) | Every day in a window including gaps, solution, difficulty, career, origin, bonus state, image preview | Replace player, regenerate, accepted answers, difficulty, bonus, delete, schedule on a date |
-| 🎊 Eventi (`events.py`) | Status, per-day content, missing days, participants ranking | Activate/deactivate, move dates, answers, bonus, delete, create manual event |
+| 🎊 Eventi (`events.py`) | Status, per-day content (for `link_club` the player pair, for `order_career` the correct club order), missing days, participants ranking; event templates with validity, schedule and candidates | Activate/deactivate, move dates, answers, bonus, delete, create manual event; create/edit a template as JSON with validation, preview and backup ([event-templates.md](event-templates.md)) |
 | 👤 Utenti (`users.py`) | Leaderboards, search, full user sheet | Points, streak, language, notifications, reset today's attempts |
 | 🏆 Leghe (`leagues.py`) | Leagues, members, rankings | — |
-| 📚 Dataset (`dataset.py`) | Health, full player list with difficulty breakdown, single player, tuning | Popularity, verified, practice-only, career-stop league, difficulty weights (with preview of band changes) |
+| 📚 Dataset (`dataset.py`) | Health, full player list with difficulty breakdown, single player (0-100 score), tuning, predicted vs observed difficulty per closed Daily ([difficolta.md §6](difficolta.md)) | Popularity, verified, practice-only, career-stop league, difficulty weights (with preview of band changes) |
 | 🔎 Review giocatori (`player_review.py`) | Candidate queue with filters, validation findings, provenance/conflicts, duplicates, history | Edit, approve, reject, merge, mark source wrong, retry ingestion (see [player-data-pipeline.md](player-data-pipeline.md)) |
 | 🚫 Giocatori sospesi (`blocked.py`) | Blocked players | Block / unblock |
 | 👨‍👦 Coppie padre/figlio (`father_son.py`) | Saved pairs and their use | Delete (photos are added via the bot) |
