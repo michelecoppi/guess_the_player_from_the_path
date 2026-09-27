@@ -67,9 +67,11 @@ def _number(value: Any, *, integral: bool) -> float | int:
 
 
 def _rows(rows: list[list[Any]], metric: str) -> list[dict[str, Any]]:
-    output = {variant: {"variant": variant, "sample": 0, "numerator": 0,
-                        "denominator": 0, "value": None, "state": "empty"}
-              for variant in ("control", "treatment")}
+    output: dict[str, dict[str, Any]] = {
+        variant: {"variant": variant, "sample": 0, "numerator": 0,
+                  "denominator": 0, "value": None, "state": "empty"}
+        for variant in ("control", "treatment")
+    }
     seen = set()
     for row in rows:
         if len(row) != 4 or row[0] not in output or row[0] in seen:
