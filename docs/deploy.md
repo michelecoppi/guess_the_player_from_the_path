@@ -146,6 +146,24 @@ gcloud run deploy guess-the-player \
 | `FIREBASE_CREDENTIALS_PATH` | `firebase-key.json`, montato come secret di Secret Manager |
 | `PUBLIC_BASE_URL` | Base pubblica del servizio **senza barra finale**, es. `https://guess-the-player-595902172561.europe-west1.run.app`. **Obbligatoria** e in HTTPS: il servizio non parte senza (serve alla consegna dei task Cloud Tasks) ed è la base della mini app (`/app`) |
 | `BOT_USERNAME` | Username del bot **senza @**, es. `guess_the_player_bot`. Facoltativa: serve ai link di condivisione del risultato e agli inviti alle leghe; se manca, quei bottoni non compaiono |
+| `SHARE_STORAGE_CHAT_ID` | Facoltativa (#185). Id numerico della chat privata di appoggio in cui il bot carica le figurine da condividere con `shareMessage` (per un canale inizia con `-100`). Se manca, la mini app usa la condivisione classica. Vedi sotto |
+
+### Chat di appoggio per la condivisione nativa (#185)
+
+`WebApp.shareMessage` accetta solo messaggi preparati dal bot, e la foto deve essere un
+`file_id` gia' caricato: un URL pubblico della figurina esporrebbe il nome di chi l'ha fatta.
+Configurazione una tantum:
+
+1. crea un **canale privato** (es. "GTP share storage"); nessun membro oltre agli admin;
+2. aggiungi il bot come **amministratore** con il permesso di pubblicare messaggi;
+3. ricava l'id del canale (inizia con `-100`, ad esempio inoltrando un post del canale a un
+   bot come @userinfobot o leggendo `chat.id` dai log) e impostalo su Cloud Run:
+   `gcloud run services update guess-the-player --region europe-west1 --update-env-vars SHARE_STORAGE_CHAT_ID=-100…`.
+
+Il canale accumula le figurine condivise (nome e risultato del giocatore): chi ne e'
+amministratore le vede, quindi limita gli admin a chi gestisce il bot. Telegram limita i
+messaggi che un bot pubblica nella stessa chat al minuto: oltre il limite l'API risponde 503
+`share_unavailable` con `Retry-After` e la pagina usa la condivisione classica.
 
 Se cambia l'URL del servizio (es. nuova region o nuovo nome), vanno aggiornati `WEBHOOK_URL` e
 `PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`apps/bot/application.py`,

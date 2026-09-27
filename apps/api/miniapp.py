@@ -9,8 +9,10 @@ import logging
 from fastapi import APIRouter, Body, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from telegram import LabeledPrice
+from telegram.error import RetryAfter, TelegramError
 
 import config
+from apps.api import share_message
 from apps.api.bridge import telegram
 from domains.shop import service as shop
 from services import (
@@ -21,16 +23,14 @@ from services import (
     observability,
     performance,
     trophies,
+    webapp_api,
 )
 from services import leagues as league_rules
 from services import product_analytics as analytics
-from services.daily_challenge import MAX_ATTEMPTS, challenge_number
 from services.dates import is_iso, today_iso
 from services.feature_flags import FeatureDisabled, Flag
-from services.hints import MAX_HINTS
 from services.i18n import DEFAULT_LANGUAGE
 from services.rate_limit import TokenBucket
-from services.share import card_image
 from services.webapp_api import (
     build_archive_challenge,
     build_calendar,
@@ -465,26 +465,64 @@ def webapp_result_card(payload: dict = Body(default={})):
     day = today_iso()
     if "day" in payload and payload["day"] != day:
         raise HTTPException(status_code=409, detail="daily_changed")
-    history = firebase_service.get_daily_history(user_id, limit=1)
-    result = history[0] if history and history[0].get("day") == day else None
-    if not result:
-        raise HTTPException(status_code=409, detail="partita non conclusa")
-    attempts = result.get("attempts")
-    hints = result.get("hints")
-    if type(attempts) is not int or not 1 <= attempts <= MAX_ATTEMPTS:
-        raise HTTPException(status_code=422, detail="tentativi non validi")
-    if type(hints) is not int or not 0 <= hints <= MAX_HINTS:
-        raise HTTPException(status_code=422, detail="indizi non validi")
-    solved = result.get("solved") is True
-    pinned = trophies.showcase(user_data, lang)
-    buffer = card_image(
-        user_data, lang, challenge_number(day), attempts, MAX_ATTEMPTS,
-        solved=solved,
-        streak=int(user_data.get("current_streak") or 0) if solved else 0,
-        hints=hints,
-        honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
-    )
-    return {"image": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}
+    try:
+        result = webapp_api.todays_result(user_id, today=day)
+    except webapp_api.ResultUnavailable as e:
+        raise HTTPException(status_code=e.status, detail=e.detail) from None
+    png = webapp_api.result_card_png(user_data, lang, result)
+    return {"image": "data:image/png;base64," + base64.b64encode(png).decode()}
+
+
+@router.post("/app/api/share/prepare")
+async def webapp_prepare_share(request: Request, payload: dict = Body(default={})):
+    """Prepara il messaggio per `WebApp.shareMessage` (#185): la figurina di oggi, il testo
+    della card e il link invito, tutto dal risultato salvato. La pagina riceve solo un id.
+
+    503 `share_unavailable` se non c'e' la chat di appoggio o Telegram chiede di rallentare:
+    la pagina ripiega sulla condivisione classica, che funziona sempre."""
+    user_id, user_data = await run_in_threadpool(_webapp_user, payload, 10)
+    if not config.SHARE_STORAGE_CHAT_ID:
+        raise HTTPException(status_code=503, detail="share_unavailable")
+    day = today_iso()
+    if "day" in payload and payload["day"] != day:
+        raise HTTPException(status_code=409, detail="daily_changed")
+    lang = _webapp_language(user_data)
+    try:
+        result = await run_in_threadpool(webapp_api.todays_result, user_id, day)
+    except webapp_api.ResultUnavailable as e:
+        raise HTTPException(status_code=e.status, detail=e.detail) from None
+    share = await run_in_threadpool(webapp_api.result_share, user_id, user_data, lang, result)
+    bot = telegram(request).application.bot
+    try:
+        prepared = await share_message.prepare(bot, user_id, config.SHARE_STORAGE_CHAT_ID, share, lang)
+    except RetryAfter as e:
+        retry = int(e.retry_after.total_seconds()) if hasattr(e.retry_after, "total_seconds") else int(e.retry_after)
+        observability.log_event("share.prepare.throttled", logging.WARNING, retry_after=retry)
+        raise HTTPException(status_code=503, detail="share_unavailable",
+                            headers={"Retry-After": str(max(retry, 1))}) from None
+    except TelegramError as e:
+        observability.log_event("share.prepare.failed", logging.ERROR, exc_info=e)
+        raise HTTPException(status_code=503, detail="share_unavailable") from None
+    observability.log_event("share.prepared", cached=prepared["cached"])
+    return {"id": prepared["id"], "expires_at": prepared["expires_at"]}
+
+
+@router.post("/app/api/share/sent")
+def webapp_share_sent(payload: dict = Body(default={})):
+    """Telegram ha confermato l'invio (callback di `shareMessage`): solo un evento analytics.
+
+    Non legge Firestore. Un client puo' dichiarare un invio che non c'e' stato, ma al massimo
+    gonfia un conteggio: nessun premio dipende da questo."""
+    try:
+        user_id = user_id_from_init_data(payload.get("initData", ""), config.BOT_TOKEN)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from None
+    wait = api_limiter.retry_after(user_id, 1)
+    if wait:
+        raise HTTPException(status_code=429, detail="Troppe richieste", headers={"Retry-After": str(wait)})
+    analytics.capture(analytics.Event.RESULT_SHARED, user_id=user_id,
+                      properties={"surface": "miniapp", "method": "share_message"})
+    return {"status": "ok"}
 
 
 @router.post("/app/api/trophies/pin")

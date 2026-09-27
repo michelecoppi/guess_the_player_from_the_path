@@ -364,3 +364,17 @@ def test_user_salt_is_optional_and_weak_values_warn_without_being_printed(temp_p
         report = json.dumps([r.to_dict() for r in validator.results])
         assert "short-salt" not in report and strong not in report
         assert not validator.has_failures
+
+
+@pytest.mark.parametrize("value, expected", [
+    ("", CheckStatus.INFO),
+    ("@my_storage_channel", CheckStatus.WARN),
+    ("-1001234567890", CheckStatus.PASS),
+])
+def test_share_storage_chat_is_optional_and_numeric(temp_project, monkeypatch, value, expected):
+    """#185: without it the Mini App keeps the classic share link; never a failure."""
+    monkeypatch.setenv("SHARE_STORAGE_CHAT_ID", value)
+    validator = EnvironmentValidator(project_root=temp_project, mode="dev")
+    validator.check_telegram_configuration()
+    statuses = {r.name: r.status for r in validator.results}
+    assert statuses["SHARE_STORAGE_CHAT_ID"] == expected

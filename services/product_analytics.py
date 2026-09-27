@@ -101,6 +101,8 @@ class Event(str, Enum):
     LEAGUE_JOINED = "league_joined"
     GROUP_ROUND_STARTED = "group_round_started"
     NOTIFICATIONS_CHANGED = "notifications_changed"
+    # Sharing (#185)
+    RESULT_SHARED = "result_shared"
     # Referral
     REFERRAL_OPENED = "referral_opened"
     REFERRAL_CONVERTED = "referral_converted"
@@ -237,6 +239,9 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     # The band the Daily was played at (`daily_path.difficulty`, the one that sets the points),
     # i.e. the stable band concept defined by #21 in services/difficulty.py.
     "difficulty_band": _enum(*DIFFICULTY_ORDER),
+    # How a result was shared. Only `share_message` is confirmed by Telegram (the callback
+    # of WebApp.shareMessage says it was sent); the classic share link has no confirmation.
+    "method": _enum("share_message"),
 }
 
 # Exactly which of the properties above a given event may carry. An event not listed here
@@ -275,6 +280,7 @@ EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
     Event.LEAGUE_JOINED: frozenset({"surface"}),
     Event.GROUP_ROUND_STARTED: frozenset(),
     Event.NOTIFICATIONS_CHANGED: frozenset({"enabled"}),
+    Event.RESULT_SHARED: frozenset({"surface", "method"}),
     Event.REFERRAL_OPENED: frozenset({"referral_attached"}),
     Event.REFERRAL_CONVERTED: frozenset({"qualified_days"}),
     Event.REFERRAL_REWARD_GRANTED: frozenset({"reward_item_count"}),

@@ -48,7 +48,7 @@ def test_card_uses_saved_result_and_rejects_client_claims(monkeypatch):
         captured["attempts"] = args[3]
         return BytesIO(b"image")
 
-    monkeypatch.setattr(miniapp, "card_image", render)
+    monkeypatch.setattr(miniapp.webapp_api, "card_image", render)
     assert api.post("/app/api/card", json={"solved": False, "attempts": 5}).status_code == 200
     assert api.post("/app/api/card", json={"attempts": "oops"}).status_code == 422
     response = api.post("/app/api/card", json={})

@@ -32,6 +32,24 @@ name resolved on the server after a confirmed correct result (#126). It is not
 included in the active challenge or unsuccessful in-progress guesses. Shared text
 and cards remain spoiler-free. Points continue to come from `points_awarded`.
 
+**Native share (#185).** On Bot API 8.0+ clients the Daily "Share" button uses
+`WebApp.shareMessage`, which only takes the id of a message the bot prepared:
+
+1. when the game ends, the page calls `POST /app/api/share/prepare` (rate cost 10);
+2. the server rebuilds the result from the saved history (`webapp_api.todays_result`,
+   never from the page), renders the figurina and the chat card text with the sharer's
+   invite link, uploads the image once to the private storage chat
+   `SHARE_STORAGE_CHAT_ID` (`file_id` cached per process by image hash) and calls
+   `savePreparedInlineMessage` (photo + caption + "Play too" link button; user, group and
+   channel chats) - see [`apps/api/share_message.py`](../apps/api/share_message.py);
+3. the tap calls `shareMessage(id)` synchronously; when Telegram confirms the send the page
+   reports `POST /app/api/share/sent` (analytics `result_shared`).
+
+Without a prepared, unexpired message (no storage chat configured → 503
+`share_unavailable`, Telegram throttling, older client, new look equipped) the button
+keeps the classic `t.me/share/url` link; the copy button is unchanged. A public URL of
+the card is deliberately never created: the card shows the player's name.
+
 **Current state.**
 
 - Every Mini App API call is a `POST` with a JSON body containing `initData` from

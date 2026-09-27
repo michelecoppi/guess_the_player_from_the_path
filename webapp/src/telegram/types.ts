@@ -93,6 +93,8 @@ export interface TelegramWebApp {
   openLink(url: string, options?: { try_instant_view?: boolean }): void;
   openInvoice(url: string, callback?: (status: string) => void): void;
   switchInlineQuery(query: string, choose_chat_types?: string[]): void;
+  /** Bot API 8.0+: shares a message the bot prepared (savePreparedInlineMessage). */
+  shareMessage?(msgId: string, callback?: (sent: boolean) => void): void;
 }
 
 declare global {

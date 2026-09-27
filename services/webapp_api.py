@@ -25,7 +25,7 @@ from services.feature_flags import Flag
 from services.hints import MAX_HINTS, build_hints
 from services.i18n import DEFAULT_LANGUAGE, difficulty_label
 from services.player_pool import get_player_by_id
-from services.share import share_text, share_url
+from services.share import card_image, share_text, share_url
 
 MAX_LEAGUES_SHOWN = 5
 LEADERBOARD_SIZE = 10
@@ -389,3 +389,69 @@ def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols
     )
     result["share"] = {"text": text, "url": share_url(text, link)}
     return result
+
+
+# ---------------------------------------------------------------------------
+# Today's result card: the figurina (`/app/api/card`) and the native share (#185)
+# ---------------------------------------------------------------------------
+
+
+class ResultUnavailable(Exception):
+    """Today's result cannot be shown: `status` is the HTTP status, `detail` the reason."""
+
+    def __init__(self, status, detail):
+        super().__init__(detail)
+        self.status = status
+        self.detail = detail
+
+
+def todays_result(user_id, today=None):
+    """Today's Daily result as the **server** recorded it, never as a page declares it.
+
+    Returns {day, attempts, hints, solved}; raises ResultUnavailable when the game is not
+    finished (409) or the stored numbers are out of range (422)."""
+    day = today or today_iso()
+    history = firebase_service.get_daily_history(user_id, limit=1)
+    result = history[0] if history and history[0].get("day") == day else None
+    if not result:
+        raise ResultUnavailable(409, "partita non conclusa")
+    attempts = result.get("attempts")
+    hints = result.get("hints")
+    if type(attempts) is not int or not 1 <= attempts <= MAX_ATTEMPTS:
+        raise ResultUnavailable(422, "tentativi non validi")
+    if type(hints) is not int or not 0 <= hints <= MAX_HINTS:
+        raise ResultUnavailable(422, "indizi non validi")
+    return {"day": day, "attempts": attempts, "hints": hints, "solved": result.get("solved") is True}
+
+
+def result_card_png(user_data, lang, result):
+    """The figurina of `todays_result`, as PNG bytes."""
+    solved = result["solved"]
+    pinned = trophies.showcase(user_data, lang)
+    buffer = card_image(
+        user_data, lang, challenge_number(result["day"]), result["attempts"], MAX_ATTEMPTS,
+        solved=solved,
+        streak=int(user_data.get("current_streak") or 0) if solved else 0,
+        hints=result["hints"],
+        honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
+    )
+    return buffer.getvalue()
+
+
+def result_share(user_id, user_data, lang, result):
+    """What the native share sends: the same text as the chat card, the figurina and the
+    sharer's invite link (#150), all derived from `todays_result`."""
+    link = referrals.invite_link(user_id)
+    solved = result["solved"]
+    text = share_text(
+        lang,
+        challenge_number(result["day"]),
+        result["attempts"],
+        MAX_ATTEMPTS,
+        solved=solved,
+        streak=int(user_data.get("current_streak") or 0) if solved else 0,
+        hints=result["hints"],
+        symbols=shop.squares_symbols(user_data),
+        link=link,
+    )
+    return {"text": text, "image": result_card_png(user_data, lang, result), "link": link}

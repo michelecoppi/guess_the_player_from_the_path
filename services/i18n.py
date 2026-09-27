@@ -339,6 +339,7 @@ TRANSLATIONS = {
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
         "share.cta": "Riesci a fare meglio? 👉 {link}",
+        "share.play_button": "⚽ Gioca anche tu",
         "share.archive_title": "🗄 Guess the Player #{number} (archivio)",
 
         "feedback.header": "🔎 Rispetto a {name}:",
@@ -769,6 +770,7 @@ TRANSLATIONS = {
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
         "share.cta": "¿Puedes hacerlo mejor? 👉 {link}",
+        "share.play_button": "⚽ Juega tú también",
         "share.archive_title": "🗄 Guess the Player #{number} (archivo)",
 
         "feedback.header": "🔎 Comparado con {name}:",
@@ -1199,6 +1201,7 @@ TRANSLATIONS = {
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
         "share.cta": "Can you do better? 👉 {link}",
+        "share.play_button": "⚽ Play too",
         "share.archive_title": "🗄 Guess the Player #{number} (archive)",
 
         "feedback.header": "🔎 Compared with {name}:",

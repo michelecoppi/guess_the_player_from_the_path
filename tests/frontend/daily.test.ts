@@ -490,7 +490,7 @@ test("DailyPage: DOM event wiring triggers controller guess, enter key, hint, an
       hintRequested = true;
     },
     loadResultCard: async () => {},
-    openShareUrl: () => {
+    shareResult: () => {
       shareOpened = true;
     },
     retry: () => {},

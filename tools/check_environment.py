@@ -350,6 +350,33 @@ class EnvironmentValidator:
                 remediation="Se desideri usare i comandi admin su Telegram, aggiungi il tuo ID Telegram a ADMIN_TELEGRAM_IDS nel .env.",
             )
 
+        share_storage = os.getenv("SHARE_STORAGE_CHAT_ID", "").strip()
+        if not share_storage:
+            self.add_result(
+                category="Telegram",
+                name="SHARE_STORAGE_CHAT_ID",
+                status=CheckStatus.INFO,
+                message="SHARE_STORAGE_CHAT_ID non impostato: la mini app condivide il risultato con il link classico, senza shareMessage.",
+                remediation="Per la condivisione nativa con la figurina crea un canale privato, aggiungi il bot come "
+                            "amministratore con il permesso di pubblicare e imposta l'id del canale "
+                            "(es. SHARE_STORAGE_CHAT_ID=-1001234567890). Vedi docs/miniapp.md.",
+            )
+        elif not share_storage.lstrip("-").isdigit():
+            self.add_result(
+                category="Telegram",
+                name="SHARE_STORAGE_CHAT_ID",
+                status=CheckStatus.WARN,
+                message="SHARE_STORAGE_CHAT_ID non e' un id numerico di chat: la condivisione nativa resta disattivata.",
+                remediation="Usa l'id numerico del canale (per i canali inizia con -100), non il suo @nome.",
+            )
+        else:
+            self.add_result(
+                category="Telegram",
+                name="SHARE_STORAGE_CHAT_ID",
+                status=CheckStatus.PASS,
+                message="SHARE_STORAGE_CHAT_ID configurato: condivisione nativa con la figurina attiva",
+            )
+
     def check_firebase_configuration(self) -> None:
         """Verifica la configurazione di Firebase / Firestore (Emulatore locale vs Credenziali di produzione / ADC)."""
         emulator_host = os.getenv("FIRESTORE_EMULATOR_HOST", "").strip()

@@ -268,7 +268,7 @@ export function attachDailyEventListeners(
   if (share) {
     share.onclick = (event: MouseEvent) => {
       event.preventDefault();
-      controller.openShareUrl();
+      controller.shareResult();
     };
   }
 
