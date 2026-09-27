@@ -11,8 +11,10 @@ RUN npm ci
 COPY tsconfig.json vite.config.ts index.html ./
 COPY webapp ./webapp
 
-# Compila il bundle di produzione in webapp/dist/
-RUN npm run build
+# Compila il bundle di produzione in webapp/dist/. Le source map ("hidden") non entrano
+# nell'immagine: ricostruirebbero il sorgente TypeScript (#181). Per decodificare uno stack
+# trace si ricompila lo stesso commit in locale (vedi docs/observability.md).
+RUN npm run build && find webapp/dist -name '*.map' -delete
 
 # Stage 2: Runtime Python per il bot e le API
 FROM python:3.11-slim

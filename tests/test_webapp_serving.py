@@ -151,6 +151,31 @@ def test_webapp_assets_media_types(suffix, media_type):
             shutil.rmtree(assets_dir, ignore_errors=True)
 
 
+def test_webapp_source_maps_are_never_served():
+    """#181: even if a map is left in dist, /app/assets/*.map answers 404."""
+    client = TestClient(bot.app)
+    assets_dir = Path(static.DIST_DIR).resolve() / "assets"
+    created_dir = not assets_dir.exists()
+    sample = assets_dir / "index-probe.js.map"
+    try:
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        sample.write_text('{"version":3,"sources":["../src/secret.ts"]}', encoding="utf-8")
+        assert client.get(f"/app/assets/{sample.name}").status_code == 404
+        assert client.get("/app/assets/INDEX-PROBE.JS.MAP").status_code == 404
+    finally:
+        sample.unlink(missing_ok=True)
+        if created_dir:
+            shutil.rmtree(assets_dir, ignore_errors=True)
+
+
+def test_vite_build_keeps_source_maps_hidden():
+    """#181: bundles must not point at their maps (no sourceMappingURL)."""
+    config = (Path(__file__).resolve().parents[1] / "vite.config.ts").read_text(encoding="utf-8")
+    assert 'sourcemap: "hidden"' in config
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(encoding="utf-8")
+    assert "-name '*.map' -delete" in dockerfile
+
+
 def test_webapp_api_backend_contract_requires_body_initdata(monkeypatch):
     """The FastAPI backend expects initData in the JSON request body at /app/api/me.
 

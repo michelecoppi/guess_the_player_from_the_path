@@ -10,7 +10,7 @@ backend and how it is served. The appearance contract is owned by
 
 | | |
 | --- | --- |
-| Route | `GET /app` (ETag + revalidation), assets at `/app/assets/*` (hashed names, immutable cache, path containment) |
+| Route | `GET /app` (ETag + revalidation), assets at `/app/assets/*` (hashed names, immutable cache, path containment; source maps hidden and never served, #181) |
 | Source | [`webapp/src/`](../webapp/src/), entry [`index.html`](../index.html) → `webapp/src/main.ts` |
 | Build | Vite + TypeScript (`npm run build` → `webapp/dist/`, built in the Docker frontend stage; `/app` returns 503 if the bundle is missing) |
 | Tests | `npm run test:frontend` (`tests/frontend/*.test.ts`, happy-dom), `npm run typecheck` |
