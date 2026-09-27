@@ -63,6 +63,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111) | ↳ First domains into packages and migration procedure |
 | [#18](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/18) | Sentry and structured logging |
 | [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels |
+| [#177](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/177) | ↳ PostHog product decisions dashboard and first baseline |
 | [#19](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/19) | CI security, frontend and dataset regression checks |
 | [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20) | Release management and backup recovery (epic) |
 | [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49) | ↳ Release management: versioning, changelog, deploy checklist |
