@@ -71,6 +71,7 @@ class Event(str, Enum):
     # Lifecycle
     BOT_STARTED = "bot_started"
     MINIAPP_OPENED = "miniapp_opened"
+    EXPERIMENT_ASSIGNED = "experiment_assigned"
     # Daily
     DAILY_VIEWED = "daily_viewed"
     DAILY_GUESS_SUBMITTED = "daily_guess_submitted"
@@ -200,6 +201,8 @@ ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", *CAMPAIGN_SOURCE
 # One validator per property NAME (the same name means the same shape everywhere it is
 # allowed to appear - only EVENT_PROPERTIES decides *where* it may appear).
 PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
+    "experiment_key": _pattern(_EVENT_CODE),
+    "variant": _enum("control", "treatment"),
     "surface": _enum("telegram_chat", "miniapp"),
     "language": _enum(*SUPPORTED_LANGUAGES),
     "is_new_user": _bool,
@@ -245,6 +248,7 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
 # `difficulty_band` arrived with #21 and is allowed only on `daily_completed`, the one
 # terminal event per user per day. A property with no event that allows it can never be sent.
 EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
+    Event.EXPERIMENT_ASSIGNED: frozenset({"experiment_key", "variant"}),
     Event.BOT_STARTED: frozenset({"language", "is_new_user", "acquisition_channel"}),
     Event.MINIAPP_OPENED: frozenset({"language"}),
     Event.DAILY_VIEWED: frozenset({"surface", "language"}),

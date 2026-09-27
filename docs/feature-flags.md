@@ -5,8 +5,8 @@ Authoritative description of the operational feature flags introduced by
 [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22)). They allow a
 gradual rollout and an emergency disable **without a deploy**, evaluated only on the server.
 
-Out of scope, deliberately: experiments, variants, conversion metrics and A/B reporting
-([#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52)), product
+The separate [experiment registry](experiments.md) owns plans, variants and results.
+Operational flags still do not measure A/B outcomes. Product
 analytics and cohorts ([#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)),
 and an Admin UI for flags ([#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38)
 and the other Admin issues).
@@ -297,8 +297,9 @@ in the rollout stay in it as the percentage grows.
 - Per-replica caches: during the TTL different replicas may briefly disagree.
 - A replica that cold-starts while Firestore is unreachable uses defaults (on).
 - No Admin UI and no Telegram command for flags; the CLI needs Firestore credentials.
-- Targeting is by explicit ids and percentage only: no attributes, segments, schedules,
-  variants or metrics (#52).
+- Flag targeting is by explicit ids and percentage only: no attributes, segments or
+  schedules. The separate [experiment registry](experiments.md) handles variants and
+  metrics; flag evaluation itself does not assign experiment variants.
 - No history of past values beyond `revision`, `updated_at`, `updated_by` (the weekly backup
   holds older snapshots).
 - The Mini App does not hide navigation entries based on flags.

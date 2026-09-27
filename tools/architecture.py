@@ -89,6 +89,8 @@ COMPONENTS: dict[str, str] = {
     "services.repos.file_lock": INFRASTRUCTURE,
     "services.repos.feature_flags": INFRASTRUCTURE,
     "services.feature_flags": INFRASTRUCTURE,
+    "services.repos.experiments": "analytics",
+    "services.experiments": "analytics",
     "services.observability": INFRASTRUCTURE,
     "services.performance": INFRASTRUCTURE,
     "services.task_queue": INFRASTRUCTURE,

@@ -24,8 +24,8 @@ Evaluation precedence, for a flag with a stored rule:
 4. `rollout_percentage` 100 → on, 0 → off; in between the stable bucket of the subject
    (user, else group) decides, and a context with no subject is **off**;
 
-and without a stored rule the repository default applies. This is not an experimentation
-framework (#52): there are no variants, metrics or assignments recorded anywhere.
+and without a stored rule the repository default applies. Experiment variants, metrics
+and assignments live separately in services/experiments.py (#52).
 """
 from __future__ import annotations
 
