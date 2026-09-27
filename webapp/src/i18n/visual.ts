@@ -1,5 +1,14 @@
 import { getLanguage } from "./index";
 const copy = {
+  pageContent: ["Contenuto della pagina", "Page content", "Contenido de la página"],
+  mainNavigation: ["Navigazione principale", "Main navigation", "Navegación principal"],
+  careerPathLabel: ["Percorso di carriera", "Career path", "Trayectoria profesional"],
+  guessPlayerForm: ["Risposta del calciatore", "Guess player form", "Respuesta del futbolista"],
+  introTitle: ["La tua prima partita", "Your first match", "Tu primer partido"],
+  introPath: ["Segui i club e gli anni per riconoscere la carriera.", "Follow the clubs and years to recognise the career.", "Sigue los clubes y los años para reconocer la carrera."],
+  introAttempts: ["Hai un numero limitato di tentativi: ogni risposta sbagliata ti dà un confronto.", "You have limited attempts: each wrong answer gives you a comparison.", "Tienes intentos limitados: cada respuesta incorrecta te da una comparación."],
+  introHints: ["Puoi chiedere indizi; se indovini, riducono i punti ottenuti.", "You can ask for hints; they reduce your points if you solve it.", "Puedes pedir pistas; reducen tus puntos si aciertas."],
+  introDismiss: ["Ho capito, gioco", "Got it, let's play", "Entendido, a jugar"],
   matchReport: ["Il tuo risultato", "Your match report", "Tu resultado"],
   attemptsUsed: ["Tentativi", "Attempts", "Intentos"],
   playerPass: ["Tessera giocatore", "Player pass", "Carné de jugador"],

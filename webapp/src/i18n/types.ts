@@ -76,6 +76,7 @@ export interface TranslationSchema {
     already: string;
     error: string;
     notRegistered: string;
+    dayChanged: string;
   };
   arena: {
     feature_disabled: string;

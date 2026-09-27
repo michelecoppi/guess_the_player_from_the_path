@@ -11,6 +11,9 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#161](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/161) | Mini App Daily correctness, startup, onboarding, cards and accessibility (parent; one PR requested by owner) |
+| [#162](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/162) | ↳ Daily rollover and authoritative result cards |
+| [#163](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/163) | ↳ Lightweight startup, first-play guide and accessibility |
 | [#159](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/159) | Mini App mobile polish: quick answer, compact modes and discovery |
 | [#153](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/153) | Mini App Shop: clearer navigation, search and cosmetic details |
 | [#128](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/128) | Timed event: Blind Career |

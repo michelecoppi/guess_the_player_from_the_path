@@ -70,6 +70,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       already: "Hai già giocato questa giornata.",
       error: "Apri questa pagina dal bot per vedere i tuoi dati.",
       notRegistered: "Fai /start nel bot per iniziare a giocare.",
+      dayChanged: "È iniziata una nuova giornata. Ecco la sfida aggiornata: nessun tentativo è stato consumato.",
     },
     arena: {
       headline: "Il prossimo fischio d’inizio.",
@@ -646,6 +647,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       already: "You have already played this day.",
       error: "Open this page from the bot to see your data.",
       notRegistered: "Send /start in the bot to start playing.",
+      dayChanged: "A new day has started. Here is the new challenge; no attempt was used.",
     },
     arena: {
       headline: "Your next kick-off.",
@@ -1222,6 +1224,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, TranslationSchema> = {
       already: "Ya has jugado este día.",
       error: "Abre esta página desde el bot para ver tus datos.",
       notRegistered: "Envía /start en el bot para empezar a jugar.",
+      dayChanged: "Ha empezado un nuevo día. Aquí tienes el reto actualizado; no se ha gastado ningún intento.",
     },
     arena: {
       headline: "Tu próximo saque inicial.",
