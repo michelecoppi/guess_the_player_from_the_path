@@ -58,6 +58,7 @@ LATENCY_BUDGETS_MS: dict[str, float] = {
     "/app/api/card": 2000,
     "/app/api/shop/buy": 1500,
     "/app/api/perf": 300,
+    "/app/api/client-error": 300,
 }
 DEFAULT_API_LATENCY_BUDGET_MS = 1000.0
 
@@ -71,6 +72,7 @@ READ_BUDGETS: dict[str, int] = {
     "/app/api/me": 120,
     # Signature only: a metric must never cost a read.
     "/app/api/perf": 0,
+    "/app/api/client-error": 0,
 }
 
 

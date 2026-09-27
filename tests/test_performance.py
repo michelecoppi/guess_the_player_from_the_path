@@ -204,6 +204,22 @@ def test_perf_endpoint_requires_a_signature_and_reads_nothing(server, monkeypatc
     assert "initData" not in line and "user_id" not in line
 
 
+def test_client_error_endpoint_requires_a_signature_reads_nothing_and_logs_a_warning(server, monkeypatch, records):  # noqa: F811
+    report = {"kind": "error", "message": "TypeError: boom", "line": 3, "screen": "play"}
+    assert call(server, "/app/api/client-error", json=report).status_code == 401
+
+    monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
+    monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: pytest.fail("no user read for an error report"))
+    assert call(server, "/app/api/client-error", json={"initData": "signed", "kind": "nope"}).status_code == 422
+
+    response = call(server, "/app/api/client-error", json={"initData": "signed", "user_id": 7, **report})
+    assert response.status_code == 200
+    [line] = by_event(records(), "miniapp.client_error")
+    assert line["severity"] == "WARNING"
+    assert line["error_message"] == "TypeError: boom" and line["line"] == 3 and line["screen"] == "play"
+    assert "initData" not in line and "user_id" not in line
+
+
 # ---------------------------------------------------------------------------
 # HTTP integration
 # ---------------------------------------------------------------------------

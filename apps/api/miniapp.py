@@ -13,7 +13,15 @@ from telegram import LabeledPrice
 import config
 from apps.api.bridge import telegram
 from domains.shop import service as shop
-from services import feature_flags, firebase_service, game, observability, performance, trophies
+from services import (
+    client_errors,
+    feature_flags,
+    firebase_service,
+    game,
+    observability,
+    performance,
+    trophies,
+)
 from services import leagues as league_rules
 from services import product_analytics as analytics
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
@@ -102,6 +110,26 @@ def webapp_startup_timing(payload: dict = Body(default={})):
     if fields is None:
         raise HTTPException(status_code=422, detail="metriche non valide")
     observability.log_event("miniapp.startup.measured", **fields)
+    return {"status": "ok"}
+
+
+@router.post("/app/api/client-error")
+def webapp_client_error(payload: dict = Body(default={})):
+    """Un errore JavaScript non gestito della mini app, campionato dal telefono (#180).
+
+    Come `/app/api/perf`: firma di initData e rate limit, nessuna lettura Firestore. Nel log
+    finisce solo il sottoinsieme chiuso e limitato di `client_errors.client_error_fields`."""
+    try:
+        user_id = user_id_from_init_data(payload.get("initData", ""), config.BOT_TOKEN)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from None
+    wait = api_limiter.retry_after(user_id, 1)
+    if wait:
+        raise HTTPException(status_code=429, detail="Troppe richieste", headers={"Retry-After": str(wait)})
+    fields = client_errors.client_error_fields(payload)
+    if fields is None:
+        raise HTTPException(status_code=422, detail="errore non valido")
+    observability.log_event("miniapp.client_error", logging.WARNING, **fields)
     return {"status": "ok"}
 
 

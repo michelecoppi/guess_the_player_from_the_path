@@ -1,6 +1,7 @@
 import { App } from "./App";
-import { isMockTelegramEnvironment } from "@/telegram/webapp";
+import { getTelegramWebApp, isMockTelegramEnvironment } from "@/telegram/webapp";
 import { reportStartup } from "@/telemetry/startup";
+import { installErrorReporting } from "@/telemetry/errors";
 
 export function bootstrap(): App | null {
   const root = document.getElementById("root");
@@ -9,12 +10,19 @@ export function bootstrap(): App | null {
     return null;
   }
 
-  const app = new App(root);
+  // Only real Telegram sessions are measured and report errors: the dev mock has no signed
+  // initData. Error reporting starts before the App so a crash during init is reported too.
+  getTelegramWebApp();
+  const measured = !isMockTelegramEnvironment();
+  let app: App | null = null;
+  if (measured) installErrorReporting({ screen: () => app?.getActiveTab() });
+
+  app = new App(root);
   app.init();
-  // Only real Telegram sessions are measured: the dev mock has no signed initData.
-  if (!isMockTelegramEnvironment()) {
-    void app.whenFirstLoaded().then(
-      () => reportStartup(app.getDailyController().getState().status === "error" ? "error" : "ok"),
+  if (measured) {
+    const started = app;
+    void started.whenFirstLoaded().then(
+      () => reportStartup(started.getDailyController().getState().status === "error" ? "error" : "ok"),
       () => reportStartup("error"),
     );
   }

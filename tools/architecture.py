@@ -93,6 +93,7 @@ COMPONENTS: dict[str, str] = {
     "services.experiments": "analytics",
     "services.observability": INFRASTRUCTURE,
     "services.performance": INFRASTRUCTURE,
+    "services.client_errors": INFRASTRUCTURE,
     "services.task_queue": INFRASTRUCTURE,
     "services.work_receipts": INFRASTRUCTURE,
     "services.broadcast_store": INFRASTRUCTURE,
