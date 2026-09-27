@@ -628,7 +628,7 @@ non-fatal branch, not a step toward completion.
 | Shop view→purchase-completion conversion | `shop_purchase_completed` ÷ `shop_viewed` (session-scoped). **This is the real purchase-conversion KPI** — the numerator is `shop.deliver()` having actually returned `True` (Stars charged and item durably owned), not merely an invoice having been shown. An earlier draft of this document defined "purchase conversion" using `shop_purchase_started` as the numerator, which measures checkout-start rate, not completed purchases — that definition was wrong and has been replaced by this row. |
 | Purchase→equip conversion | `shop_item_equipped` ÷ `shop_purchase_completed`, matched on `item_id` |
 | Mini App activation | distinct users with `miniapp_opened` ÷ distinct users with `bot_started` |
-| Daily returning-user behavior | **Not claimed as implemented.** This needs a cohort/retention analysis in PostHog itself (grouping `daily_completed` by pseudonymous `distinct_id` over calendar weeks) — the event data supports it, but no dashboard or saved insight is shipped with this change. Do not describe DAU/retention cohorts as "implemented" until such an insight actually exists in the PostHog project. |
+| Daily returning-user behavior | Saved PostHog cohort insight in [§15b](#15b-product-decisions-dashboard-177): users submitting a first Daily guess who submit another on a later calendar day within seven days, grouped by first-attempt week. Cohorts are only read after each user's seven-day window matures. |
 
 ## 13. Validating locally without sending production traffic
 
@@ -717,10 +717,9 @@ specifically wants a single-item purchase funnel, build `shop_item_previewed` �
 `shop_purchase_started` → `shop_purchase_completed` as its own funnel, filtered to one
 `item_id` at a time.
 
-Not included as a saved insight, and not claimed as implemented (§12): Daily returning-user
-/ retention cohorts. PostHog's own retention insight type, applied to `daily_completed`, is
-the natural tool for this once there is a real product question driving it — no cohort
-definition is prescribed here ahead of that need.
+The 16 rows above remain a specification for the proposed "Product Overview" dashboard;
+they are not all saved insights. The smaller, live decisions dashboard and its distinct
+Daily-return cohort definition are documented in [§15b](#15b-product-decisions-dashboard-177).
 
 ## 15a. Reading metrics back (admin dashboard, #39)
 
@@ -744,8 +743,82 @@ shows the core metrics and links to PostHog for those funnels instead.
 Unconfigured (either variable missing) means the admin page shows a configuration notice
 and makes no network call — same fail-closed posture as `product_analytics.py` itself.
 
+## 15b. Product decisions dashboard (#177)
+
+The saved [**Guess the Player — Decisioni prodotto** dashboard](https://eu.posthog.com/project/275711/dashboard/978974)
+is in the EU PostHog project. It uses three saved, read-only SQL insights, all with an
+explicit `properties.environment = 'production'` filter. The dashboard has no date-range
+override: each query owns its window. A signed-in project member can share the dashboard
+link; this repository does not store a Personal API key or create a public link.
+
+| Insight and product question | Definition and window | Minimum for a descriptive read | Decision it can inform |
+| --- | --- | --- | --- |
+| [Activation within 24h by channel](https://eu.posthog.com/project/275711/insights/mpmCw5KR): which acquisition channels bring people who actually try a Daily? | Denominator: distinct IDs whose **first** `bot_started` has `is_new_user=true`; numerator: those with a `daily_guess_submitted` within 24 hours of that start. Group by the start's `acquisition_channel`; starts in the last 30 days. | At least 30 new users **per channel**. Below this, show counts but do not rank channels. | Where to focus acquisition or whether to inspect the `/start` path. |
+| [Daily attempts, completion and hints](https://eu.posthog.com/project/275711/insights/mUD1rw3B): where do people stop during a Daily? | Per calendar day in the last 30 days: distinct IDs with `daily_guess_submitted` as denominator, distinct IDs with `daily_completed` as numerator; mean `attempts_used` on completion; distinct IDs with `hint_used` divided by the same attempt denominator. A refused submission still counts as an attempt, as in §12. | At least 30 distinct attempting user-days across a review week before comparing rates between weeks. Daily rows remain diagnostic at smaller volume. | Whether to investigate completion friction or hint discovery. |
+| [Seven-day Daily return by weekly cohort](https://eu.posthog.com/project/275711/insights/BZktMP1w): do first-time Daily players return? | First **ever** production `daily_guess_submitted` defines each user's first calendar day and week. Numerator: users submitting on a later day within seven days. Denominator: users whose full seven-day window has elapsed; recent, immature users are shown separately. Display cohorts from the last 90 days. | At least 30 matured users in a cohort. An immature cohort has no rate, rather than 0%. | Whether to work on reasons to return after the first Daily. |
+
+The optional referral funnel (§11, `referral_opened{referral_attached=true}` →
+`bot_started{is_new_user=true}` → five distinct Daily completions →
+`referral_converted`) is **not saved yet**: the first baseline found no referral events.
+Build it only after attached opens and conversions have enough volume to inspect, and
+keep all steps on the invitee identity (§6). Use at least 30 attached opens before
+interpreting a conversion rate. `referral_reward_granted` is not a funnel step.
+
+### Recreate and check
+
+Open the dashboard and each linked insight, select **Edit**, then inspect or copy its
+SQL. If an insight has been removed, create a **New insight → SQL** and use the definitions
+above: start with the production filter, use the stated window and distinct ID or
+distinct ID/day aggregation, run the query, save it under the linked title, then
+**Add to dashboard**. For activation, PostHog's materialized `is_new_user` property is
+a string in this project, so filter `properties.is_new_user = 'true'`; a boolean comparison
+produces a ClickHouse type error. The return query must exclude same-day repeat guesses
+and include only matured users in its rate. The saved SQL is the executable definition;
+the table above states its intended meaning.
+
+At each weekly review, first run this volume check in **New insight → SQL** (do not
+save it), then compare the saved insight results with the event totals and §12:
+
+```sql
+SELECT event, count() AS events, uniq(distinct_id) AS users
+FROM events
+WHERE timestamp >= now() - INTERVAL 30 DAY
+  AND properties.environment = 'production'
+  AND event IN ('bot_started', 'daily_guess_submitted', 'daily_completed',
+                'hint_used', 'referral_opened', 'referral_converted')
+GROUP BY event ORDER BY events DESC
+```
+
+Record the observation, a possible explanation, a decision/action and the next review
+date. An absent event means **no denominator**, not 0% conversion. Review the start
+instrumentation or collection configuration if `bot_started` stays absent while Daily
+events arrive; do not infer a broken funnel from Activity alone.
+
+### First baseline — 2026-09-27
+
+Read in PostHog project 275711 on 2026-09-27, with `environment=production` and the
+preceding 30 days. The observed events begin on 2026-09-24; this is about four days of
+data, not a mature 30-day history.
+
+| Observation | Value | Interpretation |
+| --- | --- | --- |
+| Daily attempts | 16 `daily_guess_submitted` events; 11 distinct user-days, from 5 users | Repeated guesses are not independent users. |
+| Daily completion | 9 `daily_completed` events / 11 attempting user-days = 81.8%; mean 1.44 attempts on completions | Below the 30-user-day reading threshold; a descriptive baseline only. |
+| Hint use | 1 `hint_used` user-day / 11 attempting user-days = 9.1% | Too small to diagnose hint discovery. |
+| New-user activation | 0 observed `bot_started`; 16 guesses cannot supply the missing start denominator | Insight correctly has no rows. Check `/start` event delivery before reading channels. |
+| Seven-day return | 5 first-attempt users across the weeks of 2026-09-20 and 2026-09-27; 0 matured | Return rate is undefined until their seven-day windows elapse. |
+| Referral | 0 `referral_opened` and 0 `referral_converted` | Defer the optional funnel; no conversion claim. |
+
+**Decision:** do not change acquisition or the Daily flow from these rates yet. At the
+next weekly review (2026-10-04), check why `bot_started` is absent despite Daily events,
+refresh all three insights and the volume query, and reconsider the referral funnel only
+if attached opens exist. This is a data-quality and sample-size decision, not evidence
+that the product has reached an 81.8% stable completion rate.
+
 ## 16. Relationship with other issues
 
+- **#177 Product decisions dashboard** — the three saved production insights, first
+  baseline and weekly decision procedure are in §15b. The referral funnel awaits events.
 - **#18 Observability** — strictly separate concern (§1); reuses only `services/version.py`
   and `observability`'s redaction helpers, never its Sentry transport or log formatters.
 - **#39 Admin Analytics** — implemented (§15a): `services/product_analytics_query.py`
