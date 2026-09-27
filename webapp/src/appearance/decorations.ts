@@ -128,7 +128,9 @@ export const THEME_PATTERNS: ReadonlyMap<string, string> = new Map([
   [
     "linear-gradient(90deg,rgba(159,255,208,.025) 1px,transparent 1px),linear-gradient(rgba(159,255,208,.025) 1px,transparent 1px)",
     "linear-gradient(90deg,rgba(159,255,208,.025) 1px,transparent 1px),linear-gradient(rgba(159,255,208,.025) 1px,transparent 1px)"
-  ]
+  ],
+  ["linear-gradient(125deg, transparent 0 50%, rgba(166, 110, 213, .08) 50% 100%)", "linear-gradient(125deg, transparent 0 50%, rgba(166, 110, 213, .08) 50% 100%)"],
+  ["radial-gradient(ellipse at 55% 0%, rgba(242, 196, 108, .12), transparent 70%)", "radial-gradient(ellipse at 55% 0%, rgba(242, 196, 108, .12), transparent 70%)"]
 ]);
 
 // A parsed texture can be safely parsed again.

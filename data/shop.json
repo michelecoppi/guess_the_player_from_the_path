@@ -2741,9 +2741,91 @@
         "track": "#3a1f66"
       },
       "achievement": {
-        "field": "story_perfect_chapters",
+        "field": "story_anni_90_perfect",
         "target": 1
       }
+    },
+    {
+      "id": "traguardo_maglie_incrociate",
+      "kind": "badge",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Collezionista di maglie",
+      "name_i18n": { "en": "Jersey collector", "es": "Coleccionista de camisetas" },
+      "description": "Completa tutti i livelli di Maglie incrociate nella Modalità Storia. Non si compra.",
+      "description_i18n": {
+        "en": "Clear every level of Crossed jerseys in Story Mode. Not for sale.",
+        "es": "Completa todos los niveles de Camisetas cruzadas en el Modo Historia. No se vende."
+      },
+      "style": { "emoji": "🔀" },
+      "achievement": { "field": "story_maglie_incrociate_cleared", "target": 1 }
+    },
+    {
+      "id": "traguardo_maglie_incrociate_perfetto",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Due colori",
+      "name_i18n": { "en": "Two colours", "es": "Dos colores" },
+      "description": "Guadagna tutte le 7 stelline di Maglie incrociate. Blu e viola con dettagli verde acqua.",
+      "description_i18n": {
+        "en": "Earn all 7 stars in Crossed jerseys. Blue and violet with aqua accents.",
+        "es": "Consigue las 7 estrellas de Camisetas cruzadas. Azul y violeta con detalles aguamarina."
+      },
+      "style": {
+        "bg": "#111d2b",
+        "bg2": "#261d34",
+        "card": "#263042",
+        "edge": "#536076",
+        "text": "#f5f7fc",
+        "muted": "#aebbd0",
+        "accent": "#7ce2cc",
+        "accentText": "#102630",
+        "track": "#493a60",
+        "pattern": "linear-gradient(125deg, transparent 0 50%, rgba(166, 110, 213, .08) 50% 100%)"
+      },
+      "achievement": { "field": "story_maglie_incrociate_perfect", "target": 1 }
+    },
+    {
+      "id": "traguardo_notti_europee",
+      "kind": "badge",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Testimone delle finali",
+      "name_i18n": { "en": "Finals witness", "es": "Testigo de las finales" },
+      "description": "Completa tutti i livelli di Notti europee nella Modalità Storia. Non si compra.",
+      "description_i18n": {
+        "en": "Clear every level of European nights in Story Mode. Not for sale.",
+        "es": "Completa todos los niveles de Noches europeas en el Modo Historia. No se vende."
+      },
+      "style": { "emoji": "🎟️" },
+      "achievement": { "field": "story_notti_europee_cleared", "target": 1 }
+    },
+    {
+      "id": "traguardo_notti_europee_perfetto",
+      "kind": "theme",
+      "price": 0,
+      "rarity": "earned",
+      "name": "Luci della finale",
+      "name_i18n": { "en": "Final night lights", "es": "Luces de la final" },
+      "description": "Guadagna tutte le 7 stelline di Notti europee. Antracite e oro da finale.",
+      "description_i18n": {
+        "en": "Earn all 7 stars in European nights. Final-night charcoal and gold.",
+        "es": "Consigue las 7 estrellas de Noches europeas. Antracita y oro de una gran final."
+      },
+      "style": {
+        "bg": "#141d22",
+        "bg2": "#1e282c",
+        "card": "#2b3234",
+        "edge": "#846b46",
+        "text": "#fff5dc",
+        "muted": "#cbbd9b",
+        "accent": "#f2c46c",
+        "accentText": "#2b2116",
+        "track": "#554932",
+        "pattern": "radial-gradient(ellipse at 55% 0%, rgba(242, 196, 108, .12), transparent 70%)"
+      },
+      "achievement": { "field": "story_notti_europee_perfect", "target": 1 }
     },
     {
       "id": "trasferta",

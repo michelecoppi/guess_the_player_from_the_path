@@ -1,10 +1,13 @@
 """Modalita' Storia: livelli che si perdono (checkpoint sul livello, non sul capitolo) e
 stelline per la run senza errori."""
 import copy
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from domains.shop import service as shop
 from services import story
 
 PLAYERS = {
@@ -166,3 +169,42 @@ def test_list_chapters_reports_progress_before_and_after_playing(store):
     assert after["levels_cleared"] == 2
     assert after["stars_earned"] == 2
     assert after["finished"] is True
+
+
+def test_new_chapters_use_verified_players_and_one_player_per_chapter():
+    players_path = Path(__file__).resolve().parents[1] / "data" / "players.json"
+    players = {player["id"]: player for player in json.loads(players_path.read_text(encoding="utf-8"))["players"]}
+    catalogue = story.reload_catalogue()
+    assert [chapter["id"] for chapter in catalogue["chapters"]] == [
+        "anni_90", "maglie_incrociate", "notti_europee",
+    ]
+    for chapter in catalogue["chapters"][1:]:
+        assert len(chapter["levels"]) == 7
+        ids = [player_id for level in chapter["levels"] for player_id in level["player_ids"]]
+        assert all(len(level["player_ids"]) == 5 for level in chapter["levels"])
+        assert len(ids) == len(set(ids)) == 35
+        assert all(players[player_id]["verified"] for player_id in ids)
+        assert shop.get_item(chapter["reward_item"])["kind"] == "badge"
+        assert shop.get_item(chapter["perfect_reward_item"])["kind"] == "theme"
+
+
+def test_story_rewards_unlock_only_for_their_own_chapter():
+    user = {}
+    maglie = story.get_chapter("maglie_incrociate")
+    notti = story.get_chapter("notti_europee")
+    story._grant_completion(user, maglie, {"stars": [True] * 7})
+    owned = shop.owned_ids(user)
+    assert {maglie["reward_item"], maglie["perfect_reward_item"]} <= owned
+    assert notti["reward_item"] not in owned
+    assert notti["perfect_reward_item"] not in owned
+    assert "traguardo_anni_90_perfetto" not in owned
+
+    story._grant_completion(user, notti, {"stars": [True] * 6 + [False]})
+    owned = shop.owned_ids(user)
+    assert notti["reward_item"] in owned
+    assert notti["perfect_reward_item"] not in owned
+
+
+def test_legacy_anni_90_perfect_reward_stays_owned():
+    user = {"cosmetics": {"earned": ["traguardo_anni_90_perfetto"]}}
+    assert "traguardo_anni_90_perfetto" in shop.owned_ids(user)

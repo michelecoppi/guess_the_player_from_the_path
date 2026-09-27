@@ -51,6 +51,240 @@
           "player_ids": ["totti", "delpiero", "nesta", "ronaldinho", "michael_owen"]
         }
       ]
+    },
+    {
+      "id": "maglie_incrociate",
+      "title": "Maglie incrociate",
+      "title_i18n": {
+        "en": "Crossed jerseys",
+        "es": "Camisetas cruzadas"
+      },
+      "reward_item": "traguardo_maglie_incrociate",
+      "perfect_reward_item": "traguardo_maglie_incrociate_perfetto",
+      "levels": [
+        {
+          "id": 1,
+          "theme": "Inter e Milan",
+          "theme_i18n": {
+            "en": "Inter and AC Milan",
+            "es": "Inter y Milan"
+          },
+          "player_ids": [
+            "seedorf",
+            "balotelli",
+            "crespo",
+            "panucci",
+            "muntari"
+          ]
+        },
+        {
+          "id": 2,
+          "theme": "Juventus e Inter",
+          "theme_i18n": {
+            "en": "Juventus and Inter",
+            "es": "Juventus e Inter"
+          },
+          "player_ids": [
+            "pirlo",
+            "cannavaro",
+            "vieri",
+            "candreva",
+            "arturo_vidal"
+          ]
+        },
+        {
+          "id": 3,
+          "theme": "Barcellona e Real Madrid",
+          "theme_i18n": {
+            "en": "Barcelona and Real Madrid",
+            "es": "Barcelona y Real Madrid"
+          },
+          "player_ids": [
+            "figo",
+            "ronaldo_nazario",
+            "eto_o",
+            "hagi",
+            "michael_laudrup"
+          ]
+        },
+        {
+          "id": 4,
+          "theme": "Arsenal e Chelsea",
+          "theme_i18n": {
+            "en": "Arsenal and Chelsea",
+            "es": "Arsenal y Chelsea"
+          },
+          "player_ids": [
+            "fabregas",
+            "giroud",
+            "cech",
+            "ashley_cole",
+            "havertz"
+          ]
+        },
+        {
+          "id": 5,
+          "theme": "Juventus e Milan",
+          "theme_i18n": {
+            "en": "Juventus and AC Milan",
+            "es": "Juventus y Milan"
+          },
+          "player_ids": [
+            "higuain",
+            "zambrotta",
+            "filippo_inzaghi",
+            "borriello",
+            "paolo_rossi"
+          ]
+        },
+        {
+          "id": 6,
+          "theme": "PSG e Barcellona",
+          "theme_i18n": {
+            "en": "PSG and Barcelona",
+            "es": "PSG y Barcelona"
+          },
+          "player_ids": [
+            "messi",
+            "neymar",
+            "ronaldinho",
+            "sorin",
+            "dani_alves"
+          ]
+        },
+        {
+          "id": 7,
+          "theme": "Real Madrid e Chelsea",
+          "theme_i18n": {
+            "en": "Real Madrid and Chelsea",
+            "es": "Real Madrid y Chelsea"
+          },
+          "player_ids": [
+            "robben",
+            "makelele",
+            "hazard",
+            "courtois",
+            "ricardo_carvalho"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "notti_europee",
+      "title": "Notti europee",
+      "title_i18n": {
+        "en": "European nights",
+        "es": "Noches europeas"
+      },
+      "reward_item": "traguardo_notti_europee",
+      "perfect_reward_item": "traguardo_notti_europee_perfetto",
+      "levels": [
+        {
+          "id": 1,
+          "theme": "Manchester United-Bayern, 1999",
+          "theme_i18n": {
+            "en": "Manchester United vs Bayern, 1999",
+            "es": "Manchester United-Bayern, 1999"
+          },
+          "player_ids": [
+            "beckham",
+            "giggs",
+            "peter_schmeichel",
+            "kahn",
+            "matthaus"
+          ]
+        },
+        {
+          "id": 2,
+          "theme": "Milan-Juventus, 2003",
+          "theme_i18n": {
+            "en": "AC Milan vs Juventus, 2003",
+            "es": "Milan-Juventus, 2003"
+          },
+          "player_ids": [
+            "shevchenko",
+            "pirlo",
+            "gattuso",
+            "seedorf",
+            "maldini"
+          ]
+        },
+        {
+          "id": 3,
+          "theme": "Porto-Monaco, 2004",
+          "theme_i18n": {
+            "en": "Porto vs Monaco, 2004",
+            "es": "Porto-Monaco, 2004"
+          },
+          "player_ids": [
+            "deco",
+            "ricardo_carvalho",
+            "maniche",
+            "morientes",
+            "evra"
+          ]
+        },
+        {
+          "id": 4,
+          "theme": "Liverpool-Milan, 2005",
+          "theme_i18n": {
+            "en": "Liverpool vs AC Milan, 2005",
+            "es": "Liverpool-Milan, 2005"
+          },
+          "player_ids": [
+            "gerrard",
+            "xabi_alonso",
+            "jerzy_dudek",
+            "kaka",
+            "crespo"
+          ]
+        },
+        {
+          "id": 5,
+          "theme": "Inter-Bayern, 2010",
+          "theme_i18n": {
+            "en": "Inter vs Bayern, 2010",
+            "es": "Inter-Bayern, 2010"
+          },
+          "player_ids": [
+            "milito",
+            "sneijder",
+            "julio_cesar",
+            "cambiasso",
+            "walter_samuel"
+          ]
+        },
+        {
+          "id": 6,
+          "theme": "Chelsea-Bayern, 2012",
+          "theme_i18n": {
+            "en": "Chelsea vs Bayern, 2012",
+            "es": "Chelsea-Bayern, 2012"
+          },
+          "player_ids": [
+            "drogba",
+            "lampard",
+            "cech",
+            "david_luiz",
+            "fernando_torres"
+          ]
+        },
+        {
+          "id": 7,
+          "theme": "Liverpool-Tottenham, 2019",
+          "theme_i18n": {
+            "en": "Liverpool vs Tottenham, 2019",
+            "es": "Liverpool-Tottenham, 2019"
+          },
+          "player_ids": [
+            "salah",
+            "mane",
+            "firmino",
+            "vandijk",
+            "alisson"
+          ]
+        }
+      ]
     }
   ]
 }

@@ -165,8 +165,10 @@ def _grant_completion(user, chapter, session):
     scattano, dentro la stessa transazione del checkpoint: non deve poter succedere due
     volte, e non deve poter restare a meta'."""
     user["story_chapters_cleared"] = int(user.get("story_chapters_cleared", 0) or 0) + 1
+    user[f"story_{chapter['id']}_cleared"] = 1
     if all(session["stars"]):
         user["story_perfect_chapters"] = int(user.get("story_perfect_chapters", 0) or 0) + 1
+        user[f"story_{chapter['id']}_perfect"] = 1
     earned = fs._newly_earned(user)
     if earned:
         cosmetics = user.setdefault("cosmetics", {})

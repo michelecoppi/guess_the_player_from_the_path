@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#165](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/165) | Two themed Story chapters and chapter-specific earned cosmetics |
 | [#161](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/161) | Mini App Daily correctness, startup, onboarding, cards and accessibility (parent; one PR requested by owner) |
 | [#162](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/162) | ↳ Daily rollover and authoritative result cards |
 | [#163](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/163) | ↳ Lightweight startup, first-play guide and accessibility |
@@ -139,6 +140,10 @@ Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, In
 
 ## Tracking log
 
+- 2026-09-27: the owner chose Maglie incrociate and Notti europee as two new Story
+  chapters, each with a completion badge and a seven-star theme. #165 tracks their
+  curated content and chapter-specific reward delivery; it follows the merged Story Mode
+  foundation in PR #121.
 - 2026-09-26: #159 records the owner's visual review follow-up for the Mini App at
   narrow phone widths: a reachable Daily answer, consistent path event presentation,
   and denser Arena, Leaderboard and Shop first screens. The changes share one mobile

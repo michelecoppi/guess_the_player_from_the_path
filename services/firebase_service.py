@@ -149,6 +149,12 @@ USER_FIELD_DEFAULTS: dict[str, Any] = {
     "app_story": {},
     "story_chapters_cleared": 0,
     "story_perfect_chapters": 0,
+    "story_anni_90_cleared": 0,
+    "story_anni_90_perfect": 0,
+    "story_maglie_incrociate_cleared": 0,
+    "story_maglie_incrociate_perfect": 0,
+    "story_notti_europee_cleared": 0,
+    "story_notti_europee_perfect": 0,
     "leagues": [],
     # Cosmetici comprati in Stelle, traguardi guadagnati giocando, trofei appesi al profilo,
     # e cosa ha addosso adesso.
@@ -184,6 +190,9 @@ HARVESTED_FIELDS = frozenset({
     "points_totali", "monthly_points", "players_guessed", "current_streak", "best_streak",
     "bonus_first_guessed", "archive_solved", "training_solved",
     "story_chapters_cleared", "story_perfect_chapters",
+    "story_anni_90_cleared", "story_anni_90_perfect", "story_maglie_incrociate_cleared",
+    "story_maglie_incrociate_perfect", "story_notti_europee_cleared",
+    "story_notti_europee_perfect",
 })
 
 

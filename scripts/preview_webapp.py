@@ -55,6 +55,17 @@ def _new_user():
     buyable = [item["id"] for item in shop.all_items()
                if item.get("kind") != "bundle" and not item.get("achievement")
                and not item.get("completes") and not item.get("trophy")]
+    from services import story
+
+    # The first two chapters are cleared so both new episodes can be inspected in the
+    # real Story menu. The third stays playable; rewards are owned for Shop preview.
+    story_progress = {}
+    for chapter in story.chapters()[:2]:
+        session = story._new_session(chapter)
+        session["level"] = len(chapter["levels"])
+        session["stars"] = [True] * len(chapter["levels"])
+        session["finished"] = True
+        story_progress[chapter["id"]] = session
     return {
         "first_name": "Marco",
         "telegram_id": USER_ID,
@@ -68,8 +79,9 @@ def _new_user():
         "best_streak": 31,
         "archive_solved": 63,
         "training_solved": 44,
-        "story_chapters_cleared": 1,
-        "story_perfect_chapters": 1,
+        "story_chapters_cleared": len(story_progress),
+        "story_perfect_chapters": len(story_progress),
+        "app_story": story_progress,
         "solved_in": {"1": 41, "2": 68, "3": 45},
         "last_played_day": None,
         "has_guessed_today": False,
@@ -88,7 +100,9 @@ def _new_user():
             "MON_June_2_2025_1",
         ],
         "leagues": ["AMICI"],
-        "cosmetics": {"owned": buyable, "earned": [], "equipped": {}, "looks": []},
+        "cosmetics": {"owned": buyable,
+                      "earned": [item["id"] for item in shop.all_items() if item.get("achievement")],
+                      "equipped": {}, "looks": []},
     }
 
 
