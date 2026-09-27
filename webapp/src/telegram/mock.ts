@@ -118,6 +118,13 @@ export function createMockTelegramWebApp(user: TelegramUser = DEFAULT_MOCK_USER)
     enableVerticalSwipes() {
       this.isVerticalSwipesEnabled = true;
     },
+    isClosingConfirmationEnabled: false,
+    enableClosingConfirmation() {
+      this.isClosingConfirmationEnabled = true;
+    },
+    disableClosingConfirmation() {
+      this.isClosingConfirmationEnabled = false;
+    },
     close() {
       console.log("[Telegram Mock] close() called");
     },

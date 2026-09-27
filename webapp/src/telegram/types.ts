@@ -88,6 +88,10 @@ export interface TelegramWebApp {
   isVerticalSwipesEnabled?: boolean;
   disableVerticalSwipes?(): void;
   enableVerticalSwipes?(): void;
+  /** Bot API 6.2+: ask before closing while a match is in progress. */
+  isClosingConfirmationEnabled?: boolean;
+  enableClosingConfirmation?(): void;
+  disableClosingConfirmation?(): void;
   close(): void;
   openTelegramLink(url: string): void;
   openLink(url: string, options?: { try_instant_view?: boolean }): void;
