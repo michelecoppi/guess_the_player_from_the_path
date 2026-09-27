@@ -1,6 +1,6 @@
 import { renderArenaPage as renderArenaView } from "@/features/arena/views";
 import { renderTrainingView } from "@/features/training/views";
-import { renderStoryView } from "@/features/story/views";
+import { renderLoadingState } from "@/components/LoadingState";
 import type { ArenaState, ArenaSubview } from "@/features/arena/types";
 import type { ArenaController } from "@/features/arena/controller";
 import type { TrainingState } from "@/features/training/types";
@@ -15,6 +15,21 @@ export interface ArenaPageOptions {
   arenaState?: ArenaState;
   trainingState?: TrainingState;
   storyState?: StoryState;
+}
+
+type StoryRenderer = (state: StoryState) => string;
+let storyRenderer: StoryRenderer | null = null;
+
+/**
+ * The Story views are a lazily loaded chunk (#187): App registers their renderer once the
+ * chunk is in, and shows its own loading/retry state until then.
+ */
+export function registerStoryView(render: StoryRenderer | null): void {
+  storyRenderer = render;
+}
+
+function renderStory(state: StoryState): string {
+  return storyRenderer ? storyRenderer(state) : renderLoadingState();
 }
 
 export function renderArenaPage(
@@ -33,7 +48,7 @@ export function renderArenaPage(
       return renderTrainingView(opts.trainingState);
     }
     if (opts.subview === "story" && opts.storyState) {
-      return renderStoryView(opts.storyState);
+      return renderStory(opts.storyState);
     }
     const arenaState: ArenaState = opts.arenaState || {
       subview: opts.subview || "hub",
@@ -59,7 +74,7 @@ export function renderArenaPage(
     return renderTrainingView(maybeTrainingState);
   }
   if (arenaState.subview === "story" && maybeStoryState) {
-    return renderStoryView(maybeStoryState);
+    return renderStory(maybeStoryState);
   }
   return renderArenaView(arenaState);
 }

@@ -86,7 +86,11 @@ def test_webapp_assets_serving_and_security():
     if not os.path.exists(assets_dir):
         return
 
-    asset_files = [f for f in os.listdir(assets_dir) if os.path.isfile(os.path.join(assets_dir, f))]
+    # Source maps are generated but never served (#181): sample a real asset.
+    asset_files = [
+        f for f in os.listdir(assets_dir)
+        if os.path.isfile(os.path.join(assets_dir, f)) and not f.endswith(".map")
+    ]
     assert len(asset_files) > 0, "Build artifacts missing in webapp/dist/assets"
 
     sample_asset = asset_files[0]
