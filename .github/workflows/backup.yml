@@ -32,9 +32,9 @@ jobs:
     env:
       GOOGLE_CLOUD_PROJECT: guess-the-player-from-path-bot
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -42,7 +42,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
@@ -72,7 +72,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "name=firestore-backup-$(date -u +%Y%m%dT%H%M%SZ)-run${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.validate.outputs.name }}
           path: backup/firestore-*.json
