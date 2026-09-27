@@ -82,6 +82,12 @@ export interface TelegramWebApp {
   offEvent?(event: string, callback: () => void): void;
   ready(): void;
   expand(): void;
+  /** Missing on clients older than Bot API 6.1. */
+  isVersionAtLeast?(version: string): boolean;
+  /** Bot API 7.7+: vertical swipes no longer minimise/close the Mini App. */
+  isVerticalSwipesEnabled?: boolean;
+  disableVerticalSwipes?(): void;
+  enableVerticalSwipes?(): void;
   close(): void;
   openTelegramLink(url: string): void;
   openLink(url: string, options?: { try_instant_view?: boolean }): void;
