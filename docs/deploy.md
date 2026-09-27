@@ -34,6 +34,41 @@ con un trigger `workflow_run`, quindi codice che non passa i test non viene mai 
 L'autenticazione verso GCP usa **Workload Identity Federation** (WIF): nessuna chiave di
 service account salvata come secret GitHub.
 
+#### Ordine dei deploy: uno alla volta, sempre la punta di `main`
+
+Con più merge ravvicinati (es. un gruppo di PR Dependabot) le CI finiscono in ordine
+casuale. Senza protezioni partivano più deploy in parallelo: `gcloud run deploy` andava in
+conflitto (`ABORTED: Conflict for resource 'guess-the-player'`) e, peggio, vinceva l'ultimo
+a finire, anche se era un commit più vecchio
+([#174](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/174)).
+Il workflow ora garantisce:
+
+1. **Un solo deploy alla volta.** Il job `deploy` è nel gruppo di concurrency
+   `deploy-production` con `cancel-in-progress: false`: un deploy già partito non viene mai
+   interrotto a metà. Il gruppo è sul job, non sull'intero workflow, così un run la cui CI è
+   fallita (job saltato) non entra in coda.
+2. **Si deploya la punta di `main`, non il commit che ha avviato il run.** GitHub tiene al
+   massimo **un** run in attesa per gruppo e cancella quello in attesa più vecchio (nella
+   lista delle Actions appare come *cancelled*, ed è normale). Il run che arriva al lock
+   può quindi essere stato avviato da un commit ormai superato. Per questo il primo step
+   legge la punta attuale di `main` e la deploya solo se la CI (`push` su `main`) di **quel
+   commit esatto** è `success`.
+3. **Se la punta non ha ancora una CI verde, il run termina con successo senza deploy**
+   (lascia una *notice* nel riepilogo del run). Se la CI della punta è ancora in corso,
+   sarà il run avviato da quella CI a deployarla. Resta la regola di sempre: si deploya
+   solo codice con la CI verde.
+
+Conseguenze da sapere:
+
+- se la CI della punta **fallisce**, non viene deployato niente, nemmeno l'ultimo commit
+  verde precedente: la produzione resta sulla revisione attuale finché un nuovo commit su
+  `main` non passa la CI (oppure si fa un deploy manuale, vedi sotto);
+- rilanciare un vecchio run di Deploy (*Re-run*) non riporta in produzione quel commit:
+  deploya la punta di `main`, se verde. Per tornare a un commit precedente si usa la
+  procedura di rollback;
+- in rari casi la stessa punta viene deployata due volte di seguito (un run in corso e uno
+  in attesa che la ritrovano entrambi): una build in più, senza effetti sul servizio.
+
 Setup una tantum (da fare una volta sola con un account che ha i permessi IAM sul progetto):
 
 ```bash
@@ -79,8 +114,9 @@ Poi, su GitHub (Settings → Secrets and variables → Actions), crea due secret
 | `WIF_PROVIDER` | `projects/595902172561/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
 | `WIF_SERVICE_ACCOUNT` | `github-deployer@guess-the-player-from-path-bot.iam.gserviceaccount.com` |
 
-Da quel momento in poi ogni push su `main` che supera la CI viene deployato da solo: non serve
-più lanciare `gcloud run deploy` a mano.
+Da quel momento in poi ogni push su `main` che supera la CI viene deployato da solo (se nel
+frattempo non è arrivato un commit più nuovo, vedi sopra): non serve più lanciare
+`gcloud run deploy` a mano.
 
 ### Deploy manuale (fallback/debug)
 

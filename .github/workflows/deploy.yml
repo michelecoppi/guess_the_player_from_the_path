@@ -10,6 +10,7 @@ on:
     branches: [main]
 
 permissions:
+  actions: read
   contents: read
   id-token: write
 
@@ -17,20 +18,65 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    # Un solo deploy di produzione alla volta (#174). Con piu' merge ravvicinati le CI
+    # finiscono in ordine casuale: in parallelo, due `gcloud run deploy` vanno in conflitto
+    # e l'ultimo a finire vince, anche se e' un commit piu' vecchio. Il gruppo e' sul job e
+    # non sul workflow, cosi' una CI fallita (job saltato dall'`if`) non entra in coda e non
+    # scalza un deploy valido in attesa.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
+      # GitHub tiene al massimo un run in attesa per gruppo e cancella quello piu' vecchio:
+      # il run che arriva al lock puo' quindi essere stato avviato da un commit ormai
+      # superato. Per questo non si deploya head_sha dell'evento, ma la punta attuale di
+      # main, e solo se la CI di quel commit esatto e' andata a buon fine. Se la punta non
+      # ha ancora una CI verde, il run termina con successo senza deploy: ci pensera' il
+      # run avviato dalla CI della punta.
+      - name: Scegli il commit da deployare (punta di main con CI verde)
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_SHA: ${{ github.event.workflow_run.head_sha }}
+          CI_WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+        run: |
+          set -euo pipefail
+          tip=$(gh api "repos/$REPO/commits/main" --jq .sha)
+          echo "Evento: $EVENT_SHA - punta di main: $tip"
+          if [ "$tip" = "$EVENT_SHA" ]; then
+            # L'`if` del job garantisce gia' che la CI di questo commit sia verde.
+            conclusion=success
+          else
+            conclusion=$(gh api \
+              "repos/$REPO/actions/workflows/$CI_WORKFLOW_ID/runs?head_sha=$tip&branch=main&event=push&per_page=1" \
+              --jq '.workflow_runs[0] | if . == null then "missing" elif .status != "completed" then .status else .conclusion end')
+          fi
+          echo "CI della punta: $conclusion"
+          if [ "$conclusion" = "success" ]; then
+            echo "sha=$tip" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Deploy saltato: la punta di main ($tip) non ha una CI verde ($conclusion). Nessun commit piu' vecchio viene deployato al suo posto."
+            echo "sha=" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v7
+        if: ${{ steps.target.outputs.sha != '' }}
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ steps.target.outputs.sha }}
 
       - id: auth
+        if: ${{ steps.target.outputs.sha != '' }}
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - uses: google-github-actions/setup-gcloud@v3
+        if: ${{ steps.target.outputs.sha != '' }}
 
       - name: Deploy su Cloud Run
+        if: ${{ steps.target.outputs.sha != '' }}
         # --max-instances non e' un dettaglio di costo: il limite di frequenza delle API
         # della mini app (services/rate_limit.py) e' un token bucket **per processo**,
         # quindi il budget di un utente si moltiplica per il numero di repliche. Senza un

@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#174](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/174) | Serialize production deploys and deploy only the `main` tip |
 | [#167](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/167) | Align current Admin and architecture documentation with delivered work |
 | [#165](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/165) | Two themed Story chapters and chapter-specific earned cosmetics |
 | [#161](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/161) | Mini App Daily correctness, startup, onboarding, cards and accessibility (parent; one PR requested by owner) |
@@ -143,6 +144,10 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-27: #174 fixes the production deploy race seen when eight Dependabot PRs were
+  merged together: parallel Deploy runs conflicted and an older commit could win. Deploys
+  are now serialized and always target the `main` tip with green CI.
 
 - 2026-09-27: #170–#172 track the follow-up work needed to operate the #52
   experimentation framework in a live product flow: bounded runtime reads and

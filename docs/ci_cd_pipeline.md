@@ -73,11 +73,16 @@ on:
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     ...
 ```
 
-Passi: checkout dello stesso commit testato (`ref: ${{ github.event.workflow_run.head_sha }}`),
-autenticazione GCP via `google-github-actions/auth@v2` (Workload Identity Federation), poi
+Passi: scelta del commit (la punta attuale di `main`, solo se la sua CI è verde; altrimenti il
+run finisce senza deploy, vedi
+[deploy.md § Ordine dei deploy](deploy.md#ordine-dei-deploy-uno-alla-volta-sempre-la-punta-di-main)),
+checkout di quel commit, autenticazione GCP via `google-github-actions/auth@v2` (Workload Identity Federation), poi
 `gcloud run deploy guess-the-player --source . --project guess-the-player-from-path-bot --region
 europe-west1 --max-instances 10 --quiet`. La build dell'immagine ([`Dockerfile`](../Dockerfile))
 compila anche il bundle Vite della Mini App in uno stage Node separato.
