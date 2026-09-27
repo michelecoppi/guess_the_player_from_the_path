@@ -151,3 +151,17 @@ def test_the_invite_link_joins_the_league_from_start(monkeypatch):
     asyncio.run(start_handler.start(update, context("lega_ABC23X")))
 
     assert joined == ["ABC23X"]
+
+
+def test_only_successful_league_actions_are_product_events(firebase, monkeypatch):
+    """#139: a created or joined league is an event; a refused one is not."""
+    captured = []
+    monkeypatch.setattr(league_handler.analytics, "capture",
+                        lambda event, **kw: captured.append((event.value, kw.get("properties"))))
+    update, _ = make_update()
+    asyncio.run(league_handler.league_create(update, context("x" * 40)))
+    asyncio.run(league_handler.league_create(update, context("Amici")))
+    asyncio.run(league_handler.league_join(update, context("ABC23X")))
+
+    assert captured == [("league_created", {"surface": "telegram_chat"}),
+                        ("league_joined", {"surface": "telegram_chat"})]

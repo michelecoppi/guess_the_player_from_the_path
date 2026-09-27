@@ -3,7 +3,94 @@
 Bot Telegram che ogni giorno propone il percorso professionale (misterioso) di un calciatore
 da indovinare, con classifiche, statistiche personali, eventi tematici a tempo e trofei.
 
+> **Licenza:** PolyForm Noncommercial 1.0.0 — libero per studio, hobby e uso personale,
+> **vietato qualsiasi uso commerciale**. Vedi [Licenza e uso](#licenza-e-uso).
+
+## Documentazione
+
+Questo README descrive il gioco com'è per chi lo usa (regole, comandi, negozio, dataset).
+Architettura, sviluppo, deploy e processo stanno in documenti dedicati:
+
+- [`docs/README.md`](docs/README.md) — indice: quale documento è autorevole per quale tema;
+- [`docs/architecture.md`](docs/architecture.md) — componenti, confini, flussi;
+- [`docs/local-development.md`](docs/local-development.md) — avvio in locale;
+- [`AGENTS.md`](AGENTS.md) e [`docs/agent-protocol.md`](docs/agent-protocol.md) — come si lavora sul repository (persone e agenti AI);
+- [GitHub Project #2](https://github.com/users/michelecoppi/projects/2) — stato, priorità e backlog.
+
+Avvio rapido (dettagli e prerequisiti nella guida locale):
+
+```bash
+pip install -r requirements-dev.txt
+npm ci
+python -m tools.check_environment
+python -m tools.dev check
+```
+
 ## Come si gioca
+
+### Transizione alla mini app Telegram
+
+Con `PUBLIC_BASE_URL` configurato, `/start` invita ad aprire la mini app nelle chat
+private (primo bottone del menu, anche per chi arriva per la prima volta), e `/help`
+spiega il gioco con il solo bottone della mini app (niente menu). `/app` e `/info` non
+esistono piu': facevano lo stesso di `/start` e `/help`. All'avvio il bot configura inoltre il pulsante
+fisso **Play** di Telegram. Le notifiche giornaliere degli utenti che le hanno
+attivate includono lo stesso accesso diretto. I testi sono disponibili in IT/ES/EN.
+
+Il centro **Gioca** della mini app include allenamento, eventi e duelli tra amici,
+con interfaccia responsive e testi IT/ES/EN. Profilo e progressi sono condivisi tra
+chat e mini app; i round nei gruppi restano accessibili dal bot. Senza URL
+configurato, gli inviti alla mini app non compaiono.
+Le modifiche diventano operative al deploy e al successivo avvio del servizio.
+
+### Allenamento, amici ed eventi nella mini app
+
+- **Allenamento:** cinque tentativi, confronto dopo un errore, soluzione a fine
+  partita o su richiesta e pulsante per il prossimo percorso. La sessione della
+  mini app si riprende riaprendo Allenamento, senza cambiare quella aperta in chat.
+  I calciatori vengono dal pool riservato o da giornate passate; non si guadagnano
+  punti, ma gli indovinati contribuiscono ai traguardi di allenamento.
+- **Sfida un amico:** cinque percorsi identici, tre tentativi per percorso e due
+  posti. Vince chi indovina più percorsi; a parità contano meno tentativi (un
+  percorso perso ne conta tre). Chi non vuole insistere può **saltare il percorso**
+  con una conferma sul pulsante: vale come un percorso perso, cioè tre tentativi.
+  La partita è asincrona, senza punti nella classifica generale. Il pulsante
+  Aggiorna recupera i progressi dell'avversario; il confronto dei punteggi appare
+  quando entrambi hanno finito. Sotto il campo di risposta restano l'elenco dei
+  percorsi già chiusi - quali hai preso e quanti tentativi ti sono costati, con i
+  risultati dell'avversario appena finisce anche lui - il testa a testa con quella
+  persona e le ultime dieci partite concluse, percorsi e soluzioni compresi. Il
+  centro Gioca riprende l'ultimo duello; un invito permette di riaprire anche
+  quello precedente.
+  Gli inviti durano sette giorni e richiedono `BOT_USERNAME` e `PUBLIC_BASE_URL`.
+  Il link `/start duel_<codice>` registra anche un nuovo utente e gli presenta
+  il pulsante per aprire la partita nella mini app. Nessun messaggio è inviato
+  automaticamente agli amici.
+- **Eventi settimanali:** il centro mostra gli eventi attivi secondo il calendario
+  esistente, con descrizioni tradotte, scadenza, sfida e classifica. Supporta i tipi
+  `path`, `transfer_guess`, `career`, `father_son` e `blind_path`;
+  in **Carriera al buio** si vede prima solo il club più recente e si possono
+  scoprire fino a cinque tappe, perdendo un punto per ogni club aggiuntivo
+  (minimo un punto). Questa sfida si gioca nella Mini App; il bot apre l'evento
+  senza rivelarne il percorso. Gli altri tipi mantengono le regole condivise
+  fra bot e Mini App.
+
+L'endpoint `/app/api/arena` richiede la stessa firma Telegram degli altri endpoint.
+Le mosse di allenamento e duello controllano una revisione in transazione; gli
+eventi verificano giornata e numero di tentativi. Quando il server risponde che la
+partita è cambiata, la mini app la ricarica da sola invece di lasciare in pagina
+contatori vecchi. Le soluzioni dei duelli si mostrano nel riepilogo solo dopo che
+entrambi hanno finito; gli alias accettati non vengono inviati al client. I duelli
+sono salvati in `app_duels`; il testa a testa e le partite concluse stanno sul
+documento utente (`app_duel_record`, `app_duel_matches`) e ogni giocatore registra
+la propria copia una volta sola. `/forgetme DELETE` elimina anche i duelli a cui
+l'utente partecipa e, passando da quelli, cancella il suo nome dal testa a testa
+degli avversari raggiungibili.
+La scadenza viene applicata dall'applicazione; per rimuovere automaticamente i
+documenti scaduti si può configurare il TTL Firestore sul campo `expires_at`.
+
+L'anteprima `python scripts/preview_webapp.py` include le nuove modalità con
+partite dimostrative in memoria. Non invia inviti reali né usa Firestore.
 
 Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. In chat
 privata **basta scrivere il nome**: non serve nessun comando (`/guess <nome>` continua a
@@ -13,7 +100,7 @@ costa un punto. Chi non ci arriva scopre chi era a mezzanotte, o con `/solution`
 chiusa.
 
 Si gioca in due posti, con le stesse identiche regole: la **chat del bot** e la **mini app**
-(`webapp/index.html`), che aggiunge il completamento automatico sui nomi e il calendario delle
+(`webapp/src/`, Vite + TypeScript), che aggiunge il completamento automatico sui nomi e il calendario delle
 giornate passate. Le regole stanno in un modulo solo (`services/game.py`), quindi non esistono
 due versioni del punteggio da tenere allineate.
 
@@ -21,6 +108,7 @@ due versioni del punteggio da tenere allineate.
 |---|---|
 | `/start` | registrazione e menu; apre anche i link d'invito alle leghe |
 | `/menu` | la tastiera con tutto quello che si puo' fare |
+| `/help` | come si gioca, con il bottone per aprire la mini app |
 | `/show` | la sfida di oggi |
 | `/solution` (`/soluzione`) | chi era il calciatore di una giornata gia' chiusa |
 | `/guess <risposta>` | il modo classico di rispondere |
@@ -39,6 +127,12 @@ due versioni del punteggio da tenere allineate.
 | `/shop` (`/negozio`) | skin, cornici, titoli e distintivi con le Stelle di Telegram |
 | `/legend` (`/legenda`) | come si legge l'immagine del percorso |
 | `/notify`, `/language` | notifiche e lingua |
+
+Per le campagne di promozione esistono link tracciabili
+`https://t.me/<bot>?start=src_<canale>` (per esempio `src_tiktok`, `src_reddit`,
+`src_telegram_group`): aprono il normale benvenuto e registrano solo il canale di
+provenienza. L'elenco dei canali ammessi è in
+[`docs/product-analytics.md`](docs/product-analytics.md).
 
 Il menu "/" di Telegram (`set_my_commands`) viene impostato all'avvio nelle tre lingue: le
 **descrizioni** sono tradotte, i **nomi dei comandi** no — sono in inglese per tutti. Un bot
@@ -85,7 +179,9 @@ seconda: le squadre **non** si confrontano mai. Sono gia' tutte nell'immagine �
 sarebbe ripetere quello che si vede — e le informazioni che l'immagine non da' sono
 esattamente nazionalita', ruolo ed eta'.
 
-Il nome tentato viene risolto sul dataset con la stessa tolleranza ai refusi delle risposte,
+Gli indizi viaggiano come chiavi di traduzione (`{"key": ..., "args": ...}`, mappe e non
+coppie: allenamento e duelli salvano il confronto nella sessione, e Firestore rifiuta un
+array dentro un array). Il nome tentato viene risolto sul dataset con la stessa tolleranza ai refusi delle risposte,
 e il blocco riporta in testa la scheda che il bot ha capito: e' l'unico modo che ha l'utente
 di accorgersi che "Ronaldo" e' stato inteso come un altro Ronaldo. Se il nome non e' nel
 dataset — o se la sfida e' cosi' vecchia da non avere `player_id` — il confronto non c'e' e
@@ -152,6 +248,11 @@ card da condividere. I contatori stanno sul documento della sfida (`players_coun
   gruppo, ed e' l'unica riga che non puo' spoilerare niente. Le sfide recuperate
   dall'archivio si condividono marcate come tali, cosi' in un gruppo dove quella di oggi e'
   ancora aperta non sembrano il risultato di oggi.
+  L'ultima riga invita a provare con il **link invito di chi condivide** ("Riesci a fare
+  meglio? 👉 `t.me/<bot>?start=ref_…`", tradotta in IT/ES/EN): chi si iscrive da li' conta
+  come suo invito ai fini dei premi referral e nelle analytics arriva come `referral`. Senza
+  `BOT_TOKEN`/`BOT_USERNAME` resta il link del bot. Nella mini app, accanto a "Condividi",
+  **📋 Copia** mette lo stesso testo negli appunti per WhatsApp, Instagram o X (#150).
 - **Archivio** (`handlers/archive_handler.py`): rigiocare i giorni passati **senza punti**.
   Aprire un giorno mette l'utente in "modalita' archivio" (`archive_day` sul suo documento,
   non in memoria: su Cloud Run l'istanza puo' sparire fra un messaggio e l'altro), e da li' le
@@ -170,7 +271,7 @@ esce — lo riconosce in due secondi e si prende pure il bonus del primo. È un 
 alla classifica. Le due sorgenti ammesse lo evitano in due modi diversi:
 
 1. **il pool riservato** — i calciatori con `"practice_only": true` in `data/players.json`
-   (80 sui 323 di oggi, bilanciati fra le quattro fasce di difficoltà) **non escono mai** come
+   (152 sui 608 di oggi, bilanciati fra le quattro fasce di difficoltà) **non escono mai** come
    sfida del giorno né dentro un evento. Allenarsi su di loro non dà nessun vantaggio, per
    costruzione. È materiale disponibile subito e non costa **nessuna lettura**: le schede sono
    nel file, dentro il container. `python scripts/reserve_practice_players.py` è ciò che ha
@@ -203,7 +304,7 @@ subito con "👀 Rivela", visto che quella giornata è passata. I tentativi sono
 infiniti anche per una ragione meno ovvia: un campo che accetta nomi all'infinito e risponde
 "stessa nazionalità, ruolo diverso" sarebbe un modo comodo per sondare il dataset.
 
-**Partita di gruppo** (`/round`, `handlers/group_handler.py`): un round alla volta nel
+**Partita di gruppo** (`/round`, regole in `domains/groups/service.py`): un round alla volta nel
 gruppo, vince chi risponde per primo, punti per difficoltà come nel gioco vero. **Non** è la
 sfida di oggi ripubblicata — la risposta comparirebbe in chiaro davanti a chi non ha ancora
 giocato, bruciando la giornata anche a chi non stava guardando. Le altre tre conseguenze della stessa scelta:
@@ -237,10 +338,22 @@ condanna a restare ultimi.
 
 ### Negozio (Stelle di Telegram)
 
+Il set **Biglietto da trasferta** comprende tema (12 Stelle), cornice perforata (10),
+titolo (5) e card con matrice e timbro (15): insieme **32 Stelle** anziché 42.
+Notturna costa 15, Foil 22 e il distintivo Diamante 7 Stelle. I pacchetti continuano
+ad addebitare soltanto una quota proporzionale ai pezzi mancanti.
+Le card in prova sono esempi prodotti dal renderer dei risultati condivisi; i
+festeggiamenti si possono provare e rispettano la preferenza di movimento ridotto.
+
 `/shop` e la quinta scheda della mini app vendono **solo cose da guardare**, pagate in
 [Stelle di Telegram](https://core.telegram.org/bots/payments-stars): temi che ricolorano tutta
 la mini app, cornici per l'avatar, titoli sotto il nome, distintivi accanto al nome in
 classifica e i simboli della card che si incolla nei gruppi.
+Nella mini app **Scopri** presenta poche collezioni, **Catalogo** permette di cercare per
+nome e categoria, e **I miei oggetti** raccoglie il look indossato e quelli salvati.
+La scheda di ogni oggetto mostra dove appare, permette di provarlo temporaneamente e
+mostra il prezzo effettivo restituito dal server prima dell'acquisto. Traguardi e
+cronologia acquisti restano accessibili dallo Shop.
 
 La regola sta sopra il catalogo e non si negozia: **niente di quello che si compra cambia la
 partita.** Nessun punto, nessun tentativo in piu', nessun indizio scontato. Non e' prudenza: un
@@ -250,22 +363,133 @@ lo verifica sul catalogo (`test_nothing_on_sale_touches_the_game`), perche' e' i
 regola che si perde per strada un oggetto alla volta.
 
 Il catalogo e' **contenuto**, non codice: sta in `data/shop.json` come i calciatori e gli
-eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Cinque tipi di
+eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Otto tipi di
 oggetto (uno per "slot": se ne indossa uno per tipo), piu' i pacchetti; ogni tipo ha il suo
 oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
 
 | Tipo | Dove si vede | Prezzi |
 |---|---|---|
-| Temi | colori di tutta la mini app | 15 – 30 ⭐ |
-| Cornici | il cerchio intorno all'avatar | 15 – 25 ⭐ |
-| Titoli | una riga sotto il nome | 15 – 25 ⭐ |
-| Distintivi | accanto al nome, **anche nella classifica in chat** | 10 – 25 ⭐ |
-| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 15 – 20 ⭐ |
-| Pacchetti | piu' cose insieme | 30 – 220 ⭐ |
+| Temi | colori di tutta la mini app | 7 – 15 ⭐ |
+| Cornici | il cerchio intorno all'avatar | 7 – 12 ⭐ |
+| Titoli | una riga sotto il nome | 7 – 12 ⭐ |
+| Distintivi | accanto al nome, **anche nella classifica in chat** | 5 – 12 ⭐ |
+| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 5 – 10 ⭐ |
+| Numeri | il numero di maglia prima del nome, **anche in classifica** | 5 – 7 ⭐ |
+| Festeggiamenti | cosa succede sullo schermo quando indovini | non in vendita |
+| Figurine | la finitura della card del risultato come immagine | 15 – 22 ⭐ |
+| Pacchetti | piu' cose insieme | 15 – 110 ⭐ |
+
+Il listino parte deliberatamente basso: sono cosmetici permanenti di un gioco gratuito, non
+contenuti o vantaggi competitivi. Le fasce 5/7/12/15 ⭐ tengono il primo acquisto successivo
+al benvenuto nella zona dell'impulso; i set principali stanno fra 26 e 35 ⭐ e la collezione
+completa a 110 ⭐. Il riferimento economico non è una conversione mostrata all'utente — il
+costo di acquisto delle Stelle varia per paese, imposte e canale — ma il valore ufficiale
+riconosciuto al developer, oggi pari all'equivalente di 0,013 USD per Stella. Le fonti da
+ricontrollare a ogni revisione sono la [guida ai pagamenti in
+Stelle](https://core.telegram.org/bots/payments-stars) e i [termini per i developer,
+sezione 6.2](https://telegram.org/tos/bot-developers#6-2-digital-goods-and-services).
+Finché non esiste uno storico sufficiente di visualizzazioni, acquisti e rimborsi, i prezzi
+non si alzano per imitare cataloghi di giochi più grandi: si misura prima la conversione del
+negozio e si rivede il listino come esperimento separato.
+
+I primi cinque sono i **fondamentali** (`CORE_KINDS`) e una collezione li riempie tutti; i tre
+in fondo sono arrivati dopo e una collezione puo' averli o no. Non e' pigrizia: un numero di
+maglia o un festeggiamento non stanno addosso a ogni mondo, e inventarne uno per ogni set
+vorrebbe dire riempire il catalogo di roba senza intenzione.
+
+**Tre modi di avere una cosa senza comprarla**, e sono diversi apposta:
+
+| | Come si ottiene | Si puo' perdere? |
+|---|---|---|
+| Traguardo (`achievement`) | un contatore che arriva a una soglia | **no**, si scrive e resta |
+| Premio di completamento (`completes`) | possedere tutti i pezzi di una collezione | sì: un rimborso rompe la collezione |
+| Podio (`trophy`) | arrivare fra i primi in un evento o nel mese | no, i trofei non si tolgono |
+
+La differenza fra i primi due non e' un dettaglio. Un traguardo e' **un fatto avvenuto** e
+per questo si scrive sul documento utente; un premio di completamento **e'** la collezione
+completa, quindi se un pezzo torna indietro il premio se ne va con lui — che e' esattamente
+quello che deve succedere. Gli otto festeggiamenti sono tutti premi di completamento: non si
+comprano a nessun prezzo, e sono la ragione per arrivare dall'80% al 100% di una collezione.
+
+**La rarita'** (`rarity_of`) non e' un dato in piu' da tenere allineato: si ricava dal prezzo,
+quindi non puo' mentire. Un oggetto puo' dichiararla quando la fascia del prezzo racconta
+un'altra cosa — una figurina che esiste solo dentro una collezione costa zero da sola, e
+"gratuita" e' il contrario di quello che vuol dire.
+
+**L'oggetto di benvenuto** costa una stella e si compra solo come **primo** acquisto
+(`first_purchase_only`): il salto che conta non e' fra due prezzi, e' fra zero e il primo
+pagamento. Dopo, un oggetto a una stella sarebbe solo un oggetto svenduto.
+
+**La vetrina della settimana** sono tre oggetti di tre tipi diversi che cambiano ogni lunedi'.
+Si ricavano dalla settimana ISO con un hash (`weekly_showcase`): non c'e' niente da scrivere,
+niente da far girare a mezzanotte e quindi niente che possa restare indietro. E' la stessa
+per tutti — una vetrina personalizzata sarebbe solo un altro ordinamento del catalogo, mentre
+il senso e' che due persone nello stesso gruppo vedano la stessa cosa nello stesso momento.
+
+**Le collezioni** (`"featured": true`) sono la forma che funziona meglio: cinque pezzi, uno
+per slot, che raccontano la stessa cosa — *Notti europee*, *Domenica '90*, *Calcio di
+strada*, *Cinegiornale 1966*, *Giorno di mercato*, *Notte di neve*, *Novembre in provincia*,
+*Notte sudamericana*. Si vende un mondo, non un colore, e i pezzi restano comprabili singoli
+per chi ne vuole solo uno. Su ogni collezione girano tre test: che riempia tutti e cinque gli
+slot, che costi meno della somma, e che il testo del tema **si legga** sul suo sfondo (4.5:1,
+`text` e `muted` contro `bg`, `bg2` e `card`) — un tema bello e illeggibile e' un tema rotto.
+
+Sui set ispirati a un club: **niente stemmi, niente nomi, niente accostamenti dichiarati.**
+Si descrivono i colori, non la squadra. La somiglianza la fa chi guarda, e il set resta
+nostro.
 
 Un pacchetto deve dare una ragione per esistere, e le ragioni ammesse sono due: costa meno
 della somma dei pezzi, oppure contiene qualcosa che da solo non si vende (il Pacchetto
 Sostenitore). Anche questo e' un test.
+
+**I traguardi** sono cosmetici a `price: 0` con un blocco `achievement`: non si comprano, si
+raggiungono giocando (il primo distintivo alla prima risposta giusta, l'ultimo a cento
+calciatori). Servono a far vedere che gli slot esistono a chi il negozio non lo ha mai aperto.
+
+**La tua formazione** è la sezione inviti, accessibile da Statistiche. Il link personale
+`/start ref_<id>_<firma>` viene firmato dal server e associato solo durante la prima
+registrazione: un solo invitante, nessun auto-invito o cambio successivo. Dopo **5 daily
+concluse in giorni distinti**, anche non consecutivi, l'amico è qualificato. Contano le
+vittorie e le sconfitte a tentativi esauriti; non contano aperture, partite abbandonate,
+archivio, allenamento, duelli o eventi. Bot e mini app passano dallo stesso storico daily.
+
+I premi permanenti sono la cornice L'intesa (3 amici), la card Lavagna del mister (5),
+tema Il tuo undici con cornice e card coordinate (10). Hanno il contatore
+`referral_qualified` e non sono acquistabili. La card tattica compare nel profilo e ha
+una finitura dedicata sulle immagini dei risultati condivisi; le animazioni rispettano
+la preferenza di movimento ridotto, si fermano quando il campo esce dallo schermo e nelle
+miniature dei premi non partono affatto.
+
+`domains/referrals/service.py` conserva un documento per invitato nella collezione `referrals`,
+con invitante, invitato, nome, timestamp di associazione, giornate conteggiate e timestamp
+di qualificazione. La chiave è un hash stabile dell'id dell'invitato. La transazione
+legge lo storico come prova e salva insieme qualificazione, contatore dell'invitante e
+cosmetici guadagnati: tentativi ripetuti o simultanei non duplicano il premio. Lo storico
+è salvato prima dell'accredito; in caso di errore la sezione inviti riconcilia gli amici
+della pagina con le ultime cinque daily concluse. La lista privata usa pagine da 20 e
+il pulsante per aggiornare, senza interrogazioni continue. Non espone id degli amici.
+`/forgetme` rimuove i dati personali anche dal registro degli inviti, mantenendo solo la
+chiave pseudonima con stato `deleted` contro il riutilizzo dello stesso account.
+
+Non serve migrare i vecchi account: il contatore mancante vale zero. Servono le normali
+configurazioni `BOT_TOKEN` e `BOT_USERNAME`; il link usa il bot per registrare l'invito
+prima di aprire la mini app. Una rotazione del token invalida i vecchi link, senza
+modificare associazioni già registrate. Per provare i premi in locale:
+`python scripts/preview_webapp.py`, poi `/app?referrals=2` o `/app?referrals=10`.
+I dati dell'anteprima sono esclusivamente in memoria.
+
+Il punto delicato è che un traguardo **si ricava da un contatore**, e finché resta solo un
+calcolo è anche reversibile: basta alzare un obiettivo in `data/shop.json` — una modifica a un
+file di dati, che non passa da una riga di codice — e chi stava sotto la soglia nuova si
+ritrova senza un distintivo che aveva già guadagnato. Per questo si scrivono, una volta sola,
+nella stessa scrittura che muove il contatore che li fa scattare (`register_correct_guess` li
+mette nella transazione che ha già letto il documento, quindi non costano nemmeno una lettura;
+archivio e allenamento passano da `_bump_counters`). `owned_ids` continua comunque a calcolarli:
+è la rete per chi ha preso un traguardo prima che li scrivessimo e non ha ancora rigiocato.
+
+Un obiettivo può appoggiarsi solo a un contatore che una di quelle scritture raccoglie
+(`HARVESTED_FIELDS`): appeso a un campo che nessuno raccoglie resterebbe per sempre un calcolo.
+Anche questo è un test.
 
 **Come funziona un pagamento**, nell'ordine — sta tutto in `handlers/shop_handler.py`:
 
@@ -309,12 +533,74 @@ accetta, ritira i cosmetici — ma **solo quelli che nessun altro acquisto ancor
 gia' dato**: chi aveva comprato il tema Neon da solo e poi il Pacchetto Neon, e si fa
 rimborsare il pacchetto, il tema l'aveva pagato e resta suo.
 
+### La figurina del risultato
+
+La riga di quadratini si incolla; una figurina si guarda. `render_share_card`
+(`services/path_image.py`) disegna il risultato come PNG verticale 860×1075 — il formato che
+Telegram mostra piu' grande in una bolla senza tagliarlo — e la finitura e' un cosmetico
+(`kind: card`): piatta, notturna, olografica, di pellicola, tattica e biglietto da trasferta.
+
+Nel disegno **non entrano emoji**: il font non ha quei glifi e li stamperebbe come quadratini
+vuoti (`services/fonts.py`). I tentativi sono forme disegnate, ed e' anche il motivo per cui
+la card puo' avere una finitura — un'emoji non si puo' rendere olografica.
+
+Tre cose che non cambiano:
+
+- **la card non dice mai chi era il calciatore.** Stessa regola della riga di testo: la si
+  incolla in un gruppo dove qualcuno non ha ancora giocato. C'e' un test che controlla il
+  contratto della funzione, cioe' che non esista nemmeno un parametro dove un nome possa
+  entrare;
+- **la riga di testo resta.** La figurina si aggiunge, non sostituisce: chi ha le immagini
+  spente continua a vedere il suo risultato, e una riga si incolla dove un'immagine non si
+  puo' mettere;
+- **si chiede, non arriva da sola.** In chat e' un bottone sotto il risultato, nella mini app
+  e' "Vedi la figurina". Mandarla ad ogni risposta giusta vorrebbe dire un PNG per ogni
+  partita di ogni utente, per far vedere un cosmetico a chi ce l'ha.
+
+Le parole (titolo, trofeo appeso, serie, indizi) arrivano gia' tradotte da `services/share.py`:
+il disegno non traduce niente.
+
+### Trofei da appendere al profilo
+
+I trofei si vincono sul podio di un evento o della classifica del mese, e stavano dentro una
+lista dietro un bottone di `/stats`. Ora sono anche **targhe da indossare**: se ne scelgono
+fino a tre (`services/trophies.py`) e vanno sul profilo, accanto al titolo comprato in
+negozio e sul profilo pubblico.
+
+Non passano da `domains/shop/service.py`, pur finendo nello stesso posto. Un cosmetico si compra e
+sta in un catalogo fisso, uguale per tutti; un trofeo si vince, e il suo catalogo e' diverso
+per ogni utente — e' la sua bacheca. Farlo entrare nel negozio avrebbe voluto dire un
+catalogo per utente, cioe' rompere la cosa su cui `get_item` e `owned_ids` sono costruiti.
+Sono due mondi separati che si incontrano solo alla fine, quando la pagina disegna.
+
+La scelta sta in `cosmetics.pinned` e non accanto a `trophies`: `trophies` lo scrive chi
+assegna un podio, `pinned` lo scrive l'utente. Chi non ha mai scelto vede comunque le sue tre
+targhe migliori (posizione prima, anno dopo) — altrimenti la cosa esiste solo per chi la
+scopre. Dal profilo pubblico si vedono **solo** le targhe appese, mai la bacheca intera.
+
+**La bacheca** e' una schermata sua e non una card in mezzo alle statistiche. Con quattro
+trofei una fila di targhe funziona; con quaranta diventa un muro in cui il primo posto vinto
+due anni fa sta in mezzo a dieci terzi posti. Quindi: il conto per medaglia in alto, i filtri
+(posizione, evento o mese) che tolgono il grosso, e i trofei raggruppati **per anno** — che e'
+il modo in cui uno se li ricorda. Da li' si sceglie quali tre appendere.
+
+**Come si legge un codice.** Un trofeo di evento e' `{posizione}_{id del template}_{giorno}`,
+e l'id di un template contiene trattini bassi suoi (`2_un_amore_una_maglia_20260907`): si
+legge la posizione davanti e il giorno in fondo, e in mezzo c'e' l'id qualunque cosa
+contenga. Contare i pezzi — che e' quello che si faceva prima — sbagliava su quasi tutti i
+trofei veri, e `/stats` finiva per stampare il codice grezzo. Il nome leggibile e tradotto
+arriva da `data/event_templates.json`, che e' l'unico posto dove quel nome esiste in tre
+lingue.
+
 ### Mini app Telegram
 
-`webapp/index.html` e' una pagina sola servita dallo stesso servizio FastAPI su `/app`, con
-cinque schede: **Gioca**, **Archivio**, **Statistiche**, **Leghe**, **Negozio**. Non e' piu'
-una vetrina:
-ci si gioca davvero, con le stesse regole della chat.
+La mini app e' scritta in Vite + TypeScript (`webapp/src/`, entry `index.html` alla radice),
+compilata in `webapp/dist/` e servita dallo stesso servizio FastAPI su `/app`: e' quella che
+aprono il pulsante **Play** e i bottoni del bot. La barra in basso ha cinque destinazioni:
+**Daily**, **Arena** (allenamento, duelli, eventi), **Classifica** (generale e leghe),
+**Negozio**, **Profilo**. L'archivio si apre dall'Arena, gli inviti dal Profilo, segnalazioni
+e pagine legali dal menu in alto. Struttura e contratto con il backend: [`docs/miniapp.md`](docs/miniapp.md).
+Ci si gioca davvero, con le stesse regole della chat.
 
 Cosa aggiunge rispetto al bot, e perche':
 
@@ -330,8 +616,12 @@ Cosa aggiunge rispetto al bot, e perche':
   `solved_in` sul documento utente, scritti quando si indovina, quindi non costa nessuna lettura;
 - **gestione delle leghe**: creare, entrare, uscire, classifica completa e invito con il
   selettore di chat nativo di Telegram;
-- **integrazione con l'app**: tema di Telegram (`--tg-theme-*`), `MainButton` di sistema al posto
-  di un bottone in pagina, e vibrazione su risposta giusta o sbagliata;
+- **integrazione con l'app**: vibrazione su risposta giusta o sbagliata; l'aspetto e' scuro
+  per costruzione e lo decidono i cosmetici, non il tema di Telegram
+  ([`docs/miniapp-appearance.md`](docs/miniapp-appearance.md)). Il bottone per rispondere e' in pagina, sotto il campo, e non il
+  `MainButton` di sistema: quello sta sopra la tastiera ma a tastiera chiusa finisce sotto
+  la barra delle schede, dove nessuno lo cerca, ed era l'unico posto dell'app in cui il
+  bottone non stava dove si era appena scritto;
 - **[negozio](#negozio-stelle-di-telegram)**: il tema comprato arriva col profilo e non dietro
   la scheda del negozio, cosi' la prima schermata e' gia' del colore giusto invece di
   cambiare colore mezzo secondo dopo.
@@ -347,12 +637,16 @@ Due vincoli che non si toccano:
    test apposta (`test_the_answer_never_reaches_the_page`), perche' e' il tipo di errore che
    guardando lo schermo non si nota.
 
-Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' configurata; senza, il bot funziona
-esattamente come prima.
+Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' configurata. Il servizio completo
+(`bot.py`) pero' non parte senza quella variabile, che serve anche alla consegna dei task Cloud
+Tasks: in produzione il bottone c'e' sempre (vedi [`docs/deploy.md`](docs/deploy.md)).
+
+Elenco parziale; quello completo sta nelle rotte di `bot.py` (vedi [`docs/miniapp.md`](docs/miniapp.md)).
 
 | Endpoint | Cosa fa |
 |---|---|
 | `POST /app/api/me` | profilo, sfida di oggi, classifica, leghe, istogramma |
+| `POST /app/api/profile/search` | cerca per nome i profili pubblici, con risultati limitati |
 | `POST /app/api/players` | i nomi per il completamento automatico |
 | `POST /app/api/guess` | un tentativo (oggi, o una giornata passata con `day`) |
 | `POST /app/api/hint` | un indizio, allo stesso prezzo della chat |
@@ -366,105 +660,40 @@ esattamente come prima.
 ## Stack
 
 - **Bot**: [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) su webhook, servito da **FastAPI** (`bot.py`)
-- **Dati di gioco**: **Firebase Firestore** (`users`, `daily_path`, `events` con la sotto-collection `participants`, `seasons`). Le date sul database sono ISO `YYYY-MM-DD`; agli utenti si mostrano come `gg/mm/aa`
-- **Scheduler**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana (nessun processo interno da tenere sveglio)
+- **Dati di gioco**: **Firebase Firestore** (mappa delle collection in [`docs/firestore.md`](docs/firestore.md)). Le date sul database sono ISO `YYYY-MM-DD`; agli utenti si mostrano come `gg/mm/aa`
+- **Scheduler e code**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana; gli update Telegram e il broadcast passano da **Cloud Tasks** ([`docs/runtime-hardening.md`](docs/runtime-hardening.md))
 - **Immagini**: percorso, banner evento, palmarès e avatar sono generati a runtime con **Pillow** (`services/path_image.py`), con un font TrueType di sistema (`fonts-dejavu-core` nel Dockerfile). Nessuna immagine ospitata fuori dal progetto
 - **Dataset calciatori**: JSON locale versionato in `data/players.json`
-- **Mini app**: pagina statica servita da FastAPI su `/app`, autenticata con la firma `initData` di Telegram
+- **Mini app**: Vite + TypeScript su `/app`, autenticata con la firma `initData` di Telegram ([`docs/miniapp.md`](docs/miniapp.md))
 
 ## Architettura dell'automazione
+
+La mappa dei componenti, dei moduli e di chi legge o scrive cosa è in
+[`docs/architecture.md`](docs/architecture.md). I file di dati principali:
 
 ```
 data/players.json          -> pool di calciatori curato (carriera, nazionalità, popolarità, verified)
 data/event_templates.json  -> regole configurabili per generare gli eventi a rotazione
 data/config.json           -> parametri di gioco (difficoltà, buffer giorni, anti-ripetizione, ecc.)
-docs/difficolta.md         -> come si assegnano notorietà e difficoltà (da leggere prima di ampliare il dataset)
-
-services/dates.py            -> un solo posto in cui si decide come si scrive una data (ISO sul db, gg/mm/aa a schermo)
-services/firebase_service.py -> tutti gli accessi a Firestore (transazioni comprese)
-services/daily_challenge.py  -> sfida del giorno, con cache in memoria della sola parte immutabile
-services/player_pool.py      -> carica e valida il dataset, filtra per le regole di un evento
-services/difficulty.py       -> calcola la difficoltà di un percorso (facile/normale/difficile/esperto)
-services/dataset_health.py   -> salute del pool: autonomia, difficoltà scoperte, eventi senza candidati
-services/path_image.py       -> disegna le immagini (Pillow): percorso, banner evento, palmarès, avatar
-services/fonts.py            -> trova un TrueType di sistema per le immagini (fallback compreso)
-services/matching.py         -> confronto tollerante fra risposta scritta e risposte accettate
-services/guess_feedback.py   -> confronto fra il calciatore tentato e la soluzione (nazionalità, ruolo, età)
-services/past_challenges.py  -> sceglie una sfida già passata, a una lettura invece che con una query
-services/practice_content.py -> il materiale di allenamento e gruppo: pool riservato + sfide passate, una forma sola
-services/streak.py           -> regole della striscia di giorni consecutivi
-services/share.py            -> card del risultato in quadratini e link di condivisione
-services/webapp_auth.py      -> verifica la firma dei dati che manda la mini app Telegram
-services/webapp_api.py       -> i dati che la mini app mostra, in una risposta sola
-services/daily_generator.py  -> sceglie il calciatore del giorno (con anti-ripetizione) e genera N giorni in anticipo
-services/event_generator.py  -> sceglie un template evento a rotazione e lo riempie con giocatori validi
-services/manual_event_service.py -> eventi creati a mano dalla chat (coppie padre/figlio)
-services/content_admin.py    -> dettaglio e correzione di sfide/eventi gia' programmati (usato dalla dashboard locale)
-services/dataset_editor.py   -> modifiche al dataset e alla taratura della difficolta' (usato dalla dashboard locale)
-
-scripts/generate_content.py  -> entrypoint per generare il buffer a mano (debug/backfill)
-scripts/import_players.py    -> importa nuovi calciatori nel dataset con validazione e anti-duplicati
-scripts/reserve_practice_players.py -> riserva all'allenamento una fetta del dataset, bilanciata per difficoltà
-scripts/dataset_report.py    -> report sullo stato del dataset (usato anche dalla CI)
-scripts/migrate_firestore.py -> migrazione una tantum dei dati esistenti al modello nuovo
-scripts/backup_firestore.py  -> export JSON del database, sotto-collezioni comprese (usato dal workflow settimanale)
-scripts/backfill_users.py    -> completa i documenti utente a cui mancano i campi aggiunti dopo la loro registrazione
-scripts/cleanup_daily_paths.py -> cancella le sfide oltre l'anno e i documenti pre-migrazione
-handlers/daily_job.py        -> job di mezzanotte chiamato da Cloud Scheduler: broadcast, reset, e generazione
-handlers/guess_handler.py    -> tentativi sulla sfida del giorno (comando e messaggio libero)
-handlers/archive_handler.py  -> sfide passate rigiocate senza punti
-handlers/training_handler.py -> allenamento: sfide passate a raffica, in privato
-handlers/group_handler.py    -> partite di gruppo: un round alla volta, punti solo dentro il gruppo
-handlers/league_handler.py   -> leghe private, codici d'invito, classifiche
-handlers/keyboards.py        -> tastiera del menu e menu comandi di Telegram
-handlers/legend_handler.py   -> la legenda dell'immagine (bottone sotto la sfida e /legend)
-handlers/menu_handler.py     -> i bottoni del menu, collegati agli handler dei comandi
-handlers/admin_handler.py    -> tutti i comandi Telegram /admin_* (al posto di una dashboard web)
-webapp/index.html            -> la mini app Telegram (servita da FastAPI su /app)
-admin_ui.py                  -> dashboard locale Streamlit: stato dettagliato e modifiche ai dati
+data/shop.json             -> catalogo del negozio
 ```
 
-### Come viene scelto il calciatore del giorno
+### Come vengono scelte le sfide e generati gli eventi
 
-1. Ogni notte (23:15 UTC) **Cloud Scheduler** chiama `POST /internal/daily-job` sul servizio
-   Cloud Run, che scrive direttamente su Firestore i prossimi `buffer_days_ahead` giorni
-   mancanti (default 3), invia il broadcast agli utenti iscritti, assegna i trofei degli eventi
-   conclusi e - il primo del mese - chiude la stagione mensile. **Non azzera nessun contatore**:
-   i tentativi giornalieri si azzerano da soli (vedi [Database](#database)).
-2. Il calciatore viene scelto **escludendo** quelli usati negli ultimi `history_days_no_repeat`
-   giorni (default 60), tra i soli giocatori con `verified: true` e un percorso di almeno
-   `min_teams_in_career` squadre (default 2) — niente percorsi banali o dati incompleti.
-3. La difficoltà ruota secondo `difficulty_rotation` in `data/config.json`; se per quella
-   difficoltà non ci sono candidati liberi, si prova la difficoltà più vicina.
-4. La scelta è **deterministica per data** (seed = data): se la generazione va rieseguita per
-   errore, il giocatore scelto per un giorno già passato resta lo stesso.
-5. Se anche Cloud Scheduler non dovesse partire, `/show` e `/guess` generano la sfida del
-   giorno al primo utilizzo (fallback "esecuzione alla prima richiesta").
+Ogni notte Cloud Scheduler chiama `POST /internal/daily-job`, che scrive i prossimi
+`buffer_days_ahead` giorni mancanti (scelta deterministica per data, senza ripetere i
+calciatori degli ultimi `history_days_no_repeat` giorni, a rotazione di difficoltà), può
+generare un evento tematico da `data/event_templates.json`, assegna i trofei degli eventi
+conclusi e avvia il broadcast. Se la sfida di oggi manca, `/show` e `/guess` la generano al
+primo utilizzo. Gli eventi `manual_only` (es. padre/figlio) si creano solo a mano, vedi
+[Eventi "coppie padre/figlio"](#eventi-coppie-padrefiglio-manuali).
 
-### Come vengono generati gli eventi tematici
-
-- Ogni "tipo" di evento è descritto come **template** in `data/event_templates.json`: nome,
-  descrizione, tipo di gameplay (`path`/`career`/`transfer_guess`/`father_son`), regole di
-  filtro sul pool di giocatori (es. minimo 6 squadre, solo big-5, solo nazionalità sudamericane),
-  durata e punti giornalieri.
-- **Nome e descrizione sono tradotti** (`name_i18n`, `description_i18n`): erano gli ultimi testi
-  che restavano in italiano per tutti, perché sono contenuto e non passavano da
-  `services/i18n.py` — quindi nemmeno dal test che tiene allineate le tre lingue. Ora c'è un
-  test apposta ([`tests/test_event_translations.py`](tests/test_event_translations.py)) che
-  fallisce se un template nuovo arriva senza traduzioni. `name` e `description` restano il
-  testo italiano: sono il ripiego per gli eventi generati prima, ed è quello che legge
-  l'amministrazione. Le traduzioni vengono **copiate sul documento dell'evento** al momento
-  della generazione, come il nome: un evento già partito resta quello che era anche se il
-  template cambia sotto.
-- `services/event_generator.py` sceglie un template **non usato di recente** (vedi
-  `event_history_no_repeat_templates`), rispetta un intervallo minimo tra un evento e l'altro
-  (`event_min_gap_days`) e — se il template lo richiede — solo nel weekend (`weekend_only`).
-- Un template può essere marcato `manual_only: true` (es. "Coppie leggendarie" padre/figlio, che
-  richiede una foto e non una carriera): non verrà mai generato in automatico, si crea dalla
-  chat con `/admin_fs_add` + `/admin_event_create` (vedi
-  [Eventi "coppie padre/figlio"](#eventi-coppie-padrefiglio-manuali)).
-- Per il tipo `career` (indovina le squadre di un giocatore noto) **non** viene mai salvata
-  un'immagine del percorso nei dati giornalieri, per non rivelare la risposta.
+Il dettaglio architetturale (Daily, Archivio, Allenamento, duelli, eventi) è in
+[`docs/game-modes.md`](docs/game-modes.md), compreso il planner delle sfide su 7–90 giorni
+(dashboard → *Planner sfide*,
+[#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)). Gli eventi si
+definiscono in `data/event_templates.json` (filtri, regole, premi, calendario), validati in CI e
+modificabili dalla dashboard: vedi [`docs/event-templates.md`](docs/event-templates.md).
 
 ### Difficoltà
 
@@ -519,10 +748,41 @@ correggere qualcosa a mano.
 | `/admin_fs_del <id>` | elimina una coppia padre/figlio |
 | `/admin_event_create <template> [gg/mm/aa] [giorni]` | crea a mano un evento |
 | `/admin_refund <charge_id>` | rimborsa un acquisto in Stelle e ritira i cosmetici consegnati |
+| `/admin_support_reply <telegram_id> <messaggio>` | risponde a una richiesta arrivata con `/paysupport` |
 
 `/admin_block` scrive su Firestore (`admin_settings/dataset_overrides`), quindi ha effetto
 **subito**, senza redeploy: utile quando un utente segnala una carriera sbagliata. Le sfide
 già presenti nel buffer non cambiano, si controllano con `/admin_next`.
+
+## Sviluppo locale e validatore configurazione
+
+La guida completa (prerequisiti, `.env`, validatore `python -m tools.check_environment`,
+comandi `python -m tools.dev` / `make` / `.\dev.ps1`, emulatore Firestore, API, Admin e
+server di sviluppo della Mini App) è in
+[`docs/local-development.md`](docs/local-development.md).
+
+## Anteprima locale della mini app
+
+```bash
+python scripts/preview_webapp.py     # poi http://localhost:8888/app
+```
+
+Serve a **guardare** i cosmetici prima di venderli: un tema, una cornice o una collezione si
+giudicano addosso a una pagina vera, non su un francobollo nella scheda del negozio e ancor
+meno su sei stringhe esadecimali dentro `data/shop.json`.
+
+E' la mini app vera (il bundle in `webapp/dist/`, quindi prima `npm run build`) servita dalle funzioni vere (`services/webapp_api.py`,
+`domains/shop/service.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
+in memoria. L'utente finto ha gia' **tutto** il catalogo e cinque trofei, cosi' ogni oggetto
+si indossa con un click e ogni traguardo e' sbloccato; il negozio funziona ma "Compra"
+consegna subito, senza fattura, perche' non c'e' niente da pagare.
+
+Non tocca il database, non chiede credenziali e non serve Telegram: il finto `initData` lo
+inietta il server nella pagina servita, quindi il bundle resta quello di produzione e non
+una sua variante. Si chiude e non resta niente.
+
+Due comode: `POST /app/api/preview/wear {"bundle": "pacchetto_neve"}` indossa un'intera
+collezione in un colpo, e `POST /app/api/preview/reset` rimette l'utente finto com'era.
 
 ## Dashboard locale (Streamlit)
 
@@ -532,7 +792,8 @@ streamlit run admin_ui.py
 ```
 
 Gira **sul proprio PC** con le stesse credenziali del bot (`.env` + `firebase-key.json`) e
-non viene mai esposta: non ha login perché non è raggiungibile da fuori. Usa gli stessi
+non viene mai esposta: non ha login perché non è raggiungibile da fuori. Architettura e
+confini: [`docs/admin.md`](docs/admin.md). Usa gli stessi
 servizi dei comandi Telegram — nessuna logica duplicata — e in più permette le correzioni che
 in chat sarebbero scomode. **Scrive sul database di produzione.**
 
@@ -543,7 +804,9 @@ in chat sarebbero scomode. **Scrive sul database di produzione.**
 | Eventi | stato (programmato/in corso/concluso), giorno corrente su totale, giorno per giorno con risposte, punti e bonus, elenco dei giorni **senza contenuto**, classifica dei partecipanti | attiva/disattiva, sposta le date (rimappa anche i contenuti e il giorno dei trofei), correggi le risposte di un giorno, riapri/chiudi il bonus di giornata, elimina, crea un evento manuale |
 | Utenti | classifiche, ricerca per id o per nome, scheda completa con striscia, trofei, leghe e archivio | punti totali e del mese, striscia, lingua, notifiche, azzeramento dei tentativi di oggi |
 | Leghe | leghe private con numero di membri e classifica interna | — |
+| Analytics | metriche di prodotto (completion rate, hint, referral, shop, Mini App) lette da PostHog in sola lettura ([`docs/product-analytics.md`](docs/product-analytics.md#15a-reading-metrics-back-admin-dashboard-39)); richiede `POSTHOG_PERSONAL_API_KEY`/`POSTHOG_PROJECT_ID` | — |
 | Dataset | quattro schede: salute del pool, **elenco completo** dei giocatori con difficoltà e punteggio scomposto, scheda singola con le tappe e il peso di ogni campionato, taratura della formula | notorietà (`popularity`), *verificato*, *solo allenamento*, campionato di una tappa; pesi e soglie della difficoltà, con anteprima di chi cambia fascia |
+| Review giocatori | coda dei candidati della pipeline di ingestion, con validazione, provenienza e duplicati ([`docs/player-data-pipeline.md`](docs/player-data-pipeline.md)); richiede `ADMIN_TELEGRAM_IDS` | modifica, approva (scrive `data/players.json` locale, con backup), rifiuta, merge, fonte errata, retry |
 | Giocatori sospesi | chi è escluso dalla selezione automatica | sospendi / riammetti |
 | Coppie padre/figlio | coppie salvate e in quali eventi sono state usate | aggiungi (foto via bot) / elimina |
 
@@ -577,10 +840,14 @@ decidere quando parte invece di aspettare la rotazione:
 
 ## Ampliare il dataset dei calciatori
 
-Il dataset è pensato per crescere nel tempo: oggi contiene **323 calciatori**, tutti
-verificati. 243 alimentano il gioco vero — 243 giorni di sfide senza mai ripetere nessuno,
-contro i 60 giorni della finestra anti-ripetizione — e 80 sono riservati all'allenamento e ai
+Il dataset è pensato per crescere nel tempo: oggi contiene **608 calciatori**, tutti
+verificati. 456 alimentano il gioco vero — 456 giorni di sfide senza mai ripetere nessuno,
+contro i 60 giorni della finestra anti-ripetizione — e 152 sono riservati all'allenamento e ai
 round di gruppo, dove non possono spoilerare niente.
+
+Questi numeri invecchiano da soli a ogni import, ed è già successo che restassero indietro:
+`python scripts/dataset_report.py` li stampa aggiornati, ed è la fonte da guardare quando
+quelli scritti qui e quelli veri non coincidono.
 
 ### Il flusso di import
 
@@ -709,8 +976,9 @@ volte la finestra anti-ripetizione, oppure una fascia di difficoltà è quasi vu
 
 ## Database
 
-Il modello dati Firestore è documentato in
-[`docs/firebase_review.md`](docs/firebase_review.md), insieme al perché di ogni scelta.
+La mappa corrente delle collection è in [`docs/firestore.md`](docs/firestore.md); il perché
+delle scelte del modello dati è nella revisione storica
+[`docs/firebase_review.md`](docs/firebase_review.md).
 In breve:
 
 - `users/{telegram_id}` — l'id Telegram **è** l'id del documento: letture dirette, creazione
@@ -745,11 +1013,13 @@ In breve:
   consegna idempotente (l'update rispedito trova la riga già scritta) e permette di rimborsare,
   perché `refundStarPayment` vuole esattamente quell'id. Cercarlo dentro i documenti utente
   vorrebbe dire scorrerli tutti. È fra le collection del backup (`scripts/backup_firestore.py`).
-- Sul documento utente, `cosmetics` — `owned` (quello che ha comprato) ed `equipped` (quello che
-  ha addosso, uno per slot). Gli oggetti **gratuiti non ci stanno**: sono gratuiti per
-  definizione, e scriverli vorrebbe dire ripassare su ogni utente registrato ogni volta che se
-  ne aggiunge uno. Un oggetto indossato ma non più posseduto (succede dopo un rimborso) torna al
-  valore di partenza invece di far disegnare un tema che non esiste.
+- Sul documento utente, `cosmetics` — `owned` (quello che ha comprato), `earned` (i traguardi
+  che ha raggiunto giocando) ed `equipped` (quello che ha addosso, uno per slot). Gli oggetti
+  **gratuiti non ci stanno**: sono gratuiti per definizione, e scriverli vorrebbe dire ripassare
+  su ogni utente registrato ogni volta che se ne aggiunge uno. I traguardi invece ci stanno, e
+  stanno in un elenco loro: da `owned` si ritira quando si rimborsa un acquisto, e da un
+  traguardo non c'è niente da ritirare. Un oggetto indossato ma non più posseduto (succede dopo
+  un rimborso) torna al valore di partenza invece di far disegnare un tema che non esiste.
 - Sul documento utente: `daily_hints` (indizi chiesti oggi, si azzera da solo come i tentativi),
   `solved_in` (quante volte ha risolto in 1, 2, 3 tentativi: l'istogramma della mini app) e
   `event_key` (la sessione su un evento, come `archive_day` e `training_key`).
@@ -803,11 +1073,16 @@ mano con *Run workflow*). Si autentica con la stessa Workload Identity Federatio
 nessuna chiave di servizio nei secret.
 
 ```bash
-python scripts/backup_firestore.py            # copia in backup/, sotto-collezioni comprese
+python scripts/backup_firestore.py                              # backup v2 validato in backup/
+python scripts/restore_firestore.py validate backup/<file>.json # controlla senza ripristinare
 ```
 
-L'export segue le **sotto-collezioni** (`participants`, `members`, `archive`): sono metà dei
-dati del gioco, e un backup che si ferma al primo livello sarebbe un backup finto.
+L'export segue le **sotto-collezioni** (`participants`, `members`, `archive`, `players`):
+sono metà dei dati del gioco, e un backup che si ferma al primo livello sarebbe un backup
+finto. Quali collection sono coperte (e perché `work_receipts`/`update_locks` no), il formato
+tipizzato, il ripristino — sull'emulatore per default, in produzione solo con conferme
+esplicite — e la prova periodica del restore sono in
+[`docs/backup-recovery.md`](docs/backup-recovery.md).
 
 `daily_path` cresce di 365 documenti l'anno e non si guarda indietro — l'archivio mostra dieci
 giorni, l'anti-ripetizione sessanta, il numero della sfida è calcolato dalla data:
@@ -832,6 +1107,9 @@ pip install -r requirements-dev.txt
 pytest -q
 ```
 
+La suite completa locale (Python, frontend, dataset) è `python -m tools.dev check`; cosa gira
+in CI è in [`docs/ci_cd_pipeline.md`](docs/ci_cd_pipeline.md).
+
 I test coprono: selezione deterministica e anti-ripetizione del giocatore del giorno,
 integrità del dataset (id duplicati, alias ambigui, cronologia delle carriere, bandiere),
 import di nuovi calciatori, calcolo difficoltà, generazione eventi (rotazione, cooldown,
@@ -854,66 +1132,64 @@ flusso completo dell'archivio (nessun punto, la giornata di oggi non
 viene toccata, la risposta rivelata solo a tentativi finiti), leghe private (codici, limiti,
 classifica, link d'invito che iscrive da `/start`), firma `initData` della mini app (dato
 manomesso, token sbagliato, dati scaduti) e allineamento delle tre lingue: se una chiave o un
-segnaposto manca in una traduzione, la CI se ne accorge.
+segnaposto manca in una traduzione, la CI se ne accorge — sia per i messaggi del bot
+(`tests/test_i18n_keys.py`) sia per le stringhe della mini app
+(`webapp/src/i18n/translations.ts`, confrontate da `tests/frontend/i18n.test.ts`).
+
+### Le transazioni, su un Firestore vero
+
+Il resto della suite gira su finti in memoria, ed è giusto così: è veloce e non dipende da
+niente. Ma un finto fa succedere quello che gli abbiamo detto di far succedere, quindi non si
+accorgerebbe di una transazione scritta male — non c'è nessuna concorrenza da gestire.
+`tests/test_firestore_transactions.py` gira invece contro l'emulatore, sui tre punti in cui
+una doppia esecuzione **costa qualcosa**: il bonus al primo che indovina (punti dal nulla), la
+consegna di un acquisto in Stelle (due righe nel registro da cui si rimborsa, per una stella
+sola incassata) e la ricevuta di un update (un tentativo consumato due volte).
+
+```bash
+gcloud components install cloud-firestore-emulator     # una volta sola; richiede una JRE
+gcloud emulators firestore start --host-port=127.0.0.1:8571
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8571 pytest -q
+```
+
+Senza `FIRESTORE_EMULATOR_HOST` quei test si saltano, così `pytest -q` resta verde su una
+macchina che l'emulatore non ce l'ha. **In CI invece falliscono**, perché un test che si salta
+da solo per un servizio mancante è comodo in locale ed è un verde bugiardo dove nessuno lo
+guarda.
+
+Una nota che serve a chi li leggerà: sull'emulatore due transazioni che partono nello stesso
+millisecondo sullo stesso documento si annullano a vicenda finché il client rinuncia
+(`Failed to commit transaction in 5 attempts`). Non è contesa da smaltire — alzare il limite a
+50 tentativi non cambia niente, mentre bastano 150 ms di sfasamento perché vada sempre a buon
+fine — ed è l'emulatore che non ha la messa in fila delle transazioni del servizio vero. Non è
+neanche lo scenario di produzione: Telegram rispedisce un update dopo secondi e Cloud Tasks
+riprova dopo un backoff. Per questo i test verificano **l'invariante** (non più di uno vince, e
+il database non contiene mai più di quello che è stato vinto) e non pretendono che i perdenti
+ricevano una risposta pulita.
 
 ## Deploy
 
-Il bot gira su **Cloud Run** (container, deploy automatico da GitHub Actions dopo i test — vedi
-[`docs/deploy.md`](docs/deploy.md)) e la generazione giornaliera dei contenuti è affidata a
-**Cloud Scheduler**, che chiama un endpoint interno del servizio invece di dipendere da un
-processo sempre acceso. Il ciclo completo test → deploy, con le scelte di qualità del codice e
-gestione delle dipendenze, è documentato in [`docs/ci_cd_pipeline.md`](docs/ci_cd_pipeline.md).
-
-| Componente | Dove | Perché |
-|---|---|---|
-| Bot (webhook) | **Cloud Run** | Container da [`Dockerfile`](Dockerfile), scala a zero quando inattivo, HTTPS incluso |
-| Generazione giornaliera/eventi | **Cloud Scheduler** → `POST /internal/daily-job` | Non dipende dal fatto che l'istanza Cloud Run sia già sveglia; Cloud Run la avvia al bisogno |
-| Database | **Firebase Firestore** | Già in uso, nessuna migrazione necessaria |
-
-### 1. Cloud Run (bot)
-
-Deploy automatico da GitHub Actions ad ogni push su `main` che supera la CI (setup di Workload
-Identity Federation, comandi manuali di fallback e variabili d'ambiente del servizio: vedi
-[`docs/deploy.md`](docs/deploy.md)).
-
-Se cambia l'URL del servizio va aggiornato `WEBHOOK_URL` e il bot deve rieseguire `set_webhook`
-(avviene automaticamente all'avvio, vedi `bot.py`).
-
-Due variabili d'ambiente in piu' (facoltative, vedi [`.env.example`](.env.example)) accendono le
-funzioni che hanno bisogno di sapere dove sta il bot:
-
-| Variabile | Serve a | Se manca |
-|---|---|---|
-| `PUBLIC_BASE_URL` | mini app Telegram (`/app`) | il bottone "Apri l'app" non compare |
-| `BOT_USERNAME` | link di condivisione del risultato e inviti alle leghe | i bottoni di condivisione/invito non compaiono, il resto funziona |
-
-### 2. Cloud Scheduler (generazione contenuti)
-
-Un job di Cloud Scheduler chiama ogni notte l'endpoint interno con l'header di autorizzazione:
-
-```bash
-gcloud scheduler jobs create http daily-generation \
-  --schedule="15 23 * * *" \
-  --uri="https://guess-the-player-595902172561.europe-west1.run.app/internal/daily-job" \
-  --http-method=POST \
-  --headers="x-cron-secret=<GENERATION_SECRET>" \
-  --time-zone="UTC"
-```
-
-L'orario (23:15 UTC) è poco dopo mezzanotte a Roma sia in ora solare che legale. L'endpoint
-(`bot.py`, `@app.post("/internal/daily-job")`) verifica l'header `x-cron-secret` contro
-`GENERATION_SECRET` e rifiuta le chiamate non autorizzate con `403`.
-
-### 3. Dominio personalizzato
-
-Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tramite
-"Custom Domains"; non necessario per il funzionamento del bot.
+Il servizio gira su **Cloud Run** (deploy automatico da GitHub Actions dopo la CI su `main`),
+con **Cloud Scheduler** per il job notturno, **Cloud Tasks** per update e broadcast e
+**Firestore** come database. Topologia in
+[`docs/architecture.md`](docs/architecture.md#7-deployment-topology-summary), procedura e
+variabili d'ambiente in [`docs/deploy.md`](docs/deploy.md) e
+[`docs/runtime-hardening.md`](docs/runtime-hardening.md), pipeline in
+[`docs/ci_cd_pipeline.md`](docs/ci_cd_pipeline.md), stato di release e backup in
+[`docs/operations.md`](docs/operations.md).
 
 ## Limiti noti / cosa resta da fare
 
-- **Dataset**: 323 calciatori, tutti verificati e selezionabili (323 giorni senza
-  ripetizioni). Il pool va comunque ampliato periodicamente: il segnale è l'avviso di
-  `/admin_pool`, non il calendario.
+- **Dataset**: 608 calciatori, tutti verificati; 456 selezionabili per la sfida del giorno
+  (456 giorni senza ripetizioni) e 152 riservati all'allenamento. Il pool va comunque
+  ampliato periodicamente: il segnale è l'avviso di `/admin_pool`, non il calendario.
+- **Classificazione dei campionati**: `top_leagues` e `known_leagues` (`data/config.json`)
+  si confrontano per stringa esatta, e quello che non è in nessuna delle due pesa come
+  campionato sconosciuto nel calcolo della difficoltà. Per la coda lunga è il ripiego
+  giusto, ma sopra le 20 tappe è una decisione che non ha preso nessuno: `/admin_pool` ora
+  elenca quei campionati (oggi Chinese Super League, J1 League, Qatar Stars League, Serbian
+  SuperLiga, Serie C, Indian Super League, UAE Pro League, Liga I, Cypriot First Division).
+  La soglia è `unclassified_league_warning_min`.
 - **Eventi "coppie padre/figlio"**: restano manuali per scelta, perché non esiste un dataset
   di immagini di coppie. La creazione però non richiede più di scrivere documenti su
   Firestore a mano: si fa da Telegram con `/admin_fs_add` + `/admin_event_create`.
@@ -928,7 +1204,7 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   ma brutte. `services/fonts.py` accetta anche un font messo in `assets/fonts/` o indicato con
   `FONT_REGULAR_PATH` / `FONT_BOLD_PATH`.
 - **Leghe private**: la classifica di una lega somma i punti fatti da quando si è entrati, e i
-  limiti (50 membri, 5 leghe a testa) sono costanti in `handlers/league_handler.py`. Chi lascia
+  limiti (50 membri, 5 leghe a testa) sono costanti in `services/leagues.py`. Chi lascia
   una lega perde i punti accumulati lì dentro: rientrando riparte da zero.
 - **Rimborsi delle Stelle**: passano da un comando amministrativo (`/admin_refund`), non da un
   bottone dell'utente. Chi ha cambiato idea lo scrive in chat e un amministratore esegue il
@@ -946,7 +1222,7 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   **migrazione dei dati esistenti va eseguita a mano** (`scripts/migrate_firestore.py`) e le
   regole/indici vanno deployati. Backup ricorrente e pulizia dello storico invece ci sono
   ora, vedi [Backup e pulizia](#backup-e-pulizia).
-- **Materiale per allenamento e gruppo**: il grosso è il pool riservato (80 calciatori, fissi
+- **Materiale per allenamento e gruppo**: il grosso è il pool riservato (152 calciatori, fissi
   finché non se ne riservano altri); le sfide passate sono la parte che cresce, e oggi ce n'è
   **una sola**. I 111 documenti scritti dalla versione precedente del bot (dal 26/04/25 al
   14/08/25) non erano utilizzabili — hanno le risposte ma non il percorso di carriera, solo un
@@ -966,9 +1242,68 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   lì non ci sono punti da spendere, e la risposta si rivela comunque a tentativi finiti.
 - **Traduzione dei contenuti**: `services/content_i18n.py` copre paesi e ruoli, cioè quello che
   finisce sotto gli occhi dell'utente. I **nomi dei campionati** restano in lingua originale
-  perché sono nomi propri; il dataset però ne contiene qualcuno italianizzato
-  (`Super League Grecia`, `Premier League Ucraina`, `Primera Division Cile`) e qualche doppione
-  di grafia (`Segunda Division` / `Segunda División`). Non è un problema di lingua ma di
-  coerenza del dataset, e ha un effetto collaterale reale: `top_leagues` e `known_leagues` in
-  `data/config.json` si confrontano per stringa esatta, quindi due grafie dello stesso
-  campionato pesano diversamente nel calcolo della difficoltà.
+  perché sono nomi propri. Il dataset ne conteneva qualcuno italianizzato
+  (`Super League Grecia`, `Premier League Ucraina`, `Primera Division Cile`): sono stati
+  riportati al nome originale, perché l'effetto collaterale era reale — `top_leagues` e
+  `known_leagues` in `data/config.json` si confrontano per stringa esatta, e la Super League
+  greca era scritta in due modi di cui uno solo classificato, quindi un quarto delle tappe
+  greche pesava come campionato sconosciuto. Adesso lo impedisce `validate_dataset()`, che
+  rifiuta sia un nome di campionato che contiene il paese in italiano sia due grafie che si
+  normalizzano allo stesso modo (`Segunda Division` / `Segunda División`).
+- **Coerenza di club e paese**: la stessa `validate_dataset()` rifiuta un club che compare
+  con due paesi diversi — era il caso di San Lorenzo e Vélez Sarsfield, argentini ma marcati
+  `Spagna` in sette tappe, e il paese si vede nel percorso mostrato a chi gioca. I casi
+  legittimi (club omonimi in due paesi, paesi che hanno cambiato nome) si dichiarano in
+  `multi_country_clubs` di `data/config.json`: sono decisioni, non eccezioni silenziose.
+
+## Licenza e uso
+
+Il codice di questo repository è distribuito con licenza
+**[PolyForm Noncommercial 1.0.0](LICENSE)**. In sintesi, e senza sostituire il testo della
+licenza, che è l'unico che conta:
+
+**Si può**, gratis e senza chiedere niente a nessuno:
+
+- leggere, clonare, studiare il codice e usarlo come esempio;
+- eseguirlo per conto proprio — su una macchina personale, per prova, per curiosità, per
+  imparare;
+- modificarlo, forkarlo e ridistribuirlo, anche modificato;
+- usarlo a scopo di ricerca, didattica e progetti amatoriali; lo stesso vale per scuole,
+  università, enti di ricerca pubblici e organizzazioni senza scopo di lucro.
+
+**Non si può**, senza un accordo scritto con l'autore:
+
+- usarlo per **qualsiasi scopo commerciale**: pubblicare un bot o una mini app derivata da
+  questo codice con pubblicità, abbonamenti, acquisti in-app, Telegram Stars, sponsorizzazioni
+  o qualunque altra forma di monetizzazione, diretta o indiretta;
+- usarlo all'interno di un'azienda o di un'attività professionale;
+- rivenderlo, concederlo in sublicenza o offrirlo come servizio a pagamento.
+
+Chi ridistribuisce il codice, anche modificato, deve consegnare a chi lo riceve una copia
+della licenza (o il suo URL) e la riga `Required Notice:` che si trova in [LICENSE](LICENSE) e
+in [NOTICE](NOTICE).
+
+**Uso commerciale.** L'autore resta unico titolare del copyright e può concedere condizioni
+diverse: per un impiego commerciale si può chiedere una licenza separata aprendo una issue sul
+repository.
+
+### Cosa la licenza non copre
+
+- **Le regole del gioco e l'idea.** "Indovina il calciatore dal percorso di carriera" è
+  un'idea, e le idee non sono coperte dal diritto d'autore. Questa licenza vale sul codice
+  scritto qui, non impedisce a nessuno di realizzare da zero un gioco che funziona allo stesso
+  modo.
+- **I dati dei calciatori.** Presenze, gol e squadre sono fatti, e i fatti non sono
+  proteggibili. Le carriere in `data/players.json` sono in parte ricavate da **Wikipedia** e
+  restano quindi disponibili con licenza **CC BY-SA 4.0**: chi le riusa deve attribuirle e
+  ridistribuirle alle stesse condizioni. Il dettaglio sta in [NOTICE](NOTICE).
+- **Le dipendenze.** Le librerie in `requirements.txt` hanno ciascuna la propria licenza.
+- **Marchi e contenuti di terzi.** Nomi di squadre, campionati e competizioni citati nel
+  dataset appartengono ai rispettivi titolari e sono usati a scopo puramente descrittivo.
+
+### Note operative
+
+Il repository **non contiene credenziali**: `.env` e `firebase-key.json` sono esclusi da
+`.gitignore` e non sono mai stati committati. Chi clona ottiene il codice, non l'istanza in
+produzione: per farlo girare servono un proprio bot Telegram e un proprio progetto Firebase,
+come descritto in [docs/deploy.md](docs/deploy.md).

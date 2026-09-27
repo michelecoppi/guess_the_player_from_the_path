@@ -1,5 +1,16 @@
 # Deploy
 
+**Prerequisito per questa revisione:** configurare i secret del webhook e dei worker
+e le due code Cloud Tasks come descritto in [Webhook, code e retry](runtime-hardening.md).
+`PUBLIC_BASE_URL` è ora obbligatoria per la consegna dei task.
+
+Quadro d'insieme (build → test → deploy → runtime → rollback) in
+[architecture.md § Deployment topology](architecture.md#7-deployment-topology-summary);
+stato di release e backup in [operations.md](operations.md). Versioning, checklist di
+rilascio, exact-commit requirement e rollback sono in
+[release-checklist.md](release-checklist.md); questo documento resta la fonte per "come"
+si deploya ciascun pezzo, non "quando" un insieme di commit diventa una release.
+
 Il bot gira su **Cloud Run** (container, deploy automatico da GitHub Actions dopo i test) e la
 generazione giornaliera dei contenuti è affidata a **Cloud Scheduler**, che chiama un endpoint
 interno del servizio invece di dipendere da un processo sempre acceso o da un cron esterno tipo
@@ -74,7 +85,10 @@ più lanciare `gcloud run deploy` a mano.
 ### Deploy manuale (fallback/debug)
 
 Resta comunque possibile lanciarlo a mano, ad es. per un rollback rapido o per testare una
-build locale:
+build locale. Il rollback è sempre manuale (revisione precedente o deploy di un commit
+precedente): procedura completa in
+[release-checklist.md § Rollback](release-checklist.md#10-rollback). Il deploy
+automatico usa anche `--max-instances 10` (vedi [`deploy.yml`](../.github/workflows/deploy.yml)):
 
 ```bash
 gcloud run deploy guess-the-player \
@@ -91,13 +105,15 @@ gcloud run deploy guess-the-player \
 | `WEBHOOK_URL` | URL pubblico completo del webhook, es. `https://guess-the-player-595902172561.europe-west1.run.app/webhook` |
 | `ADMIN_TELEGRAM_IDS` | ID Telegram abilitati ai comandi `/admin_*`, separati da virgola |
 | `GENERATION_SECRET` | Segreto condiviso con Cloud Scheduler: autorizza le chiamate a `/internal/daily-job` |
+| `WEBHOOK_SECRET`, `TASK_SECRET` | Segreti del webhook Telegram e dei worker Cloud Tasks, obbligatori all'avvio: vedi [runtime-hardening.md](runtime-hardening.md) |
+| `TASKS_QUEUE`, `BROADCAST_QUEUE` | Code Cloud Tasks, obbligatorie all'avvio: vedi [runtime-hardening.md](runtime-hardening.md) |
 | `FIREBASE_CREDENTIALS_PATH` | `firebase-key.json`, montato come secret di Secret Manager |
-| `PUBLIC_BASE_URL` | Base pubblica del servizio **senza barra finale**, es. `https://guess-the-player-595902172561.europe-west1.run.app`. Facoltativa: serve alla mini app (`/app`); se manca, il bottone "Apri l'app" non compare |
+| `PUBLIC_BASE_URL` | Base pubblica del servizio **senza barra finale**, es. `https://guess-the-player-595902172561.europe-west1.run.app`. **Obbligatoria** e in HTTPS: il servizio non parte senza (serve alla consegna dei task Cloud Tasks) ed è la base della mini app (`/app`) |
 | `BOT_USERNAME` | Username del bot **senza @**, es. `guess_the_player_bot`. Facoltativa: serve ai link di condivisione del risultato e agli inviti alle leghe; se manca, quei bottoni non compaiono |
 
 Se cambia l'URL del servizio (es. nuova region o nuovo nome), vanno aggiornati `WEBHOOK_URL` e
-`PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`bot.py`, funzione
-`lifespan`), non serve nessuna azione manuale su Telegram.
+`PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`apps/bot/application.py`,
+`startup`, chiamata dal lifespan di `apps/api/app.py`), non serve nessuna azione manuale su Telegram.
 
 Le variabili si impostano una volta sola sul servizio e **sopravvivono ai deploy**: il workflow
 [`deploy.yml`](../.github/workflows/deploy.yml) non passa `--set-env-vars`, quindi non le
@@ -113,10 +129,13 @@ gcloud run services update guess-the-player \
 
 ### Mini app: pulsante nel menu del bot
 
-Con `PUBLIC_BASE_URL` impostata, la pagina risponde su `<PUBLIC_BASE_URL>/app`. Per averla anche
-nel pulsante accanto alla graffetta: @BotFather → `/mybots` → il bot → *Bot Settings* → *Menu
-Button* → *Edit menu button URL*, e incollare l'URL con `/app` in fondo. Telegram accetta solo
-HTTPS, che Cloud Run fornisce già.
+Con `PUBLIC_BASE_URL` impostata, la pagina risponde su `<PUBLIC_BASE_URL>/app`. All'avvio il bot
+imposta da solo il pulsante **Play** del menu su quell'URL (`set_chat_menu_button` in `apps/bot/application.py`);
+in alternativa si può configurare a mano da @BotFather → `/mybots` → il bot → *Bot Settings* →
+*Menu Button*. Telegram accetta solo HTTPS, che Cloud Run fornisce già.
+
+La Mini App è il bundle Vite compilato nel Dockerfile e servito su `<PUBLIC_BASE_URL>/app`
+(se il bundle manca, `/app` risponde 503). Vedi [miniapp.md](miniapp.md).
 
 ### Termini e privacy in BotFather
 
@@ -148,6 +167,15 @@ la region e la durata dei backup. Se il codice cambia e loro no, descrivono un s
 esiste - che e' peggio che non avere l'informativa. `tests/test_legal_pages.py` controlla solo
 che le tre lingue restino allineate, non che dicano il vero.
 
+### Verifica URL di TikTok
+
+Per verificare il prefisso URL del servizio su developers.tiktok.com, metti il file `.txt`
+scaricato da TikTok in `webapp/site-verification/`, committalo e fai il deploy. Controlla che
+`<PUBLIC_BASE_URL>/<nome-file>.txt` restituisca il contenuto esatto, poi premi *Verify* su
+TikTok. Il Dockerfile copia la cartella nell'immagine insieme a `webapp/`; il file reale non va
+inventato. Per il modulo dell'app TikTok usa `<PUBLIC_BASE_URL>/terms` e
+`<PUBLIC_BASE_URL>/privacy`.
+
 ## 2. Cloud Scheduler (generazione contenuti)
 
 Un job HTTP chiama ogni notte l'endpoint interno con l'header di autorizzazione:
@@ -163,7 +191,7 @@ gcloud scheduler jobs create http daily-generation \
 
 L'orario (23:15 UTC) è poco dopo mezzanotte a Roma sia in ora solare che legale.
 
-Cosa fa la chiamata (`bot.py` → `@app.post("/internal/daily-job")` → `handlers/daily_job.py`,
+Cosa fa la chiamata (`apps/api/internal.py` → `@router.post("/internal/daily-job")` → `handlers/daily_job.py`,
 `update_daily_challenge()`):
 
 1. verifica l'header `x-cron-secret` contro `GENERATION_SECRET`, rifiuta con `403` se manca o
@@ -211,6 +239,12 @@ gcloud projects get-iam-policy guess-the-player-from-path-bot \
 
 Senza questo ruolo il workflow fallisce con un errore di permessi al primo lunedì utile: il
 codice è a posto, manca solo l'autorizzazione.
+
+Quali collection finiscono nell'export, il formato, la validazione prima dell'upload, la
+procedura di ripristino (con `scripts/restore_firestore.py`) e la prova periodica del restore
+sono in [backup-recovery.md](backup-recovery.md). Il ruolo `roles/datastore.viewer` basta per
+il backup ma **non** per un ripristino, che richiede un'identità con scrittura e le conferme
+esplicite descritte lì.
 
 In locale invece lo script usa il `firebase-key.json` come tutto il resto:
 

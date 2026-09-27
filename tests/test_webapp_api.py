@@ -82,6 +82,35 @@ def test_the_profile_carries_the_numbers_shown_by_the_commands(firebase):
     assert profile["user"]["trophies"] == 2
 
 
+def test_profile_reuses_authenticated_user(firebase, monkeypatch):
+    def unexpected_read(*args, **kwargs):
+        pytest.fail("The authenticated user must not be read twice")
+
+    monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", unexpected_read)
+    profile = webapp_api.build_profile(42, day_iso=DAY, user=firebase["user"])
+    assert profile["user"]["points"] == 120
+    assert profile["leaderboard"]
+    assert profile["leagues"]
+
+
+def test_lightweight_profile_skips_social_queries_but_refreshes_game(firebase, monkeypatch):
+    full = webapp_api.build_profile(42, day_iso=DAY)
+
+    def unexpected_read(*args, **kwargs):
+        pytest.fail("Game refresh must not query standings or leagues")
+
+    for name in ("get_top_users", "get_league", "get_league_leaderboard"):
+        monkeypatch.setattr(webapp_api.firebase_service, name, unexpected_read)
+    firebase["user"]["daily_attempts"] = 3
+    fresh = webapp_api.build_profile(42, day_iso=DAY, include_social=False)
+    assert "leaderboard" not in fresh
+    assert "leagues" not in fresh
+    assert fresh["today"]["attempts_left"] == 0
+    assert full["today"]["attempts_left"] == 1
+    assert {**full, **fresh}["leagues"] == full["leagues"]
+    assert "correct_answers" not in json.dumps(fresh)
+
+
 def test_today_is_marked_solved_only_for_the_current_day(firebase):
     solved = webapp_api.build_profile(42, day_iso=DAY)["today"]
     assert solved["solved"] is True
@@ -217,12 +246,6 @@ def test_a_missing_archive_day_gives_nothing(firebase):
     assert webapp_api.build_archive_challenge(42, "2026-09-06") is None
 
 
-def test_the_autocomplete_list_is_sorted_and_without_duplicates():
-    names = webapp_api.player_names()
-    assert names == sorted(set(names))
-    assert "Lionel Messi" in names
-
-
 # ---------------------------------------------------------------------------
 # Il tentativo dalla mini app: stesse regole della chat, stessa card
 # ---------------------------------------------------------------------------
@@ -260,6 +283,21 @@ def test_a_guess_with_todays_date_is_still_todays_challenge(firebase, monkeypatc
     assert played == ["messi"]
 
 
+def test_daily_reveals_name_only_after_confirmed_win(firebase, monkeypatch, share_link):
+    for status in ("wrong", "refused", "no_challenge", "correct"):
+        monkeypatch.setattr(
+            webapp_api.game, "play_daily",
+            lambda *a, **kw: {"status": status, "attempts_left": 2, "attempts_used": 1},
+        )
+        result = webapp_api.play(42, USER, "messi", today=DAY)
+        if status == "correct":
+            assert result["answer"] == "Lionel Messi"
+            assert "messi" not in result["share"]["text"].lower()
+        else:
+            assert "answer" not in result
+        assert "correct_answers" not in result
+
+
 def test_the_share_card_appears_only_when_the_game_is_over(share_link):
     still_open = webapp_api.with_share_card({"status": "wrong", "attempts_left": 1, "attempts_used": 2}, "it", 3)
     assert "share" not in still_open
@@ -277,6 +315,20 @@ def test_the_share_card_appears_only_when_the_game_is_over(share_link):
 def test_the_shared_card_never_carries_the_answer(share_link):
     card = webapp_api.with_share_card({"status": "correct", "attempts_used": 1}, "it", 3)
     assert "messi" not in card["share"]["text"].lower()
+
+
+@pytest.mark.parametrize("day", [None, "2026-09-01"])
+def test_the_miniapp_shares_with_the_player_invite_link(firebase, monkeypatch, share_link, day):
+    """#150: chi arriva dalla condivisione conta come invito di chi ha condiviso, sia dalla
+    sfida di oggi sia dall'archivio."""
+    monkeypatch.setattr(webapp_api.referrals, "invite_link", lambda uid: f"https://t.me/bot?start=ref_{uid}_x")
+    monkeypatch.setattr(webapp_api.game, "play_daily", lambda *a, **kw: {"status": "wrong", "attempts_left": 0, "attempts_used": 3})
+    monkeypatch.setattr(webapp_api.game, "play_archive", lambda *a: {"status": "wrong", "attempts_left": 0, "attempts_used": 3})
+
+    share = webapp_api.play(42, USER, "messi", day=day, today=DAY)["share"]
+
+    assert share["text"].endswith("👉 https://t.me/bot?start=ref_42_x")
+    assert "url=https%3A%2F%2Ft.me%2Fbot%3Fstart%3Dref_42_x" in share["url"]
 
 
 @pytest.fixture

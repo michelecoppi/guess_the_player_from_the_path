@@ -14,6 +14,7 @@ Scelte che vale la pena spiegare:
 - l'elenco delle leghe di un utente e' un array sul suo documento (`leagues`), quindi
   aggiornare i punti non richiede nessuna query per sapere dove scriverli.
 """
+import asyncio
 from urllib.parse import quote
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -22,19 +23,23 @@ from telegram.ext import ContextTypes
 from config import BOT_USERNAME
 from services import firebase_service
 from services import leagues as league_rules
+from services import product_analytics as analytics
 from services.i18n import resolve_language, t
 from services.leagues import MAX_LEAGUES_PER_USER, MAX_MEMBERS, MAX_NAME_LENGTH
 
 CALLBACK_PREFIX = "lg_"
-DEEP_LINK_PREFIX = "lega_"
+CREATE = "lg_create"
+JOIN = "lg_join"
+# Stato dell'attesa di un nome/codice dopo aver premuto "Crea"/"Entra": non c'e' piu' un
+# comando con argomento, quindi il prossimo messaggio libero vale come risposta (come
+# per archivio/allenamento/eventi, ma qui in memoria: e' solo per la durata della richiesta).
+AWAITING_KEY = "league_awaiting"
 
 MEDALS = {1: "🥇", 2: "🥈", 3: "🥉"}
 
 
 def invite_link(code):
-    if not BOT_USERNAME:
-        return ""
-    return f"https://t.me/{BOT_USERNAME}?start={DEEP_LINK_PREFIX}{code}"
+    return league_rules.invite_link(code, BOT_USERNAME)
 
 
 def _lang_for(update: Update, user_data=None):
@@ -48,7 +53,11 @@ def _leagues_keyboard(leagues, lang):
         [InlineKeyboardButton(league["name"], callback_data=f"{CALLBACK_PREFIX}{league['code']}")]
         for league in leagues
     ]
-    return InlineKeyboardMarkup(rows) if rows else None
+    rows.append([
+        InlineKeyboardButton(t(lang, "league.button_create"), callback_data=CREATE),
+        InlineKeyboardButton(t(lang, "league.button_join"), callback_data=JOIN),
+    ])
+    return InlineKeyboardMarkup(rows)
 
 
 def format_leaderboard(league, members, lang, viewer_id=None):
@@ -66,7 +75,7 @@ def format_leaderboard(league, members, lang, viewer_id=None):
 async def leagues(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/lega: le leghe di cui fai parte, con un bottone per ognuna."""
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
 
     if not user_data:
@@ -74,10 +83,12 @@ async def leagues(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     codes = user_data.get("leagues", [])
-    found = [league for league in (firebase_service.get_league(code) for code in codes) if league]
+    found = (await asyncio.to_thread(lambda: [league for league in (firebase_service.get_league(code) for code in codes) if league]))
 
     if not found:
-        await update.effective_message.reply_text(t(lang, "league.none"), parse_mode="HTML")
+        await update.effective_message.reply_text(
+            t(lang, "league.none"), parse_mode="HTML", reply_markup=_leagues_keyboard([], lang),
+        )
         return
 
     await update.effective_message.reply_text(
@@ -87,9 +98,9 @@ async def leagues(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE, name=None):
     user = update.effective_user
-    user_data = firebase_service.get_user_data(user.id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id))
     lang = _lang_for(update, user_data)
     message = update.effective_message
 
@@ -97,10 +108,13 @@ async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text(t(lang, "league.not_registered"))
         return
 
-    name = " ".join(context.args).strip() if context.args else ""
-    status, code = league_rules.create(user.id, user_data, name, user.first_name)
+    if name is None:
+        name = " ".join(context.args).strip() if context.args else ""
+    status, code = (await asyncio.to_thread(league_rules.create, user.id, user_data, name, user.first_name))
 
     if status == "ok":
+        analytics.capture(analytics.Event.LEAGUE_CREATED, user_id=user.id,
+                          properties={"surface": "telegram_chat"})
         await message.reply_text(
             t(lang, "league.created", name=name, code=code, link=invite_link(code) or code),
             parse_mode="HTML",
@@ -121,7 +135,7 @@ async def league_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=None):
     user = update.effective_user
-    user_data = firebase_service.get_user_data(user.id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id))
     lang = _lang_for(update, user_data)
     message = update.effective_message
 
@@ -130,9 +144,11 @@ async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=N
         return
 
     code = league_rules.normalize_code(code or (context.args[0] if context.args else ""))
-    status, league = league_rules.join(user.id, user_data, code, user.first_name)
+    status, league = (await asyncio.to_thread(league_rules.join, user.id, user_data, code, user.first_name))
 
     if status == "ok":
+        analytics.capture(analytics.Event.LEAGUE_JOINED, user_id=user.id,
+                          properties={"surface": "telegram_chat"})
         await message.reply_text(t(lang, "league.joined", name=league.get("name", code)), parse_mode="HTML")
         return
     if status == "no_code":
@@ -151,14 +167,14 @@ async def league_join(update: Update, context: ContextTypes.DEFAULT_TYPE, code=N
     await message.reply_text(t(lang, "league.not_found", code=code), parse_mode="HTML")
 
 
-async def league_leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def league_leave(update: Update, context: ContextTypes.DEFAULT_TYPE, code=None):
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
     message = update.effective_message
 
-    code = league_rules.normalize_code(context.args[0] if context.args else "")
-    status, league = league_rules.leave(user_id, code)
+    code = league_rules.normalize_code(code if code is not None else (context.args[0] if context.args else ""))
+    status, league = (await asyncio.to_thread(league_rules.leave, user_id, code))
 
     if status == "ok":
         await message.reply_text(t(lang, "league.left", name=league.get("name", code)), parse_mode="HTML")
@@ -178,19 +194,44 @@ async def league_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     user_id = update.effective_user.id
-    lang = _lang_for(update, firebase_service.get_user_data(user_id))
+    lang = _lang_for(update, (await asyncio.to_thread(firebase_service.get_user_data, user_id)))
+
+    # "Crea"/"Entra": non c'e' piu' un comando con argomento, quindi si chiede il nome o il
+    # codice come prossimo messaggio libero (gestito da free_text_guess, come archivio,
+    # allenamento ed eventi).
+    if query.data == CREATE:
+        context.user_data[AWAITING_KEY] = "create"
+        await query.message.reply_text(t(lang, "league.usage_create"), parse_mode="HTML")
+        return
+    if query.data == JOIN:
+        context.user_data[AWAITING_KEY] = "join"
+        await query.message.reply_text(t(lang, "league.usage_join"), parse_mode="HTML")
+        return
+
     code = query.data[len(CALLBACK_PREFIX):]
 
-    league = firebase_service.get_league(code)
+    # Bottone "Esci dalla lega" di una lega precisa: il codice arriva dopo "leave_" invece
+    # di essere il codice di una lega da mostrare.
+    if code.startswith("leave_"):
+        await league_leave(update, context, code=code[len("leave_"):])
+        return
+
+    league = (await asyncio.to_thread(firebase_service.get_league, code))
     if not league:
         await query.message.reply_text(t(lang, "league.not_found", code=code), parse_mode="HTML")
         return
 
-    members = firebase_service.get_league_leaderboard(code)
-    keyboard = None
+    members = (await asyncio.to_thread(firebase_service.get_league_leaderboard, code))
+    buttons = []
     link = invite_link(code)
     if link:
-        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "league.button_invite"), url=_share_url(link, league))]])
+        buttons.append(InlineKeyboardButton(t(lang, "league.button_invite"), url=_share_url(link, league)))
+    keyboard = InlineKeyboardMarkup([
+        buttons,
+        [InlineKeyboardButton(t(lang, "league.button_leave"), callback_data=f"{CALLBACK_PREFIX}leave_{code}")],
+    ]) if buttons else InlineKeyboardMarkup([
+        [InlineKeyboardButton(t(lang, "league.button_leave"), callback_data=f"{CALLBACK_PREFIX}leave_{code}")],
+    ])
 
     await query.message.reply_text(
         format_leaderboard(league, members, lang, viewer_id=user_id),

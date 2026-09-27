@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from domains.shop import service as shop
 from handlers import shop_handler
-from services import firebase_service, shop
+from services import firebase_service
 
 
 def user(*ids, **fields):
@@ -15,8 +16,8 @@ def user(*ids, **fields):
 
 def test_completion_price_decreases_and_owned_items_cannot_be_bought():
     pack = shop.get_item("pacchetto_neon")
-    assert shop.price_for(user(), pack) == 60
-    assert shop.price_for(user("neon"), pack) == 45
+    assert shop.price_for(user(), pack) == 30
+    assert shop.price_for(user("neon"), pack) == 22
     complete = user(*pack["grants"])
     assert shop.price_for(complete, pack) == 0
     assert shop.purchase_status(complete, pack["id"]) == "already_owned"
@@ -28,10 +29,10 @@ def test_signed_invoice_records_only_missing_pieces_and_rejects_tampering():
     payload = shop.payment_payload(42, user("neon"), pack)
     quote = shop.payment_quote(payload)
     assert len(payload.encode()) <= 128
-    assert quote["price"] == 45
+    assert quote["price"] == 22
     assert "neon" not in quote["granted"]
     assert set(quote["granted"]) == set(pack["grants"]) - {"neon"}
-    assert shop.payment_quote(payload.replace(":45:", ":1:")) is None
+    assert shop.payment_quote(payload.replace(":22:", ":1:")) is None
     assert shop.parse_payload(payload.replace(":42:", ":99:")) == (None, None)
 
 
@@ -41,7 +42,7 @@ def test_precheckout_rejects_stale_or_invalid_invoices(monkeypatch, change):
     item = shop.get_item("pacchetto_neon")
     payload = shop.payment_payload(42, data, item)
     query = SimpleNamespace(id="q1", invoice_payload=payload, from_user=SimpleNamespace(id=42),
-                            currency="XTR", total_amount=45, answer=AsyncMock())
+                            currency="XTR", total_amount=22, answer=AsyncMock())
     if change == "price":
         query.total_amount = 1
     elif change == "currency":
@@ -65,12 +66,12 @@ def test_completion_delivery_preserves_the_snapshot_for_refunds(monkeypatch):
                         written.update(granted=granted, stars=stars) or True)
     monkeypatch.setattr(firebase_service, "save_user", lambda *args: None)
     monkeypatch.setattr(shop_handler, "language_for", lambda update: "it")
-    payment = SimpleNamespace(invoice_payload=payload, telegram_payment_charge_id="ch", total_amount=45)
+    payment = SimpleNamespace(invoice_payload=payload, telegram_payment_charge_id="ch", total_amount=22)
     message = SimpleNamespace(successful_payment=payment, reply_text=AsyncMock())
     update = SimpleNamespace(effective_user=SimpleNamespace(id=42, first_name="Anna"), effective_message=message)
     asyncio.run(shop_handler.successful_payment_callback(update, None))
     assert "neon" not in written["granted"]
-    assert written["stars"] == 45
+    assert written["stars"] == 22
 
 
 @pytest.mark.parametrize("pack_id", ["pacchetto_europa", "pacchetto_neon", "pacchetto_esordio", "pacchetto_sostenitore"])
@@ -101,9 +102,8 @@ def test_saved_looks_are_bounded_replaceable_and_rechecked_after_refunds(monkeyp
 
 
 @pytest.mark.parametrize("item_id,field,target", [
-    ("traguardo_esploratore", "players_guessed", 10),
-    ("traguardo_costanza", "best_streak", 7),
-    ("traguardo_archivista", "archive_solved", 25),
+    (item["id"], item["achievement"]["field"], item["achievement"]["target"])
+    for item in shop.all_items() if item.get("achievement")
 ])
 def test_earned_items_are_not_free_defaults_and_unlock_at_the_milestone(item_id, field, target):
     assert item_id not in shop.free_ids()
@@ -128,3 +128,117 @@ def test_checkout_reservation_serializes_competing_payments(monkeypatch):
     assert firebase_service.reserve_checkout(42, "q2", ["neon"]) == "ok"
     data["cosmetics"]["owned"].append("fuoco")
     assert firebase_service.reserve_checkout(42, "q3", ["neon"]) == "price_changed"
+
+
+# ---------------------------------------------------------------------------
+# I traguardi, e il fatto che una volta presi non si tolgono
+# ---------------------------------------------------------------------------
+
+def test_a_milestone_hangs_on_a_counter_that_someone_actually_harvests():
+    """Un traguardo si mette al sicuro solo quando il contatore che lo fa scattare passa da
+    una delle scritture che lo raccolgono (`HARVESTED_FIELDS`). Appeso a un altro campo -
+    `daily_attempts`, che si azzera ogni notte - resterebbe per sempre un calcolo, cioe'
+    reversibile: sparirebbe da solo al primo azzeramento."""
+    for item in shop.all_items():
+        goal = item.get("achievement")
+        if not goal:
+            continue
+        assert goal["field"] in firebase_service.HARVESTED_FIELDS, (
+            f"{item['id']} si sblocca su {goal['field']}, che nessuna scrittura raccoglie"
+        )
+        assert goal["field"] in firebase_service.USER_FIELD_DEFAULTS, (
+            f"{item['id']} si sblocca su {goal['field']}, che non e' un campo dell'utente"
+        )
+        assert isinstance(goal.get("target"), int) and goal["target"] >= 1
+
+
+def test_the_first_rung_of_a_milestone_is_reachable_on_day_one():
+    """Un traguardo si fa notare solo se il primo si prende subito: e' il modo in cui chi non
+    ha mai aperto il negozio scopre che gli slot esistono."""
+    first = min(item["achievement"]["target"] for item in shop.all_items()
+                if item.get("achievement") and item["achievement"]["field"] == "players_guessed")
+    assert first <= 1
+
+
+def test_a_milestone_already_written_survives_a_target_raised_later():
+    """La ragione per cui i traguardi si scrivono.
+
+    Alzare un obiettivo in data/shop.json e' una modifica a un file di dati: non passa da una
+    riga di codice e non se ne accorge nessuno. Chi il traguardo lo aveva gia' preso non lo
+    deve perdere per quello - e se ce l'aveva addosso, non se lo deve ritrovare tolto."""
+    counters = user(players_guessed=50)
+    assert "traguardo_cartografo" in shop.owned_ids(counters)
+
+    written = {"cosmetics": {"owned": [], "earned": ["traguardo_cartografo"],
+                             "equipped": {"badge": "traguardo_cartografo"}},
+               "players_guessed": 0}   # come se l'obiettivo fosse stato alzato sopra la sua soglia
+    assert "traguardo_cartografo" in shop.owned_ids(written)
+    assert shop.equipped(written)["badge"] == "traguardo_cartografo"
+    assert shop.equip_status(written, "traguardo_cartografo") == "ok"
+
+
+def test_a_milestone_is_written_once_and_not_again():
+    reached = user(players_guessed=10)
+    assert "traguardo_esploratore" in shop.newly_earned(reached)
+
+    reached["cosmetics"]["earned"] = ["traguardo_esploratore"]
+    assert "traguardo_esploratore" not in shop.newly_earned(reached)
+    assert "traguardo_esploratore" in shop.owned_ids(reached)
+
+
+def test_an_id_that_left_the_catalogue_does_not_come_back_as_a_ghost():
+    """Un traguardo tolto dal catalogo resta scritto sul documento di chi lo aveva. Non deve
+    riapparire: `equipped` disegnerebbe uno slot che non esiste piu'."""
+    stale = {"cosmetics": {"owned": [], "earned": ["traguardo_che_non_esiste_piu"], "equipped": {}}}
+    assert "traguardo_che_non_esiste_piu" not in shop.owned_ids(stale)
+
+
+def test_solving_an_archive_challenge_writes_the_milestone_with_the_counter(monkeypatch):
+    """Il contatore e il distintivo nella stessa scrittura: se si separassero, ci sarebbe una
+    finestra in cui il contatore e' salito e il traguardo no."""
+    data = {"cosmetics": {"owned": [], "earned": [], "equipped": {}}, "archive_solved": 4}
+    written = {}
+    ref = SimpleNamespace(
+        get=lambda **kwargs: SimpleNamespace(exists=True, to_dict=lambda: data),
+        update=written.update,
+    )
+    monkeypatch.setattr(firebase_service, "user_ref", lambda uid: ref)
+    monkeypatch.setattr(firebase_service, "archive_ref",
+                        lambda uid, day: SimpleNamespace(set=lambda *a, **k: None))
+
+    assert firebase_service.register_archive_solved(42, "2026-09-09", 2) == ["traguardo_recuperante"]
+    assert "archive_solved" in written
+    assert written["cosmetics.earned"].values == ["traguardo_recuperante"]
+
+
+def test_nothing_is_written_when_no_milestone_snaps(monkeypatch):
+    data = {"cosmetics": {"owned": [], "earned": [], "equipped": {}}, "training_solved": 2}
+    written = {}
+    ref = SimpleNamespace(
+        get=lambda **kwargs: SimpleNamespace(exists=True, to_dict=lambda: data),
+        update=written.update,
+    )
+    monkeypatch.setattr(firebase_service, "user_ref", lambda uid: ref)
+
+    assert firebase_service.register_training_solved(42) == []
+    assert "cosmetics.earned" not in written
+    assert "training_solved" in written
+
+
+def test_a_daily_guess_writes_its_milestones_inside_the_same_transaction(monkeypatch):
+    """Il percorso principale: la sfida del giorno muove cinque contatori in una transazione
+    che il documento lo ha gia' letto, quindi i traguardi non costano nemmeno una lettura."""
+    data = {"cosmetics": {"owned": [], "earned": [], "equipped": {}},
+            "players_guessed": 0, "points_totali": 0}
+    written = {}
+    ref = SimpleNamespace(get=lambda **kwargs: SimpleNamespace(exists=True, to_dict=lambda: data))
+    transaction = SimpleNamespace(update=lambda target, fields: written.update(fields))
+    monkeypatch.setattr(firebase_service, "user_ref", lambda uid: ref)
+    monkeypatch.setattr(firebase_service, "db", SimpleNamespace(transaction=lambda: transaction))
+    monkeypatch.setattr(firebase_service.firestore, "transactional", lambda func: func)
+
+    result = firebase_service.register_correct_guess(42, 3, 0, "2026-09-09", attempts=1)
+
+    assert result["earned"] == ["traguardo_primo_cartellino"]
+    assert written["cosmetics.earned"].values == ["traguardo_primo_cartellino"]
+    assert "players_guessed" in written

@@ -1,0 +1,44 @@
+name: "\U0001F195 Feature / evolutive"
+description: A planned product or technical evolutive for the roadmap.
+title: "[Feature] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: check [GitHub Project #2](https://github.com/users/michelecoppi/projects/2)
+        and [`docs/evolutive-tracking.md`](../../docs/evolutive-tracking.md) — this
+        issue's Project fields (Area, Work Type, Priority, Horizon, Size, Risk) must
+        be set before it leaves `Backlog`.
+  - type: textarea
+    id: obiettivo
+    attributes:
+      label: Obiettivo / Goal
+      description: What outcome does this deliver, and why now?
+    validations:
+      required: true
+  - type: textarea
+    id: ambito
+    attributes:
+      label: Ambito / Scope
+      description: What's in scope. Call out what's explicitly out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: criteri
+    attributes:
+      label: Criteri di completamento / Completion criteria
+      description: Bullet list of what "done" looks like, verifiable at review time.
+    validations:
+      required: true
+  - type: textarea
+    id: dipendenze
+    attributes:
+      label: Dipendenze / Dependencies
+      description: |
+        Hard blockers only (things this issue technically cannot proceed without).
+        Model them as real GitHub sub-issue / `blocked by` relations, not just text
+        here. Soft/related ordering goes in a comment, not a relation — see
+        `docs/evolutive-tracking.md`.
+    validations:
+      required: false

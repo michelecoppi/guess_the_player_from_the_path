@@ -14,6 +14,8 @@ broadcast e l'allenamento lo fanno gia'.
 Insieme alla risposta si mostra quanti l'hanno indovinata (services/daily_stats.py): e' il
 pezzo che dice se la giornata era davvero dura o se era solo andata male a te.
 """
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
@@ -41,10 +43,10 @@ def _requested_day(args):
 
 
 async def solution(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    lang = language_for(update)
+    lang = (await asyncio.to_thread(language_for, update))
     message = update.effective_message
 
-    if not firebase_service.get_user_data(update.effective_user.id):
+    if not (await asyncio.to_thread(firebase_service.get_user_data, update.effective_user.id)):
         await message.reply_text(t(lang, "solution.not_registered"))
         return
 
@@ -58,7 +60,7 @@ async def solution(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.reply_text(t(lang, "solution.still_open"))
         return
 
-    challenge = firebase_service.get_daily_path(day_iso)
+    challenge = (await asyncio.to_thread(firebase_service.get_daily_path, day_iso))
     if not challenge:
         await message.reply_text(t(lang, "solution.missing", date=to_display(day_iso)))
         return
@@ -67,9 +69,9 @@ async def solution(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _send_solution(message, challenge, day_iso, lang):
-    answer = firebase_service.get_display_name_for_day(day_iso) or "?"
+    answer = (await asyncio.to_thread(firebase_service.get_display_name_for_day, day_iso)) or "?"
     difficulty = difficulty_label(lang, challenge.get("difficulty"))
-    players, solved = firebase_service.get_daily_stats(day_iso)
+    players, solved = (await asyncio.to_thread(firebase_service.get_daily_stats, day_iso))
 
     caption = t(
         lang, "solution.caption",
@@ -95,12 +97,5 @@ async def _send_solution(message, challenge, day_iso, lang):
 
     # Il percorso si rimostra insieme alla risposta: e' li' che si capisce **perche'** era
     # quel calciatore, ed e' la parte che si guarda dicendo "ah, certo".
-    photo = render_career_path_image(
-        career_path,
-        title=t(lang, "image.path_title"),
-        subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
-        badge=difficulty.upper(),
-        footer=f"Guess the Player #{challenge_number(day_iso)}",
-        lang=lang,
-    )
+    photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty.upper(), footer=f"Guess the Player #{challenge_number(day_iso)}", lang=lang))
     await message.reply_photo(photo=photo, caption=caption, parse_mode="HTML", reply_markup=keyboard)

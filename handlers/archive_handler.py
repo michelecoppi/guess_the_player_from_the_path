@@ -11,11 +11,15 @@ risolve o non si torna a oggi con /oggi.
 
 Qui, a differenza della sfida del giorno, la risposta si puo' rivelare: e' gia' passata.
 """
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from domains.referrals import service as referrals
+from domains.shop import service as shop
 from handlers.legend_handler import legend_keyboard
-from services import firebase_service, shop
+from services import firebase_service
 from services.daily_challenge import challenge_number
 from services.dates import to_display
 from services.difficulty import points_for_difficulty
@@ -37,6 +41,11 @@ def _lang_for(update: Update, user_data=None):
     return resolve_language(getattr(update.effective_user, "language_code", None))
 
 
+def _today_keyboard(lang):
+    """Il bottone per uscire da una sfida d'archivio aperta: prima c'era solo /today."""
+    return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "archive.button_today"), callback_data=BACK_TO_TODAY)]])
+
+
 def _keyboard(days, solved_days, lang):
     buttons = []
     row = []
@@ -54,20 +63,20 @@ def _keyboard(days, solved_days, lang):
 
 async def archive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
 
     if not user_data:
         await update.effective_message.reply_text(t(lang, "archive.not_registered"))
         return
 
-    past = firebase_service.get_past_daily_paths(limit=ARCHIVE_DAYS)
+    past = (await asyncio.to_thread(firebase_service.get_past_daily_paths, limit=ARCHIVE_DAYS))
     days = [doc.get("day") for doc in past if doc.get("day")]
     if not days:
         await update.effective_message.reply_text(t(lang, "archive.empty"))
         return
 
-    solved_days = firebase_service.get_solved_archive_days(user_id)
+    solved_days = (await asyncio.to_thread(firebase_service.get_solved_archive_days, user_id))
     await update.effective_message.reply_text(
         t(lang, "archive.title"),
         reply_markup=_keyboard(days, solved_days, lang),
@@ -80,26 +89,26 @@ async def archive_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
 
     if query.data == BACK_TO_TODAY:
-        firebase_service.set_archive_day(user_id, None)
+        (await asyncio.to_thread(firebase_service.set_archive_day, user_id, None))
         await query.message.reply_text(t(lang, "archive.exited"))
         return
 
     day_iso = query.data[len(CALLBACK_PREFIX):]
-    challenge = firebase_service.get_daily_path(day_iso)
+    challenge = (await asyncio.to_thread(firebase_service.get_daily_path, day_iso))
     if not challenge:
         await query.message.reply_text(t(lang, "archive.missing_day"))
         return
 
-    result = firebase_service.get_archive_result(user_id, day_iso)
+    result = (await asyncio.to_thread(firebase_service.get_archive_result, user_id, day_iso))
     if result and result.get("solved"):
-        await query.message.reply_text(t(lang, "archive.already_solved"))
+        await query.message.reply_text(t(lang, "archive.already_solved"), reply_markup=_today_keyboard(lang))
         return
 
-    firebase_service.set_archive_day(user_id, day_iso)
+    (await asyncio.to_thread(firebase_service.set_archive_day, user_id, day_iso))
     await _send_challenge(query.message, challenge, day_iso, lang)
 
 
@@ -108,18 +117,14 @@ async def _send_challenge(message, challenge, day_iso, lang):
     caption = t(lang, "archive.opened", date=to_display(day_iso))
 
     if not career_path:
-        await message.reply_text(caption)
+        await message.reply_text(caption, reply_markup=_today_keyboard(lang))
         return
 
-    photo = render_career_path_image(
-        career_path,
-        title=t(lang, "image.path_title"),
-        subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
-        badge=difficulty_label(lang, challenge.get("difficulty")).upper(),
-        footer=f"{to_display(day_iso)}  ({points_for_difficulty(challenge.get('difficulty'))})",
-        lang=lang,
+    photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty_label(lang, challenge.get("difficulty")).upper(), footer=f"{to_display(day_iso)}  ({points_for_difficulty(challenge.get('difficulty'))})", lang=lang))
+    await message.reply_photo(
+        photo=photo, caption=caption,
+        reply_markup=legend_keyboard(lang, extra_rows=[[InlineKeyboardButton(t(lang, "archive.button_today"), callback_data=BACK_TO_TODAY)]]),
     )
-    await message.reply_photo(photo=photo, caption=caption, reply_markup=legend_keyboard(lang))
 
 
 async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -127,7 +132,7 @@ async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
     evento. E' un comando solo perche' all'utente la differenza non interessa: vuole tornare
     alla sfida del giorno."""
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
 
     if not user_data:
@@ -137,13 +142,13 @@ async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Le tre sessioni si escludono a vicenda (services/firebase_service.py), quindi al
     # massimo una di queste e' vera e il messaggio di uscita non e' mai ambiguo.
     if user_data.get("archive_day"):
-        firebase_service.set_archive_day(user_id, None)
+        (await asyncio.to_thread(firebase_service.set_archive_day, user_id, None))
         message_key = "archive.exited"
     elif user_data.get("training_key"):
-        firebase_service.clear_training_key(user_id)
+        (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
         message_key = "training.exited"
     elif user_data.get("event_key"):
-        firebase_service.clear_event_key(user_id)
+        (await asyncio.to_thread(firebase_service.clear_event_key, user_id))
         message_key = "events.exited"
     else:
         await update.effective_message.reply_text(t(lang, "archive.not_in_archive"))
@@ -160,26 +165,26 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
     lang = _lang_for(update, user_data)
     day_iso = user_data.get("archive_day")
 
-    challenge = firebase_service.get_daily_path(day_iso)
+    challenge = (await asyncio.to_thread(firebase_service.get_daily_path, day_iso))
     if not challenge:
-        firebase_service.set_archive_day(user_id, None)
+        (await asyncio.to_thread(firebase_service.set_archive_day, user_id, None))
         await message.reply_text(t(lang, "archive.missing_day"))
         return
 
-    attempt = firebase_service.begin_archive_attempt(user_id, day_iso, MAX_ARCHIVE_ATTEMPTS)
+    attempt = (await asyncio.to_thread(firebase_service.begin_archive_attempt, user_id, day_iso, MAX_ARCHIVE_ATTEMPTS))
     if not attempt["ok"]:
         key = "archive.already_solved" if attempt["reason"] == "already_solved" else "archive.no_attempts"
-        await message.reply_text(t(lang, key))
+        await message.reply_text(t(lang, key), reply_markup=_today_keyboard(lang))
         return
 
     if find_match(user_answer, challenge.get("correct_answers", [])):
-        firebase_service.register_archive_solved(user_id, day_iso, attempt["attempts_used"])
-        firebase_service.set_archive_day(user_id, None)
+        (await asyncio.to_thread(firebase_service.register_archive_solved, user_id, day_iso, attempt["attempts_used"]))
+        (await asyncio.to_thread(firebase_service.set_archive_day, user_id, None))
         await message.reply_text(
             t(lang, "archive.correct", date=to_display(day_iso), attempts=attempt["attempts_used"]),
             reply_markup=_share_keyboard(
                 lang, day_iso, attempt["attempts_used"], solved=True,
-                symbols=shop.squares_symbols(user_data),
+                symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
             ),
         )
         return
@@ -195,26 +200,26 @@ async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     # Tentativi finiti: la sfida e' passata, la risposta si puo' dire.
-    answer = firebase_service.get_display_name_for_day(day_iso) or "?"
-    firebase_service.set_archive_day(user_id, None)
+    answer = (await asyncio.to_thread(firebase_service.get_display_name_for_day, day_iso)) or "?"
+    (await asyncio.to_thread(firebase_service.set_archive_day, user_id, None))
     await message.reply_text(
         t(lang, "archive.wrong_last", answer=answer),
         reply_markup=_share_keyboard(
             lang, day_iso, attempt["attempts_used"], solved=False,
-            symbols=shop.squares_symbols(user_data),
+            symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
         ),
     )
 
 
-def _share_keyboard(lang, day_iso, attempts_used, solved, symbols=None):
+def _share_keyboard(lang, day_iso, attempts_used, solved, symbols=None, link=None):
     """Come per la sfida di oggi, ma marcata come recuperata dall'archivio: chi la incolla
     in un gruppo non deve sembrare che abbia risolto quella di oggi. La striscia non
     c'entra (l'archivio non la muove) e non compare."""
     text = share_text(
         lang, challenge_number(day_iso), attempts_used, MAX_ARCHIVE_ATTEMPTS,
-        solved=solved, archive=True, symbols=symbols,
+        solved=solved, archive=True, symbols=symbols, link=link,
     )
-    url = share_url(text)
+    url = share_url(text, link)
     if not url:
         return None
     return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "share.button"), url=url)]])

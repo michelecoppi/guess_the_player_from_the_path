@@ -12,48 +12,76 @@ strumenti di sviluppo puo' leggere quello che gli mandiamo.
 Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.py), mai il
 client: nessuna di queste funzioni riceve un id da fuori.
 """
-from services import firebase_service, game, shop
+from domains.referrals import service as referrals
+from domains.shop import service as shop
+from services import feature_flags, firebase_service, game, trophies
+from services import product_analytics as analytics
 from services.career_order import order_career
 from services.content_i18n import localize_career
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
 from services.dates import normalize_day, to_display, today_iso
 from services.difficulty import points_for_difficulty
+from services.feature_flags import Flag
 from services.hints import MAX_HINTS, build_hints
 from services.i18n import DEFAULT_LANGUAGE, difficulty_label
-from services.player_pool import _load_raw_players, get_player_by_id
+from services.player_pool import get_player_by_id
 from services.share import share_text, share_url
 
 MAX_LEAGUES_SHOWN = 5
 LEADERBOARD_SIZE = 10
 CALENDAR_DAYS = 30
+PROFILE_SEARCH_SIZE = 10
 
 # Tentativi su una sfida d'archivio giocata dalla mini app: gli stessi della chat
 # (handlers/archive_handler.py), perche' e' la stessa partita vista da un'altra finestra.
 MAX_ARCHIVE_ATTEMPTS = 3
 
 
-def build_profile(user_id, day_iso=None, lang=None):
+def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social=True):
     """Tutto quello che serve alla schermata principale, in una risposta sola. None se
     l'utente non esiste ancora (non ha mai fatto /start)."""
-    user = firebase_service.get_user_data(user_id)
+    if user is None:
+        user = firebase_service.get_user_data(user_id)
     if not user:
         return None
 
     day_iso = day_iso or today_iso()
     lang = lang or user.get("language") or DEFAULT_LANGUAGE
+    features = feature_flags.resolved_features(user_id=user_id)
+    # `include_social=False` is the lightweight polling variant used to refresh game state
+    # only; the full bundle is what a real "the Mini App/Daily was opened" looks like, so
+    # that is the only branch that counts as a view (avoids an event per poll).
+    if include_social:
+        analytics.capture(analytics.Event.MINIAPP_OPENED, user_id=user_id, properties={"language": lang})
+        analytics.capture(analytics.Event.DAILY_VIEWED, user_id=user_id,
+                          properties={"surface": "miniapp", "language": lang})
 
-    return {
+    profile = {
         "language": lang,
         "user": _user_summary(user),
         # I cosmetici comprati in negozio: colori del tema, cornice, titolo, distintivo.
         # Stanno nel profilo e non dietro la scheda del negozio perche' la pagina si deve
-        # disegnare gia' giusta alla prima apertura (services/shop.py, `appearance`).
+        # disegnare gia' giusta alla prima apertura (domains/shop/service.py, `appearance`).
         "cosmetics": shop.appearance(user, lang),
+        "wardrobe": _public_wardrobe(user, lang),
+        # I trofei vinti, scelti da chi li ha vinti (services/trophies.py). Viaggiano col
+        # profilo e non dietro una scheda loro per la stessa ragione dei cosmetici: la
+        # prima schermata deve gia' essere quella giusta.
+        "trophies": {"pinned": trophies.showcase(user, lang), "all": trophies.cabinet(user, lang),
+                     "max": trophies.MAX_PINNED},
         "today": _today_summary(user, day_iso, lang),
         "distribution": _distribution(user),
-        "leaderboard": _leaderboard(user_id),
-        "leagues": _leagues(user, user_id),
+        # Feature flags (#51) risolti per chi guarda: solo booleani, mai regole, liste di
+        # utenti/gruppi o percentuali. La pagina li usa per nascondere; decide il server.
+        "features": features,
     }
+    # Wrong guesses and hints do not change standings; refresh only game state.
+    if include_social:
+        # Classifica spenta: lista vuota, stessa forma per i client gia' in giro. Punti e
+        # posizioni non si toccano, semplicemente non si leggono.
+        profile["leaderboard"] = _leaderboard(user_id) if features[Flag.LEADERBOARD.value] else []
+        profile["leagues"] = _leagues(user, user_id)
+    return profile
 
 
 def _user_summary(user):
@@ -70,6 +98,16 @@ def _user_summary(user):
     }
 
 
+def _public_wardrobe(user, lang):
+    """Localized owned styles only; no purchase, payment or saved-look data."""
+    return [
+        {"id": item_id, "kind": item["kind"], "name": shop.localize(item, lang)[0],
+         "free": shop.is_free(item)}
+        for item_id in sorted(shop.owned_ids(user))
+        if (item := shop.get_item(item_id)) and item.get("kind") in shop.KINDS
+    ]
+
+
 def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
     """An explicit public projection, never the private /me response."""
     if type(target_id) is not int or target_id <= 0 or target_id > 2**52:
@@ -81,9 +119,40 @@ def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
     return {
         "user": _user_summary(user),
         "cosmetics": appearance,
+        "wardrobe": _public_wardrobe(user, lang),
+        # Solo quelli appesi: la bacheca intera e' roba di chi la possiede, il profilo
+        # pubblico mostra quello che ha scelto di far vedere.
+        "trophies": trophies.showcase(user, lang),
         "wearing": [{"kind": kind, "name": shop.localize(shop.get_item(item_id), lang)[0]}
                     for kind, item_id in appearance["equipped"].items()],
     }
+
+
+def search_public_profiles(query, limit=PROFILE_SEARCH_SIZE):
+    """Risultati minimi per trovare un profilo pubblico dal nome.
+
+    Firestore cerca per prefisso e distingue maiuscole e minuscole. I nomi Telegram sono
+    normalmente capitalizzati, quindi normalizziamo ogni parola senza alterare il metodo
+    generico usato dalla dashboard. Non escono mai documento utente, leghe o acquisti.
+    """
+    if not isinstance(query, str):
+        return []
+    prefix = " ".join(query.strip().split())
+    if len(prefix) < 2:
+        return []
+    safe_limit = max(1, min(int(limit or PROFILE_SEARCH_SIZE), PROFILE_SEARCH_SIZE))
+    users = firebase_service.find_users_by_first_name(prefix.title(), limit=safe_limit)
+    return [
+        {
+            "profile_id": user.get("telegram_id"),
+            "name": user.get("first_name", "?"),
+            "badge": shop.badge_emoji(user),
+            "points": user.get("points_totali", 0),
+            "trophies": len(user.get("trophies", [])),
+        }
+        for user in users
+        if type(user.get("telegram_id")) is int and 0 < user["telegram_id"] <= 2**52
+    ]
 
 
 def _distribution(user):
@@ -247,6 +316,8 @@ def build_archive_challenge(user_id, day_iso, lang=DEFAULT_LANGUAGE):
     result = firebase_service.get_archive_result(user_id, day_iso) or {}
     attempts_used = result.get("attempts", 0)
 
+    analytics.capture(analytics.Event.DAILY_ARCHIVE_VIEWED, user_id=user_id,
+                      properties={"surface": "miniapp"})
     return {
         "day": day_iso,
         "label": to_display(day_iso),
@@ -265,6 +336,12 @@ def build_archive_challenge(user_id, day_iso, lang=DEFAULT_LANGUAGE):
 # Un tentativo dalla mini app
 # ---------------------------------------------------------------------------
 
+def is_daily_play(day, today=None):
+    """Un tentativo senza `day`, o con la data di oggi, e' la sfida del giorno; altrimenti e'
+    l'archivio. Una sola definizione, usata da `play` e dal flag `daily_ui` in bot.py."""
+    return not day or day == (today or today_iso())
+
+
 def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None):
     """Un tentativo: la sfida di oggi, oppure una giornata passata se arriva `day`.
 
@@ -273,15 +350,19 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
     condividere quando la partita si chiude."""
     today = today or today_iso()
     symbols = shop.squares_symbols(user_data)
-    if day and day != today:
+    if not is_daily_play(day, today):
         result = game.play_archive(user_id, day, answer, MAX_ARCHIVE_ATTEMPTS)
-        return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True, symbols=symbols)
+        return with_share_card(result, lang, MAX_ARCHIVE_ATTEMPTS, day=day, archive=True, symbols=symbols,
+                               link=referrals.invite_link(user_id))
 
-    result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"))
-    return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols)
+    result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"),
+                             surface="miniapp")
+    if result.get("status") == "correct":
+        result["answer"] = firebase_service.get_display_name_for_day(today)
+    return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols, link=referrals.invite_link(user_id))
 
 
-def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols=None):
+def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols=None, link=None):
     """Aggiunge la card da condividere quando la partita si e' chiusa.
 
     La compone il server e non la pagina: cosi' i quadratini, la lampadina degli indizi e la
@@ -304,23 +385,7 @@ def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols
         archive=archive,
         hints=result.get("hints_used", 0),
         symbols=symbols,
+        link=link,
     )
-    result["share"] = {"text": text, "url": share_url(text)}
+    result["share"] = {"text": text, "url": share_url(text, link)}
     return result
-
-
-# ---------------------------------------------------------------------------
-# Nomi per il completamento automatico
-# ---------------------------------------------------------------------------
-
-def player_names():
-    """I nomi del dataset, per il campo con i suggerimenti.
-
-    E' la cosa che nella mini app cambia di piu' la partita: sparisce il "l'ho scritto
-    giusto?" e sparisce il tentativo bruciato su un nome che il bot non conosce.
-
-    Non regala niente: sono **tutte** le schede, comprese quelle riservate all'allenamento e
-    quelle non verificate, quindi sapere che un nome e' nell'elenco non dice che sia la
-    risposta di oggi. Ordinati e senza duplicati per rendere la lista comprimibile e stabile
-    fra una chiamata e l'altra."""
-    return sorted({player["full_name"] for player in _load_raw_players() if player.get("full_name")})

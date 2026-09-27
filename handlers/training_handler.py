@@ -14,6 +14,7 @@ all'infinito e risponde "stessa nazionalita', ruolo diverso" e' un modo comodo p
 il dataset, e cinque tentativi con la risposta svelata alla fine fanno anche una partita
 piu' bella di una senza fine.
 """
+import asyncio
 import logging
 
 from telegram import InlineKeyboardButton, Update
@@ -21,6 +22,7 @@ from telegram.ext import ContextTypes
 
 from handlers.legend_handler import legend_keyboard
 from services import firebase_service, practice_content
+from services import product_analytics as analytics
 from services.difficulty import points_for_difficulty
 from services.guess_feedback import build_comparison, comparison_text
 from services.i18n import difficulty_label, resolve_language, t
@@ -31,6 +33,7 @@ MAX_TRAINING_ATTEMPTS = 5
 
 NEXT = "trn_next"
 REVEAL = "trn_reveal"
+EXIT = "trn_exit"
 
 
 def _lang_for(update: Update, user_data=None):
@@ -40,9 +43,10 @@ def _lang_for(update: Update, user_data=None):
 
 
 def _keyboard(lang, with_reveal=True):
-    rows = [[InlineKeyboardButton(t(lang, "training.button_next"), callback_data=NEXT)]]
+    top_row = [InlineKeyboardButton(t(lang, "training.button_next"), callback_data=NEXT)]
     if with_reveal:
-        rows[0].append(InlineKeyboardButton(t(lang, "training.button_reveal"), callback_data=REVEAL))
+        top_row.append(InlineKeyboardButton(t(lang, "training.button_reveal"), callback_data=REVEAL))
+    rows = [top_row, [InlineKeyboardButton(t(lang, "training.button_exit"), callback_data=EXIT)]]
     return legend_keyboard(lang, extra_rows=rows)
 
 
@@ -50,7 +54,7 @@ async def training(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """/allenamento: apre (o cambia) una sfida di allenamento."""
     message = update.effective_message
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id)
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
     lang = _lang_for(update, user_data)
 
     if message.chat.type != "private":
@@ -65,23 +69,18 @@ async def training(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def _serve_new_challenge(message, user_id, exclude_key, lang):
-    challenge = practice_content.pick(exclude_keys=[exclude_key] if exclude_key else ())
+    challenge = (await asyncio.to_thread(practice_content.pick, exclude_keys=[exclude_key] if exclude_key else ()))
     if not challenge or not challenge.get("career_path"):
         await message.reply_text(t(lang, "training.empty"))
         return
 
-    firebase_service.set_training_key(user_id, challenge["key"])
+    (await asyncio.to_thread(firebase_service.set_training_key, user_id, challenge["key"]))
+    analytics.capture(analytics.Event.TRAINING_STARTED, user_id=user_id,
+                      properties={"surface": "telegram_chat"})
 
     difficulty = difficulty_label(lang, challenge.get("difficulty"))
     career_path = challenge["career_path"]
-    photo = render_career_path_image(
-        career_path,
-        title=t(lang, "image.path_title"),
-        subtitle=t(lang, "image.path_subtitle", stops=len(career_path)),
-        badge=difficulty.upper(),
-        footer=f"{difficulty} ({points_for_difficulty(challenge.get('difficulty'))})",
-        lang=lang,
-    )
+    photo = (await asyncio.to_thread(render_career_path_image, career_path, title=t(lang, "image.path_title"), subtitle=t(lang, "image.path_subtitle", stops=len(career_path)), badge=difficulty.upper(), footer=f"{difficulty} ({points_for_difficulty(challenge.get('difficulty'))})", lang=lang))
     await message.reply_photo(
         photo=photo,
         caption=t(lang, "training.opened", attempts=MAX_TRAINING_ATTEMPTS),
@@ -95,8 +94,13 @@ async def training_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     user_id = update.effective_user.id
-    user_data = firebase_service.get_user_data(user_id) or {}
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id)) or {}
     lang = _lang_for(update, user_data)
+
+    if query.data == EXIT:
+        (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
+        await query.message.reply_text(t(lang, "training.exited"))
+        return
 
     if query.data == NEXT:
         await _serve_new_challenge(query.message, user_id, user_data.get("training_key"), lang)
@@ -104,12 +108,12 @@ async def training_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Rivela: qui la risposta si puo' dire sempre, perche' quella sfida non e' in gioco per
     # nessuno - o e' di un calciatore riservato all'allenamento, o e' una giornata passata.
-    challenge = practice_content.load(user_data.get("training_key"))
+    challenge = (await asyncio.to_thread(practice_content.load, user_data.get("training_key")))
     if not challenge:
         await query.message.reply_text(t(lang, "training.not_open"))
         return
 
-    firebase_service.clear_training_key(user_id)
+    (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
     await query.message.reply_text(
         t(lang, "training.revealed", answer=challenge["answer"]),
         reply_markup=_keyboard(lang, with_reveal=False),
@@ -123,24 +127,30 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
     user_id = update.effective_user.id
     lang = _lang_for(update, user_data)
 
-    challenge = practice_content.load(user_data.get("training_key"))
+    challenge = (await asyncio.to_thread(practice_content.load, user_data.get("training_key")))
     if not challenge:
-        firebase_service.clear_training_key(user_id)
+        (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
         await message.reply_text(t(lang, "training.gone"))
         return
 
-    logging.info(f"[TRAINING] {user_id} su {challenge['key']}: {user_answer}")
+    logging.info(f"[TRAINING] {user_id} su {challenge['key']}: tentativo di {len(user_answer)} caratteri")
     attempts = user_data.get("training_attempts", 0) + 1
 
     if find_match(user_answer, challenge.get("correct_answers", [])):
-        firebase_service.register_training_solved(user_id)
+        (await asyncio.to_thread(firebase_service.register_training_solved, user_id))
+        analytics.capture(analytics.Event.TRAINING_GUESS_SUBMITTED, user_id=user_id,
+                          properties={"surface": "telegram_chat", "status": "correct", "attempt_index": attempts})
+        analytics.capture(analytics.Event.TRAINING_COMPLETED, user_id=user_id,
+                          properties={"surface": "telegram_chat", "status": "correct", "attempts_used": attempts})
         await message.reply_text(
             t(lang, "training.correct", attempts=attempts),
             reply_markup=_keyboard(lang, with_reveal=False),
         )
         return
 
-    firebase_service.register_training_attempt(user_id)
+    (await asyncio.to_thread(firebase_service.register_training_attempt, user_id))
+    analytics.capture(analytics.Event.TRAINING_GUESS_SUBMITTED, user_id=user_id,
+                      properties={"surface": "telegram_chat", "status": "wrong", "attempt_index": attempts})
     comparison = comparison_text(lang, build_comparison(user_answer, challenge.get("player_id")))
     attempts_left = MAX_TRAINING_ATTEMPTS - attempts
 
@@ -148,7 +158,9 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
         await message.reply_text(t(lang, "training.wrong", attempts_left=attempts_left) + comparison)
         return
 
-    firebase_service.clear_training_key(user_id)
+    (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
+    analytics.capture(analytics.Event.TRAINING_COMPLETED, user_id=user_id,
+                      properties={"surface": "telegram_chat", "status": "failed", "attempts_used": attempts})
     await message.reply_text(
         t(lang, "training.wrong_last", answer=challenge["answer"]) + comparison,
         reply_markup=_keyboard(lang, with_reveal=False),

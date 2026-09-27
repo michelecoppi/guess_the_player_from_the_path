@@ -1,0 +1,26 @@
+{
+  "entities": {
+    "Q99999999": {
+      "type": "item",
+      "id": "Q99999999",
+      "labels": {
+        "en": {"language": "en", "value": "Unknown Player"}
+      },
+      "aliases": {},
+      "claims": {
+        "P569": [
+          {
+            "mainsnak": {
+              "snaktype": "value",
+              "property": "P569",
+              "datavalue": {
+                "type": "time",
+                "value": {"time": "+1995-03-15T00:00:00Z", "precision": 11}
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
