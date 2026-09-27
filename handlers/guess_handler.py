@@ -1,72 +1,283 @@
-import logging
+"""Tentativi sulla sfida del giorno.
 
-from telegram import Update
+Due porte d'ingresso, un solo percorso: `/guess <nome>` e il **messaggio libero** in chat
+privata (scrivere il nome e basta). La seconda esiste perche' digitare il comando ad ogni
+tentativo era l'attrito piu' inutile del gioco; un messaggio che non somiglia a un nome
+(link, frasi lunghe) non consuma un tentativo, viene solo spiegato come si gioca.
+
+Qui passano **tutte** le risposte, non solo quelle di oggi: se l'utente ha una partita
+aperta altrove (archivio, allenamento, evento) il messaggio vale per quella. Le tre sessioni
+si escludono a vicenda (services/firebase_service.py), quindi l'ordine dei controlli non e'
+una precedenza da ricordare: al massimo una e' aperta.
+
+Il confronto con la risposta passa da services/matching.py: un refuso non brucia piu' un
+tentativo. Non si dice mai qual era la risposta giusta, nemmeno per suggerire la
+correzione: sarebbe rivelare la soluzione. Chi finisce i tentativi la scopre a mezzanotte,
+o con /solution a giornata chiusa (handlers/solution_handler.py).
+"""
+import asyncio
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from services import firebase_service
-from services.daily_challenge import get_today_challenge
-from services.dates import today_iso
-from services.difficulty import points_for_difficulty
+from domains.referrals import service as referrals
+from domains.shop import service as shop
+from handlers.archive_handler import process_archive_answer
+from handlers.events_handler import process_event_answer
+from handlers.group_handler import process_group_answer
+from handlers.hint_handler import hint_keyboard
+from handlers.league_handler import AWAITING_KEY as LEAGUE_AWAITING_KEY
+from handlers.league_handler import league_create, league_join
+from handlers.notify_handler import ENABLE_INLINE, notifications_enabled
+from handlers.training_handler import process_training_answer
+from services import firebase_service, game, trophies
+from services.daily_challenge import MAX_ATTEMPTS, challenge_number, get_today_challenge
+from services.guess_feedback import comparison_text
+from services.i18n import resolve_language, t
+from services.matching import looks_like_an_answer
+from services.share import card_image, share_text, share_url
 
-MAX_ATTEMPTS = 3
+
+def _language_for(update: Update, user_data=None):
+    client_lang = resolve_language(getattr(update.effective_user, "language_code", None))
+    return (user_data or {}).get("language") or client_lang
+
+
+def _answer_from_command(text):
+    """Il testo dopo il comando, gestendo anche la forma `/guess@nome_bot Messi`."""
+    if not text:
+        return ""
+    _, _, remainder = text.partition(" ")
+    return remainder.strip()
 
 
 async def guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.chat.type != "private":
-        await update.message.reply_text("❗ Questo comando può essere usato solo in chat privata.")
+    message = update.effective_message
+    user_answer = _answer_from_command(message.text or "")
+
+    # In un gruppo /guess non e' un tentativo sulla sfida di oggi (che rovinerebbe la
+    # giornata a chi legge) ma la risposta al round del gruppo, su una sfida gia' passata.
+    if message.chat.type != "private":
+        await process_group_answer(update, context, user_answer)
+        return
+
+    if not user_answer:
+        await message.reply_text(t(_language_for(update), "guess.missing_answer"))
+        return
+
+    await process_answer(update, context, user_answer)
+
+
+async def free_text_guess(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Qualsiasi messaggio di testo in chat privata e' un tentativo, se ne ha la forma."""
+    message = update.effective_message
+    text = (message.text or "").strip()
+
+    # Dopo "Crea lega"/"Entra in una lega" (handlers/league_handler.py) il prossimo messaggio
+    # libero e' il nome o il codice, non un tentativo sulla sfida di oggi. `user_data` non
+    # c'e' sempre nei test che passano un context minimale: senza, questo passo non vale.
+    user_data_ctx = getattr(context, "user_data", None)
+    awaiting = user_data_ctx.pop(LEAGUE_AWAITING_KEY, None) if user_data_ctx is not None else None
+    if awaiting == "create":
+        await league_create(update, context, name=text)
+        return
+    if awaiting == "join":
+        await league_join(update, context, code=text)
+        return
+
+    if not looks_like_an_answer(text):
+        await message.reply_text(t(_language_for(update), "guess.free_text_hint"))
+        return
+
+    await process_answer(update, context, text)
+
+
+async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, user_answer):
+    message = update.effective_message
+    lang = _language_for(update)
+
+    if message.chat.type != "private":
+        await message.reply_text(t(lang, "common.private_only"))
         return
 
     user_id = update.effective_user.id
-    day_iso = today_iso()
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user_id))
+    lang = _language_for(update, user_data)
 
-    message_text = update.message.text or ""
-    user_answer = message_text[6:].strip().lower() if message_text.lower().startswith("/guess") else ""
-    if not user_answer:
-        await update.message.reply_text("❗ Devi scrivere anche il nome del calciatore dopo /guess!")
+    # Con una partita aperta altrove la risposta vale per quella: e' l'unico modo di
+    # rispondere a una sfida che non e' quella di oggi senza inventare un comando per ognuna.
+    if user_data and user_data.get("archive_day"):
+        await process_archive_answer(update, context, user_answer, user_data)
         return
 
-    challenge = get_today_challenge()
+    if user_data and user_data.get("training_key"):
+        await process_training_answer(update, context, user_answer, user_data)
+        return
+
+    if user_data and user_data.get("event_key"):
+        await process_event_answer(update, context, user_answer, user_data)
+        return
+
+    # Le regole (tentativi, punti, indizi, striscia) stanno in services/game.py: le stesse
+    # che usa la mini app. Qui resta solo la resa in un messaggio Telegram.
+    challenge = (await asyncio.to_thread(get_today_challenge))
     if not challenge:
-        await update.message.reply_text("❗ Non c'è ancora una sfida giornaliera disponibile.")
+        await message.reply_text(t(lang, "common.no_challenge"))
         return
 
-    # Il tentativo viene consumato in transazione: contatori corretti anche con due /guess
-    # inviati nello stesso istante, e nessun bisogno di azzerarli con un job notturno.
-    attempt = firebase_service.begin_guess_attempt(user_id, day_iso, MAX_ATTEMPTS)
-    if not attempt["ok"]:
-        await update.message.reply_text(_attempt_error_message(attempt["reason"]))
+    result = (await asyncio.to_thread(game.play_daily, user_id, user_data, user_answer, first_name=update.effective_user.first_name, challenge=challenge, surface="telegram_chat"))
+
+    if result["status"] == "no_challenge":
+        await message.reply_text(t(lang, "common.no_challenge"))
         return
 
-    logging.info(f"[GUESS] Risposta dell'utente: {user_answer}")
-
-    if user_answer not in challenge.get("correct_answers", []):
-        attempts_left = attempt["attempts_left"]
-        if attempts_left == 0:
-            await update.message.reply_text(
-                "❌ Risposta sbagliata, hai esaurito i tentativi per oggi! Riprova domani."
-            )
-        else:
-            await update.message.reply_text(
-                f"❌ Risposta sbagliata, riprova! Hai {attempts_left} tentativi rimasti."
-            )
+    if result["status"] == "refused":
+        await message.reply_text(_attempt_error_message(lang, result["reason"]))
         return
 
-    points = points_for_difficulty(challenge.get("difficulty"))
-    # Il bonus del primo va assegnato una volta sola: chi vince la transazione lo prende.
-    bonus = 1 if firebase_service.claim_daily_first_correct(day_iso) else 0
-    total_points = points + bonus
+    if result["status"] == "wrong":
+        await _reply_wrong(message, lang, challenge, result, user_data, link=referrals.invite_link(user_id))
+        return
 
-    firebase_service.register_correct_guess(user_id, total_points, bonus, day_iso)
+    bonus_message = t(lang, "guess.bonus", bonus=result["bonus"]) if result["bonus"] else ""
+    text = t(lang, "guess.correct", points=result["points_awarded"], bonus_message=bonus_message)
+    streak = result["streak"]
+    if result["streak_bonus"]:
+        text += t(lang, "guess.streak_bonus", streak=streak, bonus=result["streak_bonus"])
+    elif streak > 1:
+        text += t(lang, "guess.streak", streak=streak)
+    if result["typo"]:
+        text += t(lang, "guess.typo_note", written=user_answer)
 
-    bonus_message = f"💎 Bonus: +{bonus} punto perchè sei il primo ad indovinare!" if bonus else ""
-    await update.message.reply_text(
-        f"✅ Corretto! Hai guadagnato {total_points} punti.\n{bonus_message}"
+    await message.reply_text(
+        text,
+        reply_markup=_share_keyboard(
+            lang, result["attempts_used"], streak, hints=result["hints_used"],
+            symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
+        ),
     )
 
 
-def _attempt_error_message(reason):
-    return {
-        "not_registered": "❗ Devi registrarti prima di giocare! Usa /start.",
-        "already_guessed": "✅ Hai già indovinato oggi! Torna domani per una nuova sfida.",
-        "no_attempts": "❌ Hai esaurito i tentativi per oggi! Riprova domani.",
-    }.get(reason, "❗ Non è stato possibile registrare il tentativo, riprova.")
+async def _reply_wrong(message, lang, challenge, result, user_data, link=None):
+    """Il messaggio dopo una risposta sbagliata.
+
+    Non e' mai solo un "no": porta il confronto con il calciatore scritto, e un bottone che
+    cambia a seconda di dove si e' arrivati. Con tentativi ancora disponibili offre un
+    indizio; a tentativi finiti offre la condivisione e - a chi non le ha - le notifiche,
+    che sono il modo in cui a mezzanotte scoprira' chi era."""
+    # Il confronto con il calciatore scritto (nazionalita', ruolo, eta') e' l'unica cosa che
+    # l'utente si porta via da un tentativo sbagliato: senza, tre tentativi su una sfida
+    # difficile sono tre nomi sparati a caso.
+    comparison = comparison_text(lang, result["comparison"])
+    hints_used = result["hints_used"]
+
+    if result["attempts_left"] > 0:
+        await message.reply_text(
+            t(lang, "guess.wrong_remaining", attempts_left=result["attempts_left"]) + comparison,
+            reply_markup=hint_keyboard(lang, challenge, hints_used),
+        )
+        return
+
+    # A tentativi finiti la card si condivide comunque: "X/3" e' meta' del gioco in un
+    # gruppo, e non rivela niente della soluzione.
+    await message.reply_text(
+        t(lang, "guess.wrong_last") + comparison,
+        reply_markup=_lost_keyboard(lang, result["attempts_used"], hints_used, user_data, link=link),
+    )
+
+
+def _lost_keyboard(lang, attempts_used, hints_used, user_data, link=None):
+    """Condivisione e, per chi non ha le notifiche, il bottone per attivarle.
+
+    Il secondo bottone e' li' perche' il messaggio dice "te lo dico a mezzanotte": a chi le
+    notifiche non le ha, quella frase non varrebbe niente."""
+    rows = []
+    share = _share_button(
+        lang, attempts_used, streak=0, solved=False, hints=hints_used,
+        symbols=shop.squares_symbols(user_data), link=link,
+    )
+    if share:
+        rows.append([share])
+    if not notifications_enabled(user_data or {}):
+        rows.append([InlineKeyboardButton(t(lang, "guess.button_notify"), callback_data=ENABLE_INLINE)])
+    return InlineKeyboardMarkup(rows) if rows else None
+
+
+def _share_button(lang, attempts_used, streak, solved, hints=0, symbols=None, link=None):
+    """`link` e' il link invito di chi condivide (#150); senza, il link nudo del bot."""
+    text = share_text(
+        lang, challenge_number(), attempts_used, MAX_ATTEMPTS, solved=solved, streak=streak,
+        hints=hints, symbols=symbols, link=link,
+    )
+    url = share_url(text, link)
+    if not url:
+        return None
+    return InlineKeyboardButton(t(lang, "share.button"), url=url)
+
+
+# Il payload del bottone della figurina. Sta tutto qui dentro e non in memoria perche' un
+# bottone di Telegram sopravvive al processo che lo ha creato: un riavvio non deve
+# trasformare "La figurina" in un bottone che non fa niente. Sessantaquattro byte bastano
+# per quattro numeri.
+CARD_PREFIX = "sharecard"
+
+
+def _card_payload(attempts_used, streak, solved, hints):
+    return f"{CARD_PREFIX}:{attempts_used}:{1 if solved else 0}:{hints}:{streak}"
+
+
+def _card_button(lang, attempts_used, streak, solved, hints):
+    return InlineKeyboardButton(
+        t(lang, "share.button_card"),
+        callback_data=_card_payload(attempts_used, streak, solved, hints),
+    )
+
+
+async def share_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manda la figurina del risultato come foto.
+
+    Si spedisce **su richiesta** e non insieme al risultato: una foto ad ogni risposta
+    giusta cambierebbe la partita a tutti per far vedere un cosmetico a pochi, e chi gioca
+    con le immagini spente si ritroverebbe una bolla vuota al posto del suo punteggio.
+
+    La riga di testo non sparisce: resta sul messaggio di prima, e questa foto le sta
+    accanto. Chi vuole condividere inoltra la foto, chi vuole incollare copia la riga."""
+    query = update.callback_query
+    await query.answer()
+    try:
+        _, attempts, solved, hints, streak = query.data.split(":")
+        attempts, hints, streak = int(attempts), int(hints), int(streak)
+        solved = solved == "1"
+    except ValueError:
+        return
+
+    user = update.effective_user
+    user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id)) or {}
+    lang = _language_for(update, user_data)
+    pinned = trophies.showcase(user_data, lang)
+    image = (await asyncio.to_thread(card_image, user_data, lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints, honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else ""))
+    text = share_text(lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved,
+                      streak=streak, hints=hints, symbols=shop.squares_symbols(user_data),
+                      link=referrals.invite_link(user.id))
+    await query.message.reply_photo(photo=image, caption=text)
+
+
+def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=None, link=None):
+    """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta.
+
+    Vale anche per chi non ci e' arrivato (`solved=False`, cioe' "X/3"): la sconfitta e'
+    meta' di quello che si condivide in un gruppo, ed e' l'unica riga che non puo'
+    spoilerare niente."""
+    button = _share_button(lang, attempts_used, streak, solved, hints, symbols, link)
+    card = _card_button(lang, attempts_used, streak, solved, hints)
+    rows = [row for row in ([button] if button else [], [card]) if row]
+    return InlineKeyboardMarkup(rows) if rows else None
+
+
+def _attempt_error_message(lang, reason):
+    key = {
+        "not_registered": "guess.error.not_registered",
+        "already_guessed": "guess.error.already_guessed",
+        "no_attempts": "guess.error.no_attempts",
+    }.get(reason, "guess.error.default")
+    return t(lang, key)

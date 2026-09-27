@@ -22,6 +22,8 @@ def make_update(user_id=42, name="Anna"):
     return SimpleNamespace(
         effective_user=SimpleNamespace(id=user_id, first_name=name),
         message=message,
+        effective_message=message,
+        effective_chat=message.chat,
     ), message
 
 
@@ -73,6 +75,7 @@ def firebase(monkeypatch):
     monkeypatch.setattr(events_handler.firebase_service, "begin_event_attempt", begin_event_attempt)
     monkeypatch.setattr(events_handler.firebase_service, "claim_event_first_correct", claim_event_first_correct)
     monkeypatch.setattr(events_handler.firebase_service, "register_event_correct_guess", register_event_correct_guess)
+    monkeypatch.setattr(events_handler.firebase_service, "get_user_data", lambda uid: None)
     return SimpleNamespace(calls=calls, state=state)
 
 
@@ -146,3 +149,51 @@ def test_leaderboard_message_uses_the_participants_query():
     assert "Anna" in message and "Bruno" in message
 
     assert "Nessun partecipante" in events_handler.get_event_leaderboard_message([])
+
+
+def test_attempts_and_bonus_follow_the_event_template(firebase):
+    """#31: un evento con 5 tentativi e senza bonus del primo, in chat."""
+    event = path_event()
+    event["rules"] = {"attempts": 5}
+    event["rewards"] = {"first_correct_bonus": 0}
+    max_attempts_seen = []
+    original = events_handler.firebase_service.begin_event_attempt
+
+    def begin(code, user_id, name, day, max_attempts):
+        max_attempts_seen.append(max_attempts)
+        return original(code, user_id, name, day, max_attempts)
+
+    events_handler.firebase_service.begin_event_attempt = begin
+    try:
+        update, message = make_update()
+        asyncio.run(events_handler.process_event_guess(update, SimpleNamespace(args=["messi"], user_data={}), event))
+    finally:
+        events_handler.firebase_service.begin_event_attempt = original
+
+    assert max_attempts_seen == [5]
+    assert firebase.calls["registered"][0]["points"] == 2  # nessun bonus
+    assert firebase.state["first_free"] is True  # il bonus non viene nemmeno reclamato
+    text, _ = events_handler.get_today_player_message(event, "it")
+    assert "5" in text
+
+
+def test_a_wrong_answer_reports_the_template_attempts(firebase):
+    event = path_event()
+    event["rules"] = {"attempts": 7}
+    update, message = make_update()
+    asyncio.run(events_handler.process_event_guess(update, SimpleNamespace(args=["totti"], user_data={}), event))
+    assert "7" in message.replies[0]
+
+
+def test_blind_event_chat_never_displays_the_hidden_career_or_spends_attempt(firebase):
+    event = path_event()
+    event["type"] = "blind_path"
+    event["daily_data"][today_iso()]["career_path"] = [
+        {"team": "Secret Club", "start_year": 2000},
+    ]
+    message, _ = events_handler.get_today_player_message(event)
+    assert "Secret Club" not in message
+    update, reply = make_update()
+    asyncio.run(events_handler.process_event_guess(update, SimpleNamespace(args=["messi"]), event))
+    assert firebase.calls["attempts"] == []
+    assert "Mini App" in reply.replies[0]

@@ -1,7 +1,17 @@
+import asyncio
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from services import product_analytics as analytics
 from services.firebase_service import get_user_data, set_user_notifications
+from services.i18n import resolve_language, t
+
+# Il bottone che compare sotto la sconfitta della sfida del giorno. E' una callback a parte
+# e non `enable_notify` perche' quella **riscrive** il messaggio su cui sta: li' cancellerebbe
+# il confronto sul tentativo sbagliato e il bottone di condivisione. Qui invece si risponde
+# con un messaggio nuovo e si lascia stare quello di prima.
+ENABLE_INLINE = "notify_on"
 
 
 def notifications_enabled(user_data):
@@ -15,34 +25,54 @@ def notifications_enabled(user_data):
 async def notify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
-    user_data = get_user_data(user_id)
+    user_data = (await asyncio.to_thread(get_user_data, user_id))
+    lang = (user_data or {}).get("language") or resolve_language(getattr(update.effective_user, "language_code", None))
 
     if not user_data:
-        await update.message.reply_text("❗ Devi registrarti prima con /start.")
+        await update.effective_message.reply_text(t(lang, "notify.not_registered"))
         return
 
     if chat_id != user_id:
-        await update.message.reply_text("❗ Usa questo comando in chat privata.")
+        await update.effective_message.reply_text(t(lang, "notify.private_only"))
         return
 
     if notifications_enabled(user_data):
-        text = "🔔 Le notifiche sono attive. Vuoi disattivarle?"
-        keyboard = [[InlineKeyboardButton("❌ Disattiva notifiche", callback_data="disable_notify")]]
+        text = t(lang, "notify.active_prompt")
+        keyboard = [[InlineKeyboardButton(t(lang, "notify.button_disable"), callback_data="disable_notify")]]
     else:
-        text = "🔕 Le notifiche non sono attive. Vuoi attivarle?"
-        keyboard = [[InlineKeyboardButton("✅ Attiva notifiche", callback_data="enable_notify")]]
+        text = t(lang, "notify.inactive_prompt")
+        keyboard = [[InlineKeyboardButton(t(lang, "notify.button_enable"), callback_data="enable_notify")]]
 
-    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.effective_message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 async def notify_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     chat_id = query.message.chat.id
+    user_data = (await asyncio.to_thread(get_user_data, user_id))
+    lang = (user_data or {}).get("language") or resolve_language(getattr(query.from_user, "language_code", None))
 
-    if query.data == "enable_notify":
-        set_user_notifications(user_id, chat_id, True)
-        await query.edit_message_text("✅ Notifiche attivate! Riceverai un messaggio ogni giorno.")
+    was_on = notifications_enabled(user_data or {})
+    if query.data == ENABLE_INLINE:
+        if not was_on:
+            (await asyncio.to_thread(set_user_notifications, user_id, chat_id, True))
+            _changed(user_id, True)
+        await query.message.reply_text(
+            t(lang, "notify.already_enabled" if was_on else "notify.enabled_inline")
+        )
+    elif query.data == "enable_notify":
+        (await asyncio.to_thread(set_user_notifications, user_id, chat_id, True))
+        if not was_on:
+            _changed(user_id, True)
+        await query.edit_message_text(t(lang, "notify.enabled_confirm"))
     elif query.data == "disable_notify":
-        set_user_notifications(user_id, chat_id, False)
-        await query.edit_message_text("🔕 Notifiche disattivate. Potrai riattivarle con /notify.")
+        (await asyncio.to_thread(set_user_notifications, user_id, chat_id, False))
+        if was_on:
+            _changed(user_id, False)
+        await query.edit_message_text(t(lang, "notify.disabled_confirm"))
+
+
+def _changed(user_id, enabled):
+    """Only a real change is an event: re-pressing "on" when already on is not (#139)."""
+    analytics.capture(analytics.Event.NOTIFICATIONS_CHANGED, user_id=user_id, properties={"enabled": enabled})

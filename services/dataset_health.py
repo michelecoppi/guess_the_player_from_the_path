@@ -7,11 +7,13 @@ non hanno abbastanza candidati.
 
 Usato da `scripts/dataset_report.py` (CI e riga di comando) e dal comando Telegram /admin_pool.
 """
+from services import event_config
 from services.difficulty import DIFFICULTY_ORDER, compute_difficulty
 from services.player_pool import (
     _load_raw_players,
     filter_players,
     get_all_players,
+    is_practice_only,
     load_config,
     validate_dataset,
 )
@@ -22,6 +24,47 @@ def _load_templates():
     from services.event_generator import load_templates
 
     return load_templates()
+
+
+def _template_errors():
+    """Gli errori di schema di data/event_templates.json, una riga per errore (#31)."""
+    from services.event_generator import load_payload
+
+    return [
+        f"template '{key}': {error}"
+        for key, errors in event_config.validate_payload(load_payload()).items()
+        for error in errors
+    ]
+
+
+def unclassified_leagues(players, config):
+    """I campionati abbastanza frequenti da meritare una classificazione, che non ce l'hanno.
+
+    Le tre liste di data/config.json corrispondono ai tre pesi di `league_tier_weight`
+    (services/difficulty.py): `top_leagues` vale 0, `known_leagues` 0.5, `obscure_leagues` 1.0.
+    L'ultima non cambia nessun punteggio - 1.0 e' gia' il peso di ripiego per tutto cio' che
+    non e' in nessuna lista - e serve solo a distinguere "guardato, pesa come sconosciuto" da
+    "non ancora guardato": solo il secondo caso e' un avviso.
+
+    Il ripiego e' giusto per la coda lunga (la maggior parte delle leghe del dataset compare
+    una o due volte), ma sopra una certa frequenza smette di essere un ripiego e diventa una
+    decisione presa da nessuno. La soglia sta in `unclassified_league_warning_min`."""
+    minimum = config.get("unclassified_league_warning_min", 20)
+    classified = (
+        set(config.get("top_leagues", []))
+        | set(config.get("known_leagues", []))
+        | set(config.get("obscure_leagues", []))
+    )
+    counts: dict[str, int] = {}
+    for player in players:
+        for stop in player.get("career", []):
+            league = stop.get("league")
+            if league and league not in classified:
+                counts[league] = counts.get(league, 0) + 1
+    return sorted(
+        ((league, stints) for league, stints in counts.items() if stints >= minimum),
+        key=lambda item: (-item[1], item[0]),
+    )
 
 
 def build_report(exclude_ids=None):
@@ -41,20 +84,35 @@ def build_report(exclude_ids=None):
 
     templates = []
     for template in _load_templates():
-        candidates = filter_players(selectable, template.get("rules", {}))
-        duration = template.get("duration_days", config.get("event_default_duration_days", 5))
+        manual = event_config.is_manual(template)
+        uses_dataset = event_config.uses_dataset(template["type"])
+        candidates = filter_players(selectable, template["filters"]) if uses_dataset else []
+        duration = template["duration_days"]
         templates.append({
             "id": template["id"],
             "name": template["name"],
-            "manual_only": bool(template.get("manual_only")),
+            "manual_only": manual,
+            "schedule": event_config.schedule_label(template),
             "candidates": len(candidates),
             "duration_days": duration,
-            "ok": template.get("manual_only") or len(candidates) >= duration,
+            "ok": manual or not uses_dataset or len(candidates) >= duration,
         })
+    template_errors = _template_errors()
 
-    dataset_problems = validate_dataset(raw_players)
+    dataset_problems = validate_dataset(raw_players, config=config)
+    unclassified = unclassified_leagues(raw_players, config)
 
     warnings = []
+    if unclassified:
+        # Una riga sola: sono nomi, e un avviso per ciascuno renderebbe illeggibile
+        # l'output di /admin_pool proprio quando il dataset cresce.
+        elenco = ", ".join(f"{league} ({stints})" for league, stints in unclassified)
+        warnings.append(
+            f"Campionati non classificati in data/config.json, con il numero di tappe: {elenco}. "
+            f"Valgono come sconosciuti nel calcolo della difficolta': se e' la scelta giusta "
+            f"vanno scritti in 'obscure_leagues', altrimenti in 'known_leagues'. In un caso o "
+            f"nell'altro la decisione va registrata invece di restare il ripiego."
+        )
     if len(selectable) <= history_days:
         warnings.append(
             f"Solo {len(selectable)} giocatori selezionabili contro {history_days} giorni di "
@@ -83,11 +141,15 @@ def build_report(exclude_ids=None):
         "total": len(raw_players),
         "verified": sum(1 for p in raw_players if p.get("verified")),
         "selectable": len(selectable),
-        "excluded": len(raw_players) - len(selectable),
+        # Riservati e scartati vanno contati separatamente: i primi sono una scelta (fanno
+        # da materiale per l'allenamento), i secondi un problema da guardare.
+        "practice_reserved": sum(1 for p in raw_players if is_practice_only(p)),
+        "excluded": len(raw_players) - len(selectable) - sum(1 for p in raw_players if is_practice_only(p)),
         "history_days_no_repeat": history_days,
         "autonomy_days": len(selectable),
         "by_difficulty": by_difficulty,
         "templates": templates,
+        "template_problems": template_errors,
         "dataset_problems": dataset_problems,
         "warnings": warnings,
     }
@@ -98,6 +160,7 @@ def format_report_text(report):
         f"Giocatori nel dataset: {report['total']}",
         f"  verificati: {report['verified']}",
         f"  selezionabili in automatico: {report['selectable']}",
+        f"  riservati all'allenamento (mai come sfida del giorno): {report['practice_reserved']}",
         f"  esclusi (non verificati o dati incompleti): {report['excluded']}",
         "",
         f"Autonomia senza ripetizioni: {report['autonomy_days']} giorni "
@@ -112,7 +175,15 @@ def format_report_text(report):
     lines.append("Eventi tematici:")
     for template in report["templates"]:
         flag = "manuale" if template["manual_only"] else ("ok" if template["ok"] else "POCHI CANDIDATI")
-        lines.append(f"  {template['id']}: {template['candidates']} candidati / {template['duration_days']} giorni [{flag}]")
+        lines.append(
+            f"  {template['id']}: {template['candidates']} candidati / {template['duration_days']} giorni "
+            f"[{flag}] - {template['schedule']}"
+        )
+    if report["template_problems"]:
+        lines.append("")
+        lines.append("Template evento non validi (non partiranno):")
+        for problem in report["template_problems"]:
+            lines.append(f"  - {problem}")
 
     if report["warnings"]:
         lines.append("")

@@ -1,0 +1,64 @@
+# Makefile per Guess the Player
+# Compatibile con Linux, macOS, WSL e Windows con GNU make.
+# Su Windows senza make e' possibile usare:
+#   .\dev.ps1 <comando>
+# oppure direttamente:
+#   python -m tools.dev <comando>
+
+PYTHON ?= python
+
+.PHONY: help check-env check-api test test-cov lint typecheck syntax dataset-check check api admin webapp emulator frontend-dev frontend-build frontend-typecheck frontend-test
+
+help:
+	@$(PYTHON) -m tools.dev --help
+
+check-env:
+	@$(PYTHON) -m tools.check_environment
+
+check-api:
+	@$(PYTHON) -m tools.check_environment --mode api
+
+test:
+	@$(PYTHON) -m pytest -q
+
+test-cov:
+	@$(PYTHON) -m pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing
+
+lint:
+	@$(PYTHON) -m ruff check .
+
+typecheck:
+	@$(PYTHON) -m mypy services/ domains/
+
+syntax:
+	@$(PYTHON) -m compileall -q bot.py config.py apps domains services handlers scripts admin_pages admin_ui.py tools
+
+dataset-check:
+	@$(PYTHON) scripts/dataset_report.py --strict
+
+check:
+	@$(PYTHON) -m tools.dev check
+
+api:
+	@$(PYTHON) -m tools.dev api
+
+admin:
+	@$(PYTHON) -m streamlit run admin_ui.py
+
+webapp:
+	@$(PYTHON) scripts/preview_webapp.py
+
+emulator:
+	gcloud emulators firestore start --host-port=127.0.0.1:8571
+
+frontend-dev:
+	@$(PYTHON) -m tools.dev frontend-dev
+
+frontend-build:
+	@$(PYTHON) -m tools.dev frontend-build
+
+frontend-typecheck:
+	@$(PYTHON) -m tools.dev frontend-typecheck
+
+frontend-test:
+	@$(PYTHON) -m tools.dev frontend-test

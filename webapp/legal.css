@@ -1,0 +1,83 @@
+/*
+  Stile delle due pagine legali (terms.html, privacy.html).
+
+  Non riusa la palette della mini app di proposito: queste pagine si aprono nel **browser**
+  (Telegram apre cosi' i link messi in BotFather), non dentro Telegram, quindi non c'e'
+  nessun `--tg-theme-*` da seguire. Si adattano invece al chiaro/scuro di sistema.
+
+  Sta in un file suo e non dentro le pagine perche' le pagine sono due e devono essere
+  identiche: due copie dello stesso CSS divergono alla prima correzione fatta in fretta.
+*/
+:root {
+  --bg: #f7f9fb;
+  --card: #ffffff;
+  --edge: #dde5ed;
+  --text: #16232f;
+  --muted: #5d7285;
+  --accent: #1f7a53;
+  --accent-soft: #e8f4ee;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a131e;
+    --card: #142434;
+    --edge: #26394d;
+    --text: #e9f0f6;
+    --muted: #93a8bc;
+    --accent: #4ecf94;
+    --accent-soft: #172f26;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 24px 18px 64px;
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+main { max-width: 680px; margin: 0 auto; }
+
+h1 { font-size: 26px; line-height: 1.25; margin: 0 0 6px; }
+h2 {
+  font-size: 17px; margin: 30px 0 8px; padding-top: 18px;
+  border-top: 1px solid var(--edge);
+}
+h2:first-of-type { border-top: 0; padding-top: 0; }
+p, li { margin: 0 0 10px; }
+ul { padding-left: 20px; }
+a { color: var(--accent); }
+
+.updated { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+.box {
+  background: var(--card); border: 1px solid var(--edge); border-radius: 12px;
+  padding: 14px 16px; margin: 16px 0;
+}
+.box.highlight { background: var(--accent-soft); border-color: var(--accent); }
+.box p:last-child, .box ul:last-child { margin-bottom: 0; }
+
+table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--edge); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+/* Le tabelle sono l'unica cosa che su uno schermo stretto non si comprime: scorre la
+   tabella, non la pagina. */
+.scroll { overflow-x: auto; }
+
+/* --- scelta della lingua --- */
+.langs { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+.langs button {
+  font: inherit; font-size: 14px; cursor: pointer;
+  background: var(--card); color: var(--text);
+  border: 1px solid var(--edge); border-radius: 999px; padding: 6px 14px;
+}
+.langs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
+[data-lang] { display: none; }
+[data-lang].on { display: block; }
+
+footer { margin-top: 34px; color: var(--muted); font-size: 14px; }

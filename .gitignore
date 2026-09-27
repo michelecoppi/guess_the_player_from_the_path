@@ -8,3 +8,22 @@ __pycache__/
 # Batch di calciatori in staging, in attesa di import (scripts/import_players.py):
 # locali per costruzione, non fanno parte del dataset ufficiale finche' non sono importati.
 data/incoming/
+
+# Staging e storage isolato per il ciclo di vita dei Candidate Players (#54):
+data/candidates/
+
+# Worktree locali di sviluppo:
+.worktrees/
+
+# Backup Firestore (scripts/backup_firestore.py, migrate_firestore.py) e artifact scaricati per
+# un ripristino (docs/backup-recovery.md): dati utente reali, non vanno committati.
+backup/
+restore-work/
+# Report di coverage locale (in CI si rigenera ad ogni run).
+.coverage
+htmlcov/
+
+# Node.js e build artifacts
+node_modules/
+dist/
+webapp/dist/

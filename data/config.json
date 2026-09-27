@@ -16,18 +16,90 @@
     "Bundesliga",
     "Ligue 1"
   ],
+  "known_leagues": [
+    "Eredivisie",
+    "Primeira Liga",
+    "Liga Profesional",
+    "Brasileirao",
+    "MLS",
+    "Championship",
+    "Super Lig",
+    "Belgian Pro League",
+    "Scottish Premiership",
+    "Saudi Pro League",
+    "Russian Premier League",
+    "Serie B",
+    "Segunda Division",
+    "Liga MX",
+    "2. Bundesliga",
+    "Ligue 2",
+    "Austrian Bundesliga",
+    "Swiss Super League",
+    "Super League Greece",
+    "Ekstraklasa",
+    "Uruguayan Primera Division",
+    "Ukrainian Premier League",
+    "Czech First League",
+    "HNL",
+    "Allsvenskan",
+    "Eliteserien",
+    "Superligaen",
+    "Serie C",
+    "3. Liga",
+    "Championnat National",
+    "Segunda Division B",
+    "League One",
+    "Challenger Pro League",
+    "A-League",
+    "National Soccer League (Australia)"
+  ],
+  "obscure_leagues": [
+    "Chinese Super League",
+    "J1 League",
+    "Qatar Stars League",
+    "Serbian SuperLiga",
+    "Indian Super League",
+    "UAE Pro League",
+    "Liga I",
+    "Cypriot First Division",
+    "Serie D",
+    "Championnat National 2",
+    "National 3 Group D",
+    "League Two",
+    "Eccellenza",
+    "Belgian National Division 1",
+    "Prima Categoria"
+  ],
   "difficulty_thresholds": {
-    "easy": 8.5,
-    "medium": 12,
-    "hard": 15
+    "easy": 5,
+    "medium": 9,
+    "hard": 13
   },
   "event_min_gap_days": 10,
-  "event_default_duration_days": 5,
   "event_history_no_repeat_templates": 3,
   "difficulty_weights": {
-    "popularity": 3.0,
-    "minor_leagues": 4.0,
-    "extra_countries": 1.0,
-    "extra_teams": 0.5
+    "popularity": 4.0,
+    "minor_leagues": 3.0,
+    "extra_countries": 0.5,
+    "extra_teams": 0.2
+  },
+  "practice_past_challenge_ratio": 0.25,
+  "game_epoch": "2025-06-08",
+  "multi_country_clubs": {
+    "Al-Shabab": "due club diversi con lo stesso nome (Riad e Dubai)",
+    "Vojvodina": "stesso club, il paese ha cambiato nome (Jugoslavia -> Serbia)"
+  },
+  "unclassified_league_warning_min": 20,
+  "difficulty_calibration": {
+    "min_players": 10,
+    "failure_weight": 0.7,
+    "attempts_weight": 0.3,
+    "mismatch_tolerance": 25
+  },
+  "daily_planner": {
+    "horizon_days": 30,
+    "club_cooldown_days": 3,
+    "nationality_cooldown_days": 3,
+    "max_same_band_streak": 2
   }
 }

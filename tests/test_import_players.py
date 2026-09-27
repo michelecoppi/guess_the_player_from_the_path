@@ -113,3 +113,23 @@ def test_force_verified_flag(tmp_path, monkeypatch):
 
     assert result["added"] == ["nuovo"]
     assert players[0]["verified"] is True
+
+
+def test_reimporting_does_not_take_a_player_out_of_the_training_reserve(tmp_path, monkeypatch):
+    """`practice_only` sopravvive a un --update: se un giocatore riservato all'allenamento
+    tornasse nel giro delle sfide, chi si e' allenato su di lui si ritroverebbe la risposta
+    gia' pronta il giorno in cui esce."""
+    existing = dict(_valid_player("maldini"), practice_only=True)
+    result, players = _run(tmp_path, monkeypatch, [existing], [_valid_player("maldini")], update=True)
+
+    assert result["updated"] == ["maldini"]
+    assert players[0]["practice_only"] is True
+
+
+def test_a_batch_can_take_a_player_out_of_the_reserve_on_purpose(tmp_path, monkeypatch):
+    """Dirlo esplicitamente nel batch resta possibile: e' una scelta, non un incidente."""
+    existing = dict(_valid_player("maldini"), practice_only=True)
+    incoming = dict(_valid_player("maldini"), practice_only=False)
+    _, players = _run(tmp_path, monkeypatch, [existing], [incoming], update=True)
+
+    assert not players[0].get("practice_only")

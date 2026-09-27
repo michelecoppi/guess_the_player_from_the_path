@@ -1,5 +1,10 @@
 import json
 import os
+import re
+import unicodedata
+
+from services.content_i18n import untranslated_values
+from services.matching import find_match, normalize
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PLAYERS_PATH = os.path.join(_BASE_DIR, "data", "players.json")
@@ -7,6 +12,7 @@ _CONFIG_PATH = os.path.join(_BASE_DIR, "data", "config.json")
 
 _players_cache = None
 _config_cache = None
+_alias_index_cache = None
 
 # Anno minimo plausibile per una tappa di carriera: sotto questa soglia il dato e' quasi
 # sicuramente un errore di battitura (es. 199 invece di 1990).
@@ -34,9 +40,10 @@ def _load_raw_players():
 def reload_dataset():
     """Svuota le cache in memoria: usato dagli script di import e dai test dopo aver
     riscritto data/players.json."""
-    global _players_cache, _config_cache
+    global _players_cache, _config_cache, _alias_index_cache
     _players_cache = None
     _config_cache = None
+    _alias_index_cache = None
 
 
 def validate_player(player, min_teams=2):
@@ -78,6 +85,16 @@ def validate_player(player, min_teams=2):
             if entry.get(key) in (None, ""):
                 problems.append(f"tappa carriera incompleta ({team_label}): manca '{key}'")
 
+        if "loan" in entry and not isinstance(entry["loan"], bool):
+            problems.append(f"tappa {team_label}: 'loan' deve essere true/false ({entry['loan']})")
+
+        # Presenze e gol sono facoltativi (non tutte le schede li hanno), ma se ci sono
+        # devono essere numeri non negativi: finiscono disegnati nell'immagine.
+        for key in ("apps", "goals"):
+            value = entry.get(key)
+            if value is not None and (not isinstance(value, int) or isinstance(value, bool) or value < 0):
+                problems.append(f"tappa {team_label}: '{key}' deve essere un intero >= 0 ({value})")
+
         start_year = entry.get("start_year")
         end_year = entry.get("end_year")
 
@@ -105,16 +122,42 @@ def validate_player(player, min_teams=2):
     return problems
 
 
-def validate_dataset(players=None, min_teams=None):
+def normalize_league(name):
+    """La forma con cui si confrontano due nomi di campionato.
+
+    Serve solo a scoprire che due stringhe diverse sono lo stesso campionato scritto in due
+    modi ("Super League Grecia" e "Super League Greece"): non e' il nome canonico, e' la
+    chiave con cui si accorpano. Toglie accenti, punteggiatura e maiuscole, cioe' proprio
+    quello su cui due grafie della stessa lega tendono a divergere."""
+    stripped = unicodedata.normalize("NFKD", str(name or ""))
+    stripped = "".join(c for c in stripped if not unicodedata.combining(c))
+    return " ".join(re.sub(r"[^a-z0-9 ]+", " ", stripped.lower()).split())
+
+
+def validate_dataset(players=None, min_teams=None, config=None):
     """Controlli che hanno senso solo sull'intero dataset (non sul singolo giocatore):
-    id duplicati e alias condivisi fra giocatori diversi.
+    id duplicati, alias condivisi fra giocatori diversi, valori senza traduzione, e la
+    coerenza di club e campionati fra una scheda e l'altra.
 
     Un alias condiviso e' il bug piu' insidioso del gioco: la risposta "ronaldo" sarebbe
-    corretta per due calciatori diversi, ma il bot ne accetta solo uno."""
+    corretta per due calciatori diversi, ma il bot ne accetta solo uno.
+
+    I valori senza traduzione (services/content_i18n.py) sono l'altro difetto che nessuno
+    nota da solo: il dataset e' scritto in italiano e il paese finisce **dentro l'immagine**,
+    quindi un paese nuovo non tradotto arriva in italiano a inglesi e spagnoli senza che
+    niente si rompa. Meglio che lo dica /admin_pool al primo import.
+
+    Gli ultimi tre controlli sono nati da errori veri trovati nel dataset: San Lorenzo
+    marcato "Spagna" (il paese si vede nel percorso, quindi era una tappa sbagliata sotto
+    gli occhi di chi gioca) e la Super League greca scritta sia "Grecia" sia "Greece", di
+    cui una sola presente in `known_leagues` - quindi un quarto delle tappe greche pesava
+    come campionato sconosciuto nel calcolo della difficolta', senza che niente lo
+    segnalasse."""
     if players is None:
         players = _load_raw_players()
+    config = config or load_config()
     if min_teams is None:
-        min_teams = load_config().get("min_teams_in_career", 2)
+        min_teams = config.get("min_teams_in_career", 2)
 
     problems = []
 
@@ -143,15 +186,86 @@ def validate_dataset(players=None, min_teams=None):
         for problem in validate_player(player, min_teams=min_teams):
             problems.append(f"{player.get('id', '?')}: {problem}")
 
+    problems.extend(untranslated_values(players))
+    problems.extend(_club_country_problems(players, config))
+    problems.extend(_league_spelling_problems(players))
+    problems.extend(_italianized_league_problems(players))
+
     return problems
 
 
-def get_all_players(include_unverified=None, exclude_ids=None):
+def _club_country_problems(players, config):
+    """Lo stesso club in due paesi diversi.
+
+    Il paese di una tappa non e' un dettaglio di catalogazione: viene mostrato nel percorso
+    (e disegnato nell'immagine), quindi sbagliarlo vuol dire mettere sotto gli occhi di chi
+    gioca un indizio falso. I casi legittimi esistono - club omonimi in due paesi, paesi che
+    hanno cambiato nome - e stanno elencati in `multi_country_clubs` di data/config.json:
+    scriverli li' e' una decisione, lasciarli passare in silenzio no."""
+    allowed = set(config.get("multi_country_clubs") or ())
+    countries: dict[str, dict[str, str]] = {}
+    for player in players:
+        for stop in player.get("career", []):
+            team, country = stop.get("team"), stop.get("country")
+            if team and country:
+                countries.setdefault(team, {}).setdefault(country, player.get("id", "?"))
+
+    problems = []
+    for team, owners in sorted(countries.items()):
+        if len(owners) > 1 and team not in allowed:
+            detail = ", ".join(f"{country} (es. '{owner}')" for country, owner in sorted(owners.items()))
+            problems.append(
+                f"club '{team}' con paesi diversi: {detail}. Correggi la tappa sbagliata, "
+                f"oppure aggiungi il club a 'multi_country_clubs' in data/config.json se sono "
+                f"davvero due club diversi o un paese che ha cambiato nome."
+            )
+    return problems
+
+
+def _league_spelling_problems(players):
+    """Due grafie dello stesso campionato.
+
+    `top_leagues` e `known_leagues` (data/config.json) si confrontano per stringa esatta:
+    due grafie vogliono dire che una delle due non e' classificata e pesa come campionato
+    sconosciuto. E' un errore che non si nota mai da solo, perche' il gioco continua a
+    funzionare e cambia soltanto la difficolta' calcolata."""
+    spellings: dict[str, dict[str, int]] = {}
+    for player in players:
+        for stop in player.get("career", []):
+            league = stop.get("league")
+            if league:
+                bucket = spellings.setdefault(normalize_league(league), {})
+                bucket[league] = bucket.get(league, 0) + 1
+
+    problems = []
+    for variants in spellings.values():
+        if len(variants) > 1:
+            detail = ", ".join(f"'{name}' ({count} tappe)" for name, count in sorted(variants.items()))
+            problems.append(f"stesso campionato scritto in modi diversi: {detail}")
+    return problems
+
+
+def is_practice_only(player):
+    """Riservato all'allenamento: non esce mai come sfida del giorno ne' dentro un evento.
+
+    E' la regola che rende allenamento e round di gruppo materiale infinito **senza
+    spoiler**: chi si allena su queste schede non vedra' mai lo stesso percorso arrivare
+    come sfida del giorno, perche' per costruzione non ci puo' arrivare. La fetta e' scritta
+    nel dataset (`"practice_only": true`) e non calcolata a runtime: se cambiasse da sola,
+    un giocatore potrebbe passare da una parte all'altra e lo spoiler tornerebbe."""
+    return bool(player.get("practice_only"))
+
+
+def get_all_players(include_unverified=None, exclude_ids=None, practice_only=False):
     """Carica tutti i giocatori dal dataset locale, filtrando quelli con dati incompleti
     e (di default) quelli non verificati, secondo 'auto_include_unverified_players' in config.json.
 
     'exclude_ids' permette all'admin di sospendere al volo un giocatore (dato sbagliato
-    segnalato dagli utenti) senza dover ridistribuire il bot."""
+    segnalato dagli utenti) senza dover ridistribuire il bot.
+
+    'practice_only' sceglie **quale delle due meta'** del dataset si vuole: di default
+    quella che alimenta il gioco vero (sfida del giorno ed eventi), con True quella
+    riservata all'allenamento. Le due non si incontrano mai."""
     config = load_config()
     if include_unverified is None:
         include_unverified = config.get("auto_include_unverified_players", False)
@@ -162,6 +276,8 @@ def get_all_players(include_unverified=None, exclude_ids=None):
     for player in _load_raw_players():
         if player.get("id") in exclude_ids:
             continue
+        if is_practice_only(player) != practice_only:
+            continue
         if not include_unverified and not player.get("verified", False):
             continue
         if validate_player(player, min_teams=min_teams):
@@ -169,6 +285,12 @@ def get_all_players(include_unverified=None, exclude_ids=None):
         valid_players.append(player)
 
     return valid_players
+
+
+def get_practice_players(exclude_ids=None):
+    """La fetta riservata all'allenamento: stessi controlli di validita' del resto, perche'
+    una scheda sbagliata mostrata in allenamento e' sbagliata uguale."""
+    return get_all_players(exclude_ids=exclude_ids, practice_only=True)
 
 
 def get_incomplete_or_unverified_players():
@@ -227,3 +349,79 @@ def filter_players(players, rules):
         result.append(player)
 
     return result
+
+
+def _alias_index():
+    """Indice alias normalizzato -> scheda, costruito una volta sola.
+
+    Serve al confronto dopo un tentativo sbagliato (services/guess_feedback.py): li' non
+    basta sapere che la risposta e' sbagliata, serve **quale** calciatore ha scritto
+    l'utente. Gli alias ambigui sono gia' vietati da validate_dataset(), quindi la mappa
+    non puo' avere due proprietari per la stessa chiave."""
+    global _alias_index_cache
+    if _alias_index_cache is None:
+        index: dict[str, dict] = {}
+        for player in _load_raw_players():
+            for alias in get_answer_aliases(player):
+                index.setdefault(normalize(alias), player)
+        _alias_index_cache = index
+    return _alias_index_cache
+
+
+def find_player_by_answer(text):
+    """La scheda del calciatore che l'utente ha scritto, None se non e' nel dataset.
+
+    Cerca fra **tutte** le schede, anche quelle non verificate: qui non si sta scegliendo
+    la sfida del giorno, si sta solo capendo di chi parla l'utente, e una scheda in attesa
+    di revisione ha comunque nazionalita' e ruolo giusti (quello che si sbaglia sono le
+    date della carriera).
+
+    La tolleranza ai refusi e' la stessa delle risposte (services/matching.py): chi scrive
+    "Ibrahimovich" merita il confronto come chi lo scrive giusto."""
+    index = _alias_index()
+    match = find_match(text, index.keys())
+    if not match:
+        return None
+    return index.get(match["answer"])
+
+
+def _italianized_league_problems(players):
+    """Un nome di campionato che contiene il paese scritto in italiano.
+
+    I campionati non si traducono: sono nomi propri e nel dataset stanno in lingua originale
+    (services/content_i18n.py lo dice all'inizio). Un nome ibrido come "Super League Grecia"
+    e' quindi gia' sbagliato di suo, ma il danno vero e' un altro: la stessa lega finisce
+    scritta anche nel modo giusto ("Super League Greece") da chi importa il batch dopo, e
+    `top_leagues`/`known_leagues` confrontano per stringa esatta - quindi una delle due
+    grafie smette di essere classificata e le sue tappe pesano come campionato sconosciuto.
+
+    Il confronto e' con i **soli** paesi il cui nome italiano differisce dall'inglese:
+    "Primera Division Paraguay" e "Nigeria Premier League" non sono ibridi, sono nomi che
+    contengono un paese che si scrive uguale nelle due lingue."""
+    from services.content_i18n import COUNTRY_NAMES
+
+    italian_only = {
+        normalize_league(italian): italian
+        for italian, names in COUNTRY_NAMES.items()
+        if normalize_league(italian) != normalize_league(names.get("en", ""))
+    }
+
+    seen = set()
+    problems = []
+    for player in players:
+        for stop in player.get("career", []):
+            league = stop.get("league")
+            if not league or league in seen:
+                continue
+            padded = f" {normalize_league(league)} "
+            for needle, italian in italian_only.items():
+                if f" {needle} " in padded:
+                    seen.add(league)
+                    problems.append(
+                        f"campionato '{league}': contiene il paese in italiano ('{italian}'). "
+                        f"I nomi dei campionati restano in lingua originale, altrimenti la stessa "
+                        f"lega finisce scritta in due modi e uno dei due non e' classificato in "
+                        f"data/config.json."
+                    )
+                    break
+    return problems

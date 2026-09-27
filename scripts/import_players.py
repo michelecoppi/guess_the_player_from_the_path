@@ -22,6 +22,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from services.career_order import order_career  # noqa: E402
 from services.player_pool import (  # noqa: E402
     _PLAYERS_PATH,
     get_answer_aliases,
@@ -30,7 +31,9 @@ from services.player_pool import (  # noqa: E402
     validate_player,
 )
 
-CAREER_KEYS = ("team", "country", "league", "start_year", "end_year")
+# "loan" e' opzionale ma va tenuto: senza, un prestito sarebbe indistinguibile da un
+# trasferimento, sia nei dati sia nell'immagine del percorso.
+CAREER_KEYS = ("team", "country", "league", "start_year", "end_year", "loan", "apps", "goals")
 
 
 def _normalize_player(player):
@@ -58,7 +61,9 @@ def _normalize_player(player):
             if stop.get(key):
                 stop[key] = str(stop[key]).strip()
         career.append(stop)
-    normalized["career"] = career
+    # Le tappe si riordinano all'import (prestiti dopo il club che li ha generati): le
+    # schede scritte a mano arrivano quasi sempre in ordine di anno e basta.
+    normalized["career"] = order_career(career)
 
     return normalized
 
@@ -118,6 +123,13 @@ def import_players(paths, update=False, force_verified=False, dry_run=False):
             if not update:
                 skipped.append(player_id)
                 continue
+            # `practice_only` non si perde reimportando la scheda: se un giocatore riservato
+            # all'allenamento tornasse nel giro delle sfide, chi si e' allenato su di lui si
+            # ritroverebbe la risposta gia' pronta il giorno in cui esce. Per toglierlo dalla
+            # riserva bisogna dirlo esplicitamente nel batch.
+            previous = existing[by_id[player_id]]
+            if previous.get("practice_only") and "practice_only" not in raw_player:
+                player["practice_only"] = True
             existing[by_id[player_id]] = player
             updated.append(player_id)
         else:

@@ -1,0 +1,301 @@
+# Architecture overview
+
+Authoritative, conceptual map of the system **as it exists on `main`**. It explains
+what the components are, where each responsibility lives and which trust boundaries
+separate them. Details belong to the focused documents linked from each section; this
+file should change only when the architecture changes (see
+[agent-protocol.md § Documentation update policy](agent-protocol.md#documentation-update-policy)).
+
+Every section separates **Current state** (verified in code) from **Planned evolution**
+(open roadmap issues on [Project #2](https://github.com/users/michelecoppi/projects/2)).
+Do not treat a planned item as implemented.
+
+## 1. What the system is
+
+*Guess the Player from the Path* is a Telegram football guessing game: every day players
+see the career path (clubs, seasons, appearances) of an unnamed footballer and try to
+name them. It is played in the Telegram bot chat and in a Telegram Mini App, with the
+same rules, points, leaderboards, events, cosmetics shop (Telegram Stars) and referrals.
+Gameplay rules as seen by a player are described in the root [README](../README.md).
+
+## 2. Components
+
+```text
+                    Telegram (users, groups, payments)
+                      │ webhook               ▲ Bot API calls
+                      ▼                       │
+┌──────────────────────────── Cloud Run service (one container) ─────────────────────────┐
+│ bot.py  — composition root: apps/bot (PTB Application) + apps/api (FastAPI app)       │
+│   /webhook ──enqueue──► Cloud Tasks ──► /internal/telegram-update ──► handlers/*       │
+│   /internal/daily-job  (Cloud Scheduler)   /internal/broadcast, /internal/monthly-close │
+│   /app      Mini App (Vite build in webapp/dist), assets at /app/assets/*              │
+│   /app/api/* Mini App JSON API (initData-authenticated)                                │
+│   /terms, /privacy  static legal pages                                                 │
+│                    │                                                                   │
+│        handlers/  (Telegram adapters)   services/  (game, content, shop, API builders) │
+│                    └──────────────► services/firebase_service.py + services/repos/     │
+└────────────────────────────────────────────┬───────────────────────────────────────────┘
+                                             ▼
+                                   Firebase Firestore (all mutable game state)
+
+Versioned in Git and baked into the image (read-only at runtime):
+  data/players.json, data/config.json, data/event_templates.json, data/shop.json
+
+Runs on a maintainer machine (files are copied into the image but never run by the service):
+  admin_ui.py + admin_pages/ (Streamlit Admin Control Center)
+  scripts/ (imports, reports, backups, migrations, previews)
+  Candidate ingestion pipeline (services/candidate_*.py, domains/players/adapters/) → data/candidates/
+
+GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly Firestore JSON export) ; restore-verification.yml (emulator restore drill)
+```
+
+| Component | Where it lives | Responsibility |
+| --- | --- | --- |
+| Composition root | [`bot.py`](../bot.py), [`config.py`](../config.py) | Initialises observability and analytics, builds the PTB `Application` and the FastAPI app and wires them with a `TelegramBridge`; holds no routes or rules |
+| Bot app | [`apps/bot/application.py`](../apps/bot/application.py) | PTB `Application` with its shared HTTP client, registration of every Telegram handler (in order), webhook/command/menu-button setup and shutdown |
+| API app | [`apps/api/`](../apps/api/) | `app.py` factory (lifespan with secret validation, `FeatureDisabled` mapping, middleware, routers), `observe.py` (request middleware), `internal.py` (webhook and Cloud Tasks/Scheduler workers), `miniapp.py` (Mini App JSON API, `initData` auth, rate limit, flags), `static.py` (`/`, `/ping`, Mini App pages and assets, legal pages), `bridge.py` (what the API needs from the bot) |
+| Telegram handlers | [`handlers/`](../handlers/) | Translate Telegram updates/callbacks into service calls and localized replies |
+| Application services | [`services/`](../services/) | Game rules ([`game.py`](../services/game.py), [`matching.py`](../services/matching.py), [`hints.py`](../services/hints.py), [`streak.py`](../services/streak.py)), content generation, Mini App projections ([`webapp_api.py`](../services/webapp_api.py)), arena/events, shop, trophies, referrals, leagues, i18n, image rendering |
+| Persistence | [`services/firebase_service.py`](../services/firebase_service.py) (client, collection names, facade/re-exports) + [`services/repos/`](../services/repos/) (per-area repositories) | All Firestore reads/writes and transactions |
+| Durable background work | [`services/task_queue.py`](../services/task_queue.py), [`services/work_receipts.py`](../services/work_receipts.py), [`services/broadcast_store.py`](../services/broadcast_store.py), [`handlers/daily_job.py`](../handlers/daily_job.py), [`services/monthly_closure.py`](../services/monthly_closure.py) | Cloud Tasks enqueueing with deterministic names, per-update receipts/locks, paged broadcast and monthly close |
+| Player datasets | [`data/`](../data/) | Curated production players, game tuning, event templates, shop catalogue, dataset regression baseline |
+| Candidate ingestion pipeline | `services/candidate_*.py`, [`domains/players/adapters/`](../domains/players/adapters/), [`domains/players/candidates/repository.py`](../domains/players/candidates/repository.py) | External-source acquisition, normalization, validation, provenance and human review before promotion to `data/players.json` |
+| Admin Control Center | [`admin_ui.py`](../admin_ui.py), [`admin_pages/`](../admin_pages/) | Local Streamlit UI over the same services; see [admin.md](admin.md) |
+| Telegram admin commands | [`handlers/admin_handler.py`](../handlers/admin_handler.py), `/admin_refund` in [`handlers/shop_handler.py`](../handlers/shop_handler.py) | In-chat operations restricted to `ADMIN_TELEGRAM_IDS` |
+| Mini App (`/app`) | [`webapp/src/`](../webapp/src/), [`vite.config.ts`](../vite.config.ts) | Vite + TypeScript Mini App; see [miniapp.md](miniapp.md) |
+| Tooling | [`tools/`](../tools/), [`Makefile`](../Makefile), [`dev.ps1`](../dev.ps1) | Environment validator, dev runner, security audit |
+| CI/CD | [`.github/workflows/`](../.github/workflows/) | See [ci_cd_pipeline.md](ci_cd_pipeline.md) and [deploy.md](deploy.md) |
+
+## 3. Composition root and domain boundaries
+
+**Current state.**
+
+- `bot.py` is the single process entrypoint (`CMD ["python", "bot.py"]`, `uvicorn bot:app`)
+  and a pure composition root (#110): it builds the Telegram application
+  (`apps.bot.application`) and the HTTP app (`apps.api.app.create_app`) and connects them
+  through a `TelegramBridge` (the PTB application, bot start/stop, the nightly job and a
+  broadcast page), so the `api` app never imports the `bot` app. Route functions in
+  `apps/api/` authenticate, rate-limit and delegate; a few small behaviors are still inline
+  (for example the `/app/api/arena` mode dispatch and `/app/api/shop/look` delete branch).
+  `admin_ui.py` is the composition root of the Streamlit Admin.
+- Game rules shared by chat and Mini App live in services — `services/game.py` is used
+  by both `handlers/guess_handler.py` and `/app/api/guess`, so there is one scoring
+  implementation. The same holds for leagues (`services/leagues.py`) and the shop
+  catalogue/prices (`domains/shop/service.py`).
+- Domain code is moving from the technical layers (`handlers/`, `services/`,
+  `admin_pages/`) into domain packages under `domains/`, one domain at a time. Already
+  moved (#111): the Candidate pipeline and its source adapters (`domains/players/`), the
+  shop (`domains/shop/`), referrals (`domains/referrals/`) and group rounds
+  (`domains/groups/`, #147). Everything else is still in
+  the flat `services/` package. `services/repos/` was extracted from `firebase_service.py`,
+  which still re-exports repository functions (including `domains/shop/repository.py` and
+  `domains/groups/repository.py`) so
+  existing imports and test monkeypatches keep working.
+- There is no dependency-injection container; modules import each other and tests
+  replace collaborators with in-memory fakes or monkeypatching.
+
+### Domain map
+
+Every Python module belongs to exactly one component. The authoritative module → component
+map is [`tools/architecture.py`](../tools/architecture.py) (`COMPONENTS`); this table
+describes the components, not their files.
+
+| Kind | Component | Responsibility | Lives in today |
+| --- | --- | --- | --- |
+| Composition root | — | Build and wire an application; may import anything, imported by nothing | `bot.py`, `admin_ui.py` |
+| App | `bot` | Telegram adapters: commands, callbacks, payments, jobs triggered from chat | `apps/bot/`, `handlers/` |
+| App | `api` | HTTP adapter: webhook, Cloud Tasks workers, Mini App API and its projections, `initData` auth, rate limiting | `apps/api/`; `services/webapp_api.py`, `webapp_auth.py`, `rate_limit.py`. The Mini App frontend (`webapp/`) is delivered by this app |
+| App | `admin` | Streamlit Admin pages | `admin_pages/` |
+| App | `scripts` | Operator command lines (imports, backups, migrations, previews) | `scripts/` |
+| App | `tools` | Developer tooling (dev runner, environment, release, security, reports, this check) | `tools/` |
+| Domain | `players` | Production dataset, player names and matching, career order, difficulty model, dataset health/regression, Candidate ingestion pipeline | `domains/players/candidates/` (`model`, `provenance`, `finding`, `normalization`, `validation`, `review`, `repository`), `domains/players/adapters/`; still in `services/`: `player_pool`, `matching`, `career_order`, `difficulty`, `dataset_*` |
+| Domain | `daily` | Daily Challenge lifecycle, generator and planner, archive, calibration, admin content | `daily_*`, `past_challenges`, `content_admin`, `repos/challenges`, `repos/archive`, `repos/admin` |
+| Domain | `analytics` | Product analytics (#29), not observability | `product_analytics*` |
+| Domain | `game` | Guessing and scoring, hints, guess feedback, Training and Arena, result card rendering | `game`, `hints`, `guess_feedback`, `arena`, `practice_content`, `path_image`, `share` |
+| Domain | `events` | Event templates, generation, rules, manual events, Mini App events | `event_*`, `manual_event_service`, `app_events`, `repos/events` |
+| Domain | `users` | User documents, streaks, leaderboards and seasons, monthly closure, trophies | `repos/users`, `repos/seasons`, `streak`, `monthly_closure`, `trophies` |
+| Domain | `shop` | Cosmetics catalogue, purchases, looks, shop editor | `domains/shop/` (`service`, `repository`, `editor`) |
+| Domain | `referrals` | Referral links, qualification and rewards | `domains/referrals/service.py` |
+| Domain | `groups` | Group rounds: rules and Firestore access | `domains/groups/` (`service`, `repository`) |
+| Domain | `leagues` | Private leagues | `leagues`, `repos/leagues` |
+| Infrastructure | — | Technical services without product rules: Firestore client and facade, feature flags, observability, performance, Cloud Tasks, receipts, backup, version, dates, i18n, fonts | `firebase_service`, `repos/bulk`, `repos/file_lock`, `feature_flags`, `observability`, `performance`, `task_queue`, `work_receipts`, `broadcast_store`, `alerts`, `backup_status`, `firestore_backup/`, `version`, `dates`, `i18n`, `content_i18n`, `fonts` |
+
+### Dependency rules
+
+Checked on the real import graph, imports inside functions included, by
+`tests/test_architecture_boundaries.py` (so in CI) and on demand with
+`python -m tools.dev architecture`:
+
+1. Nothing imports a composition root.
+2. Domains and infrastructure never import an app.
+3. An app never imports another app (`config` is shared configuration).
+4. Infrastructure never imports a domain.
+5. A domain imports another domain only along a declared edge, and the declared graph is
+   acyclic. Bottom to top: `players` → `daily`, `analytics` → `game` → `events` → `users` →
+   `shop` → `referrals`; `groups` uses `players` and `game` (answer matching, feedback and
+   training material), `leagues` depends on no other domain. An arrow reads
+   "is used by": `game` may import `players`, `daily` and `analytics`, never the reverse.
+
+Existing violations are recorded, with the reason, in `KNOWN_VIOLATIONS` instead of being
+hidden: the `firebase_service` compatibility facade over domain repositories, direct calls
+from the users/archive repositories into referral qualification and shop achievements
+(which should become hooks), the result card reading cosmetics, analytics validating shop
+item ids, the dataset health report checking event templates, and the local Mini App
+preview script. The check fails on a new violation and also when a recorded one disappears,
+so the list only shrinks. `python -m tools.dev architecture` prints the current debt.
+
+**Working with the map.**
+
+- A new module must be added to `COMPONENTS`, otherwise the test fails.
+- New domain logic goes into its domain, never into `bot.py`, handlers or Admin pages.
+- A new cross-domain import either follows a declared edge or is a design decision: add
+  the edge in the same PR only if it keeps the graph acyclic, and explain it.
+- Paying off a known violation means removing its entry in the same PR.
+- `python -m tools.architecture --module domains.shop.service` shows a module's component,
+  what it imports and who imports it.
+
+### Moving a domain into its package
+
+The procedure used by #111, to repeat for the next domain **when a PR already works in that
+area** (not as a standalone big-bang move):
+
+1. **Layout.** `domains/<domain>/__init__.py` holds only a docstring (no logic, no
+   re-exports: importing a submodule must not import the whole domain). Inside, one module
+   per role: `service.py` for the rules and use cases, `repository.py` for Firestore,
+   `editor.py` for Admin content editing; a larger domain groups a sub-area in a
+   subpackage (`domains/players/candidates/`, `domains/players/adapters/`). Name modules by
+   role, not by repeating the domain (`domains/shop/service.py`, not `shop/shop.py`).
+2. **Move with history.** `git mv` each file, then fix anything derived from the file's
+   depth (`Path(__file__).parents[...]`, `os.path.dirname` chains that locate `data/` or
+   `backup/`) and say in a comment which parent is the repository root.
+3. **Rewrite every importer; add no compatibility shims.** All importers live in this
+   repository, so update them in the same PR. Keep call sites unchanged with an alias:
+   `from domains.shop import service as shop`. A shim at the old path is allowed only for a
+   consumer outside this repository, must say so and must name the release that removes it.
+   `services/firebase_service.py` keeps re-exporting a moved repository only because it
+   already is the compatibility facade (tracked in `KNOWN_VIOLATIONS`).
+4. **Update path mentions** in comments, docstrings and current documentation. Historical
+   review records (for example [miniapp-61-review.md](miniapp-61-review.md)) are left as
+   they were written.
+5. **Map it.** Replace the per-module entries in `COMPONENTS` with one entry for the
+   package (`"domains.shop": "shop"`) and retarget `KNOWN_VIOLATIONS` keys to the new
+   module names. `python -m tools.architecture` must still report OK with the same debt.
+6. **Keep the checks equivalent.** `domains/` is compiled, type-checked (`mypy services/
+   domains/`) and counted in coverage (`--cov=domains`) exactly like `services/`, so
+   moving code never silently drops it from a check.
+7. **Behaviour.** The full suite passes without changing assertions; tests only change
+   import paths.
+
+**Planned evolution.** [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28)
+reorganizes the monorepo by domain incrementally, without a big-bang rewrite:
+[#109](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/109) (this map and
+its checks, done) →
+[#110](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/110) (`bot.py` as
+a pure composition root, done) →
+[#111](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/111) (players
+Candidate pipeline, shop and referrals moved into `domains/`, with the procedure above, done).
+Group rounds followed in #147 (`domains/groups/`). The remaining domains (`game`, `daily`,
+`events`, `users`, `leagues`, `analytics` and
+the rest of `players`) move with that procedure when a PR next works in them; the recorded
+debt in `KNOWN_VIOLATIONS` is paid down the same way.
+
+## 4. Who reads and writes what
+
+| Component | Reads Firestore | Mutates Firestore | Mutates versioned datasets (`data/*.json`) | Calls external sources | Exposes authenticated API |
+| --- | --- | --- | --- | --- | --- |
+| Cloud Run service (`bot.py`, `apps/`, handlers, services) | yes | yes | **no** (image is read-only by design; runs as non-root) | Telegram Bot API, Cloud Tasks | `/webhook` (Telegram secret token), `/internal/*` (task/cron secrets), `/app/api/*` (Telegram `initData`) |
+| Admin Streamlit (local) | yes | yes, on the project its credentials point to | yes: `data/players.json`, `data/config.json` via `services/dataset_editor.py` and the candidate review service; writes backups to `backup/` | adapters, only on explicit candidate retry | no network API; local UI |
+| Candidate pipeline services | no | no | only on explicit approval/merge through `CandidateReviewService`; otherwise writes only `data/candidates/` | Wikipedia, Wikidata | no |
+| `scripts/` | depends on script | some (`migrate_firestore.py`, `backfill_users.py`, `cleanup_daily_paths.py`, `generate_content.py`) | `import_players.py`, `reserve_practice_players.py`, `scripts/wikipedia/*` produce/modify datasets | Wikipedia (`scripts/wikipedia/`) | no |
+| GitHub Actions | `backup.yml` (read-only role) | no | no | GCP | no |
+
+Consequence: a change to `data/players.json` (import, Admin edit, candidate approval)
+reaches production only through a commit → PR → CI → deploy, never by writing a live
+container. Firestore-backed switches such as `/admin_block`
+(`admin_settings/dataset_overrides`) take effect immediately; feature flags
+(`admin_settings/feature_flags`) within the cache TTL ([feature-flags.md](feature-flags.md)).
+
+## 5. Main runtime flows
+
+**Telegram update.** Telegram → `POST /webhook` (checks `X-Telegram-Bot-Api-Secret-Token`,
+validates `update_id`) → Cloud Tasks queue `TASKS_QUEUE` with a name derived from
+`update_id` → `POST /internal/telegram-update` (checks `X-Task-Secret`) →
+`work_receipts.claim` (dedupe + per-user serialization) → PTB handler. An interrupted
+update becomes `uncertain` and is reported to admins rather than replayed. Details:
+[runtime-hardening.md](runtime-hardening.md).
+
+**Mini App request.** Browser inside Telegram → `POST /app/api/<endpoint>` with
+`initData` in the JSON body → `services/webapp_auth.py` verifies the HMAC signature and
+age → per-process token bucket (`services/rate_limit.py`) → user document read →
+service call → explicit JSON projection. The client never sends a user id.
+
+**Nightly job.** Cloud Scheduler → `POST /internal/daily-job` (checks `x-cron-secret`
+against `GENERATION_SECRET`) → content buffer, events, trophies, monthly preparation,
+immutable broadcast payload in `daily_jobs/{day}` → paged broadcast/monthly-close tasks
+on `BROADCAST_QUEUE`. See [game-modes.md](game-modes.md#daily-challenge) and
+[operations.md](operations.md).
+
+**Payments.** Invoice (`XTR`, empty provider token) → `PreCheckoutQuery` validated
+against the server-side catalogue and current ownership → `successful_payment` delivered
+idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
+[security.md](security.md#telegram-stars-payments).
+
+## 6. Domain areas (where to read more)
+
+| Area | Current implementation | Primary document |
+| --- | --- | --- |
+| Daily challenge, Archive | `services/daily_generator.py`, `services/daily_planner.py`, `services/daily_challenge.py`, `services/game.py`, `services/past_challenges.py`, `handlers/guess_handler.py`, `handlers/archive_handler.py` | [game-modes.md](game-modes.md) |
+| Training, Arena duels, group rounds | `services/arena.py`, `services/practice_content.py`, `handlers/training_handler.py`, `domains/groups/`, `handlers/group_handler.py` | [game-modes.md](game-modes.md) |
+| Events | `services/event_generator.py`, `services/event_rules.py`, `services/event_config.py`, `services/event_template_editor.py`, `services/app_events.py`, `services/manual_event_service.py`, `handlers/events_handler.py` | [game-modes.md](game-modes.md#events) |
+| Difficulty | `services/difficulty.py`, `services/difficulty_calibration.py`, `data/config.json` | [difficolta.md](difficolta.md) |
+| Leaderboard, seasons, private leagues | `services/repos/users.py`, `services/repos/seasons.py`, `services/leagues.py`, `services/monthly_closure.py`, `handlers/top_users_handler.py`, `handlers/league_handler.py` | [game-modes.md](game-modes.md#leaderboards-seasons-and-leagues) |
+| Shop, cosmetics, trophies | `domains/shop/service.py`, `data/shop.json`, `services/trophies.py`, `handlers/shop_handler.py` | README “Negozio”, [miniapp-appearance.md](miniapp-appearance.md) |
+| Referral | `domains/referrals/service.py`, `/app/api/referrals` | README “Mini app”, [game-modes.md](game-modes.md#referral) |
+| Player data | `data/players.json`, `services/player_pool.py`, candidate pipeline | [player-data-pipeline.md](player-data-pipeline.md) |
+| Mini App | `webapp/` | [miniapp.md](miniapp.md) |
+| Admin | `admin_ui.py`, `admin_pages/`, `handlers/admin_handler.py` | [admin.md](admin.md) |
+| Firestore | `services/firebase_service.py`, `services/repos/` | [firestore.md](firestore.md) |
+| Security | cross-cutting | [security.md](security.md) |
+| Operations | cross-cutting | [operations.md](operations.md) |
+| Feature flags (implemented, #51) | `services/feature_flags.py`, `services/repos/feature_flags.py`, `handlers/feature_gate.py`, `scripts/feature_flags.py`: `admin_settings/feature_flags`, server-side evaluation with TTL cache and last-known-good | [feature-flags.md](feature-flags.md) |
+| Observability (implemented, #18) | `services/observability.py`: structured JSON logs, optional Sentry, request/task correlation, redaction; `release` from `VERSION`, `revision` from Cloud Run | [observability.md](observability.md) |
+| Performance measurement (implemented, #32) | `services/performance.py` (Firestore accounting at the GAPIC layer, budgets, startup phases), `tools/perf_report.py`: all output is structured log fields on top of observability | [performance.md](performance.md) |
+| Product analytics (implemented, #29) | `services/product_analytics.py`: typed PostHog event capture, pseudonymous identity, off without `POSTHOG_API_KEY`; a strictly separate concern from observability above | [product-analytics.md](product-analytics.md) |
+
+## 7. Deployment topology (summary)
+
+| Stage | Current state | Primary document |
+| --- | --- | --- |
+| Build | `gcloud run deploy --source .` builds the [`Dockerfile`](../Dockerfile) with Cloud Build: stage 1 `npm ci && npm run build` (Mini App bundle), stage 2 Python 3.11 runtime with `requirements.txt` | [deploy.md](deploy.md) |
+| Test | `ci.yml` on every PR and push to `main` | [ci_cd_pipeline.md](ci_cd_pipeline.md) |
+| Deploy | `deploy.yml` runs only after a successful CI run on `main`, via Workload Identity Federation, `--max-instances 10` | [deploy.md](deploy.md) |
+| Runtime | One Cloud Run service (`europe-west1`), Firestore, two Cloud Tasks queues, one Cloud Scheduler job; env vars/secrets set on the service, not in the workflow | [deploy.md](deploy.md), [runtime-hardening.md](runtime-hardening.md) |
+| Rollback | Manual: route traffic to a previous revision or redeploy an earlier commit. No one-command rollback | [release-checklist.md § Rollback](release-checklist.md#10-rollback) |
+
+**Planned evolution.** Versioning, CHANGELOG and a release checklist now exist
+([release-checklist.md](release-checklist.md), [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49));
+adoption is opt-in going forward, so this table's "manual, no one-command rollback"
+still describes today's default. Backup scope, retention, the restore tool and the
+periodic emulator restore test are in [backup-recovery.md](backup-recovery.md)
+([#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50), epic
+[#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20)); rolling back
+code does not restore data.
+
+## 8. Roadmap items that change this picture
+
+| Issue | Topic | Status of the capability today |
+| --- | --- | --- |
+| [#20](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/20) / [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49) / [#50](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/50) | Release management, backup recovery | Versioning/checklist (#49) and validated weekly backup with emulator-verified restore (#50) exist; adoption of tagged releases is opt-in |
+| [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Implemented: rule-based prediction (0-100 score, bands) snapshotted on each Daily and compared with observed completion/attempts in Admin “Dataset” ([difficolta.md §6](difficolta.md)); weights are recalibrated by hand from that comparison |
+| [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Operational flags implemented (#51, [feature-flags.md](feature-flags.md)); experiments/variants (#52) not implemented |
+| [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25) | Dataset Health dashboard | A health report exists (`services/dataset_health.py`, `/admin_pool`, Admin “Dataset”); the dedicated dashboard does not |
+| [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Domain map and dependency rules enforced in CI (#109); files still in the layered layout, moving incrementally (#110, #111) — see §3 |
+| [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Not implemented |
+| [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) | Automatic Daily planner | Implemented: `services/daily_planner.py` plans 7–90 days with eligibility, difficulty rotation, diversity and repetition rules, per-day audit, Admin review/apply ([game-modes.md](game-modes.md#daily-planner)); the nightly buffer uses the same rules |
+| [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31) | Data-driven, automatable events | Implemented: validated template schema v2 (filters, rules, rewards, rotation/fixed/manual schedule) in `services/event_config.py`, Admin template editor ([event-templates.md](event-templates.md)) |
+| [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | Implemented: per-request Firestore cost, cold-start and handler timings, Mini App startup beacon, budgets, baseline/trend report ([performance.md](performance.md)). Further optimisations are decided there from data |
+| [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) sub-issues #33, #34, #36–#39 | Admin expansion | See [admin.md](admin.md) |
+| [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) | Final V2 review before switch | Done: the Vite Mini App became `/app` (#115); the old page and `/app/v2` were removed (#146); see [miniapp.md](miniapp.md) |
+
+The Project board, not this table, is authoritative for status, priority and
+dependencies.

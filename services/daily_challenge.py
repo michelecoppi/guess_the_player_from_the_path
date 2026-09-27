@@ -10,9 +10,16 @@ lo assegnerebbero due volte.
 import logging
 
 from services import firebase_service
-from services.dates import today_iso
+from services.dates import parse_iso, today_iso
+from services.player_pool import load_config
 
 _cache = {"day": None, "data": None}
+
+# Usata se manca `game_epoch` in data/config.json: e' il giorno da cui si contano le sfide.
+GAME_EPOCH_FALLBACK = "2025-06-08"
+
+# Tentativi al giorno sulla sfida principale.
+MAX_ATTEMPTS = 3
 
 
 def get_today_challenge(generate_if_missing=True):
@@ -52,3 +59,15 @@ def invalidate():
     """Usata al cambio di giornata e dai test."""
     _cache["day"] = None
     _cache["data"] = None
+
+
+def challenge_number(day_iso=None):
+    """Numero progressivo della sfida ("#142"), contato dai giorni trascorsi da `game_epoch`
+    (data/config.json). Serve alla card condivisibile e al piede dell'immagine: e' calcolato,
+    non letto da Firestore, cosi' non costa niente e resta uguale per tutti."""
+    day_iso = day_iso or today_iso()
+    epoch = load_config().get("game_epoch", GAME_EPOCH_FALLBACK)
+    try:
+        return (parse_iso(day_iso) - parse_iso(epoch)).days + 1
+    except (ValueError, TypeError):
+        return 0

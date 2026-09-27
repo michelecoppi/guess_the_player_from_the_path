@@ -5,6 +5,7 @@ stato del dataset, contenuti gia' generati, statistiche utenti, creazione manual
 eventi che non si possono generare in automatico - passa da qui, riservato agli ID elencati
 in ADMIN_TELEGRAM_IDS.
 """
+import asyncio
 import functools
 import logging
 from datetime import datetime
@@ -13,7 +14,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from config import ADMIN_TELEGRAM_IDS
-from services import firebase_service
+from services import firebase_service, observability
 from services.daily_generator import ensure_daily_buffer
 from services.dataset_health import build_report
 from services.dates import ITALY_TZ, to_display
@@ -45,6 +46,9 @@ ADMIN_COMMANDS = [
     ("/admin_fs_list", "coppie padre/figlio salvate"),
     ("/admin_fs_del <id>", "elimina una coppia padre/figlio"),
     ("/admin_event_create <template> [gg/mm/aa] [giorni]", "crea a mano un evento"),
+    ("/admin_refund <charge_id>", "rimborsa un acquisto in Stelle e ritira i cosmetici"),
+    ("/admin_support_reply <telegram_id> <messaggio>", "risponde a una richiesta acquisti"),
+    ("/admin_report_reply <telegram_id> <messaggio>", "risponde a una segnalazione dalla mini app"),
 ]
 
 
@@ -54,10 +58,54 @@ def admin_only(handler):
         user_id = update.effective_user.id if update.effective_user else None
         if user_id not in ADMIN_TELEGRAM_IDS:
             await update.message.reply_text("⛔ Comando riservato agli amministratori.")
-            logging.warning(f"[ADMIN] Tentativo di accesso non autorizzato da {user_id} a /{update.message.text}")
+            # Solo il nome del comando: gli argomenti possono contenere id e testo di altri.
+            observability.log_event("admin.command.unauthorized", logging.WARNING, component="admin",
+                                    handler=handler.__name__, user_ref=observability.user_ref(user_id))
             return
-        await handler(update, context)
+        # Ogni logging.exception dentro i comandi admin porta component=admin e il comando.
+        with observability.bind(component="admin", handler=handler.__name__):
+            await handler(update, context)
     return wrapper
+
+
+@admin_only
+async def admin_support_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = getattr(context, "args", None) or []
+    if len(args) < 2 or not args[0].isdigit():
+        await update.message.reply_text("Uso: /admin_support_reply <telegram_id> <messaggio>")
+        return
+    user_id = int(args[0])
+    body = " ".join(args[1:]).strip()
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="💳 Risposta dell'assistenza acquisti\n\n" + body,
+        )
+    except Exception as e:
+        logging.exception("Errore in /admin_support_reply")
+        await update.message.reply_text(f"❌ Invio non riuscito: {e}")
+        return
+    await update.message.reply_text(f"✅ Risposta inviata all'utente {user_id}.")
+
+
+@admin_only
+async def admin_report_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = getattr(context, "args", None) or []
+    if len(args) < 2 or not args[0].isdigit():
+        await update.message.reply_text("Uso: /admin_report_reply <telegram_id> <messaggio>")
+        return
+    user_id = int(args[0])
+    body = " ".join(args[1:]).strip()
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="🛠 Risposta alla segnalazione\n\n" + body,
+        )
+    except Exception as e:
+        logging.exception("Errore in /admin_report_reply")
+        await update.message.reply_text(f"❌ Invio non riuscito: {e}")
+        return
+    await update.message.reply_text(f"✅ Risposta inviata all'utente {user_id}.")
 
 
 async def _reply(update, text, parse_mode=None):
@@ -89,7 +137,7 @@ async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     now_italy = datetime.now(ITALY_TZ)
-    current_event = get_current_event()
+    current_event = (await asyncio.to_thread(get_current_event))
     event_line = f"🎊 Evento attivo: {current_event.get('name')}" if current_event else "🎊 Nessun evento attivo"
 
     incomplete = get_incomplete_or_unverified_players()
@@ -108,7 +156,7 @@ async def admin_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         warnings_line = ""
 
     try:
-        upcoming = firebase_service.get_upcoming_daily_paths(limit=5)
+        upcoming = (await asyncio.to_thread(firebase_service.get_upcoming_daily_paths, limit=5))
         buffer_line = f"📅 Sfide gia' in buffer su Firestore: {len(upcoming)}"
     except Exception as e:
         logging.exception("Errore nella lettura del buffer sfide")
@@ -129,7 +177,7 @@ async def admin_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        overview = firebase_service.get_admin_overview()
+        overview = (await asyncio.to_thread(firebase_service.get_admin_overview))
     except Exception as e:
         logging.exception("Errore in /admin_stats")
         await update.message.reply_text(f"❌ Errore nella lettura delle statistiche: {e}")
@@ -149,7 +197,7 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_pool(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        blocked = firebase_service.get_blocked_player_ids()
+        blocked = (await asyncio.to_thread(firebase_service.get_blocked_player_ids))
     except Exception:
         logging.exception("Errore nella lettura dei giocatori sospesi")
         blocked = []
@@ -190,8 +238,8 @@ async def admin_pool(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_regen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("⏳ Rigenerazione in corso...")
     try:
-        generated_days = ensure_daily_buffer()
-        event_code = maybe_generate_event()
+        generated_days = (await asyncio.to_thread(ensure_daily_buffer))
+        event_code = (await asyncio.to_thread(maybe_generate_event))
     except Exception as e:
         logging.exception("Errore durante /admin_regen")
         await update.message.reply_text(f"❌ Errore durante la generazione: {e}")
@@ -229,7 +277,7 @@ async def admin_review(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_next(update: Update, context: ContextTypes.DEFAULT_TYPE):
     limit = _int_arg(context, 0, default=7)
     try:
-        upcoming = firebase_service.get_upcoming_daily_paths(limit=limit)
+        upcoming = (await asyncio.to_thread(firebase_service.get_upcoming_daily_paths, limit=limit))
     except Exception as e:
         logging.exception("Errore in /admin_next")
         await update.message.reply_text(f"❌ Errore nella lettura delle sfide: {e}")
@@ -252,7 +300,7 @@ async def admin_next(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_events(update: Update, context: ContextTypes.DEFAULT_TYPE):
     limit = _int_arg(context, 0, default=5)
     try:
-        events = firebase_service.get_recent_events(limit=limit)
+        events = (await asyncio.to_thread(firebase_service.get_recent_events, limit=limit))
     except Exception as e:
         logging.exception("Errore in /admin_events")
         await update.message.reply_text(f"❌ Errore nella lettura degli eventi: {e}")
@@ -289,7 +337,7 @@ async def admin_block(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        firebase_service.block_player_id(player_id)
+        (await asyncio.to_thread(firebase_service.block_player_id, player_id))
     except Exception as e:
         logging.exception("Errore in /admin_block")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -310,7 +358,7 @@ async def admin_unblock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     player_id = args[0].strip().lower()
     try:
-        firebase_service.unblock_player_id(player_id)
+        (await asyncio.to_thread(firebase_service.unblock_player_id, player_id))
     except Exception as e:
         logging.exception("Errore in /admin_unblock")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -322,7 +370,7 @@ async def admin_unblock(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_blocked(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        blocked = firebase_service.get_blocked_player_ids()
+        blocked = (await asyncio.to_thread(firebase_service.get_blocked_player_ids))
     except Exception as e:
         logging.exception("Errore in /admin_blocked")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -374,11 +422,11 @@ async def admin_fs_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        pair_id = firebase_service.add_father_son_pair({
+        pair_id = (await asyncio.to_thread(firebase_service.add_father_son_pair, {
             "file_id": file_id,
             "answers": answers,
             "added_by": update.effective_user.id,
-        })
+        }))
     except Exception as e:
         logging.exception("Errore in /admin_fs_add")
         await update.message.reply_text(f"❌ Errore nel salvataggio: {e}")
@@ -395,7 +443,7 @@ async def admin_fs_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
 @admin_only
 async def admin_fs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        pairs = firebase_service.list_father_son_pairs()
+        pairs = (await asyncio.to_thread(firebase_service.list_father_son_pairs))
     except Exception as e:
         logging.exception("Errore in /admin_fs_list")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -421,7 +469,7 @@ async def admin_fs_del(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        deleted = firebase_service.delete_father_son_pair(args[0].strip())
+        deleted = (await asyncio.to_thread(firebase_service.delete_father_son_pair, args[0].strip()))
     except Exception as e:
         logging.exception("Errore in /admin_fs_del")
         await update.message.reply_text(f"❌ Errore: {e}")
@@ -451,7 +499,7 @@ async def admin_event_create(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     try:
         start_date = parse_start_date(start_text)
-        summary = create_manual_event(template_id, start_date=start_date, duration_days=duration)
+        summary = (await asyncio.to_thread(create_manual_event, template_id, start_date=start_date, duration_days=duration))
     except ManualEventError as e:
         await update.message.reply_text(f"❗ {e}")
         return

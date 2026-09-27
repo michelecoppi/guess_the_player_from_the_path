@@ -66,7 +66,12 @@ def _monthly_fakes(monkeypatch, top_users, season_exists=True):
     monkeypatch.setattr(daily_job.firebase_service, "add_user_trophy",
                         lambda tid, code: calls["trophies"].append((tid, code)))
     monkeypatch.setattr(daily_job.firebase_service, "reset_monthly_points",
-                        lambda: calls.__setitem__("reset", calls["reset"] + 1))
+                        lambda **kwargs: calls.__setitem__("reset", calls["reset"] + 1))
+    monkeypatch.setattr(daily_job.monthly_closure, "prepare", lambda now: {
+        "month_name": "August", "year": "2026", "closed_month": "2026-08", "new_month": "2026-09",
+        "winners": [{**user, "position": i, "trophy_code": f"MON_August_4_2026_{i}"}
+                    for i, user in enumerate([u for u in top_users if u["monthly_points"] > 0], 1)],
+    })
     return calls
 
 
@@ -83,9 +88,10 @@ def test_monthly_reset_assigns_trophies_and_zeroes_points(monkeypatch):
     ]
     calls = _monthly_fakes(monkeypatch, top)
 
-    message = daily_job.handle_monthly_reset(datetime(2026, 9, 1, tzinfo=ITALY_TZ))
+    result = daily_job.handle_monthly_reset(datetime(2026, 9, 1, tzinfo=ITALY_TZ))
 
-    assert "Anna" in message and "Bruno" in message
+    assert [w["username"] for w in result["winners"]] == ["Anna", "Bruno"]
+    assert result["month_name"] == "August" and result["year"] == "2026"
     assert [t[0] for t in calls["trophies"]] == [1, 2]
     assert calls["trophies"][0][1].startswith("MON_August_4_2026_")
     assert calls["reset"] == 1
@@ -180,5 +186,73 @@ def test_broadcast_mentions_the_active_event(monkeypatch):
     assert "Giramondo" in sent[0]
 
 
+def test_broadcast_renders_monthly_results_in_each_users_language(monkeypatch):
+    import asyncio
+
+    sent = []
+
+    class FakeBot:
+        async def send_message(self, chat_id, text):
+            sent.append((chat_id, text))
+
+    monkeypatch.setattr(daily_job, "get_bot", lambda: FakeBot())
+    monkeypatch.setattr(daily_job.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr(daily_job.firebase_service, "get_broadcast_users", lambda day: [
+        {"chat_id": 1, "has_guessed_today": True, "language": "it"},
+        {"chat_id": 2, "has_guessed_today": True, "language": "en"},
+    ])
+
+    monthly_result = {
+        "month_name": "August",
+        "year": "2026",
+        "winners": [{"position": 1, "username": "Anna", "monthly_points": 20}],
+    }
+    asyncio.run(daily_job._broadcast("2026-09-06", "Messi", None, monthly_result))
+
+    assert "Risultati della stagione mensile Agosto 2026" in sent[0][1]
+    assert "Anna" in sent[0][1] and "20 punti" in sent[0][1]
+    assert "Results of the August 2026 monthly season" in sent[1][1]
+    assert "Anna" in sent[1][1] and "20 points" in sent[1][1]
+
+
 async def _no_sleep(_seconds):
     return None
+
+
+def test_broadcast_says_how_many_got_it(monkeypatch):
+    """La giornata e' chiusa e la percentuale e' definitiva: dirla non anticipa niente."""
+    import asyncio
+
+    sent = []
+
+    class FakeBot:
+        async def send_message(self, chat_id, text):
+            sent.append(text)
+
+    monkeypatch.setattr(daily_job, "get_bot", lambda: FakeBot())
+    monkeypatch.setattr(daily_job.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr(daily_job.firebase_service, "get_broadcast_users", lambda day: [
+        {"chat_id": 1, "has_guessed_today": False},
+    ])
+
+    asyncio.run(daily_job._broadcast("2026-09-06", "Messi", None, None, (100, 41)))
+    assert "41%" in sent[0]
+
+
+def test_broadcast_says_nothing_when_there_are_too_few_players(monkeypatch):
+    import asyncio
+
+    sent = []
+
+    class FakeBot:
+        async def send_message(self, chat_id, text):
+            sent.append(text)
+
+    monkeypatch.setattr(daily_job, "get_bot", lambda: FakeBot())
+    monkeypatch.setattr(daily_job.asyncio, "sleep", _no_sleep)
+    monkeypatch.setattr(daily_job.firebase_service, "get_broadcast_users", lambda day: [
+        {"chat_id": 1, "has_guessed_today": False},
+    ])
+
+    asyncio.run(daily_job._broadcast("2026-09-06", "Messi", None, None, (2, 1)))
+    assert "%" not in sent[0]
