@@ -78,6 +78,12 @@ def test_a_network_failure_is_a_readable_query_error(monkeypatch):
         paq.daily_completion_rate(_settings(), days=7)
 
 
+def test_a_successful_http_response_with_no_results_shape_is_an_error(monkeypatch):
+    monkeypatch.setattr(paq.requests, "post", lambda *a, **k: FakeResponse(200, {"error": "bad query"}))
+    with pytest.raises(paq.QueryError, match="malformata"):
+        paq.daily_completion_rate(_settings(), days=7)
+
+
 def test_daily_completion_rate_divides_completed_by_participants(monkeypatch):
     monkeypatch.setattr(paq.requests, "post", lambda *a, **k: FakeResponse(200, {"results": [[30, 120]]}))
 
