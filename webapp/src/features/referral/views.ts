@@ -166,7 +166,7 @@ export function renderRewardReveal(
 
   return `
     <section class="rf-reveal" aria-label="${escapeHtml(name)}">
-      <button type="button" class="btn ghost small" id="rf-close-preview">
+      <button type="button" class="btn ghost small" id="rf-close-preview" data-telegram-back>
         ← ${escapeHtml(t("referral.close"))}
       </button>
       <p class="rf-kicker">${escapeHtml(kicker)}</p>

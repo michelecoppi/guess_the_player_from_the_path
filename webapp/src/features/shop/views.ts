@@ -576,7 +576,7 @@ function renderShopDetail(item: ShopCosmeticItem, state: ShopState): string {
 
   return `
     <section class="shop-detail" aria-labelledby="shop-detail-title">
-      <button type="button" class="shop-back" id="shop-detail-back">← ${escapeHtml(t("shop.backToShop"))}</button>
+      <button type="button" class="shop-back" id="shop-detail-back" data-telegram-back>← ${escapeHtml(t("shop.backToShop"))}</button>
       <div class="shop-detail-layout">
         <div class="shop-detail-art">${shopArtwork(item)}</div>
         <div class="shop-detail-info">

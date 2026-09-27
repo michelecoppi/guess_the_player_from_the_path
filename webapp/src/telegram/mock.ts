@@ -1,4 +1,4 @@
-import type { TelegramWebApp, TelegramUser } from "./types";
+import type { TelegramBackButton, TelegramWebApp, TelegramUser } from "./types";
 
 export const DEFAULT_MOCK_USER: TelegramUser = {
   id: 42,
@@ -57,6 +57,31 @@ export function createMockTelegramWebApp(user: TelegramUser = DEFAULT_MOCK_USER)
     },
   };
 
+  const backClicks = new Set<() => void>();
+  const backButton: TelegramBackButton & { __click(): void } = {
+    isVisible: false,
+    show() {
+      backButton.isVisible = true;
+      return backButton;
+    },
+    hide() {
+      backButton.isVisible = false;
+      return backButton;
+    },
+    onClick(callback) {
+      backClicks.add(callback);
+      return backButton;
+    },
+    offClick(callback) {
+      backClicks.delete(callback);
+      return backButton;
+    },
+    /** Test/dev helper: simulates a tap on Telegram's back arrow. */
+    __click() {
+      backClicks.forEach((callback) => callback());
+    },
+  };
+
   return {
     initData: "mock_init_data_for_dev=true&user_id=42",
     initDataUnsafe: {
@@ -82,6 +107,7 @@ export function createMockTelegramWebApp(user: TelegramUser = DEFAULT_MOCK_USER)
     headerColor: "#0a131e",
     backgroundColor: "#0a131e",
     MainButton: mainButton,
+    BackButton: backButton,
     HapticFeedback: hapticFeedback,
     ready() {},
     expand() {},

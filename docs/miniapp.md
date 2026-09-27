@@ -45,6 +45,11 @@ and cards remain spoiler-free. Points continue to come from `points_awarded`.
   `ApiClient` notifies `onSessionExpired` listeners and `App` replaces the whole shell
   with a "Sessione scaduta" screen whose button calls `Telegram.WebApp.close()`;
   reopening from the bot chat signs a fresh `initData` (#179).
+- Telegram's native back arrow (and the Android back gesture) is driven by `App` (#182): it
+  taps the page's own back control (a modal's `[data-telegram-back]` button first, then the
+  page's `.back-link`), otherwise returns to the Daily; on the Daily it is hidden, so back
+  closes the Mini App. A new sub-screen or modal only needs one of those markers on its
+  back/close button.
 - Responses are explicit projections built in services (`services/webapp_api.py`,
   `services/arena.py`, `services/app_events.py`, `domains/shop/service.py`,
   `domains/referrals/service.py`, `services/trophies.py`). Answers, accepted aliases and
@@ -85,7 +90,7 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 | `pages/` | Page composition and event wiring per destination |
 | `components/` | Shared UI (CareerPath, GuessInput, NavBar, Header, Modal, states…) |
 | `api/` | `ApiClient`: base `/app/api`, injects `initData`, maps errors, clears appearance when the auth token changes |
-| `telegram/` | `initTelegram` (`ready`, `expand`), theme/viewport/safe-area subscriptions, typed WebApp API; a mock WebApp is used outside Telegram, which the backend rejects because its `initData` is not signed |
+| `telegram/` | `initTelegram` (`ready`, `expand`), theme/viewport/safe-area subscriptions, typed WebApp API (including the optional `BackButton`); a mock WebApp is used outside Telegram, which the backend rejects because its `initData` is not signed |
 | `appearance/` | Sanitized cosmetic token mapping (see below) |
 | `i18n/` | IT/EN/ES strings |
 | `prototypes/` | Dev-only `?design-review` harness and fixtures (backend-generated appearance/theme fixtures are contract-tested by `tests/test_appearance_contract.py`); excluded from the production bundle |
