@@ -127,6 +127,30 @@ def test_webapp_assets_sibling_directory_containment():
             shutil.rmtree(sibling_dir, ignore_errors=True)
 
 
+@pytest.mark.parametrize("suffix, media_type", [
+    (".woff2", "font/woff2"),
+    (".js", "application/javascript"),
+    (".css", "text/css"),
+    (".bin", "application/octet-stream"),
+])
+def test_webapp_assets_media_types(suffix, media_type):
+    """#186: the Mini App font ships as WOFF2 and must be served with its font type."""
+    client = TestClient(bot.app)
+    assets_dir = Path(static.DIST_DIR).resolve() / "assets"
+    created_dir = not assets_dir.exists()
+    sample = assets_dir / f"media-type-probe{suffix}"
+    try:
+        assets_dir.mkdir(parents=True, exist_ok=True)
+        sample.write_bytes(b"probe")
+        response = client.get(f"/app/assets/{sample.name}")
+        assert response.status_code == 200
+        assert response.headers["content-type"].split(";")[0] == media_type
+    finally:
+        sample.unlink(missing_ok=True)
+        if created_dir:
+            shutil.rmtree(assets_dir, ignore_errors=True)
+
+
 def test_webapp_api_backend_contract_requires_body_initdata(monkeypatch):
     """The FastAPI backend expects initData in the JSON request body at /app/api/me.
 
