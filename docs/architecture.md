@@ -6,9 +6,9 @@ separate them. Details belong to the focused documents linked from each section;
 file should change only when the architecture changes (see
 [agent-protocol.md § Documentation update policy](agent-protocol.md#documentation-update-policy)).
 
-Every section separates **Current state** (verified in code) from **Planned evolution**
-(open roadmap issues on [Project #2](https://github.com/users/michelecoppi/projects/2)).
-Do not treat a planned item as implemented.
+Descriptions of current behavior are grounded in code. Remaining work is labeled
+explicitly; [Project #2](https://github.com/users/michelecoppi/projects/2) owns live
+issue status. Do not treat a planned item as implemented.
 
 ## 1. What the system is
 
@@ -186,8 +186,8 @@ area** (not as a standalone big-bang move):
 7. **Behaviour.** The full suite passes without changing assertions; tests only change
    import paths.
 
-**Planned evolution.** [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28)
-reorganizes the monorepo by domain incrementally, without a big-bang rewrite:
+**Migration history and remaining debt.** [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28)
+delivered the incremental domain migration approach:
 [#109](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/109) (this map and
 its checks, done) →
 [#110](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/110) (`bot.py` as
@@ -272,7 +272,7 @@ idempotently keyed by the Telegram charge id (`purchases/{charge_id}`). See
 | Runtime | One Cloud Run service (`europe-west1`), Firestore, two Cloud Tasks queues, one Cloud Scheduler job; env vars/secrets set on the service, not in the workflow | [deploy.md](deploy.md), [runtime-hardening.md](runtime-hardening.md) |
 | Rollback | Manual: route traffic to a previous revision or redeploy an earlier commit. No one-command rollback | [release-checklist.md § Rollback](release-checklist.md#10-rollback) |
 
-**Planned evolution.** Versioning, CHANGELOG and a release checklist now exist
+**Release and recovery.** Versioning, CHANGELOG and a release checklist now exist
 ([release-checklist.md](release-checklist.md), [#49](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/49));
 adoption is opt-in going forward, so this table's "manual, no one-command rollback"
 still describes today's default. Backup scope, retention, the restore tool and the
@@ -289,12 +289,12 @@ code does not restore data.
 | [#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21) | Data-driven difficulty | Implemented: rule-based prediction (0-100 score, bands) snapshotted on each Daily and compared with observed completion/attempts in Admin “Dataset” ([difficolta.md §6](difficolta.md)); weights are recalibrated by hand from that comparison |
 | [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) / [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) / [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | Feature flags, experimentation | Operational flags implemented (#51, [feature-flags.md](feature-flags.md)); experiments/variants (#52) not implemented |
 | [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25) | Dataset Health dashboard | A health report exists (`services/dataset_health.py`, `/admin_pool`, Admin “Dataset”); the dedicated dashboard does not |
-| [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Domain map and dependency rules enforced in CI (#109); files still in the layered layout, moving incrementally (#110, #111) — see §3 |
-| [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Not implemented |
+| [#28](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/28) | Domain-oriented monorepo | Domain map and dependency rules enforced in CI (#109); composition root (#110), initial domain packages (#111) and group rounds (#147) delivered. Remaining modules move when work in their area calls for it — see §3 |
+| [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29) | Product analytics and funnels | Implemented: typed PostHog events and Admin core metrics when configured; see [product-analytics.md](product-analytics.md) |
 | [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) | Automatic Daily planner | Implemented: `services/daily_planner.py` plans 7–90 days with eligibility, difficulty rotation, diversity and repetition rules, per-day audit, Admin review/apply ([game-modes.md](game-modes.md#daily-planner)); the nightly buffer uses the same rules |
 | [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31) | Data-driven, automatable events | Implemented: validated template schema v2 (filters, rules, rewards, rotation/fixed/manual schedule) in `services/event_config.py`, Admin template editor ([event-templates.md](event-templates.md)) |
 | [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement | Implemented: per-request Firestore cost, cold-start and handler timings, Mini App startup beacon, budgets, baseline/trend report ([performance.md](performance.md)). Further optimisations are decided there from data |
-| [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) sub-issues #33, #34, #36–#39 | Admin expansion | See [admin.md](admin.md) |
+| [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) and sub-issues #33–#39 | Admin expansion | Delivered; current pages and boundaries are in [admin.md](admin.md) |
 | [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81) | Final V2 review before switch | Done: the Vite Mini App became `/app` (#115); the old page and `/app/v2` were removed (#146); see [miniapp.md](miniapp.md) |
 
 The Project board, not this table, is authoritative for status, priority and

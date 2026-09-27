@@ -35,7 +35,7 @@ English. Both are equally authoritative when listed as primary below.
 | Player-facing rules and commands | [README](../README.md) | How to play, commands, shop, dataset schema, admin commands |
 | Mini App | [miniapp.md](miniapp.md) | The Vite Mini App on `/app`, API contract and auth, frontend structure |
 | Mini App appearance | [miniapp-appearance.md](miniapp-appearance.md) | Structural dark-only contract, token ownership, eight cosmetic slots |
-| Admin | [admin.md](admin.md) | Telegram admin commands vs Streamlit Admin, boundaries, capabilities, open #12 sub-issues |
+| Admin | [admin.md](admin.md) | Telegram admin commands vs Streamlit Admin, boundaries and current capabilities |
 | Firestore | [firestore.md](firestore.md) | Collections, what belongs in Firestore, credentials, concurrency, emulator strategy |
 | Deployment | [deploy.md](deploy.md) | Cloud Run, Workload Identity Federation, service env vars, Cloud Scheduler, backup workflow setup, manual deploy/rollback |
 | Webhook, queues and retries | [runtime-hardening.md](runtime-hardening.md) | Required secrets, Cloud Tasks queues, receipts/locks, recovery rules, secret rotation |
