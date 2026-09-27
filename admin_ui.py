@@ -58,14 +58,20 @@ if not credentials_path.exists():
 os.environ["FIREBASE_CREDENTIALS_PATH"] = str(credentials_path)
 
 from admin_pages import (
+    analytics,
     blocked,
+    career_refresh,
     challenges,
     dataset,
     events,
     father_son,
+    groups,
     leagues,
     overview,
+    planner,
     player_review,
+    shop,
+    system,
     users,
 )
 from admin_pages.shared import CACHE_TTL_SECONDS, ITALY_TZ, firebase_service, render_flash, today_iso
@@ -82,11 +88,17 @@ now_italy = datetime.now(ITALY_TZ)
 PAGES = [
     "📊 Stato generale",
     "📅 Sfide giornaliere",
+    "🗓️ Planner sfide",
     "🎊 Eventi",
     "👤 Utenti",
+    "👥 Gruppi",
     "🏆 Leghe",
+    "🛍️ Shop & Referral",
+    "📈 Analytics",
+    "🩺 Salute sistema",
     "📚 Dataset",
     "🔎 Review giocatori",
+    "🔄 Refresh carriera",
     "🚫 Giocatori sospesi",
     "👨‍👦 Coppie padre/figlio",
 ]
@@ -116,11 +128,17 @@ render_flash()
 RENDERERS = {
     '📊 Stato generale': overview.render,
     '📅 Sfide giornaliere': challenges.render,
+    '🗓️ Planner sfide': planner.render,
     '🎊 Eventi': events.render,
     '👤 Utenti': users.render,
+    '👥 Gruppi': groups.render,
     '🏆 Leghe': leagues.render,
+    '🛍️ Shop & Referral': shop.render,
+    '📈 Analytics': analytics.render,
+    '🩺 Salute sistema': system.render,
     '📚 Dataset': dataset.render,
     '🔎 Review giocatori': player_review.render,
+    '🔄 Refresh carriera': career_refresh.render,
     '🚫 Giocatori sospesi': blocked.render,
     '👨\u200d👦 Coppie padre/figlio': father_son.render,
 }

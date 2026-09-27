@@ -16,7 +16,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_DOC = (ROOT / "docs" / "release-checklist.md").read_text(encoding="utf-8")
-BOT_PY = (ROOT / "bot.py").read_text(encoding="utf-8")
+# The service root endpoint (GET /) lives with the static routes since #110.
+ROOT_ENDPOINT_PY = (ROOT / "apps" / "api" / "static.py").read_text(encoding="utf-8")
 VERSION_SERVICE = (ROOT / "services" / "version.py").read_text(encoding="utf-8")
 
 
@@ -42,8 +43,8 @@ def test_docs_state_untagged_deploys_can_exist_between_releases():
 
 
 def test_bot_root_endpoint_exposes_both_version_and_revision():
-    assert '"version": version.get_version()' in BOT_PY
-    assert '"revision": version.get_build_revision()' in BOT_PY
+    assert '"version": version.get_version()' in ROOT_ENDPOINT_PY
+    assert '"revision": version.get_build_revision()' in ROOT_ENDPOINT_PY
 
 
 def test_version_service_does_not_fabricate_a_git_sha():

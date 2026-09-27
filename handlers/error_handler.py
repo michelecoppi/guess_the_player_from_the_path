@@ -1,54 +1,12 @@
 """Give users a reference without exposing update bodies, tokens or tracebacks."""
 import logging
-import re
 
 from config import ADMIN_TELEGRAM_IDS
 from services import observability
 from services.i18n import resolve_language, t
 
-_COMMAND = re.compile(r"/([A-Za-z0-9_]{1,32})(?:@\w+)?(?:\s|$)")
-_CALLBACK_PREFIX = re.compile(r"[A-Za-z]{1,16}")
-# I comandi admin che muovono Stelle appartengono ai pagamenti, non all'amministrazione.
-_PAYMENT_COMMANDS = frozenset({"admin_refund", "paysupport"})
-
-
-def describe_update(update):
-    """Il contesto sicuro di un update per log e Sentry: tipo, comando, sottosistema.
-
-    Mai il testo del messaggio, i dati di pagamento o il callback completo: solo il nome del
-    comando (o il prefisso del callback, che e' un nome di menu) e un riferimento pseudonimo
-    all'utente."""
-    fields = {"component": "telegram", "update_type": "other"}
-    message = getattr(update, "effective_message", None)
-    callback = getattr(update, "callback_query", None)
-    if getattr(update, "pre_checkout_query", None) is not None:
-        fields.update(component="payment", update_type="pre_checkout_query", handler="precheckout")
-    elif message is not None and getattr(message, "successful_payment", None) is not None:
-        fields.update(component="payment", update_type="successful_payment", handler="successful_payment")
-    elif callback is not None:
-        fields["update_type"] = "callback_query"
-        prefix = _CALLBACK_PREFIX.match(getattr(callback, "data", None) or "")
-        if prefix:
-            fields["command"] = prefix.group(0).lower()
-    elif message is not None:
-        fields["update_type"] = "message"
-        text = getattr(message, "text", None) or getattr(message, "caption", None) or ""
-        command = _COMMAND.match(text if isinstance(text, str) else "")
-        if command:
-            name = command.group(1).lower()
-            fields["command"] = name
-            if name in _PAYMENT_COMMANDS:
-                fields["component"] = "payment"
-            elif name.startswith("admin_"):
-                fields["component"] = "admin"
-    chat = getattr(update, "effective_chat", None)
-    if isinstance(getattr(chat, "type", None), str):
-        fields["chat_type"] = chat.type
-    user = getattr(update, "effective_user", None)
-    reference = observability.user_ref(getattr(user, "id", None))
-    if reference:
-        fields["user_ref"] = reference
-    return fields
+# Re-exported: the Telegram error handler and existing imports use it from here.
+from services.observability import describe_update  # noqa: F401
 
 
 def _language(update):

@@ -10,8 +10,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from domains.groups import service as groups
+from domains.groups.service import MAX_GROUP_ATTEMPTS
 from handlers import group_handler, guess_handler
-from handlers.group_handler import MAX_GROUP_ATTEMPTS
 
 KEY = "pool:maldini"
 CHALLENGE = {
@@ -77,18 +78,18 @@ def firebase(monkeypatch):
         calls["started"].append((chat_id, challenge["key"]))
         return {"number": state["round"]["number"] + 1, "key": challenge["key"]}
 
-    monkeypatch.setattr(group_handler.firebase_service, "get_group_round", lambda chat_id: state["round"])
-    monkeypatch.setattr(group_handler.firebase_service, "start_group_round", start_round)
-    monkeypatch.setattr(group_handler.firebase_service, "claim_group_round", claim)
+    monkeypatch.setattr(groups.repository, "get_group_round", lambda chat_id: state["round"])
+    monkeypatch.setattr(groups.repository, "start_group_round", start_round)
+    monkeypatch.setattr(groups.repository, "claim_group_round", claim)
     monkeypatch.setattr(
-        group_handler.firebase_service, "begin_group_attempt",
+        groups.repository, "begin_group_attempt",
         lambda chat, uid, number, name, mx: calls["attempts"].append((uid, number)) or state["attempt"],
     )
     monkeypatch.setattr(
-        group_handler.firebase_service, "add_group_points",
+        groups.repository, "add_group_points",
         lambda chat, uid, name, points: calls["points"].append((chat, uid, points)),
     )
-    monkeypatch.setattr(group_handler.practice_content, "pick", lambda exclude_keys=(): CHALLENGE)
+    monkeypatch.setattr(groups.practice_content, "pick", lambda exclude_keys=(): CHALLENGE)
     monkeypatch.setattr(
         guess_handler.firebase_service, "register_correct_guess",
         lambda *a, **k: calls["daily_points"].append(a) or {},
@@ -192,7 +193,7 @@ def test_the_round_command_in_private_points_at_training(firebase):
 
 def test_the_standings_are_the_group_ones(firebase, monkeypatch):
     monkeypatch.setattr(
-        group_handler.firebase_service, "get_group_leaderboard",
+        groups.repository, "get_group_leaderboard",
         lambda chat_id, limit: [{"name": "Anna", "points": 9, "rounds_won": 3}],
     )
     update, message = make_update("/classifica")
@@ -218,3 +219,13 @@ def test_attempts_are_counted_per_round(firebase):
 
     assert firebase.calls["attempts"] == [(7, 3)]
     assert MAX_GROUP_ATTEMPTS == 3
+
+
+def test_opening_a_round_is_a_product_event_without_the_group_id(firebase, monkeypatch):
+    """#139: who opened the round, never which chat."""
+    captured = []
+    monkeypatch.setattr(group_handler.analytics, "capture", lambda event, **kw: captured.append((event.value, kw)))
+    update, _ = make_update("/sfida")
+    asyncio.run(group_handler.group_challenge(update, None))
+
+    assert captured == [("group_round_started", {"user_id": 7})]

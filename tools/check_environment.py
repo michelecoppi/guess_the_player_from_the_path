@@ -183,12 +183,10 @@ class EnvironmentValidator:
                 )
 
         # Controllo asset statici WebApp
+        # Sorgenti della Mini App Vite (entry `index.html` alla radice) e pagine legali.
         webapp_files = [
-            "webapp/index.html",
-            "webapp/client.js",
-            "webapp/strings.js",
-            "webapp/arena.js",
-            "webapp/referrals.js",
+            "index.html",
+            "webapp/src/main.ts",
             "webapp/legal.css",
             "webapp/terms.html",
             "webapp/privacy.html",
@@ -200,14 +198,14 @@ class EnvironmentValidator:
                 name="Static Files",
                 status=CheckStatus.FAIL,
                 message=f"File statici della Mini App mancanti: {', '.join(missing_webapp)}",
-                remediation="Ripristina i file della cartella webapp/ da git.",
+                remediation="Ripristina i file mancanti da git.",
             )
         else:
             self.add_result(
                 category="Mini App",
                 name="Static Files",
                 status=CheckStatus.PASS,
-                message="Tutti i file statici della Mini App sono presenti in webapp/",
+                message="Sorgenti della Mini App e pagine legali presenti",
             )
 
         # Controllo frontend foundation (Vite + TypeScript)
@@ -219,14 +217,14 @@ class EnvironmentValidator:
                     category="Mini App",
                     name="Vite Build Artifacts",
                     status=CheckStatus.PASS,
-                    message="Bundle compilato della Mini App V2 presente in webapp/dist/",
+                    message="Bundle compilato della Mini App presente in webapp/dist/",
                 )
             else:
                 self.add_result(
                     category="Mini App",
                     name="Vite Build Artifacts",
                     status=CheckStatus.INFO,
-                    message="Bundle Mini App V2 non ancora compilato (compilabile con 'npm run build')",
+                    message="Bundle della Mini App non ancora compilato (compilabile con 'npm run build')",
                     remediation="Esegui 'npm run build' o 'python -m tools.dev frontend-build'.",
                 )
 
@@ -793,7 +791,7 @@ class EnvironmentValidator:
 
         # Binari esterni: node, gcloud, java
         binaries = [
-            ("node", "Node.js (necessario per node --test tests/client.test.cjs)"),
+            ("node", "Node.js (necessario per build e test della Mini App)"),
             ("gcloud", "Google Cloud SDK (necessario per l'emulatore Firestore)"),
             ("java", "Java JRE/JDK (necessario per l'emulatore Firestore)"),
         ]

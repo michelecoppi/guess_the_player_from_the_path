@@ -2,7 +2,8 @@
 import pytest
 from PIL import Image
 
-from services import path_image, share, shop
+from domains.shop import service as shop
+from services import path_image, share
 
 
 def user(card=None, **worn):

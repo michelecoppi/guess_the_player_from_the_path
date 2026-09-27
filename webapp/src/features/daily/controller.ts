@@ -1,6 +1,6 @@
-import { ApiClient, api } from "@/api/client";
-import { getTelegramWebApp } from "@/telegram/webapp";
-import { setLanguage } from "@/i18n";
+import { ApiClient, ApiError, api } from "@/api/client";
+import { getTelegramUser, getTelegramWebApp } from "@/telegram/webapp";
+import { setLanguage, t } from "@/i18n";
 import {
   fetchDailyProfile,
   submitDailyGuess,
@@ -8,7 +8,7 @@ import {
   fetchDailyCard,
 } from "./api";
 import { celebrate } from "./celebrate";
-import type { DailyState, DailyGuessResult, DailyCardPayload } from "./types";
+import type { DailyState, DailyGuessResult } from "./types";
 import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS, type ResolvedAppearance } from "@/appearance";
 export { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
 
@@ -19,6 +19,7 @@ export class DailyController {
   private requestSeq = 0;
   private loadSeq = 0;
   private appearanceSeq = 0;
+  private introDismissed = false;
 
   constructor(apiClient: ApiClient = api) {
     this.apiClient = apiClient;
@@ -32,6 +33,7 @@ export class DailyController {
       cardLoading: false,
       squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS },
       inputValue: "",
+      introVisible: false,
     };
   }
 
@@ -62,12 +64,12 @@ export class DailyController {
   }
 
   public async init(): Promise<void> {
-    await this.loadDailyData();
+    await this.loadDailyData({ lightweight: true });
   }
 
   public async loadDailyData(options: { lightweight?: boolean } = {}): Promise<void> {
     const loadSeq = ++this.loadSeq;
-    const isLightweight = Boolean(options.lightweight && this.state.challenge);
+    const isLightweight = Boolean(options.lightweight);
     const previousState = this.state;
     if (!isLightweight) {
       clearResolvedAppearance();
@@ -93,6 +95,8 @@ export class DailyController {
       }
 
       const today = profile.today || null;
+      const dayChanged = Boolean(previousState.challenge?.day && today?.day &&
+        previousState.challenge.day !== today.day);
       let nextStatus = this.state.status;
 
       if (!today || !today.available) {
@@ -110,6 +114,8 @@ export class DailyController {
         challenge: today,
         status: nextStatus,
         errorMessage: undefined,
+        introVisible: this.shouldShowIntro(profile.user?.players_guessed, today?.attempts_used),
+        ...(dayChanged ? { feedback: null, cardImage: null, copyNotice: null, inputValue: "" } : {}),
       });
     } catch (err: any) {
       if (loadSeq !== this.loadSeq) return;
@@ -146,12 +152,13 @@ export class DailyController {
     if (!answer || this.state.status === "submitting") {
       return null;
     }
+    this.dismissIntro();
 
     const currentSeq = ++this.requestSeq;
     this.updateState({ status: "submitting", errorMessage: undefined });
 
     try {
-      const result = await submitDailyGuess(answer, this.apiClient);
+      const result = await submitDailyGuess(answer, this.state.challenge?.day, this.apiClient);
 
       // Discard stale response if a newer submission was fired
       if (currentSeq !== this.requestSeq) {
@@ -186,6 +193,7 @@ export class DailyController {
       this.updateState({
         feedback: result,
         cardImage: null,
+        copyNotice: null,
         inputValue: "",
         status: nextStatus,
       });
@@ -193,9 +201,16 @@ export class DailyController {
       return result;
     } catch (err: any) {
       if (currentSeq === this.requestSeq) {
+        if (err instanceof ApiError && err.status === 409 && err.detail === "daily_changed") {
+          await this.loadDailyData({ lightweight: true });
+          this.updateState({ errorMessage: t("daily.dayChanged") });
+          return null;
+        }
         this.updateState({
           status: "ready",
-          errorMessage: err?.detail || err?.message || "Errore durante l'invio della risposta.",
+          errorMessage: err instanceof ApiError && err.isFeatureDisabled
+            ? t("common.featureDisabled")
+            : err?.detail || err?.message || "Errore durante l'invio della risposta.",
         });
       }
       return null;
@@ -207,7 +222,7 @@ export class DailyController {
     const generation = appearanceGeneration();
 
     try {
-      const result = await requestDailyHint(this.apiClient);
+      const result = await requestDailyHint(this.state.challenge?.day, this.apiClient);
       if (generation !== appearanceGeneration()) return;
       if (result.status === "ok") {
         const tg = getTelegramWebApp();
@@ -219,13 +234,20 @@ export class DailyController {
         await this.loadDailyData({ lightweight: true });
       }
     } catch (err: any) {
+      if (err instanceof ApiError && err.status === 409 && err.detail === "daily_changed") {
+        await this.loadDailyData({ lightweight: true });
+        this.updateState({ errorMessage: t("daily.dayChanged") });
+        return;
+      }
+      if (err instanceof ApiError && err.isFeatureDisabled) {
+        this.updateState({ errorMessage: t("common.featureDisabled") });
+        return;
+      }
       console.warn("Hint error:", err);
     }
   }
 
   public async loadResultCard(): Promise<void> {
-    const f = this.state.feedback;
-    const ch = this.state.challenge;
     if (this.state.cardLoading || this.state.cardImage) return;
 
     const sessionGen = appearanceGeneration();
@@ -233,15 +255,7 @@ export class DailyController {
     this.updateState({ cardLoading: true });
 
     try {
-      const payload: DailyCardPayload = {
-        attempts: f?.attempts_used ?? ch?.attempts_used ?? 1,
-        max_attempts: ch?.max_attempts ?? 5,
-        solved: f?.status === "correct" || !!ch?.solved,
-        hints: f?.hints_used ?? ch?.hints?.used ?? 0,
-        streak: this.state.user?.streak ?? 0,
-      };
-
-      const res = await fetchDailyCard(payload, this.apiClient);
+      const res = await fetchDailyCard(this.apiClient);
       if (sessionGen !== appearanceGeneration() || cardAppearanceSeq !== this.appearanceSeq) return;
       this.updateState({
         cardImage: res.image,
@@ -265,8 +279,56 @@ export class DailyController {
     }
   }
 
+  /**
+   * Copies the shared text to the clipboard (#150): the Telegram share sheet only reaches
+   * Telegram chats, this is how the result gets to WhatsApp, Instagram or X.
+   */
+  public async copyShareText(): Promise<boolean> {
+    const text = this.state.feedback?.share?.text;
+    if (!text) return false;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        this.updateState({ copyNotice: t("daily.copied") });
+        return true;
+      }
+      throw new Error("Clipboard API unavailable");
+    } catch {
+      this.updateState({ copyNotice: t("daily.copyError") });
+      return false;
+    }
+  }
+
   public setInputValue(val: string): void {
     this.state.inputValue = val;
+  }
+
+  private introStorageKey(): string | null {
+    const id = getTelegramUser()?.id;
+    return typeof id === "number" ? `gtp-daily-intro-v1:${id}` : null;
+  }
+
+  private shouldShowIntro(playersGuessed?: number, attemptsUsed?: number): boolean {
+    if (playersGuessed !== 0 || (attemptsUsed ?? 0) > 0 || this.introDismissed) return false;
+    const key = this.introStorageKey();
+    if (!key) return false;
+    try {
+      return window.localStorage.getItem(key) !== "seen";
+    } catch {
+      return true;
+    }
+  }
+
+  public dismissIntro(): void {
+    if (!this.state.introVisible) return;
+    this.introDismissed = true;
+    const key = this.introStorageKey();
+    try {
+      if (key) window.localStorage.setItem(key, "seen");
+    } catch {
+      // The guide can still be dismissed when browser storage is unavailable.
+    }
+    this.updateState({ introVisible: false });
   }
 
   public retry(): void {
@@ -286,8 +348,9 @@ export class DailyController {
     this.loadSeq++;
     this.appearanceSeq++;
     clearResolvedAppearance();
+    this.introDismissed = false;
     this.updateState({ status: "loading", user: null, challenge: null, feedback: null,
       cardImage: null, cardLoading: false, errorMessage: undefined, inputValue: "",
-      squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
+      introVisible: false, squaresSymbols: { ...DEFAULT_SQUARE_SYMBOLS } });
   }
 }

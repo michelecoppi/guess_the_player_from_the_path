@@ -1,6 +1,5 @@
 /**
  * Pure string and formatting utilities.
- * Exactly mirrors and types the legacy webapp/client.js functions.
  */
 
 export function escapeHtml(value: unknown): string {

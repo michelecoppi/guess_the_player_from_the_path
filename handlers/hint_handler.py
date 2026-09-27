@@ -14,9 +14,11 @@ import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
+from handlers.feature_gate import feature_gate
 from handlers.keyboards import language_for
 from services import game
 from services.daily_challenge import get_today_challenge
+from services.feature_flags import Flag
 from services.i18n import t
 
 CALLBACK_DATA = "hint_daily"
@@ -41,6 +43,7 @@ def hint_keyboard(lang, challenge, hints_used):
     return InlineKeyboardMarkup([[InlineKeyboardButton(t(lang, "hint.button"), callback_data=CALLBACK_DATA)]])
 
 
+@feature_gate(Flag.HINTS)
 async def hint_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()

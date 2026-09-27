@@ -5,9 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Guess the Player</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      /* Shown only if the bundle never renders: the app replaces #root's content on start,
+         and the delay keeps it from flashing during a normal load. */
+      .boot-legal-links { display: flex; justify-content: center; gap: 18px; padding: 24px 16px;
+        font: 13px system-ui, sans-serif; opacity: 0; animation: boot-legal-in 0s 4s forwards; }
+      .boot-legal-links a { color: inherit; min-height: 44px; display: inline-flex; align-items: center; }
+      @keyframes boot-legal-in { to { opacity: 1; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <footer class="boot-legal-links">
+        <a href="/terms" target="_blank" rel="noopener">Termini di servizio · Terms</a>
+        <a href="/privacy" target="_blank" rel="noopener">Privacy</a>
+      </footer>
+    </div>
     <script type="module" src="/webapp/src/main.ts"></script>
   </body>
 </html>
