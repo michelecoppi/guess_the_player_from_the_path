@@ -39,6 +39,15 @@ export interface TelegramMainButton {
   disable(): TelegramMainButton;
 }
 
+/** Native back arrow in the Mini App header (Bot API 6.1+). */
+export interface TelegramBackButton {
+  isVisible: boolean;
+  show(): TelegramBackButton;
+  hide(): TelegramBackButton;
+  onClick(callback: () => void): TelegramBackButton;
+  offClick(callback: () => void): TelegramBackButton;
+}
+
 export interface TelegramHapticFeedback {
   impactOccurred(style: "light" | "medium" | "heavy" | "rigid" | "soft"): TelegramHapticFeedback;
   notificationOccurred(type: "error" | "success" | "warning"): TelegramHapticFeedback;
@@ -64,6 +73,8 @@ export interface TelegramWebApp {
   headerColor: string;
   backgroundColor: string;
   MainButton: TelegramMainButton;
+  /** Missing on clients older than Bot API 6.1. */
+  BackButton?: TelegramBackButton;
   HapticFeedback: TelegramHapticFeedback;
   safeAreaInset?: { top: number; bottom: number; left: number; right: number };
   contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };

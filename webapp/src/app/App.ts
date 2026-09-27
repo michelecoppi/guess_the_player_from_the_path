@@ -35,6 +35,7 @@ import {
   getTelegramWebApp,
   isMockTelegramEnvironment,
 } from "@/telegram/webapp";
+import type { TelegramBackButton, TelegramWebApp } from "@/telegram/types";
 import { onSessionExpired } from "@/api/client";
 import { renderErrorState } from "@/components/ErrorState";
 import { resolveLanguage, setLanguage } from "@/i18n";
@@ -70,6 +71,8 @@ export class App {
   private resumeListenerAttached = false;
   private sessionExpired = false;
   private stopSessionExpiredListener: (() => void) | null = null;
+  private backButton: TelegramBackButton | null = null;
+  private readonly handleBack = (): void => this.goBack();
 
   constructor(
     rootElement: HTMLElement,
@@ -268,6 +271,7 @@ export class App {
       user?.language_code || tg?.initDataUnsafe?.user?.language_code,
     );
     setLanguage(userLang);
+    this.connectBackButton(tg);
 
     // Deep-link check for duel invite
     const inviteCode = this.arenaController.detectInvitationCode();
@@ -316,6 +320,8 @@ export class App {
   }
 
   public setTab(tab: NavTabId): void {
+    // Every tab would start requests the server rejects: only reopening the app helps (#179).
+    if (this.sessionExpired) return;
     if (this.activeTab !== tab) {
       if (this.activeTab === "shop" && tab !== "shop") {
         this.shopController.stopPreview();
@@ -662,9 +668,52 @@ export class App {
     });
   }
 
+  /**
+   * Telegram's native back arrow (and the Android back gesture) mirrors the page's own back
+   * control (#182): a modal's `[data-telegram-back]` button first, then the page's
+   * `.back-link`. Clicking that control reuses its exact behavior (Story goes levels ->
+   * chapters -> hub, Shop closes the detail...). Any other tab falls back to the Daily; on the
+   * Daily itself the arrow is hidden, so back closes the Mini App as before. The Daily has no
+   * back control, so visibility only changes with the tab or an expired session - both go
+   * through render(); the target is resolved at tap time, after any partial re-render.
+   */
+  private connectBackButton(tg: TelegramWebApp | null): void {
+    this.backButton?.offClick(this.handleBack);
+    this.backButton = tg?.BackButton ?? null;
+    this.backButton?.onClick(this.handleBack);
+  }
+
+  private pageBackControl(): HTMLElement | null {
+    return (
+      this.rootElement.querySelector<HTMLElement>("#app-content [data-telegram-back]") ??
+      this.rootElement.querySelector<HTMLElement>("#app-content .back-link")
+    );
+  }
+
+  private hasBackTarget(): boolean {
+    return !this.sessionExpired && (this.pageBackControl() !== null || this.activeTab !== "play");
+  }
+
+  private syncBackButton(): void {
+    const button = this.backButton;
+    if (!button) return;
+    const visible = this.hasBackTarget();
+    if (visible === button.isVisible) return;
+    if (visible) button.show();
+    else button.hide();
+  }
+
+  public goBack(): void {
+    if (!this.hasBackTarget()) return;
+    const control = this.pageBackControl();
+    if (control) control.click();
+    else this.setTab("play");
+  }
+
   private render(): void {
     if (this.sessionExpired) {
       this.renderSessionExpired();
+      this.syncBackButton();
       return;
     }
     const user = getTelegramUser();
@@ -729,6 +778,7 @@ export class App {
     `;
 
     this.attachEventListeners();
+    this.syncBackButton();
   }
 
   /**

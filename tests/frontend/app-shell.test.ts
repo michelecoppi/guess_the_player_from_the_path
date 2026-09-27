@@ -452,8 +452,11 @@ test("an expired session replaces the app with a close-and-reopen screen (#179)"
   let closed = 0;
   const { restore: restoreTg } = setupTestTelegram({ close: () => { closed++; } });
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ detail: "dati scaduti" }), { status: 401 })) as typeof fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return new Response(JSON.stringify({ detail: "dati scaduti" }), { status: 401 });
+  }) as typeof fetch;
   try {
     const app = new App(container);
     app.init();
@@ -463,9 +466,12 @@ test("an expired session replaces the app with a close-and-reopen screen (#179)"
     assert.equal(container.querySelector("#app-content"), null);
     assert.equal(container.querySelector("nav.app-nav"), null);
 
-    // Navigating (e.g. a stale tap) keeps the expired screen instead of a broken page.
+    // Navigating (e.g. a stale tap) keeps the expired screen and sends no doomed request.
+    const callsBefore = calls;
     app.setTab("shop");
     assert.ok(container.querySelector("#session-expired"));
+    assert.equal(app.getActiveTab(), "play");
+    assert.equal(calls, callsBefore);
 
     (container.querySelector("#session-expired-close") as HTMLButtonElement).click();
     assert.equal(closed, 1);
@@ -473,5 +479,125 @@ test("an expired session replaces the app with a close-and-reopen screen (#179)"
     globalThis.fetch = originalFetch;
     restoreTg();
     cleanup();
+  }
+});
+
+type MockBackButton = { isVisible: boolean; __click(): void };
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+test("Telegram BackButton follows the page's back control and falls back to the Daily (#182)", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { mock, restore: restoreTg } = setupTestTelegram();
+  const back = mock.BackButton as unknown as MockBackButton;
+  const restoreFetch = mockFetchResponse({ ...createTestFullProfile(), today: createTestDailyChallenge() });
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    await tick();
+    assert.equal(back.isVisible, false, "on the Daily back closes the Mini App");
+
+    app.setTab("leaderboard");
+    await tick();
+    assert.equal(back.isVisible, true);
+    back.__click();
+    await tick();
+    assert.equal(app.getActiveTab(), "play");
+    assert.equal(back.isVisible, false);
+
+    // An Arena sub-screen goes back to the hub through its own back link, then to the Daily.
+    app.setTab("arena");
+    app.setArenaSubview("duels");
+    await tick();
+    assert.ok(container.querySelector("#app-content .back-link"));
+    back.__click();
+    await tick();
+    assert.equal(app.getActiveTab(), "arena");
+    assert.equal(app.getArenaController().getState().subview, "hub");
+    back.__click();
+    await tick();
+    assert.equal(app.getActiveTab(), "play");
+
+    // A secondary page follows its back link to its parent, not straight to the Daily.
+    app.setTab("referral");
+    await tick();
+    back.__click();
+    await tick();
+    assert.equal(app.getActiveTab(), "profile");
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Telegram BackButton prefers a modal's close control over the page back link (#182)", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { mock, restore: restoreTg } = setupTestTelegram();
+  const back = mock.BackButton as unknown as MockBackButton;
+  const { restore: restoreFetch } = captureFetchRequests({
+    user: { name: "Marco", players_guessed: 3 },
+    today: createTestDailyChallenge(),
+  });
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    app.setTab("referral");
+    await tick();
+    const content = container.querySelector("#app-content") as HTMLElement;
+    let closed = 0;
+    const modalClose = document.createElement("button");
+    modalClose.setAttribute("data-telegram-back", "");
+    modalClose.addEventListener("click", () => closed++);
+    content.appendChild(modalClose);
+    back.__click();
+    assert.equal(closed, 1);
+    assert.equal(app.getActiveTab(), "referral");
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("Telegram BackButton hides on an expired session and is optional on old clients (#182)", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { mock, restore: restoreTg } = setupTestTelegram();
+  const back = mock.BackButton as unknown as MockBackButton;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ detail: "dati scaduti" }), { status: 401 })) as typeof fetch;
+  try {
+    const app = new App(container);
+    app.init();
+    app.setTab("leaderboard");
+    await app.whenFirstLoaded();
+    await tick();
+    assert.equal(app.isSessionExpired(), true);
+    assert.equal(back.isVisible, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+    cleanup();
+  }
+
+  const dom = setupGlobalDom();
+  const { restore: restoreOldTg } = setupTestTelegram({ BackButton: undefined });
+  const { restore: restoreFetch } = captureFetchRequests({
+    user: { name: "Marco", players_guessed: 3 },
+    today: createTestDailyChallenge(),
+  });
+  try {
+    const app = new App(dom.container);
+    app.init();
+    await app.whenFirstLoaded();
+    app.setTab("shop");
+    await tick();
+    assert.equal(app.getActiveTab(), "shop");
+  } finally {
+    restoreFetch();
+    restoreOldTg();
+    dom.cleanup();
   }
 });
