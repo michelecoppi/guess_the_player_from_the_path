@@ -48,6 +48,16 @@ def test_no_api_key_means_disabled():
     assert settings.api_key == ""
 
 
+def test_experiment_exposure_properties_are_bounded():
+    event = analytics.Event.EXPERIMENT_ASSIGNED
+    assert analytics._clean_properties(event, {
+        "experiment_key": "daily_intro_v1", "variant": "treatment", "user_id": "123",
+    }) == {"experiment_key": "daily_intro_v1", "variant": "treatment"}
+    assert analytics._clean_properties(event, {
+        "experiment_key": "bad key", "variant": "invented",
+    }) == {}
+
+
 def test_local_and_test_environments_default_off_even_with_a_key():
     settings = analytics.Settings.from_env({"POSTHOG_API_KEY": "phc_x", "PYTEST_CURRENT_TEST": "x"})
     assert settings.environment == "test"

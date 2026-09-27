@@ -72,6 +72,9 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | [#22](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/22) | Feature flags and experimentation (epic) |
 | [#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51) | ↳ Feature flags infrastructure |
 | [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52) | ↳ Experimentation platform |
+| [#170](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/170) | Experiment runtime caching and early stop |
+| [#171](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/171) | Variant-level metric report and launch preflight |
+| [#172](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/172) | First controlled Mini App experiment after product treatment selection |
 | [#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) | Performance measurement and targeted optimization |
 | [#23](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/23) | Documentation and AI-agent protocol |
 | [#146](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/146) | Remove the leftovers of the old Mini App and `/app/v2`, align the docs |
@@ -140,6 +143,12 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-27: #170–#172 track the follow-up work needed to operate the #52
+  experimentation framework in a live product flow: bounded runtime reads and
+  early stop, variant-level metric reporting, then one owner-selected Mini App
+  pilot. The pilot depends on both infrastructure follow-ups and records its
+  result before any general rollout.
 
 - 2026-09-27: #167 tracks corrections to current Admin and architecture documents after
   the delivered #12 and #28 work; the Project remains authoritative for live status.

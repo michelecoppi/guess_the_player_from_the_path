@@ -6,8 +6,9 @@ Authoritative description of product analytics for Guess the Player. Introduced 
 Out of scope here: **operational observability** (structured logs, Sentry, request/task
 correlation — [observability.md](observability.md), #18), **Admin Analytics UI** (#39, not
 built here — this document defines the event schema it will read), and
-**experimentation** (variants, assignment, statistical significance — #52, explicitly
-blocked by this issue and not implemented).
+the separate [experiment registry](experiments.md) (#52), which uses this system's
+metric definitions and pseudonymous identity. Statistical significance testing is not
+implemented.
 
 ## 1. Why this is a separate system from observability
 
@@ -192,6 +193,7 @@ and **intent vs. completion**.
 | --- | --- | --- | --- | --- | --- |
 | `bot_started` | `/start` (any argument), `handlers/start_handler.py` | server | none needed — one event per `/start`, `is_new_user` distinguishes first contact | `language`, `is_new_user`, `acquisition_channel` | completion (the interaction happened) |
 | `miniapp_opened` | First non-lightweight call to `POST /app/api/me` (`services/webapp_api.build_profile`, `include_social=True`) | server | none needed — fires on every full bootstrap call, not on the lightweight polling variant used to refresh in-game state | `language` | completion |
+| `experiment_assigned` | A concrete treatment calls `services.experiments.assign` at its decision boundary; no treatment is wired by the registry itself | server | one exposure per call; analysis uses distinct pseudonymous users per experiment and variant | `experiment_key`, `variant` | exposure, not a success event |
 
 `miniapp_opened` is server-side rather than a client `posthog-js` call because `/app/api/me`
 is already the authoritative, authenticated signal that the Mini App loaded its data; a
@@ -750,8 +752,10 @@ and makes no network call — same fail-closed posture as `product_analytics.py`
   reads the single-query core metrics (§12) back from PostHog via a read-only Personal API
   Key, shown on `admin_pages/analytics.py`. The multi-step funnels (§11) still need
   PostHog's own funnel insight and are linked from that page, not reimplemented.
-- **#52 Experimentation** — blocked by this issue, still open, not implemented. No variant
-  assignment, no A/B testing UI, no statistical significance tooling exists in this change.
+- **#52 Experimentation** — the [experiment registry](experiments.md) requires one of the
+  core metrics above before launch and records results and decisions. Concrete treatments
+  and variant-segmented PostHog insights are added with each experiment; the registry
+  does not perform statistical significance testing.
 - **#51 Feature flags** — a `FEATURE_DISABLED` refusal (`services.feature_flags.FeatureDisabled`)
   is **not** counted as any successful usage event (e.g. a Shop purchase refused because the
   `shop` flag is off fires `shop_purchase_refused` with `reason="feature_disabled"`, never
