@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project board
+    url: https://github.com/users/michelecoppi/projects/2
+    about: "Canonical operational source of truth. Check Status, Horizon, Priority and dependencies before starting work."
+  - name: Evolutive tracking index
+    url: https://github.com/michelecoppi/guess_the_player_from_the_path/blob/main/docs/evolutive-tracking.md
+    about: Repository-side index and protocol for roadmap issues.

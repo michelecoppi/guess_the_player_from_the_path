@@ -1,8 +1,9 @@
 """Unit tests for Candidate Player normalization service (#26)."""
 import copy
 
-from services.candidate_finding import CandidateFinding, FindingCode, FindingSeverity
-from services.candidate_normalization import (
+from domains.players.candidates.finding import CandidateFinding, FindingCode, FindingSeverity
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.normalization import (
     clean_text,
     normalize_aliases,
     normalize_candidate,
@@ -14,7 +15,6 @@ from services.candidate_normalization import (
     resolve_historical_league_with_temporal_evidence,
     strip_wiki_markup,
 )
-from services.candidate_player import CandidatePlayer, CandidateState
 
 
 def test_strip_wiki_markup_and_clean_text():

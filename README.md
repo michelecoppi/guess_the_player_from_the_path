@@ -6,13 +6,34 @@ da indovinare, con classifiche, statistiche personali, eventi tematici a tempo e
 > **Licenza:** PolyForm Noncommercial 1.0.0 — libero per studio, hobby e uso personale,
 > **vietato qualsiasi uso commerciale**. Vedi [Licenza e uso](#licenza-e-uso).
 
+## Documentazione
+
+Questo README descrive il gioco com'è per chi lo usa (regole, comandi, negozio, dataset).
+Architettura, sviluppo, deploy e processo stanno in documenti dedicati:
+
+- [`docs/README.md`](docs/README.md) — indice: quale documento è autorevole per quale tema;
+- [`docs/architecture.md`](docs/architecture.md) — componenti, confini, flussi;
+- [`docs/local-development.md`](docs/local-development.md) — avvio in locale;
+- [`AGENTS.md`](AGENTS.md) e [`docs/agent-protocol.md`](docs/agent-protocol.md) — come si lavora sul repository (persone e agenti AI);
+- [GitHub Project #2](https://github.com/users/michelecoppi/projects/2) — stato, priorità e backlog.
+
+Avvio rapido (dettagli e prerequisiti nella guida locale):
+
+```bash
+pip install -r requirements-dev.txt
+npm ci
+python -m tools.check_environment
+python -m tools.dev check
+```
+
 ## Come si gioca
 
 ### Transizione alla mini app Telegram
 
-Con `PUBLIC_BASE_URL` configurato, `/start`, `/menu` e `/help` invitano ad aprire
-la mini app nelle chat private. `/app` registra anche chi arriva per la prima volta
-e mostra il pulsante per giocare; all'avvio il bot configura inoltre il pulsante
+Con `PUBLIC_BASE_URL` configurato, `/start` invita ad aprire la mini app nelle chat
+private (primo bottone del menu, anche per chi arriva per la prima volta), e `/help`
+spiega il gioco con il solo bottone della mini app (niente menu). `/app` e `/info` non
+esistono piu': facevano lo stesso di `/start` e `/help`. All'avvio il bot configura inoltre il pulsante
 fisso **Play** di Telegram. Le notifiche giornaliere degli utenti che le hanno
 attivate includono lo stesso accesso diretto. I testi sono disponibili in IT/ES/EN.
 
@@ -47,8 +68,12 @@ Le modifiche diventano operative al deploy e al successivo avvio del servizio.
   automaticamente agli amici.
 - **Eventi settimanali:** il centro mostra gli eventi attivi secondo il calendario
   esistente, con descrizioni tradotte, scadenza, sfida e classifica. Supporta i tipi
-  `path`, `transfer_guess`, `career` e `father_son`; tentativi, punti e bonus sono
-  condivisi con il bot. Non modifica la programmazione degli eventi.
+  `path`, `transfer_guess`, `career`, `father_son` e `blind_path`;
+  in **Carriera al buio** si vede prima solo il club più recente e si possono
+  scoprire fino a cinque tappe, perdendo un punto per ogni club aggiuntivo
+  (minimo un punto). Questa sfida si gioca nella Mini App; il bot apre l'evento
+  senza rivelarne il percorso. Gli altri tipi mantengono le regole condivise
+  fra bot e Mini App.
 
 L'endpoint `/app/api/arena` richiede la stessa firma Telegram degli altri endpoint.
 Le mosse di allenamento e duello controllano una revisione in transazione; gli
@@ -75,7 +100,7 @@ costa un punto. Chi non ci arriva scopre chi era a mezzanotte, o con `/solution`
 chiusa.
 
 Si gioca in due posti, con le stesse identiche regole: la **chat del bot** e la **mini app**
-(`webapp/index.html`), che aggiunge il completamento automatico sui nomi e il calendario delle
+(`webapp/src/`, Vite + TypeScript), che aggiunge il completamento automatico sui nomi e il calendario delle
 giornate passate. Le regole stanno in un modulo solo (`services/game.py`), quindi non esistono
 due versioni del punteggio da tenere allineate.
 
@@ -83,6 +108,7 @@ due versioni del punteggio da tenere allineate.
 |---|---|
 | `/start` | registrazione e menu; apre anche i link d'invito alle leghe |
 | `/menu` | la tastiera con tutto quello che si puo' fare |
+| `/help` | come si gioca, con il bottone per aprire la mini app |
 | `/show` | la sfida di oggi |
 | `/solution` (`/soluzione`) | chi era il calciatore di una giornata gia' chiusa |
 | `/guess <risposta>` | il modo classico di rispondere |
@@ -101,6 +127,12 @@ due versioni del punteggio da tenere allineate.
 | `/shop` (`/negozio`) | skin, cornici, titoli e distintivi con le Stelle di Telegram |
 | `/legend` (`/legenda`) | come si legge l'immagine del percorso |
 | `/notify`, `/language` | notifiche e lingua |
+
+Per le campagne di promozione esistono link tracciabili
+`https://t.me/<bot>?start=src_<canale>` (per esempio `src_tiktok`, `src_reddit`,
+`src_telegram_group`): aprono il normale benvenuto e registrano solo il canale di
+provenienza. L'elenco dei canali ammessi è in
+[`docs/product-analytics.md`](docs/product-analytics.md).
 
 Il menu "/" di Telegram (`set_my_commands`) viene impostato all'avvio nelle tre lingue: le
 **descrizioni** sono tradotte, i **nomi dei comandi** no — sono in inglese per tutti. Un bot
@@ -216,6 +248,11 @@ card da condividere. I contatori stanno sul documento della sfida (`players_coun
   gruppo, ed e' l'unica riga che non puo' spoilerare niente. Le sfide recuperate
   dall'archivio si condividono marcate come tali, cosi' in un gruppo dove quella di oggi e'
   ancora aperta non sembrano il risultato di oggi.
+  L'ultima riga invita a provare con il **link invito di chi condivide** ("Riesci a fare
+  meglio? 👉 `t.me/<bot>?start=ref_…`", tradotta in IT/ES/EN): chi si iscrive da li' conta
+  come suo invito ai fini dei premi referral e nelle analytics arriva come `referral`. Senza
+  `BOT_TOKEN`/`BOT_USERNAME` resta il link del bot. Nella mini app, accanto a "Condividi",
+  **📋 Copia** mette lo stesso testo negli appunti per WhatsApp, Instagram o X (#150).
 - **Archivio** (`handlers/archive_handler.py`): rigiocare i giorni passati **senza punti**.
   Aprire un giorno mette l'utente in "modalita' archivio" (`archive_day` sul suo documento,
   non in memoria: su Cloud Run l'istanza puo' sparire fra un messaggio e l'altro), e da li' le
@@ -267,7 +304,7 @@ subito con "👀 Rivela", visto che quella giornata è passata. I tentativi sono
 infiniti anche per una ragione meno ovvia: un campo che accetta nomi all'infinito e risponde
 "stessa nazionalità, ruolo diverso" sarebbe un modo comodo per sondare il dataset.
 
-**Partita di gruppo** (`/round`, `handlers/group_handler.py`): un round alla volta nel
+**Partita di gruppo** (`/round`, regole in `domains/groups/service.py`): un round alla volta nel
 gruppo, vince chi risponde per primo, punti per difficoltà come nel gioco vero. **Non** è la
 sfida di oggi ripubblicata — la risposta comparirebbe in chiaro davanti a chi non ha ancora
 giocato, bruciando la giornata anche a chi non stava guardando. Le altre tre conseguenze della stessa scelta:
@@ -301,10 +338,22 @@ condanna a restare ultimi.
 
 ### Negozio (Stelle di Telegram)
 
+Il set **Biglietto da trasferta** comprende tema (12 Stelle), cornice perforata (10),
+titolo (5) e card con matrice e timbro (15): insieme **32 Stelle** anziché 42.
+Notturna costa 15, Foil 22 e il distintivo Diamante 7 Stelle. I pacchetti continuano
+ad addebitare soltanto una quota proporzionale ai pezzi mancanti.
+Le card in prova sono esempi prodotti dal renderer dei risultati condivisi; i
+festeggiamenti si possono provare e rispettano la preferenza di movimento ridotto.
+
 `/shop` e la quinta scheda della mini app vendono **solo cose da guardare**, pagate in
 [Stelle di Telegram](https://core.telegram.org/bots/payments-stars): temi che ricolorano tutta
 la mini app, cornici per l'avatar, titoli sotto il nome, distintivi accanto al nome in
 classifica e i simboli della card che si incolla nei gruppi.
+Nella mini app **Scopri** presenta poche collezioni, **Catalogo** permette di cercare per
+nome e categoria, e **I miei oggetti** raccoglie il look indossato e quelli salvati.
+La scheda di ogni oggetto mostra dove appare, permette di provarlo temporaneamente e
+mostra il prezzo effettivo restituito dal server prima dell'acquisto. Traguardi e
+cronologia acquisti restano accessibili dallo Shop.
 
 La regola sta sopra il catalogo e non si negozia: **niente di quello che si compra cambia la
 partita.** Nessun punto, nessun tentativo in piu', nessun indizio scontato. Non e' prudenza: un
@@ -314,21 +363,34 @@ lo verifica sul catalogo (`test_nothing_on_sale_touches_the_game`), perche' e' i
 regola che si perde per strada un oggetto alla volta.
 
 Il catalogo e' **contenuto**, non codice: sta in `data/shop.json` come i calciatori e gli
-eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Cinque tipi di
+eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Otto tipi di
 oggetto (uno per "slot": se ne indossa uno per tipo), piu' i pacchetti; ogni tipo ha il suo
 oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
 
 | Tipo | Dove si vede | Prezzi |
 |---|---|---|
-| Temi | colori di tutta la mini app | 15 – 30 ⭐ |
-| Cornici | il cerchio intorno all'avatar | 15 – 25 ⭐ |
-| Titoli | una riga sotto il nome | 15 – 25 ⭐ |
-| Distintivi | accanto al nome, **anche nella classifica in chat** | 10 – 25 ⭐ |
-| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 10 – 20 ⭐ |
-| Numeri | il numero di maglia prima del nome, **anche in classifica** | 10 – 15 ⭐ |
+| Temi | colori di tutta la mini app | 7 – 15 ⭐ |
+| Cornici | il cerchio intorno all'avatar | 7 – 12 ⭐ |
+| Titoli | una riga sotto il nome | 7 – 12 ⭐ |
+| Distintivi | accanto al nome, **anche nella classifica in chat** | 5 – 12 ⭐ |
+| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 5 – 10 ⭐ |
+| Numeri | il numero di maglia prima del nome, **anche in classifica** | 5 – 7 ⭐ |
 | Festeggiamenti | cosa succede sullo schermo quando indovini | non in vendita |
-| Figurine | la finitura della card del risultato come immagine | 55 – 75 ⭐ |
-| Pacchetti | piu' cose insieme | 30 – 220 ⭐ |
+| Figurine | la finitura della card del risultato come immagine | 15 – 22 ⭐ |
+| Pacchetti | piu' cose insieme | 15 – 110 ⭐ |
+
+Il listino parte deliberatamente basso: sono cosmetici permanenti di un gioco gratuito, non
+contenuti o vantaggi competitivi. Le fasce 5/7/12/15 ⭐ tengono il primo acquisto successivo
+al benvenuto nella zona dell'impulso; i set principali stanno fra 26 e 35 ⭐ e la collezione
+completa a 110 ⭐. Il riferimento economico non è una conversione mostrata all'utente — il
+costo di acquisto delle Stelle varia per paese, imposte e canale — ma il valore ufficiale
+riconosciuto al developer, oggi pari all'equivalente di 0,013 USD per Stella. Le fonti da
+ricontrollare a ogni revisione sono la [guida ai pagamenti in
+Stelle](https://core.telegram.org/bots/payments-stars) e i [termini per i developer,
+sezione 6.2](https://telegram.org/tos/bot-developers#6-2-digital-goods-and-services).
+Finché non esiste uno storico sufficiente di visualizzazioni, acquisti e rimborsi, i prezzi
+non si alzano per imitare cataloghi di giochi più grandi: si misura prima la conversione del
+negozio e si rivede il listino come esperimento separato.
 
 I primi cinque sono i **fondamentali** (`CORE_KINDS`) e una collezione li riempie tutti; i tre
 in fondo sono arrivati dopo e una collezione puo' averli o no. Non e' pigrizia: un numero di
@@ -398,7 +460,7 @@ una finitura dedicata sulle immagini dei risultati condivisi; le animazioni risp
 la preferenza di movimento ridotto, si fermano quando il campo esce dallo schermo e nelle
 miniature dei premi non partono affatto.
 
-`services/referrals.py` conserva un documento per invitato nella collezione `referrals`,
+`domains/referrals/service.py` conserva un documento per invitato nella collezione `referrals`,
 con invitante, invitato, nome, timestamp di associazione, giornate conteggiate e timestamp
 di qualificazione. La chiave è un hash stabile dell'id dell'invitato. La transazione
 legge lo storico come prova e salva insieme qualificazione, contatore dell'invitante e
@@ -476,7 +538,7 @@ rimborsare il pacchetto, il tema l'aveva pagato e resta suo.
 La riga di quadratini si incolla; una figurina si guarda. `render_share_card`
 (`services/path_image.py`) disegna il risultato come PNG verticale 860×1075 — il formato che
 Telegram mostra piu' grande in una bolla senza tagliarlo — e la finitura e' un cosmetico
-(`kind: card`): piatta, notturna, olografica, di pellicola.
+(`kind: card`): piatta, notturna, olografica, di pellicola, tattica e biglietto da trasferta.
 
 Nel disegno **non entrano emoji**: il font non ha quei glifi e li stamperebbe come quadratini
 vuoti (`services/fonts.py`). I tentativi sono forme disegnate, ed e' anche il motivo per cui
@@ -505,7 +567,7 @@ lista dietro un bottone di `/stats`. Ora sono anche **targhe da indossare**: se 
 fino a tre (`services/trophies.py`) e vanno sul profilo, accanto al titolo comprato in
 negozio e sul profilo pubblico.
 
-Non passano da `services/shop.py`, pur finendo nello stesso posto. Un cosmetico si compra e
+Non passano da `domains/shop/service.py`, pur finendo nello stesso posto. Un cosmetico si compra e
 sta in un catalogo fisso, uguale per tutti; un trofeo si vince, e il suo catalogo e' diverso
 per ogni utente — e' la sua bacheca. Farlo entrare nel negozio avrebbe voluto dire un
 catalogo per utente, cioe' rompere la cosa su cui `get_item` e `owned_ids` sono costruiti.
@@ -532,10 +594,13 @@ lingue.
 
 ### Mini app Telegram
 
-`webapp/index.html` e' una pagina sola servita dallo stesso servizio FastAPI su `/app`, con
-cinque schede: **Gioca**, **Archivio**, **Statistiche**, **Leghe**, **Negozio**. Non e' piu'
-una vetrina:
-ci si gioca davvero, con le stesse regole della chat.
+La mini app e' scritta in Vite + TypeScript (`webapp/src/`, entry `index.html` alla radice),
+compilata in `webapp/dist/` e servita dallo stesso servizio FastAPI su `/app`: e' quella che
+aprono il pulsante **Play** e i bottoni del bot. La barra in basso ha cinque destinazioni:
+**Daily**, **Arena** (allenamento, duelli, eventi), **Classifica** (generale e leghe),
+**Negozio**, **Profilo**. L'archivio si apre dall'Arena, gli inviti dal Profilo, segnalazioni
+e pagine legali dal menu in alto. Struttura e contratto con il backend: [`docs/miniapp.md`](docs/miniapp.md).
+Ci si gioca davvero, con le stesse regole della chat.
 
 Cosa aggiunge rispetto al bot, e perche':
 
@@ -551,8 +616,9 @@ Cosa aggiunge rispetto al bot, e perche':
   `solved_in` sul documento utente, scritti quando si indovina, quindi non costa nessuna lettura;
 - **gestione delle leghe**: creare, entrare, uscire, classifica completa e invito con il
   selettore di chat nativo di Telegram;
-- **integrazione con l'app**: tema di Telegram (`--tg-theme-*`) e vibrazione su risposta
-  giusta o sbagliata. Il bottone per rispondere e' in pagina, sotto il campo, e non il
+- **integrazione con l'app**: vibrazione su risposta giusta o sbagliata; l'aspetto e' scuro
+  per costruzione e lo decidono i cosmetici, non il tema di Telegram
+  ([`docs/miniapp-appearance.md`](docs/miniapp-appearance.md)). Il bottone per rispondere e' in pagina, sotto il campo, e non il
   `MainButton` di sistema: quello sta sopra la tastiera ma a tastiera chiusa finisce sotto
   la barra delle schede, dove nessuno lo cerca, ed era l'unico posto dell'app in cui il
   bottone non stava dove si era appena scritto;
@@ -571,8 +637,11 @@ Due vincoli che non si toccano:
    test apposta (`test_the_answer_never_reaches_the_page`), perche' e' il tipo di errore che
    guardando lo schermo non si nota.
 
-Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' configurata; senza, il bot funziona
-esattamente come prima.
+Il bottone "Apri l'app" compare solo se `PUBLIC_BASE_URL` e' configurata. Il servizio completo
+(`bot.py`) pero' non parte senza quella variabile, che serve anche alla consegna dei task Cloud
+Tasks: in produzione il bottone c'e' sempre (vedi [`docs/deploy.md`](docs/deploy.md)).
+
+Elenco parziale; quello completo sta nelle rotte di `bot.py` (vedi [`docs/miniapp.md`](docs/miniapp.md)).
 
 | Endpoint | Cosa fa |
 |---|---|
@@ -591,106 +660,40 @@ esattamente come prima.
 ## Stack
 
 - **Bot**: [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) su webhook, servito da **FastAPI** (`bot.py`)
-- **Dati di gioco**: **Firebase Firestore** (`users`, `daily_path`, `events` con la sotto-collection `participants`, `seasons`). Le date sul database sono ISO `YYYY-MM-DD`; agli utenti si mostrano come `gg/mm/aa`
-- **Scheduler**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana (nessun processo interno da tenere sveglio)
+- **Dati di gioco**: **Firebase Firestore** (mappa delle collection in [`docs/firestore.md`](docs/firestore.md)). Le date sul database sono ISO `YYYY-MM-DD`; agli utenti si mostrano come `gg/mm/aa`
+- **Scheduler e code**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana; gli update Telegram e il broadcast passano da **Cloud Tasks** ([`docs/runtime-hardening.md`](docs/runtime-hardening.md))
 - **Immagini**: percorso, banner evento, palmarès e avatar sono generati a runtime con **Pillow** (`services/path_image.py`), con un font TrueType di sistema (`fonts-dejavu-core` nel Dockerfile). Nessuna immagine ospitata fuori dal progetto
 - **Dataset calciatori**: JSON locale versionato in `data/players.json`
-- **Mini app**: pagina statica servita da FastAPI su `/app`, autenticata con la firma `initData` di Telegram
+- **Mini app**: Vite + TypeScript su `/app`, autenticata con la firma `initData` di Telegram ([`docs/miniapp.md`](docs/miniapp.md))
 
 ## Architettura dell'automazione
+
+La mappa dei componenti, dei moduli e di chi legge o scrive cosa è in
+[`docs/architecture.md`](docs/architecture.md). I file di dati principali:
 
 ```
 data/players.json          -> pool di calciatori curato (carriera, nazionalità, popolarità, verified)
 data/event_templates.json  -> regole configurabili per generare gli eventi a rotazione
 data/config.json           -> parametri di gioco (difficoltà, buffer giorni, anti-ripetizione, ecc.)
-docs/difficolta.md         -> come si assegnano notorietà e difficoltà (da leggere prima di ampliare il dataset)
-
-services/dates.py            -> un solo posto in cui si decide come si scrive una data (ISO sul db, gg/mm/aa a schermo)
-services/firebase_service.py -> tutti gli accessi a Firestore (transazioni comprese)
-services/daily_challenge.py  -> sfida del giorno, con cache in memoria della sola parte immutabile
-services/player_pool.py      -> carica e valida il dataset, filtra per le regole di un evento
-services/difficulty.py       -> calcola la difficoltà di un percorso (facile/normale/difficile/esperto)
-services/dataset_health.py   -> salute del pool: autonomia, difficoltà scoperte, eventi senza candidati
-services/path_image.py       -> disegna le immagini (Pillow): percorso, banner evento, palmarès, avatar
-services/fonts.py            -> trova un TrueType di sistema per le immagini (fallback compreso)
-services/matching.py         -> confronto tollerante fra risposta scritta e risposte accettate
-services/guess_feedback.py   -> confronto fra il calciatore tentato e la soluzione (nazionalità, ruolo, età)
-services/past_challenges.py  -> sceglie una sfida già passata, a una lettura invece che con una query
-services/practice_content.py -> il materiale di allenamento e gruppo: pool riservato + sfide passate, una forma sola
-services/streak.py           -> regole della striscia di giorni consecutivi
-services/share.py            -> card del risultato in quadratini e link di condivisione
-services/webapp_auth.py      -> verifica la firma dei dati che manda la mini app Telegram
-services/webapp_api.py       -> i dati che la mini app mostra, in una risposta sola
-services/daily_generator.py  -> sceglie il calciatore del giorno (con anti-ripetizione) e genera N giorni in anticipo
-services/event_generator.py  -> sceglie un template evento a rotazione e lo riempie con giocatori validi
-services/manual_event_service.py -> eventi creati a mano dalla chat (coppie padre/figlio)
-services/content_admin.py    -> dettaglio e correzione di sfide/eventi gia' programmati (usato dalla dashboard locale)
-services/dataset_editor.py   -> modifiche al dataset e alla taratura della difficolta' (usato dalla dashboard locale)
-
-scripts/generate_content.py  -> entrypoint per generare il buffer a mano (debug/backfill)
-scripts/import_players.py    -> importa nuovi calciatori nel dataset con validazione e anti-duplicati
-scripts/reserve_practice_players.py -> riserva all'allenamento una fetta del dataset, bilanciata per difficoltà
-scripts/dataset_report.py    -> report sullo stato del dataset (usato anche dalla CI)
-scripts/migrate_firestore.py -> migrazione una tantum dei dati esistenti al modello nuovo
-scripts/backup_firestore.py  -> export JSON del database, sotto-collezioni comprese (usato dal workflow settimanale)
-scripts/backfill_users.py    -> completa i documenti utente a cui mancano i campi aggiunti dopo la loro registrazione
-scripts/cleanup_daily_paths.py -> cancella le sfide oltre l'anno e i documenti pre-migrazione
-scripts/preview_webapp.py    -> la mini app in locale, senza Telegram e senza Firestore (per guardare i cosmetici)
-handlers/daily_job.py        -> job di mezzanotte chiamato da Cloud Scheduler: broadcast, reset, e generazione
-handlers/guess_handler.py    -> tentativi sulla sfida del giorno (comando e messaggio libero)
-handlers/archive_handler.py  -> sfide passate rigiocate senza punti
-handlers/training_handler.py -> allenamento: sfide passate a raffica, in privato
-handlers/group_handler.py    -> partite di gruppo: un round alla volta, punti solo dentro il gruppo
-handlers/league_handler.py   -> leghe private, codici d'invito, classifiche
-handlers/keyboards.py        -> tastiera del menu e menu comandi di Telegram
-handlers/legend_handler.py   -> la legenda dell'immagine (bottone sotto la sfida e /legend)
-handlers/menu_handler.py     -> i bottoni del menu, collegati agli handler dei comandi
-handlers/admin_handler.py    -> tutti i comandi Telegram /admin_* (al posto di una dashboard web)
-webapp/index.html            -> la mini app Telegram (servita da FastAPI su /app)
-admin_ui.py                  -> dashboard locale Streamlit: stato dettagliato e modifiche ai dati
+data/shop.json             -> catalogo del negozio
 ```
 
-### Come viene scelto il calciatore del giorno
+### Come vengono scelte le sfide e generati gli eventi
 
-1. Ogni notte (23:15 UTC) **Cloud Scheduler** chiama `POST /internal/daily-job` sul servizio
-   Cloud Run, che scrive direttamente su Firestore i prossimi `buffer_days_ahead` giorni
-   mancanti (default 3), invia il broadcast agli utenti iscritti, assegna i trofei degli eventi
-   conclusi e - il primo del mese - chiude la stagione mensile. **Non azzera nessun contatore**:
-   i tentativi giornalieri si azzerano da soli (vedi [Database](#database)).
-2. Il calciatore viene scelto **escludendo** quelli usati negli ultimi `history_days_no_repeat`
-   giorni (default 60), tra i soli giocatori con `verified: true` e un percorso di almeno
-   `min_teams_in_career` squadre (default 2) — niente percorsi banali o dati incompleti.
-3. La difficoltà ruota secondo `difficulty_rotation` in `data/config.json`; se per quella
-   difficoltà non ci sono candidati liberi, si prova la difficoltà più vicina.
-4. La scelta è **deterministica per data** (seed = data): se la generazione va rieseguita per
-   errore, il giocatore scelto per un giorno già passato resta lo stesso.
-5. Se anche Cloud Scheduler non dovesse partire, `/show` e `/guess` generano la sfida del
-   giorno al primo utilizzo (fallback "esecuzione alla prima richiesta").
+Ogni notte Cloud Scheduler chiama `POST /internal/daily-job`, che scrive i prossimi
+`buffer_days_ahead` giorni mancanti (scelta deterministica per data, senza ripetere i
+calciatori degli ultimi `history_days_no_repeat` giorni, a rotazione di difficoltà), può
+generare un evento tematico da `data/event_templates.json`, assegna i trofei degli eventi
+conclusi e avvia il broadcast. Se la sfida di oggi manca, `/show` e `/guess` la generano al
+primo utilizzo. Gli eventi `manual_only` (es. padre/figlio) si creano solo a mano, vedi
+[Eventi "coppie padre/figlio"](#eventi-coppie-padrefiglio-manuali).
 
-### Come vengono generati gli eventi tematici
-
-- Ogni "tipo" di evento è descritto come **template** in `data/event_templates.json`: nome,
-  descrizione, tipo di gameplay (`path`/`career`/`transfer_guess`/`father_son`), regole di
-  filtro sul pool di giocatori (es. minimo 6 squadre, solo big-5, solo nazionalità sudamericane),
-  durata e punti giornalieri.
-- **Nome e descrizione sono tradotti** (`name_i18n`, `description_i18n`): erano gli ultimi testi
-  che restavano in italiano per tutti, perché sono contenuto e non passavano da
-  `services/i18n.py` — quindi nemmeno dal test che tiene allineate le tre lingue. Ora c'è un
-  test apposta ([`tests/test_event_translations.py`](tests/test_event_translations.py)) che
-  fallisce se un template nuovo arriva senza traduzioni. `name` e `description` restano il
-  testo italiano: sono il ripiego per gli eventi generati prima, ed è quello che legge
-  l'amministrazione. Le traduzioni vengono **copiate sul documento dell'evento** al momento
-  della generazione, come il nome: un evento già partito resta quello che era anche se il
-  template cambia sotto.
-- `services/event_generator.py` sceglie un template **non usato di recente** (vedi
-  `event_history_no_repeat_templates`), rispetta un intervallo minimo tra un evento e l'altro
-  (`event_min_gap_days`) e — se il template lo richiede — solo nel weekend (`weekend_only`).
-- Un template può essere marcato `manual_only: true` (es. "Coppie leggendarie" padre/figlio, che
-  richiede una foto e non una carriera): non verrà mai generato in automatico, si crea dalla
-  chat con `/admin_fs_add` + `/admin_event_create` (vedi
-  [Eventi "coppie padre/figlio"](#eventi-coppie-padrefiglio-manuali)).
-- Per il tipo `career` (indovina le squadre di un giocatore noto) **non** viene mai salvata
-  un'immagine del percorso nei dati giornalieri, per non rivelare la risposta.
+Il dettaglio architetturale (Daily, Archivio, Allenamento, duelli, eventi) è in
+[`docs/game-modes.md`](docs/game-modes.md), compreso il planner delle sfide su 7–90 giorni
+(dashboard → *Planner sfide*,
+[#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)). Gli eventi si
+definiscono in `data/event_templates.json` (filtri, regole, premi, calendario), validati in CI e
+modificabili dalla dashboard: vedi [`docs/event-templates.md`](docs/event-templates.md).
 
 ### Difficoltà
 
@@ -745,6 +748,7 @@ correggere qualcosa a mano.
 | `/admin_fs_del <id>` | elimina una coppia padre/figlio |
 | `/admin_event_create <template> [gg/mm/aa] [giorni]` | crea a mano un evento |
 | `/admin_refund <charge_id>` | rimborsa un acquisto in Stelle e ritira i cosmetici consegnati |
+| `/admin_support_reply <telegram_id> <messaggio>` | risponde a una richiesta arrivata con `/paysupport` |
 
 `/admin_block` scrive su Firestore (`admin_settings/dataset_overrides`), quindi ha effetto
 **subito**, senza redeploy: utile quando un utente segnala una carriera sbagliata. Le sfide
@@ -752,37 +756,10 @@ già presenti nel buffer non cambiano, si controllano con `/admin_next`.
 
 ## Sviluppo locale e validatore configurazione
 
-La guida completa per avviare e configurare tutti i componenti dello stack in locale è disponibile in:
-👉 [`docs/local-development.md`](docs/local-development.md)
-
-### 1. Verifica preventiva dell'ambiente
-Per diagnosticare problemi di configurazione (.env, chiavi Firebase, token Telegram, dataset e dipendenze):
-
-```bash
-python -m tools.check_environment              # controlli per sviluppo locale isolato (dev)
-python -m tools.check_environment --mode api    # controlli requisiti per avvio server FastAPI bot.py
-python -m tools.check_environment --mode prod   # controlli per deploy/produzione Cloud Run
-python -m tools.check_environment --json        # output strutturato per script
-```
-
-### 2. Comandi di sviluppo rapidi
-È disponibile un runner unificato multipiattaforma (`Makefile` su Linux/macOS/WSL, `.\dev.ps1` su Windows PowerShell o `python -m tools.dev`):
-
-```bash
-make check-env      # oppure .\dev.ps1 check-env     -> valida ambiente per sviluppo isolato
-make check-api      # oppure .\dev.ps1 check-api     -> valida requisiti avvio server FastAPI bot.py
-make test           # oppure .\dev.ps1 test          -> esegue i test unitari (pytest -q)
-make test-cov       # oppure .\dev.ps1 test-cov      -> test con report di copertura
-make test-node      # oppure .\dev.ps1 test-node     -> test client Mini App (node)
-make lint           # oppure .\dev.ps1 lint          -> linter ruff
-make typecheck      # oppure .\dev.ps1 typecheck     -> typecheck mypy su services/
-make dataset-check  # oppure .\dev.ps1 dataset-check -> controllo integrita' dataset calciatori
-make check          # oppure .\dev.ps1 check         -> suite standard di validazione locale
-make emulator       # oppure .\dev.ps1 emulator      -> avvia emulatore Firestore locale (porta 8571)
-make api            # oppure .\dev.ps1 api           -> avvia FastAPI/bot con reload (porta 8000)
-make admin          # oppure .\dev.ps1 admin         -> avvia dashboard admin Streamlit (admin_ui.py)
-make webapp         # oppure .\dev.ps1 webapp        -> avvia anteprima locale Mini App (porta 8888)
-```
+La guida completa (prerequisiti, `.env`, validatore `python -m tools.check_environment`,
+comandi `python -m tools.dev` / `make` / `.\dev.ps1`, emulatore Firestore, API, Admin e
+server di sviluppo della Mini App) è in
+[`docs/local-development.md`](docs/local-development.md).
 
 ## Anteprima locale della mini app
 
@@ -794,15 +771,15 @@ Serve a **guardare** i cosmetici prima di venderli: un tema, una cornice o una c
 giudicano addosso a una pagina vera, non su un francobollo nella scheda del negozio e ancor
 meno su sei stringhe esadecimali dentro `data/shop.json`.
 
-E' la pagina vera (`webapp/index.html`) servita dalle funzioni vere (`services/webapp_api.py`,
-`services/shop.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
+E' la mini app vera (il bundle in `webapp/dist/`, quindi prima `npm run build`) servita dalle funzioni vere (`services/webapp_api.py`,
+`domains/shop/service.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
 in memoria. L'utente finto ha gia' **tutto** il catalogo e cinque trofei, cosi' ogni oggetto
 si indossa con un click e ogni traguardo e' sbloccato; il negozio funziona ma "Compra"
 consegna subito, senza fattura, perche' non c'e' niente da pagare.
 
 Non tocca il database, non chiede credenziali e non serve Telegram: il finto `initData` lo
-inietta il server nella pagina servita, quindi `webapp/index.html` resta il file di
-produzione e non una sua variante. Si chiude e non resta niente.
+inietta il server nella pagina servita, quindi il bundle resta quello di produzione e non
+una sua variante. Si chiude e non resta niente.
 
 Due comode: `POST /app/api/preview/wear {"bundle": "pacchetto_neve"}` indossa un'intera
 collezione in un colpo, e `POST /app/api/preview/reset` rimette l'utente finto com'era.
@@ -815,7 +792,8 @@ streamlit run admin_ui.py
 ```
 
 Gira **sul proprio PC** con le stesse credenziali del bot (`.env` + `firebase-key.json`) e
-non viene mai esposta: non ha login perché non è raggiungibile da fuori. Usa gli stessi
+non viene mai esposta: non ha login perché non è raggiungibile da fuori. Architettura e
+confini: [`docs/admin.md`](docs/admin.md). Usa gli stessi
 servizi dei comandi Telegram — nessuna logica duplicata — e in più permette le correzioni che
 in chat sarebbero scomode. **Scrive sul database di produzione.**
 
@@ -826,7 +804,9 @@ in chat sarebbero scomode. **Scrive sul database di produzione.**
 | Eventi | stato (programmato/in corso/concluso), giorno corrente su totale, giorno per giorno con risposte, punti e bonus, elenco dei giorni **senza contenuto**, classifica dei partecipanti | attiva/disattiva, sposta le date (rimappa anche i contenuti e il giorno dei trofei), correggi le risposte di un giorno, riapri/chiudi il bonus di giornata, elimina, crea un evento manuale |
 | Utenti | classifiche, ricerca per id o per nome, scheda completa con striscia, trofei, leghe e archivio | punti totali e del mese, striscia, lingua, notifiche, azzeramento dei tentativi di oggi |
 | Leghe | leghe private con numero di membri e classifica interna | — |
+| Analytics | metriche di prodotto (completion rate, hint, referral, shop, Mini App) lette da PostHog in sola lettura ([`docs/product-analytics.md`](docs/product-analytics.md#15a-reading-metrics-back-admin-dashboard-39)); richiede `POSTHOG_PERSONAL_API_KEY`/`POSTHOG_PROJECT_ID` | — |
 | Dataset | quattro schede: salute del pool, **elenco completo** dei giocatori con difficoltà e punteggio scomposto, scheda singola con le tappe e il peso di ogni campionato, taratura della formula | notorietà (`popularity`), *verificato*, *solo allenamento*, campionato di una tappa; pesi e soglie della difficoltà, con anteprima di chi cambia fascia |
+| Review giocatori | coda dei candidati della pipeline di ingestion, con validazione, provenienza e duplicati ([`docs/player-data-pipeline.md`](docs/player-data-pipeline.md)); richiede `ADMIN_TELEGRAM_IDS` | modifica, approva (scrive `data/players.json` locale, con backup), rifiuta, merge, fonte errata, retry |
 | Giocatori sospesi | chi è escluso dalla selezione automatica | sospendi / riammetti |
 | Coppie padre/figlio | coppie salvate e in quali eventi sono state usate | aggiungi (foto via bot) / elimina |
 
@@ -996,8 +976,9 @@ volte la finestra anti-ripetizione, oppure una fascia di difficoltà è quasi vu
 
 ## Database
 
-Il modello dati Firestore è documentato in
-[`docs/firebase_review.md`](docs/firebase_review.md), insieme al perché di ogni scelta.
+La mappa corrente delle collection è in [`docs/firestore.md`](docs/firestore.md); il perché
+delle scelte del modello dati è nella revisione storica
+[`docs/firebase_review.md`](docs/firebase_review.md).
 In breve:
 
 - `users/{telegram_id}` — l'id Telegram **è** l'id del documento: letture dirette, creazione
@@ -1092,11 +1073,16 @@ mano con *Run workflow*). Si autentica con la stessa Workload Identity Federatio
 nessuna chiave di servizio nei secret.
 
 ```bash
-python scripts/backup_firestore.py            # copia in backup/, sotto-collezioni comprese
+python scripts/backup_firestore.py                              # backup v2 validato in backup/
+python scripts/restore_firestore.py validate backup/<file>.json # controlla senza ripristinare
 ```
 
-L'export segue le **sotto-collezioni** (`participants`, `members`, `archive`): sono metà dei
-dati del gioco, e un backup che si ferma al primo livello sarebbe un backup finto.
+L'export segue le **sotto-collezioni** (`participants`, `members`, `archive`, `players`):
+sono metà dei dati del gioco, e un backup che si ferma al primo livello sarebbe un backup
+finto. Quali collection sono coperte (e perché `work_receipts`/`update_locks` no), il formato
+tipizzato, il ripristino — sull'emulatore per default, in produzione solo con conferme
+esplicite — e la prova periodica del restore sono in
+[`docs/backup-recovery.md`](docs/backup-recovery.md).
 
 `daily_path` cresce di 365 documenti l'anno e non si guarda indietro — l'archivio mostra dieci
 giorni, l'anti-ripetizione sessanta, il numero della sfida è calcolato dalla data:
@@ -1121,6 +1107,9 @@ pip install -r requirements-dev.txt
 pytest -q
 ```
 
+La suite completa locale (Python, frontend, dataset) è `python -m tools.dev check`; cosa gira
+in CI è in [`docs/ci_cd_pipeline.md`](docs/ci_cd_pipeline.md).
+
 I test coprono: selezione deterministica e anti-ripetizione del giocatore del giorno,
 integrità del dataset (id duplicati, alias ambigui, cronologia delle carriere, bandiere),
 import di nuovi calciatori, calcolo difficoltà, generazione eventi (rotazione, cooldown,
@@ -1144,9 +1133,8 @@ viene toccata, la risposta rivelata solo a tentativi finiti), leghe private (cod
 classifica, link d'invito che iscrive da `/start`), firma `initData` della mini app (dato
 manomesso, token sbagliato, dati scaduti) e allineamento delle tre lingue: se una chiave o un
 segnaposto manca in una traduzione, la CI se ne accorge — sia per i messaggi del bot
-(`tests/test_i18n_keys.py`) sia per le stringhe della mini app, che stanno in
-`webapp/strings.js` proprio perché `node --test` possa caricarle e confrontarle
-(`tests/client.test.cjs`).
+(`tests/test_i18n_keys.py`) sia per le stringhe della mini app
+(`webapp/src/i18n/translations.ts`, confrontate da `tests/frontend/i18n.test.ts`).
 
 ### Le transazioni, su un Firestore vero
 
@@ -1181,56 +1169,14 @@ ricevano una risposta pulita.
 
 ## Deploy
 
-Il bot gira su **Cloud Run** (container, deploy automatico da GitHub Actions dopo i test — vedi
-[`docs/deploy.md`](docs/deploy.md)) e la generazione giornaliera dei contenuti è affidata a
-**Cloud Scheduler**, che chiama un endpoint interno del servizio invece di dipendere da un
-processo sempre acceso. Il ciclo completo test → deploy, con le scelte di qualità del codice e
-gestione delle dipendenze, è documentato in [`docs/ci_cd_pipeline.md`](docs/ci_cd_pipeline.md).
-
-| Componente | Dove | Perché |
-|---|---|---|
-| Bot (webhook) | **Cloud Run** | Container da [`Dockerfile`](Dockerfile), scala a zero quando inattivo, HTTPS incluso |
-| Generazione giornaliera/eventi | **Cloud Scheduler** → `POST /internal/daily-job` | Non dipende dal fatto che l'istanza Cloud Run sia già sveglia; Cloud Run la avvia al bisogno |
-| Database | **Firebase Firestore** | Già in uso, nessuna migrazione necessaria |
-
-### 1. Cloud Run (bot)
-
-Deploy automatico da GitHub Actions ad ogni push su `main` che supera la CI (setup di Workload
-Identity Federation, comandi manuali di fallback e variabili d'ambiente del servizio: vedi
-[`docs/deploy.md`](docs/deploy.md)).
-
-Se cambia l'URL del servizio va aggiornato `WEBHOOK_URL` e il bot deve rieseguire `set_webhook`
-(avviene automaticamente all'avvio, vedi `bot.py`).
-
-Due variabili d'ambiente in piu' (facoltative, vedi [`.env.example`](.env.example)) accendono le
-funzioni che hanno bisogno di sapere dove sta il bot:
-
-| Variabile | Serve a | Se manca |
-|---|---|---|
-| `PUBLIC_BASE_URL` | mini app Telegram (`/app`) | il bottone "Apri l'app" non compare |
-| `BOT_USERNAME` | link di condivisione del risultato e inviti alle leghe | i bottoni di condivisione/invito non compaiono, il resto funziona |
-
-### 2. Cloud Scheduler (generazione contenuti)
-
-Un job di Cloud Scheduler chiama ogni notte l'endpoint interno con l'header di autorizzazione:
-
-```bash
-gcloud scheduler jobs create http daily-generation \
-  --schedule="15 23 * * *" \
-  --uri="https://guess-the-player-595902172561.europe-west1.run.app/internal/daily-job" \
-  --http-method=POST \
-  --headers="x-cron-secret=<GENERATION_SECRET>" \
-  --time-zone="UTC"
-```
-
-L'orario (23:15 UTC) è poco dopo mezzanotte a Roma sia in ora solare che legale. L'endpoint
-(`bot.py`, `@app.post("/internal/daily-job")`) verifica l'header `x-cron-secret` contro
-`GENERATION_SECRET` e rifiuta le chiamate non autorizzate con `403`.
-
-### 3. Dominio personalizzato
-
-Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tramite
-"Custom Domains"; non necessario per il funzionamento del bot.
+Il servizio gira su **Cloud Run** (deploy automatico da GitHub Actions dopo la CI su `main`),
+con **Cloud Scheduler** per il job notturno, **Cloud Tasks** per update e broadcast e
+**Firestore** come database. Topologia in
+[`docs/architecture.md`](docs/architecture.md#7-deployment-topology-summary), procedura e
+variabili d'ambiente in [`docs/deploy.md`](docs/deploy.md) e
+[`docs/runtime-hardening.md`](docs/runtime-hardening.md), pipeline in
+[`docs/ci_cd_pipeline.md`](docs/ci_cd_pipeline.md), stato di release e backup in
+[`docs/operations.md`](docs/operations.md).
 
 ## Limiti noti / cosa resta da fare
 
@@ -1258,7 +1204,7 @@ Cloud Run supporta domini personalizzati e certificati gestiti gratuitamente tra
   ma brutte. `services/fonts.py` accetta anche un font messo in `assets/fonts/` o indicato con
   `FONT_REGULAR_PATH` / `FONT_BOLD_PATH`.
 - **Leghe private**: la classifica di una lega somma i punti fatti da quando si è entrati, e i
-  limiti (50 membri, 5 leghe a testa) sono costanti in `handlers/league_handler.py`. Chi lascia
+  limiti (50 membri, 5 leghe a testa) sono costanti in `services/leagues.py`. Chi lascia
   una lega perde i punti accumulati lì dentro: rientrando riparte da zero.
 - **Rimborsi delle Stelle**: passano da un comando amministrativo (`/admin_refund`), non da un
   bottone dell'utente. Chi ha cambiato idea lo scrive in chat e un amministratore esegue il

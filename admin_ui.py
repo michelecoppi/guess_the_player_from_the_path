@@ -25,6 +25,11 @@ _PROJECT_ROOT = Path(__file__).resolve().parent
 _ENV_PATH = _PROJECT_ROOT / ".env"
 load_dotenv(_ENV_PATH)
 
+from services import observability
+
+# Idempotente: Streamlit riesegue lo script a ogni interazione, l'inizializzazione resta una.
+observability.init("admin")
+
 st.set_page_config(page_title="Guess the Player — Admin", layout="wide")
 
 if not os.getenv("FIREBASE_CREDENTIALS_PATH") or not os.getenv("BOT_TOKEN"):
@@ -52,7 +57,23 @@ if not credentials_path.exists():
 # qui lo normalizziamo ad assoluto cosi' funziona indipendentemente dalla cwd da cui parte streamlit.
 os.environ["FIREBASE_CREDENTIALS_PATH"] = str(credentials_path)
 
-from admin_pages import blocked, challenges, dataset, events, father_son, leagues, overview, users
+from admin_pages import (
+    analytics,
+    blocked,
+    career_refresh,
+    challenges,
+    dataset,
+    events,
+    father_son,
+    groups,
+    leagues,
+    overview,
+    planner,
+    player_review,
+    shop,
+    system,
+    users,
+)
 from admin_pages.shared import CACHE_TTL_SECONDS, ITALY_TZ, firebase_service, render_flash, today_iso
 
 # ---------------------------------------------------------------------------
@@ -67,10 +88,17 @@ now_italy = datetime.now(ITALY_TZ)
 PAGES = [
     "📊 Stato generale",
     "📅 Sfide giornaliere",
+    "🗓️ Planner sfide",
     "🎊 Eventi",
     "👤 Utenti",
+    "👥 Gruppi",
     "🏆 Leghe",
+    "🛍️ Shop & Referral",
+    "📈 Analytics",
+    "🩺 Salute sistema",
     "📚 Dataset",
+    "🔎 Review giocatori",
+    "🔄 Refresh carriera",
     "🚫 Giocatori sospesi",
     "👨‍👦 Coppie padre/figlio",
 ]
@@ -100,10 +128,17 @@ render_flash()
 RENDERERS = {
     '📊 Stato generale': overview.render,
     '📅 Sfide giornaliere': challenges.render,
+    '🗓️ Planner sfide': planner.render,
     '🎊 Eventi': events.render,
     '👤 Utenti': users.render,
+    '👥 Gruppi': groups.render,
     '🏆 Leghe': leagues.render,
+    '🛍️ Shop & Referral': shop.render,
+    '📈 Analytics': analytics.render,
+    '🩺 Salute sistema': system.render,
     '📚 Dataset': dataset.render,
+    '🔎 Review giocatori': player_review.render,
+    '🔄 Refresh carriera': career_refresh.render,
     '🚫 Giocatori sospesi': blocked.render,
     '👨\u200d👦 Coppie padre/figlio': father_son.render,
 }

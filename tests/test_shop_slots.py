@@ -1,7 +1,7 @@
 """Gli slot arrivati dopo i cinque fondamentali, e i tre modi di avere una cosa senza comprarla."""
 import pytest
 
-from services import shop
+from domains.shop import service as shop
 
 
 def user(*owned, trophies=None, **worn):

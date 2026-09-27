@@ -83,8 +83,9 @@ saltare un messaggio quando non è possibile sapere se Telegram l'ha ricevuto.
 La stessa scelta protegge i tentativi dopo un crash del worker. Non cancellare una
 ricevuta incerta senza aver prima verificato lo storico e gli effetti dell'operazione.
 
-Configurare alert Cloud Logging per `uncertain`, `manual reconciliation required`,
-errori worker e task che esauriscono i retry. L'error handler PTB informa l'utente
+Configurare alert Cloud Logging per gli eventi `telegram.update.uncertain` e
+`broadcast.delivery.uncertain`, errori worker e task che esauriscono i retry (nomi degli
+eventi e query in [observability.md](observability.md)). L'error handler PTB informa l'utente
 senza promettere che il tentativo sia stato annullato e invia agli admin un riferimento.
 Il messaggio all'utente e' tradotto nelle tre lingue e prende `language_code` dall'update:
 una lettura a Firestore dentro il gestore che gira dopo un guasto sarebbe un secondo modo
@@ -106,22 +107,18 @@ Non distribuire contemporaneamente revisioni con segreti diversi.
 e amministrazione. `firebase_service` mantiene client, schema e re-export: gli import
 esistenti e i punti di sostituzione usati dai test restano validi. I repository risolvono
 la facciata dentro le funzioni per consentire anche import diretti senza cicli all'avvio.
-`admin_pages/` separa le otto pagine e i widget condivisi; `admin_ui.py` mantiene avvio
+`admin_pages/` separa le pagine e i widget condivisi; `admin_ui.py` mantiene avvio
 e navigazione.
 
-`webapp/client.js` raccoglie le funzioni della mini app che non toccano ne' il DOM ne' la
-rete - quadretti del risultato, istogramma dei tentativi, conteggio del podio,
-normalizzazione della lingua - ed e' l'unica parte del client che si prova senza browser
-(`tests/client.test.cjs`, in CI). Il criterio per spostare qualcosa qui: stessi argomenti,
-stesso risultato. Non richiede bundler: `index.html` lo carica come `<script>` e i test con
-`require()`. La rotta `/app/client.js` esiste sia in `bot.py` sia in
-`scripts/preview_webapp.py`: senza, la pagina si carica a meta'.
+Le funzioni pure della mini app - quadretti del risultato, istogramma dei tentativi,
+conteggio del podio, normalizzazione della lingua - stanno in `webapp/src/utils/` e si
+provano con `npm run test:frontend` (`tests/frontend/*.test.ts`, in CI).
 
 ```bash
-pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70
-node --test tests/client.test.cjs
+pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing --cov-fail-under=70
+npm run test:frontend
 ruff check .
-mypy services/
+mypy services/ domains/
 ```
 
 I test non usano il database reale. Verificare in staging la configurazione IAM,

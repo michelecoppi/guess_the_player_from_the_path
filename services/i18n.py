@@ -1,8 +1,10 @@
 """Traduzioni dei messaggi rivolti agli utenti (IT/ES/EN).
 
-Solo i comandi utente sono tradotti (start, help, guess, show, stats, notify, top, events,
-language, i messaggi automatici del job di mezzanotte). I comandi /admin_* restano solo in
-italiano: li usa solo chi gestisce il bot.
+Sono tradotti tutti i messaggi rivolti a chi gioca: le poche risposte ai comandi rimasti
+(start, app, help, info, notify, language, forgetme, paysupport), le schermate raggiunte dai
+bottoni della tastiera inline (gioca, soluzione, statistiche, eventi, archivio, allenamento,
+leghe, negozio, leggenda - handlers/keyboards.py) e i messaggi automatici del job di
+mezzanotte. I comandi /admin_* restano solo in italiano: li usa solo chi gestisce il bot.
 
 La lingua di un utente si risolve cosi':
 1. se ha gia' un account con "language" salvato, si usa quello (impostabile con /language);
@@ -91,9 +93,10 @@ def month_label(lang, english_month_name):
 TRANSLATIONS = {
     "it": {
         "common.private_only": "❗ Questo comando può essere usato solo in chat privata.",
-        "common.unexpected_error": ("⚠️ Qualcosa è andato storto. Controlla /show o /stats prima di riprovare: "
+        "common.unexpected_error": ("⚠️ Qualcosa è andato storto. Controlla dal menu prima di riprovare: "
                                     "il tentativo potrebbe essere già registrato. Riferimento: {reference}."),
         "common.no_challenge": "❗ Non c'è ancora una sfida giornaliera disponibile.",
+        "feature.disabled": "⏸️ Questa funzione è temporaneamente non disponibile. Riprova più tardi.",
         "forgetme.private_only": "❗ Per sicurezza, usa /forgetme nella chat privata con il bot.",
         "forgetme.not_registered": "Non risulta alcun account da cancellare.",
         "forgetme.confirm": ("⚠️ Questa operazione è definitiva: cancellerà account, dati di gioco e partecipazioni alle leghe. "
@@ -106,31 +109,24 @@ TRANSLATIONS = {
         "paysupport.sent": "✅ Richiesta inviata al gestore. Riceverai la risposta in questa chat.",
         "paysupport.error": "❌ L'assistenza acquisti non è disponibile in questo momento. Riprova più tardi.",
 
-        "start.welcome_new": "Benvenuto, {name}! Il tuo account è pronto: scegli come giocare dal menu qui sotto.",
+        "start.welcome_new": "Benvenuto, {name}! Il tuo account è pronto: apri la mini app per iniziare.",
         "start.welcome_back": "Ciao di nuovo, {name}!",
         "start.referral_attached": "Invito collegato! Completa 5 sfide daily in giorni diversi, vincendo o esaurendo i tentativi. Chi ti ha invitato vedrà il tuo nome e il progresso fino a 5/5 e potrà sbloccare premi esclusivi.",
 
         "help.message": (
-            "🛠️ Come si gioca:\n\n"
-            "Ogni giorno un percorso di carriera da indovinare. In chat privata ti basta scrivere il nome del calciatore: non serve nessun comando, e hai 3 tentativi.\n\n"
-            "📋 Comandi:\n"
-            "/menu - Apre il menu con tutto quello che si può fare.\n"
-            "/show - Mostra la sfida di oggi.\n"
-            "/solution - Chi era il calciatore di una giornata gia' chiusa.\n"
-            "/guess <risposta> - Il vecchio modo di rispondere, se ci sei affezionato.\n"
-            "/stats - Le tue statistiche, la striscia e i trofei.\n"
-            "/top - La classifica generale e quella del mese.\n"
-            "/events - Il centro eventi.\n"
-            "/archive - Rigioca le sfide dei giorni scorsi (senza punti).\n"
-            "/training - Sfide passate a raffica, senza punti.\n"
-            "/round - In un gruppo: un round per tutti, vince chi risponde per primo.\n"
-            "/standings - In un gruppo: la classifica di quel gruppo.\n"
-            "/today - Esci da archivio o allenamento e torna alla sfida di oggi.\n"
-            "/league - Le tue leghe private; /league_create e /league_join per farne una o entrarci.\n"
-            "/notify - Attiva o disattiva le notifiche.\n"
-            "/language - Cambia la lingua del bot.\n"
-            "/legend - Come si legge l'immagine del percorso.\n"
+            "⚽ <b>Guess the Player: come si gioca</b>\n\n"
+            "Ogni giorno c'è un calciatore misterioso. Vedi solo la sua carriera, squadra per squadra, con stagioni, presenze e gol: devi indovinare chi è.\n\n"
+            "🎯 <b>La sfida del giorno</b>\n"
+            "• Hai 3 tentativi. Dopo una risposta sbagliata scopri se il calciatore che hai scritto ha la stessa nazionalità e lo stesso ruolo, e se è più giovane o più vecchio.\n"
+            "• Puoi chiedere fino a 2 indizi (nazionalità e ruolo): se poi indovini, ognuno costa 1 punto.\n"
+            "• La sfida vale da 1 a 4 punti in base alla difficoltà, e chi indovina per primo prende 1 punto bonus.\n"
+            "• Indovina più giorni di fila per la striscia: +1 punto dal 3° giorno, +2 dal 7°, +3 dal 30°.\n"
+            "• A mezzanotte la sfida si chiude e si scopre la soluzione.\n\n"
+            "📱 <b>Nella mini app</b>\n"
+            "• Arena: duelli con gli amici, allenamento, eventi speciali e l'archivio per recuperare le sfide passate (senza punti).\n"
+            "• Classifica, il tuo profilo con le statistiche e il negozio."
         ),
+        "help.open_app": "👇 Apri la mini app e inizia a giocare.",
 
         "language.prompt": "🌐 Scegli la lingua del bot:",
         "language.confirm": "✅ Lingua impostata su Italiano.",
@@ -139,7 +135,7 @@ TRANSLATIONS = {
         "guess.wrong_last": (
             "❌ Risposta sbagliata: tentativi finiti per oggi.\n"
             "🔒 Chi era te lo dico a mezzanotte, quando la giornata si chiude: da quel momento "
-            "lo trovi anche con /solution."
+            "lo trovi anche nella Soluzione, dal menu."
         ),
         # "Hai 1 tentativi rimasti" era sbagliato: la forma con i due punti regge sia il
         # singolare sia il plurale, in tutte e tre le lingue.
@@ -238,7 +234,7 @@ TRANSLATIONS = {
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Scrivi il nome qui in privato: hai {attempts} tentativi.\n"
-            "Con /today torni alla sfida di oggi."
+            "Esci con il bottone qui sotto per tornare alla sfida di oggi."
         ),
         "events.player_message.career": (
             "🧠 <b>Modalità carriera</b>\n\n"
@@ -246,7 +242,7 @@ TRANSLATIONS = {
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Scrivi qui le squadre separate da virgole, es: Roma, Manchester United, Toronto FC\n"
-            "(massimo {max_answers} a tentativo). Hai {attempts} tentativi; con /today torni alla sfida di oggi."
+            "(massimo {max_answers} a tentativo). Hai {attempts} tentativi; esci con il bottone qui sotto per tornare alla sfida di oggi."
         ),
         "events.player_message.father_son": (
             "👨‍👦 <b>Modalità padre-figlio</b>\n\n"
@@ -254,7 +250,7 @@ TRANSLATIONS = {
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Scrivi qui il nome della coppia: hai {attempts} tentativi.\n"
-            "Con /today torni alla sfida di oggi."
+            "Esci con il bottone qui sotto per tornare alla sfida di oggi."
         ),
         "events.player_message.transfer_guess": (
             "🔄 <b>Modalità trasferimento</b>\n\n"
@@ -262,19 +258,19 @@ TRANSLATIONS = {
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Scrivi il nome qui in privato: hai {attempts} tentativi.\n"
-            "Con /today torni alla sfida di oggi."
+            "Esci con il bottone qui sotto per tornare alla sfida di oggi."
         ),
         "events.player_message.default": (
             "🎮 <b>Sfida del giorno</b>\n\n"
             "🏆 Punti disponibili: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Scrivi qui la tua risposta: hai {attempts} tentativi.\n"
-            "Con /today torni alla sfida di oggi."
+            "Esci con il bottone qui sotto per tornare alla sfida di oggi."
         ),
 
-        "job.congrats": "🎉 Complimenti per aver indovinato il calciatore {player} ieri!\nÈ disponibile una nuova sfida giornaliera!\n👉 Usa /show e prova a essere il primo!",
-        "job.missed": "⚠️ Non hai indovinato il calciatore {player} ieri.\n📢 È disponibile una nuova sfida giornaliera!\n👉 Usa /show per indovinare il calciatore misterioso!",
-        "job.event_mention": "\n\n🎊 Inoltre è attivo un evento speciale: {event_name}\n🏆 Partecipa usando /events e scala la classifica dell'evento!",
+        "job.congrats": "🎉 Complimenti per aver indovinato il calciatore {player} ieri!\nÈ disponibile una nuova sfida giornaliera!\n👉 Apri il bot e prova a essere il primo!",
+        "job.missed": "⚠️ Non hai indovinato il calciatore {player} ieri.\n📢 È disponibile una nuova sfida giornaliera!\n👉 Apri il bot per indovinare il calciatore misterioso!",
+        "job.event_mention": "\n\n🎊 Inoltre è attivo un evento speciale: {event_name}\n🏆 Partecipa dal menu del bot e scala la classifica dell'evento!",
         "job.unknown_event": "Evento Sconosciuto",
         "job.player_fallback": "di ieri",
         "job.feedback_line": "\n\nSe hai idee per migliorare il bot o una funzione nuova che vorresti vedere, manda un messaggio a @gabbente con la tua proposta!",
@@ -307,24 +303,23 @@ TRANSLATIONS = {
         "menu.app": "📱 Gioca nella mini app",
         "app.duel": "Apri la sfida tra amici",
         "app.event.path": "Indovina il calciatore dal suo percorso di carriera.",
+        "app.event.blind_path": "Indovina il calciatore: scopri una tappa alla volta, perdendo un punto per ogni nuova tappa.",
+        "events.blind_open_app": "Apri la Mini App per giocare a Carriera al buio: le tappe si scoprono una alla volta.",
+        "events.open_app": "Apri nella Mini App",
+        "app.event.link_club": "Trova l'unico club in cui hanno giocato entrambi i calciatori.",
+        "events.link_open_app": "Apri la Mini App per trovare il club condiviso dai due calciatori.",
+        "app.event.order_career": "Metti in ordine cronologico i cinque club della carriera mostrata.",
+        "events.order_open_app": "Apri la Mini App per riordinare le tappe della carriera.",
         "app.event.career": "Indovina le squadre in cui ha giocato il calciatore indicato.",
         "app.event.father_son": "Indovina la coppia padre e figlio mostrata nell’immagine.",
         "app.event.transfer_guess": "Indovina il calciatore dal trasferimento mostrato.",
         "app.event.default": "Segui le istruzioni della sfida di oggi.",
-        "app.intro": "Apri la mini app per giocare la sfida di oggi, allenarti, sfidare gli amici e partecipare agli eventi. Ritrovi lo stesso profilo, classifiche e archivio. I comandi restano disponibili.",
+        "app.intro": "Apri la mini app per giocare la sfida di oggi, allenarti, sfidare gli amici e partecipare agli eventi. Ritrovi lo stesso profilo, classifiche e archivio. Tutto il resto si trova nel menu qui sotto.",
         "app.daily_invite": "La sfida di oggi ti aspetta nella mini app: tocca il pulsante qui sotto per giocare.",
-        "cmd.app": "Apri la mini app e gioca",
         "menu.back": "⬅️ Menu",
 
         # --- descrizioni dei comandi nel menu di Telegram (set_my_commands) ---
-        "cmd.start": "Registrati e apri il menu",
-        "cmd.show": "La sfida di oggi",
-        "cmd.stats": "Le tue statistiche",
-        "cmd.top": "Classifica generale",
-        "cmd.events": "Centro eventi",
-        "cmd.archive": "Rigioca le sfide passate",
-        "cmd.training": "Sfide passate a raffica",
-        "cmd.league": "Le tue leghe private",
+        "cmd.start": "Registrati e apri la mini app",
         "cmd.notify": "Attiva o disattiva le notifiche",
         "cmd.language": "Cambia lingua",
         "cmd.forgetme": "Cancella account e dati di gioco",
@@ -332,7 +327,7 @@ TRANSLATIONS = {
         "cmd.help": "Come si gioca",
 
         # --- risposta libera (senza /guess) ---
-        "guess.free_text_hint": "💬 Scrivimi il nome del calciatore per tentare la sfida di oggi, oppure usa /show per rivederla.",
+        "guess.free_text_hint": "💬 Scrivimi il nome del calciatore per tentare la sfida di oggi, oppure apri /start per rivederla dal menu.",
         "guess.typo_note": "\n✍️ Accettata anche se avevi scritto «{written}».",
 
         # --- striscia, condivisione e archivio ---
@@ -343,6 +338,7 @@ TRANSLATIONS = {
         "share.button_card": "📸 La figurina",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.cta": "Riesci a fare meglio? 👉 {link}",
         "share.archive_title": "🗄 Guess the Player #{number} (archivio)",
 
         "feedback.header": "🔎 Rispetto a {name}:",
@@ -359,14 +355,15 @@ TRANSLATIONS = {
         "training.private_only": "L'allenamento si fa in chat privata con me.",
         "training.not_registered": "❗ Devi registrarti con /start prima di allenarti.",
         "training.empty": "🏋️ Non ci sono ancora sfide passate da riproporre: torna qui fra qualche giorno.",
-        "training.opened": "🏋️ <b>Allenamento</b>: scrivi il nome del calciatore.\nNon vale punti e non tocca la sfida di oggi. Hai {attempts} tentativi.\nTorna alla sfida di oggi con /today.",
+        "training.opened": "🏋️ <b>Allenamento</b>: scrivi il nome del calciatore.\nNon vale punti e non tocca la sfida di oggi. Hai {attempts} tentativi.\nEsci con il bottone qui sotto per tornare alla sfida di oggi.",
         "training.correct": "✅ Preso in {attempts} tentativi!\nNessun punto: è allenamento.",
         "training.wrong": "❌ No. Tentativi rimasti: {attempts_left}.",
         "training.wrong_last": "❌ Tentativi finiti: era {answer}.",
         "training.revealed": "👀 Era {answer}.",
-        "training.not_open": "Non hai nessuna sfida di allenamento aperta: /training per cominciarne una.",
-        "training.gone": "❗ Quella sfida di allenamento non è più disponibile: /training per un'altra.",
-        "training.exited": "👋 Allenamento chiuso: /show per la sfida di oggi.",
+        "training.not_open": "Non hai nessuna sfida di allenamento aperta: apri l'Allenamento dal menu per cominciarne una.",
+        "training.gone": "❗ Quella sfida di allenamento non è più disponibile: apri l'Allenamento dal menu per un'altra.",
+        "training.exited": "👋 Allenamento chiuso. Scrivimi il nome del calciatore per la sfida di oggi.",
+        "training.button_exit": "🚪 Torna a oggi",
 
         "group.private_hint": "👥 Questa è una modalità da gruppo: aggiungimi a un gruppo e scrivi /round. Qui in privato c'è /training.",
         "group.empty": "👥 Non ci sono ancora sfide passate da riproporre in un round.",
@@ -398,50 +395,49 @@ TRANSLATIONS = {
         "archive.title": "🗂 <b>Archivio</b>\nRigioca le sfide dei giorni scorsi: non danno punti, valgono per il gusto di riuscirci.\nScegli un giorno:",
         "archive.empty": "🗂 Non c'è ancora nessuna sfida in archivio.",
         "archive.not_registered": "❗ Devi registrarti con /start prima di usare l'archivio.",
-        "archive.opened": "🗂 Sfida del {date}. Scrivi il nome del calciatore: questa non assegna punti.\nTorna alla sfida di oggi con /today.",
+        "archive.opened": "🗂 Sfida del {date}. Scrivi il nome del calciatore: questa non assegna punti.\nTorna alla sfida di oggi col bottone qui sotto.",
         "archive.missing_day": "❗ Quella sfida non è più disponibile.",
-        "archive.correct": "✅ Preso! Sfida del {date} recuperata in {attempts} tentativi.\nScegli un altro giorno con /archive o torna a oggi con /today.",
+        "archive.correct": "✅ Preso! Sfida del {date} recuperata in {attempts} tentativi.\nApri un altro giorno dal menu (Archivio), oppure scrivimi già il nome per la sfida di oggi.",
         "archive.wrong": "❌ No. Tentativi rimasti per questa sfida: {attempts_left}.",
-        "archive.wrong_last": "❌ Tentativi finiti: era {answer}.\nScegli un altro giorno con /archive o torna a oggi con /today.",
-        "archive.already_solved": "✅ Questa sfida l'avevi già recuperata. Scegline un'altra con /archive.",
-        "archive.no_attempts": "❌ Hai finito i tentativi su questa sfida. Scegline un'altra con /archive.",
-        "archive.exited": "👋 Torniamo alla sfida di oggi: /show per rivederla.",
-        "archive.not_in_archive": "Non stai giocando nessuna sfida d'archivio. Aprine una con /archive.",
+        "archive.wrong_last": "❌ Tentativi finiti: era {answer}.\nApri un altro giorno dal menu (Archivio), oppure scrivimi già il nome per la sfida di oggi.",
+        "archive.already_solved": "✅ Questa sfida l'avevi già recuperata. Apri un altro giorno dal menu, o torna a oggi col bottone qui sotto.",
+        "archive.no_attempts": "❌ Hai finito i tentativi su questa sfida. Apri un altro giorno dal menu, o torna a oggi col bottone qui sotto.",
+        "archive.exited": "👋 Torniamo alla sfida di oggi: scrivimi il nome del calciatore.",
+        "archive.not_in_archive": "Non stai giocando nessuna sfida d'archivio. Apri l'Archivio dal menu.",
         "archive.button_today": "🎯 Torna a oggi",
-        "cmd.today": "Torna alla sfida di oggi",
 
         # --- leghe private ---
-        "league.intro": "👥 <b>Le tue leghe</b>\nUna lega è una classifica privata fra amici: si contano i punti che fai da quando ne fai parte.\n\nCrea la tua con <code>/league_create Nome della lega</code> o entra in una con <code>/league_join CODICE</code>.",
-        "league.none": "👥 Non fai parte di nessuna lega.\n\nCreane una con <code>/league_create Nome della lega</code>, oppure entra in una esistente con <code>/league_join CODICE</code>.",
-        "league.usage_create": "Uso: <code>/league_create Nome della lega</code>",
-        "league.usage_join": "Uso: <code>/league_join CODICE</code>",
-        "league.usage_leave": "Uso: <code>/league_leave CODICE</code>",
+        "league.intro": "👥 <b>Le tue leghe</b>\nUna lega è una classifica privata fra amici: si contano i punti che fai da quando ne fai parte.\n\nCreane una o entra in una esistente con i bottoni qui sotto.",
+        "league.none": "👥 Non fai parte di nessuna lega.\n\nCreane una o entra in una esistente con i bottoni qui sotto.",
+        "league.usage_create": "✏️ Scrivimi il nome della nuova lega.",
+        "league.usage_join": "✏️ Scrivimi il codice della lega a cui vuoi entrare.",
+        "league.usage_leave": "✏️ Scrivimi il codice della lega da cui vuoi uscire.",
         "league.name_too_long": "❗ Il nome della lega può essere lungo al massimo {max} caratteri.",
         "league.created": "✅ Lega <b>{name}</b> creata!\nCodice: <code>{code}</code>\n\nInvita chi vuoi con questo link:\n{link}",
-        "league.invite": "🔗 Invita nella lega <b>{name}</b>:\n{link}\n\nOppure fagli usare <code>/league_join {code}</code>.",
-        "league.joined": "✅ Sei entrato nella lega <b>{name}</b>! Vedi la classifica con /league.",
-        "league.already_member": "Fai già parte di questa lega. Vedi la classifica con /league.",
+        "league.invite": "🔗 Invita nella lega <b>{name}</b>:\n{link}",
+        "league.joined": "✅ Sei entrato nella lega <b>{name}</b>! Vedi la classifica dal menu (Leghe).",
+        "league.already_member": "Fai già parte di questa lega. Vedi la classifica dal menu (Leghe).",
         "league.not_found": "❗ Nessuna lega con il codice <code>{code}</code>.",
         "league.full": "❗ Questa lega è piena ({max} membri).",
-        "league.limit_reached": "❗ Puoi far parte di al massimo {max} leghe. Escine da una con <code>/league_leave CODICE</code>.",
+        "league.limit_reached": "❗ Puoi far parte di al massimo {max} leghe. Escine da una prima di crearne o entrarne un'altra.",
         "league.left": "👋 Hai lasciato la lega <b>{name}</b>.",
         "league.not_member": "❗ Non fai parte di questa lega.",
         "league.leaderboard_title": "👥 <b>{name}</b>\nCodice: <code>{code}</code>\n\n",
         "league.leaderboard_empty": "Ancora nessun punto in questa lega: il primo che indovina apre la classifica.",
         "league.not_registered": "❗ Devi registrarti con /start prima di usare le leghe.",
         "league.button_invite": "🔗 Invita",
-        "cmd.league_create": "Crea una lega privata",
-        "cmd.league_join": "Entra in una lega con il codice",
+        "league.button_leave": "🚪 Esci dalla lega",
+        "league.button_create": "➕ Crea una lega",
+        "league.button_join": "🔑 Entra in una lega",
 
-        # Soluzione di una giornata gia' chiusa (/solution)
+        # Soluzione di una giornata gia' chiusa (aperta dal menu)
         "solution.usage": (
             "🗝 <b>Soluzione</b>\n"
-            "/solution — la giornata di ieri.\n"
-            "/solution 06/09/26 — una giornata precisa, se e' gia' chiusa."
+            "Apri la Soluzione dal menu per la giornata di ieri."
         ),
         "solution.not_registered": "❗ Devi registrarti con /start prima.",
-        "solution.bad_date": "❗ Non ho capito la data: scrivila come 06/09/26, oppure usa /solution da solo per la giornata di ieri.",
-        "solution.still_open": "🔒 Quella giornata è ancora aperta: la soluzione arriva a mezzanotte, quando si chiude. Intanto giocala con /show.",
+        "solution.bad_date": "❗ Non ho capito la data: scrivila come 06/09/26.",
+        "solution.still_open": "🔒 Quella giornata è ancora aperta: la soluzione arriva a mezzanotte, quando si chiude. Intanto giocala dal menu.",
         "solution.missing": "❗ Per il {date} non risulta nessuna sfida.",
         "solution.caption": (
             "🗝 <b>Sfida del {date}</b> (#{number})\n\n"
@@ -472,11 +468,11 @@ TRANSLATIONS = {
         "notify.already_enabled": "🔔 Le notifiche sono già attive: a mezzanotte ti dico chi era.",
 
         # Eventi: sessione aperta e uscita
-        "events.exited": "👋 Evento chiuso: /show per la sfida di oggi.",
-        "events.not_open": "❗ Quell'evento non è più in corso: /events per vedere quello attivo.",
+        "events.exited": "👋 Evento chiuso. Scrivimi il nome del calciatore per la sfida di oggi.",
+        "events.not_open": "❗ Quell'evento non è più in corso: apri gli Eventi dal menu per vedere quello attivo.",
+        "events.button_exit": "🚪 Torna a oggi",
 
         "menu.solution": "🗝 Soluzione",
-        "cmd.solution": "La soluzione di una giornata già chiusa",
         "job.rate_line": "\n📊 L'ha indovinato il {percent}% di chi ci ha provato.",
 
         # --- Negozio (cosmetici pagati in Stelle di Telegram) ---
@@ -509,7 +505,7 @@ TRANSLATIONS = {
         "shop.worn_tag": "\U0001f455 Ce l'hai addosso adesso.",
         "shop.owned_tag": "\u2705 È già tuo.",
         "shop.bundle_contains": "Dentro c'è: {items}.",
-        "shop.thanks": "\u2b50 Grazie! <b>{item}</b> è tuo: lo trovi in /shop, da indossare quando vuoi.",
+        "shop.thanks": "\u2b50 Grazie! <b>{item}</b> è tuo: lo trovi nel negozio (menu), da indossare quando vuoi.",
         "shop.refund_hint": "Se hai cambiato idea, scrivilo qui in chat entro 21 giorni e ti rimborsiamo le Stelle.",
         "shop.delivery_problem": "\u2757 Qualcosa è andato storto nella consegna. Scrivilo qui: il pagamento è registrato e si sistema.",
         "shop.error_unknown_item": "Questo oggetto non esiste più.",
@@ -518,7 +514,6 @@ TRANSLATIONS = {
         "shop.error_not_owned": "Devi prima comprarlo.",
         "shop.error_not_equippable": "Questa collezione contiene più alternative: scegli i singoli oggetti da indossare.",
         "menu.shop": "\U0001f6cd Negozio",
-        "cmd.shop": "Skin e distintivi con le Stelle",
         "shop.legal_button": "\U0001f4c4 Termini e privacy",
         "shop.privacy_button": "🔒 Privacy",
         "shop.equip_all": "👕 Indossa tutto",
@@ -530,9 +525,10 @@ TRANSLATIONS = {
     },
     "es": {
         "common.private_only": "❗ Este comando solo se puede usar en un chat privado.",
-        "common.unexpected_error": ("⚠️ Algo ha salido mal. Consulta /show o /stats antes de reintentar: "
+        "common.unexpected_error": ("⚠️ Algo ha salido mal. Consulta el menú antes de reintentar: "
                                     "el intento podría estar ya registrado. Referencia: {reference}."),
         "common.no_challenge": "❗ Todavía no hay un desafío diario disponible.",
+        "feature.disabled": "⏸️ Esta función no está disponible temporalmente. Inténtalo más tarde.",
         "forgetme.private_only": "❗ Por seguridad, usa /forgetme en el chat privado con el bot.",
         "forgetme.not_registered": "No hay ninguna cuenta registrada que borrar.",
         "forgetme.confirm": ("⚠️ Esta operación es definitiva: borrará tu cuenta, datos de juego y participaciones en ligas. "
@@ -545,31 +541,24 @@ TRANSLATIONS = {
         "paysupport.sent": "✅ Solicitud enviada al responsable. Recibirás la respuesta en este chat.",
         "paysupport.error": "❌ La asistencia de compras no está disponible en este momento. Inténtalo más tarde.",
 
-        "start.welcome_new": "¡Bienvenido, {name}! Tu cuenta está lista: elige cómo jugar en el menú de abajo.",
+        "start.welcome_new": "¡Bienvenido, {name}! Tu cuenta está lista: abre la mini app para empezar.",
         "start.welcome_back": "¡Hola de nuevo, {name}!",
         "start.referral_attached": "¡Invitación vinculada! Completa 5 retos diarios en días distintos, ganando o agotando los intentos. Quien te invitó verá tu nombre y el progreso hasta 5/5 y podrá desbloquear recompensas exclusivas.",
 
         "help.message": (
-            "🛠️ Cómo se juega:\n\n"
-            "Cada día una trayectoria que adivinar. En el chat privado basta con escribir el nombre del futbolista: no hace falta ningún comando, y tienes 3 intentos.\n\n"
-            "📋 Comandos:\n"
-            "/menu - Abre el menú con todo lo que se puede hacer.\n"
-            "/show - Muestra el desafío de hoy.\n"
-            "/solution - Quién era el futbolista de un día ya cerrado.\n"
-            "/guess <respuesta> - La forma clásica de responder, si le tienes cariño.\n"
-            "/stats - Tus estadísticas, la racha y los trofeos.\n"
-            "/top - La clasificación general y la del mes.\n"
-            "/events - El centro de eventos.\n"
-            "/archive - Vuelve a jugar los desafíos de días pasados (sin puntos).\n"
-            "/training - Desafíos pasados en cadena, sin puntos.\n"
-            "/round - En un grupo: un round para todos, gana quien responde primero.\n"
-            "/standings - En un grupo: la clasificación de ese grupo.\n"
-            "/today - Sal del archivo o del entrenamiento y vuelve al desafío de hoy.\n"
-            "/league - Tus ligas privadas; /league_create y /league_join para crear una o entrar.\n"
-            "/notify - Activa o desactiva las notificaciones.\n"
-            "/language - Cambia el idioma del bot.\n"
-            "/legend - Como se lee la imagen de la trayectoria.\n"
+            "⚽ <b>Guess the Player: cómo se juega</b>\n\n"
+            "Cada día hay un futbolista misterioso. Solo ves su trayectoria, equipo por equipo, con temporadas, partidos y goles: tienes que adivinar quién es.\n\n"
+            "🎯 <b>El reto del día</b>\n"
+            "• Tienes 3 intentos. Tras una respuesta incorrecta sabrás si el futbolista que escribiste tiene la misma nacionalidad y la misma posición, y si es más joven o mayor.\n"
+            "• Puedes pedir hasta 2 pistas (nacionalidad y posición): si luego aciertas, cada una cuesta 1 punto.\n"
+            "• El reto vale de 1 a 4 puntos según la dificultad, y quien acierta primero gana 1 punto extra.\n"
+            "• Acierta varios días seguidos para sumar racha: +1 punto desde el 3.er día, +2 desde el 7.º, +3 desde el 30.º.\n"
+            "• A medianoche el reto se cierra y se revela la solución.\n\n"
+            "📱 <b>En la mini app</b>\n"
+            "• Arena: duelos con amigos, entrenamiento, eventos especiales y el archivo para recuperar retos pasados (sin puntos).\n"
+            "• Clasificación, tu perfil con las estadísticas y la tienda."
         ),
+        "help.open_app": "👇 Abre la mini app y empieza a jugar.",
 
         "language.prompt": "🌐 Elige el idioma del bot:",
         "language.confirm": "✅ Idioma configurado en Español.",
@@ -578,7 +567,7 @@ TRANSLATIONS = {
         "guess.wrong_last": (
             "❌ Respuesta incorrecta: se acabaron los intentos de hoy.\n"
             "🔒 Quién era te lo digo a medianoche, cuando el día se cierra: a partir de ahí "
-            "también lo tienes con /solution."
+            "también lo tienes en la Solución, desde el menú."
         ),
         "guess.wrong_remaining": "❌ Respuesta incorrecta, ¡inténtalo de nuevo! Intentos restantes: {attempts_left}.",
         "guess.correct": "✅ ¡Correcto! Has ganado {points} puntos.\n{bonus_message}",
@@ -675,7 +664,7 @@ TRANSLATIONS = {
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Escribe el nombre aquí en privado: tienes {attempts} intentos.\n"
-            "Con /today vuelves al desafío de hoy."
+            "Sal con el botón de abajo para volver al desafío de hoy."
         ),
         "events.player_message.career": (
             "🧠 <b>Modo carrera</b>\n\n"
@@ -683,7 +672,7 @@ TRANSLATIONS = {
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Escribe aquí los equipos separados por comas, ej: Roma, Manchester United, Toronto FC\n"
-            "(máximo {max_answers} por intento). Tienes {attempts} intentos; con /today vuelves al desafío de hoy."
+            "(máximo {max_answers} por intento). Tienes {attempts} intentos; sal con el botón de abajo para volver al desafío de hoy."
         ),
         "events.player_message.father_son": (
             "👨‍👦 <b>Modo padre-hijo</b>\n\n"
@@ -691,7 +680,7 @@ TRANSLATIONS = {
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Escribe aquí el nombre de la pareja: tienes {attempts} intentos.\n"
-            "Con /today vuelves al desafío de hoy."
+            "Sal con el botón de abajo para volver al desafío de hoy."
         ),
         "events.player_message.transfer_guess": (
             "🔄 <b>Modo traspaso</b>\n\n"
@@ -699,19 +688,19 @@ TRANSLATIONS = {
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Escribe el nombre aquí en privado: tienes {attempts} intentos.\n"
-            "Con /today vuelves al desafío de hoy."
+            "Sal con el botón de abajo para volver al desafío de hoy."
         ),
         "events.player_message.default": (
             "🎮 <b>Desafío del día</b>\n\n"
             "🏆 Puntos disponibles: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Escribe aquí tu respuesta: tienes {attempts} intentos.\n"
-            "Con /today vuelves al desafío de hoy."
+            "Sal con el botón de abajo para volver al desafío de hoy."
         ),
 
-        "job.congrats": "🎉 ¡Felicidades por adivinar al futbolista {player} de ayer!\n¡Hay un nuevo desafío diario disponible!\n👉 ¡Usa /show e intenta ser el primero!",
-        "job.missed": "⚠️ No has adivinado al futbolista {player} de ayer.\n📢 ¡Hay un nuevo desafío diario disponible!\n👉 ¡Usa /show para adivinar al futbolista misterioso!",
-        "job.event_mention": "\n\n🎊 Además hay un evento especial activo: {event_name}\n🏆 ¡Participa usando /events y sube en la clasificación del evento!",
+        "job.congrats": "🎉 ¡Felicidades por adivinar al futbolista {player} de ayer!\n¡Hay un nuevo desafío diario disponible!\n👉 ¡Abre el bot e intenta ser el primero!",
+        "job.missed": "⚠️ No has adivinado al futbolista {player} de ayer.\n📢 ¡Hay un nuevo desafío diario disponible!\n👉 ¡Abre el bot para adivinar al futbolista misterioso!",
+        "job.event_mention": "\n\n🎊 Además hay un evento especial activo: {event_name}\n🏆 ¡Participa desde el menú del bot y sube en la clasificación del evento!",
         "job.unknown_event": "Evento Desconocido",
         "job.player_fallback": "de ayer",
         "job.feedback_line": "\n\nSi tienes ideas para mejorar el bot o una nueva función que te gustaría ver, ¡manda un mensaje a @gabbente con tu propuesta!",
@@ -744,32 +733,31 @@ TRANSLATIONS = {
         "menu.app": "📱 Jugar en la mini app",
         "app.duel": "Abrir el duelo entre amigos",
         "app.event.path": "Adivina al futbolista por su trayectoria.",
+        "app.event.blind_path": "Adivina al futbolista: descubre una etapa cada vez y pierde un punto por cada nueva etapa.",
+        "events.blind_open_app": "Abre la Mini App para jugar Carrera a oscuras: las etapas se revelan una a una.",
+        "events.open_app": "Abrir en la Mini App",
+        "app.event.link_club": "Encuentra el único club en el que jugaron ambos futbolistas.",
+        "events.link_open_app": "Abre la Mini App para encontrar el club compartido por ambos futbolistas.",
+        "app.event.order_career": "Ordena cronológicamente los cinco clubes de la carrera mostrada.",
+        "events.order_open_app": "Abre la Mini App para ordenar las etapas de la carrera.",
         "app.event.career": "Adivina los equipos en los que jugó el futbolista indicado.",
         "app.event.father_son": "Adivina la pareja de padre e hijo de la imagen.",
         "app.event.transfer_guess": "Adivina al futbolista por el traspaso mostrado.",
         "app.event.default": "Sigue las instrucciones del reto de hoy.",
-        "app.intro": "Abre la mini app para jugar el reto de hoy, entrenar, retar a tus amigos y participar en eventos. Encontrarás el mismo perfil, las clasificaciones y el archivo. Los comandos siguen disponibles.",
+        "app.intro": "Abre la mini app para jugar el reto de hoy, entrenar, retar a tus amigos y participar en eventos. Encontrarás el mismo perfil, las clasificaciones y el archivo. Todo lo demás está en el menú de abajo.",
         "app.daily_invite": "El reto de hoy te espera en la mini app: toca el botón de abajo para jugar.",
-        "cmd.app": "Abre la mini app y juega",
         "menu.back": "⬅️ Menú",
 
         # --- descripciones de los comandos (set_my_commands) ---
-        "cmd.start": "Regístrate y abre el menú",
-        "cmd.show": "El desafío de hoy",
-        "cmd.stats": "Tus estadísticas",
-        "cmd.top": "Clasificación general",
-        "cmd.events": "Centro de eventos",
-        "cmd.archive": "Vuelve a jugar desafíos pasados",
-        "cmd.training": "Desafíos pasados en cadena",
-        "cmd.league": "Tus ligas privadas",
+        "cmd.start": "Regístrate y abre la mini app",
         "cmd.notify": "Activa o desactiva las notificaciones",
         "cmd.language": "Cambiar idioma",
         "cmd.forgetme": "Borra tu cuenta y datos de juego",
-        "cmd.paysupport": "Help with purchases",
+        "cmd.paysupport": "Ayuda con las compras",
         "cmd.help": "Cómo se juega",
 
         # --- respuesta libre (sin /guess) ---
-        "guess.free_text_hint": "💬 Escribeme el nombre del futbolista para intentar el desafio de hoy, o usa /show para verlo otra vez.",
+        "guess.free_text_hint": "💬 Escríbeme el nombre del futbolista para intentar el desafío de hoy, o abre /start para volver a verlo desde el menú.",
         "guess.typo_note": "\n✍️ Aceptada aunque escribiste «{written}».",
 
         # --- striscia, condivisione e archivio ---
@@ -780,6 +768,7 @@ TRANSLATIONS = {
         "share.button_card": "📸 El cromo",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.cta": "¿Puedes hacerlo mejor? 👉 {link}",
         "share.archive_title": "🗄 Guess the Player #{number} (archivo)",
 
         "feedback.header": "🔎 Comparado con {name}:",
@@ -796,14 +785,15 @@ TRANSLATIONS = {
         "training.private_only": "El entrenamiento se juega en chat privado conmigo.",
         "training.not_registered": "❗ Regístrate con /start antes de entrenar.",
         "training.empty": "🏋️ Todavía no hay desafíos pasados que reproponer: vuelve dentro de unos días.",
-        "training.opened": "🏋️ <b>Entrenamiento</b>: escribe el nombre del futbolista.\nNo da puntos y no toca el desafío de hoy. Tienes {attempts} intentos.\nVuelve al desafío de hoy con /today.",
+        "training.opened": "🏋️ <b>Entrenamiento</b>: escribe el nombre del futbolista.\nNo da puntos y no toca el desafío de hoy. Tienes {attempts} intentos.\nSal con el botón de abajo para volver al desafío de hoy.",
         "training.correct": "✅ ¡Acertado en {attempts} intentos!\nSin puntos: es entrenamiento.",
         "training.wrong": "❌ No. Intentos restantes: {attempts_left}.",
         "training.wrong_last": "❌ Se acabaron los intentos: era {answer}.",
         "training.revealed": "👀 Era {answer}.",
-        "training.not_open": "No tienes ningún entrenamiento abierto: /training para empezar uno.",
-        "training.gone": "❗ Ese entrenamiento ya no está disponible: /training para otro.",
-        "training.exited": "👋 Entrenamiento cerrado: /show para el desafío de hoy.",
+        "training.not_open": "No tienes ningún entrenamiento abierto: abre el Entrenamiento desde el menú para empezar uno.",
+        "training.gone": "❗ Ese entrenamiento ya no está disponible: abre el Entrenamiento desde el menú para otro.",
+        "training.exited": "👋 Entrenamiento cerrado. Escríbeme el nombre del futbolista para el desafío de hoy.",
+        "training.button_exit": "🚪 Volver a hoy",
 
         "group.private_hint": "👥 Esta es una modalidad de grupo: añádeme a un grupo y escribe /round. Aquí en privado está /training.",
         "group.empty": "👥 Todavía no hay desafíos pasados para un round.",
@@ -835,50 +825,49 @@ TRANSLATIONS = {
         "archive.title": "🗂 <b>Archivo</b>\nVuelve a jugar los desafíos de días pasados: no dan puntos, valen por el gusto de conseguirlo.\nElige un día:",
         "archive.empty": "🗂 Todavía no hay ningún desafío en el archivo.",
         "archive.not_registered": "❗ Regístrate con /start antes de usar el archivo.",
-        "archive.opened": "🗂 Desafío del {date}. Escribe el nombre del futbolista: este no da puntos.\nVuelve al desafío de hoy con /today.",
+        "archive.opened": "🗂 Desafío del {date}. Escribe el nombre del futbolista: este no da puntos.\nVuelve al desafío de hoy con el botón de abajo.",
         "archive.missing_day": "❗ Ese desafío ya no está disponible.",
-        "archive.correct": "✅ ¡Bien! Desafío del {date} recuperado en {attempts} intentos.\nElige otro día con /archive o vuelve a hoy con /today.",
+        "archive.correct": "✅ ¡Bien! Desafío del {date} recuperado en {attempts} intentos.\nAbre otro día desde el menú (Archivo), o escríbeme ya el nombre para el desafío de hoy.",
         "archive.wrong": "❌ No. Intentos restantes en este desafío: {attempts_left}.",
-        "archive.wrong_last": "❌ Se acabaron los intentos: era {answer}.\nElige otro día con /archive o vuelve a hoy con /today.",
-        "archive.already_solved": "✅ Este desafío ya lo habías recuperado. Elige otro con /archive.",
-        "archive.no_attempts": "❌ Se acabaron tus intentos en este desafío. Elige otro con /archive.",
-        "archive.exited": "👋 Volvemos al desafío de hoy: /show para verlo.",
-        "archive.not_in_archive": "No estás jugando ningún desafío del archivo. Abre uno con /archive.",
+        "archive.wrong_last": "❌ Se acabaron los intentos: era {answer}.\nAbre otro día desde el menú (Archivo), o escríbeme ya el nombre para el desafío de hoy.",
+        "archive.already_solved": "✅ Este desafío ya lo habías recuperado. Abre otro día desde el menú, o vuelve a hoy con el botón de abajo.",
+        "archive.no_attempts": "❌ Se acabaron tus intentos en este desafío. Abre otro día desde el menú, o vuelve a hoy con el botón de abajo.",
+        "archive.exited": "👋 Volvemos al desafío de hoy: escríbeme el nombre del futbolista.",
+        "archive.not_in_archive": "No estás jugando ningún desafío del archivo. Abre el Archivo desde el menú.",
         "archive.button_today": "🎯 Volver a hoy",
-        "cmd.today": "Vuelve al desafío de hoy",
 
-        # --- leghe private ---
-        "league.intro": "👥 <b>Tus ligas</b>\nUna liga es una clasificación privada entre amigos: cuentan los puntos que haces desde que entras.\n\nCrea la tuya con <code>/league_create Nombre de la liga</code> o entra en una con <code>/league_join CÓDIGO</code>.",
-        "league.none": "👥 No estás en ninguna liga.\n\nCrea una con <code>/league_create Nombre de la liga</code>, o entra en una existente con <code>/league_join CÓDIGO</code>.",
-        "league.usage_create": "Uso: <code>/league_create Nombre de la liga</code>",
-        "league.usage_join": "Uso: <code>/league_join CÓDIGO</code>",
-        "league.usage_leave": "Uso: <code>/league_leave CÓDIGO</code>",
+        # --- ligas privadas ---
+        "league.intro": "👥 <b>Tus ligas</b>\nUna liga es una clasificación privada entre amigos: cuentan los puntos que haces desde que entras.\n\nCrea una o entra en una existente con los botones de abajo.",
+        "league.none": "👥 No estás en ninguna liga.\n\nCrea una o entra en una existente con los botones de abajo.",
+        "league.usage_create": "✏️ Escríbeme el nombre de la nueva liga.",
+        "league.usage_join": "✏️ Escríbeme el código de la liga a la que quieres entrar.",
+        "league.usage_leave": "✏️ Escríbeme el código de la liga que quieres dejar.",
         "league.name_too_long": "❗ El nombre de la liga puede tener como máximo {max} caracteres.",
         "league.created": "✅ ¡Liga <b>{name}</b> creada!\nCódigo: <code>{code}</code>\n\nInvita a quien quieras con este enlace:\n{link}",
-        "league.invite": "🔗 Invita a la liga <b>{name}</b>:\n{link}\n\nO que usen <code>/league_join {code}</code>.",
-        "league.joined": "✅ ¡Has entrado en la liga <b>{name}</b>! Mira la clasificación con /league.",
-        "league.already_member": "Ya formas parte de esta liga. Mira la clasificación con /league.",
+        "league.invite": "🔗 Invita a la liga <b>{name}</b>:\n{link}",
+        "league.joined": "✅ ¡Has entrado en la liga <b>{name}</b>! Mira la clasificación desde el menú (Ligas).",
+        "league.already_member": "Ya formas parte de esta liga. Mira la clasificación desde el menú (Ligas).",
         "league.not_found": "❗ No hay ninguna liga con el código <code>{code}</code>.",
         "league.full": "❗ Esta liga está llena ({max} miembros).",
-        "league.limit_reached": "❗ Puedes estar como máximo en {max} ligas. Sal de una con <code>/league_leave CÓDIGO</code>.",
+        "league.limit_reached": "❗ Puedes estar como máximo en {max} ligas. Sal de una antes de crear o entrar en otra.",
         "league.left": "👋 Has dejado la liga <b>{name}</b>.",
         "league.not_member": "❗ No formas parte de esta liga.",
         "league.leaderboard_title": "👥 <b>{name}</b>\nCódigo: <code>{code}</code>\n\n",
         "league.leaderboard_empty": "Todavía no hay puntos en esta liga: el primero que acierte abre la clasificación.",
         "league.not_registered": "❗ Regístrate con /start antes de usar las ligas.",
         "league.button_invite": "🔗 Invitar",
-        "cmd.league_create": "Crea una liga privada",
-        "cmd.league_join": "Entra en una liga con el código",
+        "league.button_leave": "🚪 Salir de la liga",
+        "league.button_create": "➕ Crear una liga",
+        "league.button_join": "🔑 Entrar en una liga",
 
-        # Solución de un día ya cerrado (/solution)
+        # Solución de un día ya cerrado (se abre desde el menú)
         "solution.usage": (
             "🗝 <b>Solución</b>\n"
-            "/solution — el día de ayer.\n"
-            "/solution 06/09/26 — un día concreto, si ya está cerrado."
+            "Abre la Solución desde el menú para el día de ayer."
         ),
         "solution.not_registered": "❗ Regístrate con /start antes.",
-        "solution.bad_date": "❗ No he entendido la fecha: escríbela como 06/09/26, o usa /solution solo para el día de ayer.",
-        "solution.still_open": "🔒 Ese día sigue abierto: la solución llega a medianoche, cuando se cierra. Mientras tanto, juégalo con /show.",
+        "solution.bad_date": "❗ No he entendido la fecha: escríbela como 06/09/26.",
+        "solution.still_open": "🔒 Ese día sigue abierto: la solución llega a medianoche, cuando se cierra. Mientras tanto, juégalo desde el menú.",
         "solution.missing": "❗ No hay ningún desafío para el {date}.",
         "solution.caption": (
             "🗝 <b>Desafío del {date}</b> (#{number})\n\n"
@@ -909,11 +898,11 @@ TRANSLATIONS = {
         "notify.already_enabled": "🔔 Las notificaciones ya están activas: a medianoche te digo quién era.",
 
         # Eventos: sesión abierta y salida
-        "events.exited": "👋 Evento cerrado: /show para el desafío de hoy.",
-        "events.not_open": "❗ Ese evento ya no está en curso: /events para ver el activo.",
+        "events.exited": "👋 Evento cerrado. Escríbeme el nombre del futbolista para el desafío de hoy.",
+        "events.not_open": "❗ Ese evento ya no está en curso: abre los Eventos desde el menú para ver el activo.",
+        "events.button_exit": "🚪 Volver a hoy",
 
         "menu.solution": "🗝 Solución",
-        "cmd.solution": "La solución de un día ya cerrado",
         "job.rate_line": "\n📊 Lo acertó el {percent}% de quienes lo intentaron.",
 
         # --- Tienda (cosmeticos pagados con Estrellas de Telegram) ---
@@ -946,7 +935,7 @@ TRANSLATIONS = {
         "shop.worn_tag": "\U0001f455 Lo llevas puesto ahora.",
         "shop.owned_tag": "\u2705 Ya es tuyo.",
         "shop.bundle_contains": "Dentro hay: {items}.",
-        "shop.thanks": "\u2b50 \u00a1Gracias! <b>{item}</b> es tuyo: lo tienes en /shop para pon\u00e9rtelo cuando quieras.",
+        "shop.thanks": "\u2b50 \u00a1Gracias! <b>{item}</b> es tuyo: lo tienes en la tienda (men\u00fa) para pon\u00e9rtelo cuando quieras.",
         "shop.refund_hint": "Si has cambiado de idea, escr\u00edbelo aqu\u00ed en el chat antes de 21 d\u00edas y te devolvemos las Estrellas.",
         "shop.delivery_problem": "\u2757 Algo ha fallado en la entrega. Escr\u00edbelo aqu\u00ed: el pago est\u00e1 registrado y se arregla.",
         "shop.error_unknown_item": "Este objeto ya no existe.",
@@ -955,7 +944,6 @@ TRANSLATIONS = {
         "shop.error_not_owned": "Primero tienes que comprarlo.",
         "shop.error_not_equippable": "Esta colección contiene varias alternativas: elige los objetos que quieres ponerte.",
         "menu.shop": "\U0001f6cd Tienda",
-        "cmd.shop": "Skins y distintivos con Estrellas",
         "shop.legal_button": "\U0001f4c4 T\u00e9rminos y privacidad",
         "shop.privacy_button": "🔒 Privacidad",
         "shop.equip_all": "👕 Ponerse todo",
@@ -967,9 +955,10 @@ TRANSLATIONS = {
     },
     "en": {
         "common.private_only": "❗ This command can only be used in a private chat.",
-        "common.unexpected_error": ("⚠️ Something went wrong. Check /show or /stats before trying again: "
+        "common.unexpected_error": ("⚠️ Something went wrong. Check the menu before trying again: "
                                     "the attempt may already be recorded. Reference: {reference}."),
         "common.no_challenge": "❗ There's no daily challenge available yet.",
+        "feature.disabled": "⏸️ This feature is temporarily unavailable. Please try again later.",
         "forgetme.private_only": "❗ For safety, use /forgetme in your private chat with the bot.",
         "forgetme.not_registered": "There is no registered account to delete.",
         "forgetme.confirm": ("⚠️ This is permanent: it will delete your account, game data and league memberships. "
@@ -982,31 +971,24 @@ TRANSLATIONS = {
         "paysupport.sent": "✅ Your request was sent to the operator. You will receive the reply in this chat.",
         "paysupport.error": "❌ Purchase support is unavailable right now. Please try again later.",
 
-        "start.welcome_new": "Welcome, {name}! Your account is ready: choose how to play from the menu below.",
+        "start.welcome_new": "Welcome, {name}! Your account is ready: open the mini app to get started.",
         "start.welcome_back": "Hi again, {name}!",
         "start.referral_attached": "Invite linked! Complete 5 daily challenges on different days, by winning or using all attempts. Your inviter will see your name and progress up to 5/5 and can unlock exclusive rewards.",
 
         "help.message": (
-            "🛠️ How to play:\n\n"
-            "Every day there's a career path to guess. In a private chat just type the player's name: no command needed, and you get 3 attempts.\n\n"
-            "📋 Commands:\n"
-            "/menu - Opens the menu with everything you can do.\n"
-            "/show - Show today's challenge.\n"
-            "/solution - Who the player was on a day that has already closed.\n"
-            "/guess <answer> - The old way to answer, if you're attached to it.\n"
-            "/stats - Your stats, streak and trophies.\n"
-            "/top - The global and monthly leaderboards.\n"
-            "/events - The events hub.\n"
-            "/archive - Replay past challenges (no points).\n"
-            "/training - Past challenges back to back, no points.\n"
-            "/round - In a group: one round for everyone, first correct answer wins.\n"
-            "/standings - In a group: that group's standings.\n"
-            "/today - Leave the archive or training and go back to today's challenge.\n"
-            "/league - Your private leagues; /league_create and /league_join to create or join one.\n"
-            "/notify - Turn notifications on or off.\n"
-            "/language - Change the bot's language.\n"
-            "/legend - How to read the career path picture.\n"
+            "⚽ <b>Guess the Player: how to play</b>\n\n"
+            "Every day there's a mystery footballer. You only see their career, club by club, with seasons, appearances and goals: guess who it is.\n\n"
+            "🎯 <b>The daily challenge</b>\n"
+            "• You get 3 attempts. After a wrong answer you find out whether the player you typed shares their nationality and position, and whether they're younger or older.\n"
+            "• You can ask for up to 2 hints (nationality and position): if you then guess right, each one costs 1 point.\n"
+            "• A challenge is worth 1 to 4 points depending on difficulty, and the first to guess it gets 1 bonus point.\n"
+            "• Guess on consecutive days to build a streak: +1 point from day 3, +2 from day 7, +3 from day 30.\n"
+            "• At midnight the challenge closes and the answer is revealed.\n\n"
+            "📱 <b>In the mini app</b>\n"
+            "• Arena: duels with friends, training, special events and the archive to catch up on past challenges (no points).\n"
+            "• Leaderboard, your profile with stats, and the shop."
         ),
+        "help.open_app": "👇 Open the mini app and start playing.",
 
         "language.prompt": "🌐 Choose the bot's language:",
         "language.confirm": "✅ Language set to English.",
@@ -1015,7 +997,7 @@ TRANSLATIONS = {
         "guess.wrong_last": (
             "❌ Wrong answer: no attempts left for today.\n"
             "🔒 I'll tell you who it was at midnight, when the day closes: from then on "
-            "/solution has it too."
+            "you'll also find it in the Solution, from the menu."
         ),
         "guess.wrong_remaining": "❌ Wrong answer, try again! Attempts left: {attempts_left}.",
         "guess.correct": "✅ Correct! You earned {points} points.\n{bonus_message}",
@@ -1112,7 +1094,7 @@ TRANSLATIONS = {
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Just type the name here in private: you have {attempts} attempts.\n"
-            "Use /today to go back to today's challenge."
+            "Exit with the button below to go back to today's challenge."
         ),
         "events.player_message.career": (
             "🧠 <b>Career mode</b>\n\n"
@@ -1120,7 +1102,7 @@ TRANSLATIONS = {
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Type the teams here separated by commas, e.g.: Roma, Manchester United, Toronto FC\n"
-            "(max {max_answers} per attempt). You have {attempts} attempts; use /today to go back to today's challenge."
+            "(max {max_answers} per attempt). You have {attempts} attempts; exit with the button below to go back to today's challenge."
         ),
         "events.player_message.father_son": (
             "👨‍👦 <b>Father-son mode</b>\n\n"
@@ -1128,7 +1110,7 @@ TRANSLATIONS = {
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Type the pair's name here: you have {attempts} attempts.\n"
-            "Use /today to go back to today's challenge."
+            "Exit with the button below to go back to today's challenge."
         ),
         "events.player_message.transfer_guess": (
             "🔄 <b>Transfer mode</b>\n\n"
@@ -1136,19 +1118,19 @@ TRANSLATIONS = {
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Just type the name here in private: you have {attempts} attempts.\n"
-            "Use /today to go back to today's challenge."
+            "Exit with the button below to go back to today's challenge."
         ),
         "events.player_message.default": (
             "🎮 <b>Challenge of the day</b>\n\n"
             "🏆 Points available: <b>{points}</b>\n"
             "{bonus_msg}\n"
             "✍️ Type your answer here: you have {attempts} attempts.\n"
-            "Use /today to go back to today's challenge."
+            "Exit with the button below to go back to today's challenge."
         ),
 
-        "job.congrats": "🎉 Congrats for guessing yesterday's player, {player}!\nA new daily challenge is available!\n👉 Use /show and try to be the first!",
-        "job.missed": "⚠️ You didn't guess yesterday's player, {player}.\n📢 A new daily challenge is available!\n👉 Use /show to guess the mystery player!",
-        "job.event_mention": "\n\n🎊 There's also a special event running: {event_name}\n🏆 Join in with /events and climb the event leaderboard!",
+        "job.congrats": "🎉 Congrats for guessing yesterday's player, {player}!\nA new daily challenge is available!\n👉 Open the bot and try to be the first!",
+        "job.missed": "⚠️ You didn't guess yesterday's player, {player}.\n📢 A new daily challenge is available!\n👉 Open the bot to guess the mystery player!",
+        "job.event_mention": "\n\n🎊 There's also a special event running: {event_name}\n🏆 Join in from the bot's menu and climb the event leaderboard!",
         "job.unknown_event": "Unknown Event",
         "job.player_fallback": "yesterday's",
         "job.feedback_line": "\n\nIf you have ideas to improve the bot or a new feature you'd like to see, message @gabbente with your suggestion!",
@@ -1181,24 +1163,23 @@ TRANSLATIONS = {
         "menu.app": "📱 Play in the mini app",
         "app.duel": "Open friend challenge",
         "app.event.path": "Guess the player from their career path.",
+        "app.event.blind_path": "Guess the player: reveal one stop at a time, losing one point for each new stop.",
+        "events.blind_open_app": "Open the Mini App to play Blind Career: reveal the stops one by one.",
+        "events.open_app": "Open in Mini App",
+        "app.event.link_club": "Find the only club both players played for.",
+        "events.link_open_app": "Open the Mini App to find the club shared by both players.",
+        "app.event.order_career": "Put the five clubs in chronological career order.",
+        "events.order_open_app": "Open the Mini App to put the career stops in order.",
         "app.event.career": "Guess the clubs the named player has played for.",
         "app.event.father_son": "Guess the father and son shown in the image.",
         "app.event.transfer_guess": "Guess the player from the transfer shown.",
         "app.event.default": "Follow the instructions for today’s challenge.",
-        "app.intro": "Open the mini app to play today’s challenge, train, challenge friends and join events. Your profile, leaderboards and archive are all there. Commands remain available.",
+        "app.intro": "Open the mini app to play today’s challenge, train, challenge friends and join events. Your profile, leaderboards and archive are all there. Everything else lives in the menu below.",
         "app.daily_invite": "Today’s challenge is waiting in the mini app: tap the button below to play.",
-        "cmd.app": "Open the mini app and play",
         "menu.back": "⬅️ Menu",
 
         # --- command descriptions (set_my_commands) ---
-        "cmd.start": "Sign up and open the menu",
-        "cmd.show": "Today's challenge",
-        "cmd.stats": "Your stats",
-        "cmd.top": "Global leaderboard",
-        "cmd.events": "Event hub",
-        "cmd.archive": "Replay past challenges",
-        "cmd.training": "Past challenges back to back",
-        "cmd.league": "Your private leagues",
+        "cmd.start": "Sign up and open the mini app",
         "cmd.notify": "Turn notifications on or off",
         "cmd.language": "Change language",
         "cmd.forgetme": "Delete your account and game data",
@@ -1206,7 +1187,7 @@ TRANSLATIONS = {
         "cmd.help": "How to play",
 
         # --- free-text answers (no /guess) ---
-        "guess.free_text_hint": "💬 Just type the player's name to try today's challenge, or use /show to see it again.",
+        "guess.free_text_hint": "💬 Just type the player's name to try today's challenge, or open /start to see it again from the menu.",
         "guess.typo_note": "\n✍️ Accepted even though you typed «{written}».",
 
         # --- striscia, condivisione e archivio ---
@@ -1217,6 +1198,7 @@ TRANSLATIONS = {
         "share.button_card": "📸 The card",
         "share.title": "⚽ Guess the Player #{number}",
         "share.streak": "🔥 {streak}",
+        "share.cta": "Can you do better? 👉 {link}",
         "share.archive_title": "🗄 Guess the Player #{number} (archive)",
 
         "feedback.header": "🔎 Compared with {name}:",
@@ -1233,14 +1215,15 @@ TRANSLATIONS = {
         "training.private_only": "Training is played in a private chat with me.",
         "training.not_registered": "❗ Sign up with /start before training.",
         "training.empty": "🏋️ There are no past challenges to replay yet: come back in a few days.",
-        "training.opened": "🏋️ <b>Training</b>: type the player's name.\nNo points, and it doesn't touch today's challenge. You have {attempts} attempts.\nBack to today's challenge with /today.",
+        "training.opened": "🏋️ <b>Training</b>: type the player's name.\nNo points, and it doesn't touch today's challenge. You have {attempts} attempts.\nExit with the button below to go back to today's challenge.",
         "training.correct": "✅ Got it in {attempts} attempts!\nNo points: this is training.",
         "training.wrong": "❌ No. Attempts left: {attempts_left}.",
         "training.wrong_last": "❌ Out of attempts: it was {answer}.",
         "training.revealed": "👀 It was {answer}.",
-        "training.not_open": "You have no training challenge open: /training to start one.",
-        "training.gone": "❗ That training challenge is no longer available: /training for another one.",
-        "training.exited": "👋 Training closed: /show for today's challenge.",
+        "training.not_open": "You have no training challenge open: open Training from the menu to start one.",
+        "training.gone": "❗ That training challenge is no longer available: open Training from the menu for another one.",
+        "training.exited": "👋 Training closed. Type the player's name for today's challenge.",
+        "training.button_exit": "🚪 Back to today",
 
         "group.private_hint": "👥 This is a group mode: add me to a group and type /round. Here in private there is /training.",
         "group.empty": "👥 There are no past challenges to turn into a round yet.",
@@ -1272,50 +1255,49 @@ TRANSLATIONS = {
         "archive.title": "🗂 <b>Archive</b>\nReplay past challenges: they award no points, they're just for the satisfaction.\nPick a day:",
         "archive.empty": "🗂 There's nothing in the archive yet.",
         "archive.not_registered": "❗ Sign up with /start before using the archive.",
-        "archive.opened": "🗂 Challenge from {date}. Type the player's name: this one awards no points.\nGo back to today's challenge with /today.",
+        "archive.opened": "🗂 Challenge from {date}. Type the player's name: this one awards no points.\nGo back to today's challenge with the button below.",
         "archive.missing_day": "❗ That challenge isn't available any more.",
-        "archive.correct": "✅ Got it! Challenge from {date} solved in {attempts} attempts.\nPick another day with /archive, or go back to today with /today.",
+        "archive.correct": "✅ Got it! Challenge from {date} solved in {attempts} attempts.\nOpen another day from the menu (Archive), or just type today's name here.",
         "archive.wrong": "❌ Nope. Attempts left on this one: {attempts_left}.",
-        "archive.wrong_last": "❌ Out of attempts: it was {answer}.\nPick another day with /archive, or go back to today with /today.",
-        "archive.already_solved": "✅ You already solved this one. Pick another with /archive.",
-        "archive.no_attempts": "❌ No attempts left on this challenge. Pick another with /archive.",
-        "archive.exited": "👋 Back to today's challenge: /show to see it.",
-        "archive.not_in_archive": "You're not playing an archive challenge. Open one with /archive.",
+        "archive.wrong_last": "❌ Out of attempts: it was {answer}.\nOpen another day from the menu (Archive), or just type today's name here.",
+        "archive.already_solved": "✅ You already solved this one. Open another day from the menu, or go back to today with the button below.",
+        "archive.no_attempts": "❌ No attempts left on this challenge. Open another day from the menu, or go back to today with the button below.",
+        "archive.exited": "👋 Back to today's challenge: type the player's name.",
+        "archive.not_in_archive": "You're not playing an archive challenge. Open the Archive from the menu.",
         "archive.button_today": "🎯 Back to today",
-        "cmd.today": "Back to today's challenge",
 
-        # --- leghe private ---
-        "league.intro": "👥 <b>Your leagues</b>\nA league is a private leaderboard among friends: it counts the points you score from the moment you join.\n\nCreate one with <code>/league_create League name</code>, or join one with <code>/league_join CODE</code>.",
-        "league.none": "👥 You're not in any league.\n\nCreate one with <code>/league_create League name</code>, or join an existing one with <code>/league_join CODE</code>.",
-        "league.usage_create": "Usage: <code>/league_create League name</code>",
-        "league.usage_join": "Usage: <code>/league_join CODE</code>",
-        "league.usage_leave": "Usage: <code>/league_leave CODE</code>",
+        # --- private leagues ---
+        "league.intro": "👥 <b>Your leagues</b>\nA league is a private leaderboard among friends: it counts the points you score from the moment you join.\n\nCreate one or join an existing one with the buttons below.",
+        "league.none": "👥 You're not in any league.\n\nCreate one or join an existing one with the buttons below.",
+        "league.usage_create": "✏️ Send me the name of the new league.",
+        "league.usage_join": "✏️ Send me the code of the league you want to join.",
+        "league.usage_leave": "✏️ Send me the code of the league you want to leave.",
         "league.name_too_long": "❗ A league name can be at most {max} characters long.",
         "league.created": "✅ League <b>{name}</b> created!\nCode: <code>{code}</code>\n\nInvite anyone with this link:\n{link}",
-        "league.invite": "🔗 Invite people to <b>{name}</b>:\n{link}\n\nOr have them use <code>/league_join {code}</code>.",
-        "league.joined": "✅ You joined the league <b>{name}</b>! See the standings with /league.",
-        "league.already_member": "You're already in this league. See the standings with /league.",
+        "league.invite": "🔗 Invite people to <b>{name}</b>:\n{link}",
+        "league.joined": "✅ You joined the league <b>{name}</b>! See the standings from the menu (Leagues).",
+        "league.already_member": "You're already in this league. See the standings from the menu (Leagues).",
         "league.not_found": "❗ No league with code <code>{code}</code>.",
         "league.full": "❗ This league is full ({max} members).",
-        "league.limit_reached": "❗ You can be in at most {max} leagues. Leave one with <code>/league_leave CODE</code>.",
+        "league.limit_reached": "❗ You can be in at most {max} leagues. Leave one before creating or joining another.",
         "league.left": "👋 You left the league <b>{name}</b>.",
         "league.not_member": "❗ You're not a member of this league.",
         "league.leaderboard_title": "👥 <b>{name}</b>\nCode: <code>{code}</code>\n\n",
         "league.leaderboard_empty": "No points in this league yet: the first correct answer opens the standings.",
         "league.not_registered": "❗ Sign up with /start before using leagues.",
         "league.button_invite": "🔗 Invite",
-        "cmd.league_create": "Create a private league",
-        "cmd.league_join": "Join a league with its code",
+        "league.button_leave": "🚪 Leave league",
+        "league.button_create": "➕ Create a league",
+        "league.button_join": "🔑 Join a league",
 
-        # Solution of a day that has already closed (/solution)
+        # Solution of a day that has already closed (opened from the menu)
         "solution.usage": (
             "🗝 <b>Solution</b>\n"
-            "/solution — yesterday.\n"
-            "/solution 06/09/26 — a specific day, once it has closed."
+            "Open the Solution from the menu for yesterday."
         ),
         "solution.not_registered": "❗ Sign up with /start first.",
-        "solution.bad_date": "❗ I didn't understand the date: write it as 06/09/26, or use /solution on its own for yesterday.",
-        "solution.still_open": "🔒 That day is still open: the solution comes at midnight, when it closes. In the meantime, play it with /show.",
+        "solution.bad_date": "❗ I didn't understand the date: write it as 06/09/26.",
+        "solution.still_open": "🔒 That day is still open: the solution comes at midnight, when it closes. In the meantime, play it from the menu.",
         "solution.missing": "❗ There is no challenge for {date}.",
         "solution.caption": (
             "🗝 <b>Challenge of {date}</b> (#{number})\n\n"
@@ -1346,11 +1328,11 @@ TRANSLATIONS = {
         "notify.already_enabled": "🔔 Notifications are already on: at midnight I'll tell you who it was.",
 
         # Events: open session and exit
-        "events.exited": "👋 Event closed: /show for today's challenge.",
-        "events.not_open": "❗ That event is no longer running: /events to see the active one.",
+        "events.exited": "👋 Event closed. Type the player's name for today's challenge.",
+        "events.not_open": "❗ That event is no longer running: open Events from the menu to see the active one.",
+        "events.button_exit": "🚪 Back to today",
 
         "menu.solution": "🗝 Solution",
-        "cmd.solution": "The solution of a day that has already closed",
         "job.rate_line": "\n📊 {percent}% of the people who tried got it.",
 
         # --- Shop (cosmetics paid with Telegram Stars) ---
@@ -1383,7 +1365,7 @@ TRANSLATIONS = {
         "shop.worn_tag": "\U0001f455 You are wearing it right now.",
         "shop.owned_tag": "\u2705 It is already yours.",
         "shop.bundle_contains": "Inside: {items}.",
-        "shop.thanks": "\u2b50 Thank you! <b>{item}</b> is yours: find it in /shop and wear it whenever you like.",
+        "shop.thanks": "\u2b50 Thank you! <b>{item}</b> is yours: find it in the shop (menu) and wear it whenever you like.",
         "shop.refund_hint": "Changed your mind? Say so here in the chat within 21 days and we will refund the Stars.",
         "shop.delivery_problem": "\u2757 Something went wrong on delivery. Say so here: the payment is recorded and it can be fixed.",
         "shop.error_unknown_item": "This item no longer exists.",
@@ -1392,7 +1374,6 @@ TRANSLATIONS = {
         "shop.error_not_owned": "You have to buy it first.",
         "shop.error_not_equippable": "This collection contains multiple alternatives: choose the individual items to wear.",
         "menu.shop": "\U0001f6cd Shop",
-        "cmd.shop": "Skins and badges with Stars",
         "shop.legal_button": "\U0001f4c4 Terms and privacy",
         "shop.privacy_button": "🔒 Privacy",
         "shop.equip_all": "👕 Wear full set",

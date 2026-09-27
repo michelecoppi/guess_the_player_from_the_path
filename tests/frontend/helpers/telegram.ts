@@ -1,5 +1,6 @@
 import type { TelegramUser, TelegramWebApp } from "@/telegram/types";
 import { createMockTelegramWebApp } from "@/telegram/mock";
+import { resetTelegramCache } from "@/telegram/webapp";
 
 /**
  * Creates a valid mock TelegramUser with configurable overrides.
@@ -33,6 +34,7 @@ export function setupTestTelegram(overrides: Partial<TelegramWebApp> = {}): {
   mock: TelegramWebApp;
   restore: () => void;
 } {
+  resetTelegramCache();
   const baseMock = createMockTelegramWebApp();
   const mock: TelegramWebApp = {
     ...baseMock,
@@ -54,6 +56,7 @@ export function setupTestTelegram(overrides: Partial<TelegramWebApp> = {}): {
   return {
     mock,
     restore: () => {
+      resetTelegramCache();
       if (originalTelegram !== undefined) {
         (globalThis as any).Telegram = originalTelegram;
         if ((globalThis as any).window) {

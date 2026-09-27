@@ -1,3 +1,4 @@
+import { icon } from "./Icon";
 import { escapeHtml } from "@/utils/format";
 
 export interface ModalProps {
@@ -24,7 +25,7 @@ export function renderModal(props: ModalProps): string {
       <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="${escapeHtml(titleId)}">
         <div class="modal-header">
           <h2 id="${escapeHtml(titleId)}" class="modal-title">${escapeHtml(props.title)}</h2>
-          <button type="button" class="modal-close" id="${escapeHtml(closeButtonId)}" aria-label="Chiudi finestra">✕</button>
+          <button type="button" class="modal-close" id="${escapeHtml(closeButtonId)}" aria-label="Chiudi finestra">${icon("close")}</button>
         </div>
         <div class="modal-body">
           ${props.bodyHtml}

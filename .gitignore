@@ -15,8 +15,10 @@ data/candidates/
 # Worktree locali di sviluppo:
 .worktrees/
 
-# Export JSON di scripts/migrate_firestore.py: dati utente reali, non va committato.
+# Backup Firestore (scripts/backup_firestore.py, migrate_firestore.py) e artifact scaricati per
+# un ripristino (docs/backup-recovery.md): dati utente reali, non vanno committati.
 backup/
+restore-work/
 # Report di coverage locale (in CI si rigenera ad ogni run).
 .coverage
 htmlcov/

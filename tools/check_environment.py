@@ -183,12 +183,10 @@ class EnvironmentValidator:
                 )
 
         # Controllo asset statici WebApp
+        # Sorgenti della Mini App Vite (entry `index.html` alla radice) e pagine legali.
         webapp_files = [
-            "webapp/index.html",
-            "webapp/client.js",
-            "webapp/strings.js",
-            "webapp/arena.js",
-            "webapp/referrals.js",
+            "index.html",
+            "webapp/src/main.ts",
             "webapp/legal.css",
             "webapp/terms.html",
             "webapp/privacy.html",
@@ -200,14 +198,14 @@ class EnvironmentValidator:
                 name="Static Files",
                 status=CheckStatus.FAIL,
                 message=f"File statici della Mini App mancanti: {', '.join(missing_webapp)}",
-                remediation="Ripristina i file della cartella webapp/ da git.",
+                remediation="Ripristina i file mancanti da git.",
             )
         else:
             self.add_result(
                 category="Mini App",
                 name="Static Files",
                 status=CheckStatus.PASS,
-                message="Tutti i file statici della Mini App sono presenti in webapp/",
+                message="Sorgenti della Mini App e pagine legali presenti",
             )
 
         # Controllo frontend foundation (Vite + TypeScript)
@@ -219,14 +217,14 @@ class EnvironmentValidator:
                     category="Mini App",
                     name="Vite Build Artifacts",
                     status=CheckStatus.PASS,
-                    message="Bundle compilato della Mini App V2 presente in webapp/dist/",
+                    message="Bundle compilato della Mini App presente in webapp/dist/",
                 )
             else:
                 self.add_result(
                     category="Mini App",
                     name="Vite Build Artifacts",
                     status=CheckStatus.INFO,
-                    message="Bundle Mini App V2 non ancora compilato (compilabile con 'npm run build')",
+                    message="Bundle della Mini App non ancora compilato (compilabile con 'npm run build')",
                     remediation="Esegui 'npm run build' o 'python -m tools.dev frontend-build'.",
                 )
 
@@ -691,6 +689,71 @@ class EnvironmentValidator:
                     remediation="Per anteprima isolata usa 'make webapp' (porta 8888). Per avviare bot.py imposta PUBLIC_BASE_URL=https://...",
                 )
 
+    def check_observability(self) -> None:
+        """SENTRY_DSN e LOG_FORMAT sono opzionali: senza, i log restano su stdout e Sentry e' spento.
+
+        Il valore del DSN non viene mai stampato: e' una credenziale di invio."""
+        dsn = os.getenv("SENTRY_DSN", "").strip()
+        if not dsn:
+            self.add_result(
+                category="Observability",
+                name="SENTRY_DSN",
+                status=CheckStatus.INFO,
+                message="SENTRY_DSN non impostato: error tracking disattivato, nessuna chiamata a Sentry "
+                        "(opzionale; vedi docs/observability.md).",
+            )
+        elif re.fullmatch(r"https://[^\s@/]+@[^\s/]+(?:/[^\s/]+)*/\d+", dsn):
+            self.add_result(
+                category="Observability",
+                name="SENTRY_DSN",
+                status=CheckStatus.PASS,
+                message="SENTRY_DSN configurato: gli errori vengono inviati a Sentry.",
+            )
+        else:
+            self.add_result(
+                category="Observability",
+                name="SENTRY_DSN",
+                status=CheckStatus.WARN,
+                message="SENTRY_DSN non ha il formato https://<chiave>@<host>/<progetto>: Sentry restera' spento "
+                        "(il bot parte comunque).",
+                remediation="Copia il DSN dalle impostazioni del progetto Sentry (Client Keys).",
+            )
+        salt = os.getenv("OBSERVABILITY_USER_SALT", "").strip()
+        if not salt:
+            self.add_result(
+                category="Observability",
+                name="OBSERVABILITY_USER_SALT",
+                status=CheckStatus.INFO,
+                message="OBSERVABILITY_USER_SALT non impostato: i log non portano user_ref (correlazione per "
+                        "utente disattivata). Opzionale.",
+            )
+        elif len(salt) < 32:
+            self.add_result(
+                category="Observability",
+                name="OBSERVABILITY_USER_SALT",
+                status=CheckStatus.WARN,
+                message=f"OBSERVABILITY_USER_SALT troppo corto ({len(salt)} caratteri): con id Telegram "
+                        "indovinabili la pseudonimizzazione e' debole.",
+                remediation="Usa un valore casuale di almeno 32 caratteri, es. "
+                            "python -c \"import secrets; print(secrets.token_urlsafe(32))\".",
+            )
+        else:
+            self.add_result(
+                category="Observability",
+                name="OBSERVABILITY_USER_SALT",
+                status=CheckStatus.PASS,
+                message="OBSERVABILITY_USER_SALT configurato: user_ref pseudonimo attivo.",
+            )
+        log_format = os.getenv("LOG_FORMAT", "").strip().lower()
+        if log_format and log_format not in ("json", "text"):
+            self.add_result(
+                category="Observability",
+                name="LOG_FORMAT",
+                status=CheckStatus.WARN,
+                message=f"LOG_FORMAT='{log_format}' non valido: si usa il default (json su Cloud Run, text in locale).",
+                remediation="Usa LOG_FORMAT=json oppure LOG_FORMAT=text, o lascialo vuoto.",
+            )
+
     def check_developer_tooling(self) -> None:
         """Verifica la presenza di strumenti e librerie di sviluppo utili (pytest, ruff, mypy, node, gcloud)."""
         # Dipendenze Python
@@ -728,7 +791,7 @@ class EnvironmentValidator:
 
         # Binari esterni: node, gcloud, java
         binaries = [
-            ("node", "Node.js (necessario per node --test tests/client.test.cjs)"),
+            ("node", "Node.js (necessario per build e test della Mini App)"),
             ("gcloud", "Google Cloud SDK (necessario per l'emulatore Firestore)"),
             ("java", "Java JRE/JDK (necessario per l'emulatore Firestore)"),
         ]
@@ -760,6 +823,7 @@ class EnvironmentValidator:
         self.check_firebase_configuration()
         self.check_cloud_tasks_and_hardening()
         self.check_miniapp_and_urls()
+        self.check_observability()
         self.check_developer_tooling()
         return self.results
 

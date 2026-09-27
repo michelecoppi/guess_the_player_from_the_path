@@ -1,3 +1,4 @@
+import type { ResolvedAppearance } from "@/appearance/types";
 /**
  * API request and response data models.
  * Compatible with FastAPI backend endpoints defined in bot.py & services/webapp_api.py.
@@ -61,12 +62,7 @@ export interface ApiDistributionEntry {
   count: number;
 }
 
-export interface ApiCosmetics {
-  equipped?: Record<string, string>;
-  looks?: Record<string, unknown>;
-  owned?: string[];
-  [key: string]: unknown;
-}
+export type ApiCosmetics = ResolvedAppearance;
 
 export interface ApiTrophies {
   pinned?: unknown[];
@@ -75,21 +71,85 @@ export interface ApiTrophies {
   [key: string]: unknown;
 }
 
+export interface ApiLeagueStanding {
+  position: number;
+  profile_id?: number;
+  name: string;
+  points: number;
+  me?: boolean;
+}
+
+export interface ApiLeague {
+  code: string;
+  name: string;
+  members: number;
+  position: number | null;
+  points: number;
+  standings: ApiLeagueStanding[];
+}
+
+export interface ApiPublicProfileItem {
+  id?: string;
+  kind: string;
+  name: string;
+  free?: boolean;
+}
+
+export interface ApiPublicProfileResponse {
+  user: ApiUserSummary;
+  cosmetics: ApiCosmetics;
+  trophies: unknown[];
+  wearing: ApiPublicProfileItem[];
+  wardrobe?: ApiPublicProfileItem[];
+  [key: string]: unknown;
+}
+
+/**
+ * Feature flags (#51) resolved by the server for the authenticated user. Only booleans:
+ * rules, rollout percentages and target lists never reach the client. Hiding a control
+ * based on these is cosmetic; the API still refuses with `FEATURE_DISABLED`.
+ */
+export type FeatureFlagKey =
+  | "arena"
+  | "shop"
+  | "daily_ui"
+  | "hints"
+  | "player_pipeline"
+  | "events_v2"
+  | "leaderboard";
+
+export type ApiResolvedFeatures = Partial<Record<FeatureFlagKey, boolean>>;
+
+export const FEATURE_DISABLED = "FEATURE_DISABLED";
+
 export interface ApiProfileResponse {
   language?: string;
+  features?: ApiResolvedFeatures;
   user: ApiUserSummary;
   cosmetics?: ApiCosmetics;
   trophies?: ApiTrophies;
   today?: ApiTodaySummary;
   distribution?: ApiDistributionEntry[];
   leaderboard?: ApiLeaderboardEntry[];
-  leagues?: unknown[];
+  leagues?: ApiLeague[];
   [key: string]: unknown;
 }
 
 export interface ApiErrorResponse {
   detail: string;
   code?: string;
+  feature?: FeatureFlagKey;
+}
+
+/**
+ * Whether a feature is on for this profile. A missing block or key (an older server) means
+ * enabled: the flags default to the behaviour that existed before them.
+ */
+export function isFeatureEnabled(
+  profile: Pick<ApiProfileResponse, "features"> | null | undefined,
+  key: FeatureFlagKey,
+): boolean {
+  return profile?.features?.[key] !== false;
 }
 
 export interface ApiRequestPayload {
