@@ -15,7 +15,14 @@ control and treatment descriptions, duration, result evidence, and a decision.
   `experiment_assigned` exposure with bounded `experiment_key` and `variant`
   properties. The existing analytics identity pseudonymization applies. If analytics
   is disabled or the registry cannot be read, it returns `None`; treatment callers
-  must use the control behavior in that case.
+  must use the control behavior in that case. A replica caches the registry for at
+  most five seconds and serializes refreshes, so concurrent assignments share one
+  Firestore read. A failed refresh discards the expired snapshot and returns control.
+  The assignment checks the scheduled end time on every call, even with a cached
+  registry, so expiry takes effect immediately. A stop invalidates the cache in the
+  process that writes it; other replicas observe the persisted stop within five
+  seconds. After a restart, the first assignment reads Firestore again. If that
+  read fails, it returns control rather than using an old snapshot.
 - `services/repos/experiments.py` stores up to 100 records in
   `admin_settings/experiments` and changes them in Firestore transactions. Corrupt
   stored records stop writes. The existing backup of the `admin_settings` collection
@@ -51,6 +58,25 @@ After implementing the treatment and a variant-segmented PostHog insight, verify
 python scripts/experiments.py start daily_intro_v1
 python scripts/experiments.py assign daily_intro_v1 --user 123456789
 ```
+
+To interrupt a running experiment before its scheduled end, record an operator
+identity and reason:
+
+```bash
+python scripts/experiments.py stop daily_intro_v1 --operator maintainer --reason "Guardrail failed"
+python scripts/experiments.py show daily_intro_v1
+```
+
+`stop` is terminal and transactional: at most one concurrent operator succeeds;
+later attempts are rejected. If a commit fails under contention, retry the stop
+and inspect the persisted record before taking further action. It retains the plan,
+scheduled window, and already captured PostHog exposures, and stores the stop time,
+reason, and operator in the registry.
+It prevents new assignments on the writing replica immediately and on other
+replicas within the five-second cache TTL. If Firestore is unavailable during a
+refresh, assignments return control; a persisted stop remains effective after
+service restart. A stopped experiment cannot be finished or decided through this
+CLI. The scheduled end also prevents assignments without an operator action.
 
 An experiment cannot be finished before its scheduled duration. Record a bounded
 summary and an HTTPS link to the metric breakdown, then a decision:

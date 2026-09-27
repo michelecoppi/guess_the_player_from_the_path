@@ -34,6 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     create.add_argument("--treatment", required=True)
     start = sub.add_parser("start")
     start.add_argument("key")
+    stop = sub.add_parser("stop")
+    stop.add_argument("key")
+    stop.add_argument("--reason", required=True)
+    stop.add_argument("--operator", required=True)
     finish = sub.add_parser("finish")
     finish.add_argument("key")
     finish.add_argument("--summary", required=True)
@@ -68,6 +72,10 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "start":
         record = store.update(args.key, lambda current: experiments.start(
             current, now=datetime.now(timezone.utc), analytics_ready=_analytics_ready()))
+    elif args.command == "stop":
+        record = store.update(args.key, lambda current: experiments.stop(
+            current, reason=args.reason, operator=args.operator,
+            now=datetime.now(timezone.utc)))
     elif args.command == "finish":
         record = store.update(args.key, lambda current: experiments.finish(
             current, summary=args.summary, evidence_url=args.evidence_url,

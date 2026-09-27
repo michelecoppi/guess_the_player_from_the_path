@@ -1,3 +1,5 @@
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -7,6 +9,13 @@ from services import product_analytics
 from services.repos import experiments as repo
 
 NOW = datetime(2026, 9, 27, tzinfo=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def reset_assignment_cache():
+    exp.clear_assignment_cache()
+    yield
+    exp.clear_assignment_cache()
 
 
 def planned():
@@ -62,6 +71,13 @@ def test_corrupt_registry_is_rejected_before_any_change():
         repo.parse_document(raw)
 
 
+def test_existing_registry_records_without_stop_field_remain_readable():
+    old_record = planned()
+    old_record.pop("stop")
+    parsed = repo.parse_document({"schema_version": 1, "experiments": {"daily_intro_v1": old_record}})
+    assert parsed["daily_intro_v1"]["stop"] is None
+
+
 def test_duplicate_or_missing_lifecycle_fields_rejected():
     plan = planned()
     plan["result"] = {"summary": "fabricated", "evidence_url": "https://example.test"}
@@ -88,3 +104,81 @@ def test_live_assignment_records_a_bounded_exposure(monkeypatch):
     assert len(captured) == 1
     monkeypatch.setattr(product_analytics, "is_enabled", lambda: False)
     assert exp.assign("daily_intro_v1", user_id=42, now=NOW + timedelta(days=1)) is None
+
+
+def test_early_stop_is_audited_and_prevents_assignment():
+    running = exp.start(planned(), now=NOW, analytics_ready=True)
+    stopped = exp.stop(running, reason="Guardrail failed", operator="maintainer", now=NOW + timedelta(days=1))
+    assert stopped["stop"] == {"at": NOW + timedelta(days=1), "reason": "Guardrail failed",
+                               "operator": "maintainer"}
+    assert stopped["hypothesis"] == running["hypothesis"]
+    assert exp.variant_for_subject(stopped, user_id=42, now=NOW + timedelta(days=1)) is None
+    with pytest.raises(ValueError, match="running"):
+        exp.stop(stopped, reason="again", operator="maintainer", now=NOW + timedelta(days=2))
+    with pytest.raises(ValueError, match="before expiry"):
+        exp.stop(running, reason="too late", operator="maintainer", now=NOW + timedelta(days=7))
+
+
+def test_operator_cli_records_stop_reason_and_identity(monkeypatch, capsys):
+    from scripts import experiments as cli
+    running = exp.start(planned(), now=datetime.now(timezone.utc) - timedelta(days=1), analytics_ready=True)
+    monkeypatch.setattr(cli.store, "update", lambda key, change: change(running))
+    assert cli.main(["stop", "daily_intro_v1", "--operator", "alice", "--reason", "Guardrail failed"]) == 0
+    output = capsys.readouterr().out
+    assert '"status": "stopped"' in output
+    assert '"operator": "alice"' in output
+    assert '"reason": "Guardrail failed"' in output
+
+
+def test_assignment_cache_is_single_flight_and_expires_fail_closed(monkeypatch):
+    running = exp.start(planned(), now=NOW, analytics_ready=True)
+    from services.repos import experiments as store
+    reads = []
+    def load():
+        reads.append(1)
+        time.sleep(0.03)
+        return {"daily_intro_v1": running}
+    monkeypatch.setattr(store, "load", load)
+    monkeypatch.setattr(product_analytics, "is_enabled", lambda: True)
+    monkeypatch.setattr(product_analytics, "settings", lambda: product_analytics.Settings(salt="test-salt"))
+    monkeypatch.setattr(product_analytics, "capture", lambda *args, **kwargs: None)
+    now = NOW + timedelta(days=1)
+    first_start = time.perf_counter()
+    assert exp.assign("daily_intro_v1", user_id=42, now=now) is not None
+    cold_latency = time.perf_counter() - first_start
+    warm_start = time.perf_counter()
+    assert exp.assign("daily_intro_v1", user_id=42, now=now) is not None
+    warm_latency = time.perf_counter() - warm_start
+    assert len(reads) == 1
+    assert warm_latency < cold_latency
+    exp.clear_assignment_cache()
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        assert all(value is not None for value in pool.map(
+            lambda _: exp.assign("daily_intro_v1", user_id=42, now=now), range(8)))
+    assert len(reads) == 2
+    exp.clear_assignment_cache()
+    monkeypatch.setattr(store, "load", lambda: (_ for _ in ()).throw(RuntimeError("Firestore down")))
+    assert exp.assign("daily_intro_v1", user_id=42, now=now) is None
+
+
+def test_stop_propagates_after_cache_ttl(monkeypatch):
+    running = exp.start(planned(), now=NOW, analytics_ready=True)
+    stopped = exp.stop(running, reason="Guardrail failed", operator="alice", now=NOW + timedelta(days=1))
+    from services.repos import experiments as store
+    records = {"daily_intro_v1": running}
+    reads = []
+    def load():
+        reads.append(1)
+        return records.copy()
+    monkeypatch.setattr(store, "load", load)
+    monkeypatch.setattr(product_analytics, "is_enabled", lambda: True)
+    monkeypatch.setattr(product_analytics, "settings", lambda: product_analytics.Settings(salt="test-salt"))
+    monkeypatch.setattr(product_analytics, "capture", lambda *args, **kwargs: None)
+    monkeypatch.setattr(exp, "ASSIGNMENT_CACHE_TTL_SECONDS", 0.01)
+    moment = NOW + timedelta(days=1)
+    assert exp.assign("daily_intro_v1", user_id=42, now=moment) is not None
+    records["daily_intro_v1"] = stopped
+    assert exp.assign("daily_intro_v1", user_id=42, now=moment) is not None
+    time.sleep(0.02)
+    assert exp.assign("daily_intro_v1", user_id=42, now=moment) is None
+    assert len(reads) == 2
