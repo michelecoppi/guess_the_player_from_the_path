@@ -36,29 +36,28 @@ which reach production only through a PR and deploy.
 
 | Page | Shows | Can change |
 | --- | --- | --- |
-| 📊 Stato generale (`overview.py`) | Today's challenge with solution, buffer coverage, current event, dataset health, users | Generate missing challenges/events |
+| 📊 Stato generale (`overview.py`) | Today's challenge with solution, buffer coverage, current event, dataset health and live user metrics | Generate missing challenges/events |
 | 🗓️ Planner sfide (`planner.py`) | Proposed 7–90-day calendar with actions, bands, relaxed rules, per-day candidate funnel, planner exclusions | Another player for a day (preview), exclude/readmit players, lock/unlock future days, apply the plan ([game-modes.md](game-modes.md#daily-planner)) |
 | 📅 Sfide giornaliere (`challenges.py`) | Every day in a window including gaps, solution, difficulty, career, origin, bonus state, image preview | Replace player, regenerate, accepted answers, difficulty, bonus, delete, schedule on a date |
 | 🎊 Eventi (`events.py`) | Status, per-day content (for `link_club` the player pair, for `order_career` the correct club order), missing days, participants ranking; event templates with validity, schedule and candidates | Activate/deactivate, move dates, answers, bonus, delete, create manual event; create/edit a template as JSON with validation, preview and backup ([event-templates.md](event-templates.md)) |
 | 👤 Utenti (`users.py`) | Leaderboards, search, full user sheet | Points, streak, language, notifications, reset today's attempts |
+| 👥 Gruppi (`groups.py`) | Group search, members and round state | Group moderation actions |
 | 🏆 Leghe (`leagues.py`) | Leagues, members, rankings | — |
+| 🛍️ Shop & Referral (`shop.py`) | Cosmetic catalogue, referral overview and top inviters | Item price, Italian name and separate-sale lock |
+| 📈 Analytics (`analytics.py`) | Core PostHog metrics when configured; metric errors are shown explicitly | — |
+| 🩺 Salute sistema (`system.py`) | Sentry configuration, stuck jobs and backup status | — |
 | 📚 Dataset (`dataset.py`) | Health, full player list with difficulty breakdown, single player (0-100 score), tuning, predicted vs observed difficulty per closed Daily ([difficolta.md §6](difficolta.md)) | Popularity, verified, practice-only, career-stop league, difficulty weights (with preview of band changes) |
 | 🔎 Review giocatori (`player_review.py`) | Candidate queue with filters, validation findings, provenance/conflicts, duplicates, history | Edit, approve, reject, merge, mark source wrong, retry ingestion (see [player-data-pipeline.md](player-data-pipeline.md)) |
+| 🔄 Refresh carriera (`career_refresh.py`) | Player career refresh preview and source results | Apply a reviewed refresh |
 | 🚫 Giocatori sospesi (`blocked.py`) | Blocked players | Block / unblock |
 | 👨‍👦 Coppie padre/figlio (`father_son.py`) | Saved pairs and their use | Delete (photos are added via the bot) |
 
-## Planned evolution
+## Delivery and remaining work
 
-Epic [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12) is
-open. Done: [#35](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/35)
-(Review Queue integration). Still open, and **not** implied by the table above:
-
-- [#33](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/33) — dashboard overview and live metrics
-- [#34](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/34) — Daily Challenge management
-- [#36](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/36) — users, groups and leagues management
-- [#37](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/37) — shop and referral management
-- [#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38) — system health, logs and backup
-- [#39](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/39) — analytics view (no product analytics exist yet; see [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29))
-
-Related but separate: [#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25)
-Dataset Health dashboard (Area `Data`).
+The Admin expansion epic [#12](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/12)
+and its sub-issues #33–#39 have been delivered. The table above describes the current pages; consult
+[Project #2](https://github.com/users/michelecoppi/projects/2) for live issue status.
+Dataset Health ([#25](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/25))
+is a related Data area capability shown in the Dataset page. Product analytics
+([#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29))
+supplies the Admin Analytics page when PostHog is configured.
