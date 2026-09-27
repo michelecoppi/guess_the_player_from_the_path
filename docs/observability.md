@@ -10,8 +10,9 @@ pseudonymous, and how it differs from this document (this one answers "is the ap
 that one answers "how are people using the product") -
 performance work ([#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32)),
 the Admin system-health view ([#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38)),
-the release process itself ([release-checklist.md](release-checklist.md), #49) and
-frontend/Mini App error tracking (no browser SDK, no Session Replay).
+the release process itself ([release-checklist.md](release-checklist.md), #49) and a
+browser error-tracking SDK or Session Replay. The Mini App reports its own sampled JavaScript
+errors through the API instead: see [Mini App errors](#mini-app-errors).
 
 ## Release and build identity
 
@@ -53,6 +54,27 @@ one Sentry event (Sentry's deduplication is a second safety net).
 **Failure isolation.** A missing or malformed DSN, an SDK initialisation error or a
 formatter error never stops the application; `log_event` never raises. If sanitising a
 Sentry event fails, the event is dropped rather than sent unsanitised.
+
+## Mini App errors
+
+Introduced by [#180](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/180).
+The Mini App has no browser SDK. [`webapp/src/telemetry/errors.ts`](../webapp/src/telemetry/errors.ts)
+listens for `error` and `unhandledrejection` and sends a report to `POST /app/api/client-error`:
+
+- only real Telegram sessions (not the dev mock), installed before the `App` starts;
+- sampled per page load (`ERROR_SAMPLE_RATE`, 50%), deduplicated by kind/message/source/line
+  and capped at `MAX_REPORTS_PER_PAGE` (3) per page load;
+- ignores scripts from other origins (Telegram's SDK, extensions), opaque "Script error."
+  events and `ApiError` rejections, which the API already logs as requests;
+- strips query strings and fragments from every URL before sending; never retries or reports
+  its own failures.
+
+The endpoint checks the `initData` signature and the per-user rate limit, reads nothing from
+Firestore (budget 0 reads, [performance.md](performance.md)) and keeps only the closed,
+bounded set of fields of [`services/client_errors.py`](../services/client_errors.py), scrubbed
+with `scrub_text`. The record is logged at **WARNING**: it is queryable in Cloud Logging
+(`jsonPayload.event="miniapp.client_error"`) but, being below `ERROR`, it does not create Sentry
+events or consume Sentry quota. Stack traces point at the minified bundle.
 
 ## Configuration
 
@@ -160,6 +182,7 @@ also attached to the Sentry event as the sanitised `observability` context.
 | `app.startup.completed` | INFO | Once per process: `before_lifespan_ms`, `lifespan_ms`, `startup_ms`. |
 | `performance.budget.exceeded` / `firestore.query.slow` | WARNING | A warm request over its latency budget or any request over its read budget (`route`, `metric`, `value`, `budget`); a single Firestore call over 500 ms (`kind`, `collection`, `documents`). See [performance.md](performance.md). |
 | `miniapp.startup.measured` | INFO | Mini App startup timing from the device (`app`, `outcome` and a closed set of bounded `*_ms`/`transfer_kb` numbers; no ids). |
+| `miniapp.client_error` | WARNING | A sampled, unhandled JavaScript error from the Mini App (`kind`, `error_message`, optional `source`, `line`, `col`, `stack`, `screen`; no ids). See [Mini App errors](#mini-app-errors). |
 | `feature_flags.config.loaded`, `feature_flags.refresh.failed`, `feature_flags.config.rejected`, `feature_flags.config.invalid`, `feature_flags.change.applied`, `feature_flags.evaluation.fallback` | INFO / WARNING / ERROR (fallback, once per distinct failure) | Feature flag cache, internal-failure fallback and operator tool; never target ids. See [feature-flags.md § Observability](feature-flags.md#observability). |
 
 Existing plain `logging.exception(...)` calls (for example inside `/admin_*` commands or
@@ -265,4 +288,6 @@ this repository.
 - The Streamlit Admin runs on an operator's machine: its events only reach Sentry if that
   machine's `.env` has a DSN, and it reports `environment=development` unless
   `SENTRY_ENVIRONMENT` is set.
-- Offline scripts (`scripts/`) and the Mini App frontend are not instrumented.
+- Offline scripts (`scripts/`) are not instrumented; the Mini App frontend only reports
+  sampled unhandled errors ([Mini App errors](#mini-app-errors)), with no breadcrumbs or
+  performance tracing.

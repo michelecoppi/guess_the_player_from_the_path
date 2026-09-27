@@ -113,6 +113,7 @@ parte.
 | `/app/api/card` | 2000 | – |
 | `/app/api/shop/buy` | 1500 | – |
 | `/app/api/perf` | 300 | 0 |
+| `/app/api/client-error` | 300 | 0 |
 | altre `/app/api/*` | 1000 | – |
 | `/internal/daily-job` | 20000 | – |
 | `/internal/broadcast`, `/internal/monthly-close` | 10000 | – |
