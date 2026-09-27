@@ -1325,5 +1325,107 @@
         "glow": "#38bd82"
       }
     }
+  },
+  "traguardo_maglie_incrociate_perfetto": {
+    "name": "Due colori",
+    "description": "Guadagna tutte le 7 stelline di Maglie incrociate. Blu e viola con dettagli verde acqua.",
+    "price": 0,
+    "rarity": "earned",
+    "appearance": {
+      "equipped": {
+        "theme": "traguardo_maglie_incrociate_perfetto",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#111d2b",
+        "bg2": "#261d34",
+        "card": "#263042",
+        "edge": "#536076",
+        "text": "#f5f7fc",
+        "muted": "#aebbd0",
+        "accent": "#7ce2cc",
+        "accentText": "#102630",
+        "track": "#493a60",
+        "pattern": "linear-gradient(125deg, transparent 0 50%, rgba(166, 110, 213, .08) 50% 100%)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
+  },
+  "traguardo_notti_europee_perfetto": {
+    "name": "Luci della finale",
+    "description": "Guadagna tutte le 7 stelline di Notti europee. Antracite e oro da finale.",
+    "price": 0,
+    "rarity": "earned",
+    "appearance": {
+      "equipped": {
+        "theme": "traguardo_notti_europee_perfetto",
+        "frame": "cornice_nessuna",
+        "title": "titolo_nessuno",
+        "badge": "distintivo_nessuno",
+        "squares": "quadratini_classici",
+        "number": "maglia_nessuna",
+        "celebration": "festa_nessuna",
+        "card": "figurina_classica"
+      },
+      "theme": {
+        "bg": "#141d22",
+        "bg2": "#1e282c",
+        "card": "#2b3234",
+        "edge": "#846b46",
+        "text": "#fff5dc",
+        "muted": "#cbbd9b",
+        "accent": "#f2c46c",
+        "accentText": "#2b2116",
+        "track": "#554932",
+        "pattern": "radial-gradient(ellipse at 55% 0%, rgba(242, 196, 108, .12), transparent 70%)"
+      },
+      "frame": {
+        "ring": ""
+      },
+      "badge": "",
+      "squares": {
+        "correct": "🟩",
+        "wrong": "🟥",
+        "unused": "⬜"
+      },
+      "title": {
+        "label": "",
+        "color": ""
+      },
+      "number": "",
+      "celebration": "",
+      "card": {
+        "finish": "plain",
+        "ink": "#ecf2f8",
+        "paper": "#0a131e",
+        "glow": "#38bd82"
+      }
+    }
   }
 }

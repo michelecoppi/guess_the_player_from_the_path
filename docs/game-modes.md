@@ -132,6 +132,19 @@ updated transactionally. Finished results are copied to each profile
 and require `BOT_USERNAME` and `PUBLIC_BASE_URL`; nothing is sent to friends
 automatically. Duels do not affect the global leaderboard.
 
+## Story Mode
+
+**Current state.** Mini App only: `/app/api/arena` with `mode: "story"` uses the hand-curated
+chapters in [`data/story.json`](../data/story.json). Chapters unlock in order: Anni '90,
+Maglie incrociate, then Notti europee. Each has seven themed levels with five verified
+players. A failed or revealed player restarts the current level; earlier levels remain
+cleared. A level solved without a wrong guess on the successful attempt earns one star.
+Completing the chapter earns its badge; earning all seven stars also earns its theme.
+These rewards are chapter-specific, cannot be bought, and are recorded with the user's
+Story progress in the same transaction. The cosmetics live in
+[`data/shop.json`](../data/shop.json); [`scripts/preview_webapp.py`](../scripts/preview_webapp.py)
+offers a local, Firestore-free preview of all four new items.
+
 ## Group rounds
 
 **Current state.** Chat only, in Telegram groups: `/round`, `/standings` and `/guess` in a
