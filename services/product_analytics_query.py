@@ -83,7 +83,11 @@ def _run_hogql(config: Settings, query: str) -> list[list[Any]]:
         payload = response.json()
     except ValueError as e:
         raise QueryError(f"Risposta di PostHog non JSON: {e}") from e
-    return payload.get("results", [])
+    if not isinstance(payload, dict) or not isinstance(payload.get("results"), list) or any(
+        not isinstance(row, list) for row in payload["results"]
+    ):
+        raise QueryError("Risposta di PostHog malformata: results assente o non valido")
+    return payload["results"]
 
 
 def _ratio(config: Settings, numerator_event: str, denominator_event: str, *, days: int,

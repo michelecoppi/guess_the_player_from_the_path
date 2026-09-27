@@ -31,7 +31,21 @@ control and treatment descriptions, duration, result evidence, and a decision.
   selected from the implemented `CORE_METRICS` definitions in
   `services/product_analytics_query.py`, enabled product analytics with its identity
   salt, and configured read access for the PostHog query API. A missing credential or
-  an unknown metric refuses the start. No experiment is started by deployment.
+  an unknown metric refuses the start. Before the registry transaction, `start`
+  executes the selected metric's read-only HogQL report query in the configured
+  PostHog project. API errors and malformed responses refuse the start; an empty
+  result is expected before the first exposure and is accepted. The transaction
+  verifies that the selected metric has not changed since preflight. No experiment
+  is started by deployment.
+- `report` reads the exposed cohort by pseudonymous `distinct_id`. The first
+  `experiment_assigned` event in the experiment window fixes each user in one
+  variant, so repeat exposures do not increase the sample. Metric events are
+  counted only after that exposure and before the scheduled end or an early stop.
+  It prints the sample, numerator, denominator (completed Daily count for the
+  attempts mean), value and interval for each variant. `empty`,
+  `insufficient_data` and `query_error` are explicit states. No statistical
+  significance or causal effect is claimed. This query returns aggregates only;
+  it never displays pseudonymous IDs or raw Telegram identifiers.
 
 The registry provides assignment, but a specific treatment still needs a product
 call site that uses `assign` and a PostHog insight that segments the selected
@@ -49,7 +63,7 @@ python scripts/experiments.py create daily_intro_v1 --hypothesis "Shorter intro 
 python scripts/experiments.py show daily_intro_v1
 ```
 
-After implementing the treatment and a variant-segmented PostHog insight, verify
+After implementing the treatment, verify
 `POSTHOG_API_KEY`, `PRODUCT_ANALYTICS_SALT`,
 `PRODUCT_ANALYTICS_ENABLED`, `POSTHOG_PERSONAL_API_KEY` and
 `POSTHOG_PROJECT_ID`, then start:
@@ -57,6 +71,7 @@ After implementing the treatment and a variant-segmented PostHog insight, verify
 ```bash
 python scripts/experiments.py start daily_intro_v1
 python scripts/experiments.py assign daily_intro_v1 --user 123456789
+python scripts/experiments.py report daily_intro_v1
 ```
 
 To interrupt a running experiment before its scheduled end, record an operator
@@ -89,3 +104,15 @@ python scripts/experiments.py decide daily_intro_v1 --decision ship
 Decisions are `ship`, `iterate`, or `stop`. Results and decisions cannot be set
 before the preceding lifecycle step. Record the actual analysis in PostHog; this
 registry does not perform significance testing or claim causal impact by itself.
+The report works for running, stopped and finished experiments. For a stopped
+experiment its interval ends at the recorded stop time. If a variant has exposed
+users but no denominator events, its value is `null` with `insufficient_data`;
+zero exposures are `empty`. Retry `query_error` after checking the PostHog Query
+API and project permissions. A report value should not be used as evidence of
+significance without a separate analysis.
+
+The Shop metric uses the existing event-count definition of
+`shop_purchase_completed` / `shop_viewed` for exposed users. Server-side Shop
+events currently carry no session identifier, so this aggregate cannot establish
+the session-scoped funnel described in `docs/product-analytics.md` §11–12. Use
+PostHog's funnel insight for that session-specific interpretation.

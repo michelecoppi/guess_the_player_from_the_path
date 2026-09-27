@@ -163,6 +163,7 @@ COMPONENTS: dict[str, str] = {
     # --- analytics: product analytics (#29), not observability ------------------------------
     "services.product_analytics": "analytics",
     "services.product_analytics_query": "analytics",
+    "services.experiment_report": "analytics",
 }
 
 # Allowed domain -> domain imports; anything else between domains is a violation. The graph
