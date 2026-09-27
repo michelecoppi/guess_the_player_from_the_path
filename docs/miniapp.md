@@ -90,7 +90,7 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 | `pages/` | Page composition and event wiring per destination |
 | `components/` | Shared UI (CareerPath, GuessInput, NavBar, Header, Modal, states…) |
 | `api/` | `ApiClient`: base `/app/api`, injects `initData`, maps errors, clears appearance when the auth token changes |
-| `telegram/` | `initTelegram` (`ready`, `expand`), theme/viewport/safe-area subscriptions, typed WebApp API (including the optional `BackButton`); a mock WebApp is used outside Telegram, which the backend rejects because its `initData` is not signed |
+| `telegram/` | `initTelegram` (`ready`, `expand`, `disableVerticalSwipes` on Bot API 7.7+ so scrolling lists cannot swipe the app closed), theme/viewport/safe-area subscriptions, typed WebApp API (including the optional `BackButton`); a mock WebApp is used outside Telegram, which the backend rejects because its `initData` is not signed |
 | `appearance/` | Sanitized cosmetic token mapping (see below) |
 | `i18n/` | IT/EN/ES strings |
 | `prototypes/` | Dev-only `?design-review` harness and fixtures (backend-generated appearance/theme fixtures are contract-tested by `tests/test_appearance_contract.py`); excluded from the production bundle |

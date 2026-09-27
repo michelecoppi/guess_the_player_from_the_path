@@ -111,6 +111,13 @@ export function createMockTelegramWebApp(user: TelegramUser = DEFAULT_MOCK_USER)
     HapticFeedback: hapticFeedback,
     ready() {},
     expand() {},
+    isVerticalSwipesEnabled: true,
+    disableVerticalSwipes() {
+      this.isVerticalSwipesEnabled = false;
+    },
+    enableVerticalSwipes() {
+      this.isVerticalSwipesEnabled = true;
+    },
     close() {
       console.log("[Telegram Mock] close() called");
     },

@@ -52,8 +52,25 @@ export function initTelegram(enableMock = true): TelegramWebApp | null {
   } catch (err) {
     console.warn("Telegram WebApp initialization error:", err);
   }
+  disableVerticalSwipes(tg);
 
   return tg;
+}
+
+/**
+ * Scrolling a long list back up (leaderboard, Shop catalogue) must not turn into Telegram's
+ * swipe-down that minimises or closes the Mini App (#183). The header can still be dragged
+ * and the close button still works. Needs Bot API 7.7: older clients only log a warning if
+ * called, so the version is checked first.
+ */
+function disableVerticalSwipes(tg: TelegramWebApp): void {
+  if (typeof tg.disableVerticalSwipes !== "function") return;
+  if (typeof tg.isVersionAtLeast === "function" && !tg.isVersionAtLeast("7.7")) return;
+  try {
+    tg.disableVerticalSwipes();
+  } catch (err) {
+    console.warn("Telegram WebApp disableVerticalSwipes error:", err);
+  }
 }
 
 export function getTelegramUser(): TelegramUser | null {
