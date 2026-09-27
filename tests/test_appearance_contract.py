@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from services import shop
+from domains.shop import service as shop
 
 FIXTURES = json.loads((Path(__file__).resolve().parents[1] /
                        "webapp/src/prototypes/appearance-fixtures.json").read_text(encoding="utf-8"))

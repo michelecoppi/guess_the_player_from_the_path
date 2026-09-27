@@ -1,6 +1,11 @@
 import "./styles/vars.css";
 import "./styles/app.css";
 import "./styles/editorial.css";
+import "./styles/matchday.css";
+import "./styles/event-modes.css";
+import "./styles/cosmetic-effects.css";
+import "./styles/shop-redesign.css";
+import "./styles/mobile-polish.css";
 import { bootstrap } from "./app/bootstrap";
 
 if (typeof document !== "undefined") {

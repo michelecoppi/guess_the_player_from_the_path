@@ -1,5 +1,5 @@
 import { api, type ApiClient } from "@/api/client";
-import { fetchEvents, guessEvent } from "./api";
+import { fetchEvents, guessEvent, revealEvent } from "./api";
 import type { EventCard, EventsState } from "./types";
 
 /**
@@ -13,6 +13,7 @@ export class EventsController {
     selectedCode: null,
     feedback: null,
     draftAnswer: "",
+    orderDraft: [],
     error: null,
   };
 
@@ -89,11 +90,13 @@ export class EventsController {
    * Select an event card to view details or play.
    */
   public select(code: string): void {
-    if (this.state.events.some((e) => e.code === code)) {
+    const event = this.state.events.find((e) => e.code === code);
+    if (event) {
       this.setState({
         selectedCode: code,
         feedback: null,
         draftAnswer: "",
+        orderDraft: (event.shuffled_stops || []).map((stop) => stop.id),
         error: null,
       });
     }
@@ -107,6 +110,7 @@ export class EventsController {
       selectedCode: null,
       feedback: null,
       draftAnswer: "",
+      orderDraft: [],
       error: null,
     });
   }
@@ -117,6 +121,26 @@ export class EventsController {
 
   public selected(): EventCard | undefined {
     return this.state.events.find((e) => e.code === this.state.selectedCode);
+  }
+
+  public orderedStops(): number[] {
+    const available = (this.selected()?.shuffled_stops || []).map((stop) => stop.id);
+    return this.state.orderDraft.length === available.length &&
+      this.state.orderDraft.every((id) => available.includes(id))
+      ? this.state.orderDraft : available;
+  }
+
+  public moveOrder(id: number, direction: -1 | 1): void {
+    if (this.selected()?.type !== "order_career" || this.state.status === "submitting") return;
+    const next = [...this.orderedStops()];
+    const index = next.indexOf(id);
+    if (index < 0 || index + direction < 0 || index + direction >= next.length) return;
+    [next[index], next[index + direction]] = [next[index + direction], next[index]];
+    this.setState({ orderDraft: next, feedback: null });
+  }
+
+  public orderAnswer(): string {
+    return this.orderedStops().join(",");
   }
 
   /**
@@ -151,7 +175,7 @@ export class EventsController {
         targetCode,
         event.day,
         trimmed,
-        event.progress.attempts,
+        event.type === "blind_path" ? (event.progress.revision ?? event.progress.attempts) : event.progress.attempts,
         this.client,
       );
 
@@ -196,6 +220,32 @@ export class EventsController {
       if (["stale", "expired", "finished"].includes(error)) {
         await this.load();
         // Preserve the error notice so the user sees the explanation.
+        this.setState({ error });
+      }
+    }
+  }
+
+  /** Ask the server to uncover one stop; the server is authoritative for cost and order. */
+  public async reveal(): Promise<void> {
+    const event = this.selected();
+    if (!event || event.type !== "blind_path" || !event.available || event.progress.finished ||
+        this.state.status === "submitting" || this.state.status === "loading" ||
+        (event.progress.revealed ?? 1) >= (event.total_stops ?? 0)) return;
+    const targetCode = event.code;
+    const currentSeq = ++this.submitSeq;
+    this.setState({ status: "submitting", error: null, feedback: null });
+    try {
+      const response = await revealEvent(targetCode, event.day,
+        event.progress.revision ?? event.progress.attempts, this.client);
+      if (currentSeq !== this.submitSeq) return;
+      this.setState({ status: "ready", events: response.events,
+        error: null, feedback: null });
+    } catch (err: any) {
+      if (currentSeq !== this.submitSeq || this.state.selectedCode !== targetCode) return;
+      const error = err?.detail || "unknown";
+      this.setState({ status: "error", error });
+      if (["stale", "expired", "finished"].includes(error)) {
+        await this.load();
         this.setState({ error });
       }
     }

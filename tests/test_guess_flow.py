@@ -66,7 +66,7 @@ def firebase(monkeypatch):
     monkeypatch.setattr(guess_handler.firebase_service, "get_user_data", lambda uid: state["user"])
     monkeypatch.setattr(
         guess_handler.firebase_service, "register_daily_outcome",
-        lambda day, solved: calls.setdefault("outcomes", []).append((day, solved)),
+        lambda day, solved, **counters: calls.setdefault("outcomes", []).append((day, solved)),
     )
     monkeypatch.setattr(
         guess_handler.firebase_service, "record_daily_history",
@@ -119,7 +119,7 @@ def test_last_wrong_attempt_says_when_the_answer_will_be_revealed(firebase):
     asyncio.run(guess_handler.guess(update, None))
 
     assert "tentativi finiti" in message.replies[0].lower()
-    assert "/solution" in message.replies[0]
+    assert "Soluzione" in message.replies[0]
     assert "Messi" not in message.replies[0]
 
 
@@ -157,9 +157,9 @@ def test_missing_challenge_does_not_consume_an_attempt(firebase, monkeypatch):
 def test_guess_in_a_group_never_touches_the_daily_challenge(firebase, monkeypatch):
     """In un gruppo /guess risponde al round del gruppo, mai alla sfida di oggi: la
     risposta comparirebbe in chiaro davanti a chi non ha ancora giocato."""
-    from handlers import group_handler
+    from domains.groups import repository as groups_repository
 
-    monkeypatch.setattr(group_handler.firebase_service, "get_group_round", lambda chat_id: None)
+    monkeypatch.setattr(groups_repository, "get_group_round", lambda chat_id: None)
     update, message = make_update("/guess messi")
     update.message.chat = SimpleNamespace(type="group", id=-100123)
     asyncio.run(guess_handler.guess(update, None))
@@ -225,6 +225,22 @@ def test_a_lost_day_can_be_shared_too(firebase, shareable):
     assert message.markups[0] is not None
     url = message.markups[0].inline_keyboard[0][0].url
     assert "X%2F3" in url  # "X/3", cioe' giornata non risolta
+
+
+def test_the_chat_shares_with_the_player_invite_link(firebase, shareable, monkeypatch):
+    """#150: il link in fondo alla condivisione e' l'invito di chi gioca, non quello nudo
+    del bot."""
+    from domains.referrals import service as referrals
+
+    monkeypatch.setattr(referrals, "BOT_USERNAME", "guess_the_player_bot")
+    monkeypatch.setattr(referrals, "BOT_TOKEN", "123:abc")
+    firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0}
+    update, message = make_update("/guess ronaldo", user_id=42)
+    asyncio.run(guess_handler.guess(update, None))
+
+    url = message.markups[0].inline_keyboard[0][0].url
+    assert f"start%3D{referrals.code_for(42)}" in url
+    assert "Riesci%20a%20fare%20meglio" in url
 
 
 def test_attempts_left_over_do_not_show_the_share_button(firebase, shareable):

@@ -4,8 +4,10 @@ from admin_pages.shared import (
     DIFFICULTY_ORDER,
     DatasetEditError,
     as_records,
+    band_cutoffs_100,
     cached_blocked_ids,
     cached_dataset_report,
+    cached_difficulty_calibration,
     collect_player_changes,
     confirm_button,
     count_label,
@@ -38,8 +40,9 @@ def render(today, now_italy):
         blocked = []
         st.error(f"Errore: {e}")
 
-    tab_health, tab_list, tab_card, tab_tuning = st.tabs(
-        ["📈 Salute", "📋 Elenco e modifiche", "🔍 Scheda singola", "🎚️ Taratura difficoltà"]
+    tab_health, tab_list, tab_card, tab_tuning, tab_calibration = st.tabs(
+        ["📈 Salute", "📋 Elenco e modifiche", "🔍 Scheda singola", "🎚️ Taratura difficoltà",
+         "🧪 Prevista vs osservata"]
     )
 
     # -- Salute -------------------------------------------------------------
@@ -275,7 +278,12 @@ def render(today, now_italy):
             explained = explain_difficulty(player)
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("Fascia", explained["difficulty"])
-            col2.metric("Punteggio", round(explained["score"], 2))
+            col2.metric(
+                "Punteggio",
+                f"{explained['score_100']:g}/100",
+                help=f"Grezzo {round(explained['score'], 2)}: la scala 0-100 lo divide per il massimo "
+                "che la taratura in vigore può produrre.",
+            )
             col3.metric("Notorietà", explained["popularity"])
             col4.metric("Tappe / paesi", f"{explained['teams']} / {explained['countries']}")
 
@@ -387,6 +395,12 @@ def render(today, now_italy):
             "perché la sfida del giorno le pesca a turno."
         )
         current = dataset_editor.difficulty_settings()
+        cutoffs = band_cutoffs_100()
+        st.caption(
+            f"Sulla scala 0-100 le soglie in vigore valgono: easy < {cutoffs['easy']:g}, "
+            f"medium < {cutoffs['medium']:g}, hard < {cutoffs['hard']:g}, oltre impossible (la fascia "
+            "*Extreme* di #21). Le fasce si decidono sempre sul punteggio grezzo qui sotto."
+        )
 
         st.subheader("Soglie")
         col1, col2, col3 = st.columns(3)
@@ -470,3 +484,113 @@ def render(today, now_italy):
                             f"(copia di sicurezza: {os.path.basename(result['backup'])})."
                         ),
                     )
+
+    # -- Prevista vs osservata ---------------------------------------------------
+    with tab_calibration:
+        _render_calibration(today)
+
+
+def _render_calibration(today):
+    st.caption(
+        "Com'è andata davvero ogni giornata chiusa, accanto a quanto la formula la prevedeva difficile. "
+        "Non modifica niente: dice **se** la taratura ordina bene le sfide e **dove** sbaglia sempre "
+        "allo stesso modo. Uno scarto isolato è rumore; uno che si ripete su un intero gruppo "
+        "(tutte le carriere da 8+ squadre, tutti i ritirati da 15 anni) è un peso da rivedere nella "
+        "scheda *Taratura difficoltà*. Procedura in `docs/difficolta.md`, sezione 6."
+    )
+    days = st.slider("Giornate chiuse da analizzare", 30, 365, 120, step=15, key="calibration_days")
+    try:
+        report = cached_difficulty_calibration(days, today)
+    except Exception as e:
+        st.error(f"Errore leggendo le sfide: {e}")
+        return
+
+    settings = report["settings"]
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Giornate", report["days"])
+    col2.metric(
+        "Confrontabili",
+        report["comparable_days"],
+        help=f"Con almeno {settings['min_players']} partecipanti (difficulty_calibration.min_players).",
+    )
+    col3.metric(
+        "Correlazione di rango",
+        "—" if report["spearman"] is None else f"{report['spearman']:+.2f}",
+        help="Spearman fra punteggio previsto e osservato: 1 = la formula ordina le giornate "
+        "esattamente come i giocatori, 0 = nessuna relazione. Servono almeno 3 giornate confrontabili.",
+    )
+    col4.metric("Previsioni fotografate", f"{report['snapshot_days']}/{report['days']}")
+
+    if not report["comparable_days"]:
+        st.info("📭 Nessuna giornata con abbastanza partecipanti nella finestra scelta.")
+        return
+
+    if report["snapshot_days"] < report["days"]:
+        st.caption(
+            "Le giornate senza previsione fotografata (generate prima di #21) usano la previsione "
+            "**ricalcolata** con scheda e taratura di oggi: confrontabili, ma non identiche a quelle di allora."
+        )
+    other_models = {model: n for model, n in report["models"].items() if model != report["current_model"]}
+    if other_models:
+        st.warning(
+            "Nella finestra ci sono previsioni fatte con una taratura diversa da quella in vigore "
+            f"({report['current_model']}): "
+            + ", ".join(f"{model} × {n}" for model, n in sorted(other_models.items()))
+            + ". Confronta con cautela i periodi a cavallo di una modifica."
+        )
+
+    st.subheader("Per fascia prevista")
+    if report["bands_in_order"] is False:
+        st.warning("Le fasce non salgono in ordine: una fascia più alta è stata in media più facile di una più bassa.")
+    show_table(
+        [
+            {
+                "fascia": entry["band"],
+                "giornate": entry["days"],
+                "indovinata da (%)": entry["completion_rate"],
+                "tentativi medi": entry["avg_attempts"],
+                "punteggio osservato": entry["observed_score"],
+            }
+            for entry in report["by_band"]
+        ]
+    )
+
+    st.subheader("Scarto medio per dimensione")
+    st.caption(
+        "Scarto = percentile osservato − percentile previsto. **Positivo**: il gruppo è stato più difficile "
+        f"del previsto; **negativo**: più facile. Una giornata è fuori previsione oltre ±{settings['mismatch_tolerance']:g}."
+    )
+    columns = st.columns(2)
+    for index, (signal, groups) in enumerate(report["by_signal"].items()):
+        with columns[index % 2]:
+            st.markdown(f"**{signal}**")
+            show_table(
+                [{"gruppo": entry["group"], "giornate": entry["days"], "scarto medio": entry["avg_delta"]}
+                 for entry in groups]
+            )
+
+    st.subheader("Giornate fuori previsione")
+    show_table(
+        [_calibration_row(row) for row in report["mismatches"]],
+        "Nessuna giornata oltre la tolleranza.",
+    )
+    with st.expander("Tutte le giornate"):
+        show_table([_calibration_row(row) for row in report["rows"]])
+
+
+def _calibration_row(row):
+    predicted, observed = row["predicted"] or {}, row["observed"]
+    return {
+        "giorno": row["day"],
+        "giocatore": row["player_name"] or row["player_id"],
+        "fascia giocata": row["played_band"],
+        "prevista": predicted.get("band"),
+        "previsto /100": predicted.get("score"),
+        "origine previsione": predicted.get("source"),
+        "partecipanti": observed["players"],
+        "indovinata da (%)": observed["completion_rate"],
+        "tentativi medi": observed["avg_attempts"],
+        "osservato /100": observed["score"],
+        "scarto": row["delta"],
+        "esito": row["verdict"] or "—",
+    }

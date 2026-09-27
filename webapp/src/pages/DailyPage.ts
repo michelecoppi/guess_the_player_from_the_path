@@ -20,6 +20,8 @@ import type {
 } from "@/features/daily/types";
 import type { DailyController } from "@/features/daily/controller";
 
+let answerDockObserver: IntersectionObserver | null = null;
+
 const CLUES: Record<string, (args: Record<string, any>) => string> = {
   "feedback.nationality_same": () => t("daily.sameNat"),
   "feedback.nationality_diff": () => t("daily.diffNat"),
@@ -64,23 +66,42 @@ function renderResultCard(state: DailyState): string {
   `.trim();
 }
 
+function renderMatchReport(state: DailyState, feedback?: DailyGuessResult): string {
+  const won = feedback ? feedback.status === "correct" : !!state.challenge?.solved;
+  const attempts = feedback?.attempts_used ?? state.challenge?.attempts_used ?? 0;
+  // Only the server's post-game response may reveal a name or awarded score.
+  const answer = feedback?.answer;
+  return `<section class="feedback match-report ${won ? "ok" : "no"}" role="status" aria-live="polite">
+    <div class="report-top"><span class="eyebrow">${v("matchReport")}</span><span class="report-emblem" aria-hidden="true">${icon(won ? "ranking" : "career")}</span></div>
+    <h3>${escapeHtml(won ? t("daily.correct") : v("final"))}</h3>
+    ${answer ? `<p class="report-player">${escapeHtml(answer)}</p>` : ""}
+    <div class="report-stats">
+      ${feedback?.points_awarded != null ? `<div><strong>${feedback.points_awarded}</strong><span>${escapeHtml(t("daily.gotPoints"))}</span></div>` : ""}
+      <div><strong>${attempts}<small> / ${state.challenge?.max_attempts ?? 5}</small></strong><span>${v("attemptsUsed")}</span></div>
+    </div>
+    <p class="report-note">${escapeHtml(won ? v("next") : t("daily.outOfAttempts"))}</p>
+    ${feedback?.share ? `<button class="btn" id="share">${icon("share")}${escapeHtml(t("daily.share"))}</button>${renderCopy(state)}` : ""}
+    ${renderResultCard(state)}
+  </section>`;
+}
+
+/** "Copy the result" and its outcome, next to the Telegram share button (#150). */
+function renderCopy(state: DailyState): string {
+  const notice = state.copyNotice
+    ? `<p class="share-copy-notice" role="status">${escapeHtml(state.copyNotice)}</p>`
+    : "";
+  return `<button class="btn ghost" style="margin-top: 10px;" id="share-copy">📋 ${escapeHtml(t("daily.copyResult"))}</button>${notice}`;
+}
+
 function renderFeedback(
   feedback: DailyGuessResult | null | undefined,
   state: DailyState,
 ): string {
   if (!feedback) return "";
 
-  if (feedback.status === "correct") {
-    const shareHtml = feedback.share
-      ? `<button class="btn ghost" style="margin-top: 10px;" id="share">${escapeHtml(t("daily.share"))}</button>${renderResultCard(state)}`
-      : "";
-
-    return `
-      <div class="feedback ok" role="status" aria-live="polite">
-        <b>${escapeHtml(t("daily.correct"))}</b> ${feedback.points_awarded ?? 0} ${escapeHtml(t("daily.gotPoints"))}.
-        ${shareHtml}
-      </div>
-    `.trim();
+  if (feedback.status === "correct" ||
+      (feedback.status === "wrong" && feedback.attempts_left === 0)) {
+    return renderMatchReport(state, feedback);
   }
 
   if (feedback.status === "wrong") {
@@ -94,7 +115,7 @@ function renderFeedback(
     }
 
     const shareHtml = feedback.share
-      ? `<button class="btn ghost" style="margin-top: 10px;" id="share">${escapeHtml(t("daily.share"))}</button>${renderResultCard(state)}`
+      ? `<button class="btn ghost" style="margin-top: 10px;" id="share">${escapeHtml(t("daily.share"))}</button>${renderCopy(state)}${renderResultCard(state)}`
       : "";
 
     return `
@@ -118,7 +139,7 @@ function renderFeedback(
 }
 
 export function renderDailyPage(state?: DailyState): string {
-  const title = `<header class="daily-heading"><p class="eyebrow">Daily Challenge</p><h2>${v("who")}</h2><p class="muted">${v("follow")}</p></header>`;
+  const title = `<header class="daily-heading"><p class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</p><h2>${v("who")}</h2><p class="muted">${v("follow")}</p></header>`;
   if (!state || (state.status === "loading" && !state.challenge)) {
     return `${title}<div class="career-loading">${renderLoadingState({ message: t("daily.loading") })}<div class="loading-lines" aria-hidden="true">${"<i></i>".repeat(5)}</div></div>`;
   }
@@ -156,19 +177,25 @@ export function renderDailyPage(state?: DailyState): string {
   const hints = today.hints;
   return `<article class="daily-page" data-state="${state.status}">
     <header class="daily-heading" id="daily-challenge-card">
-      <div class="edition"><span class="eyebrow">Daily Challenge</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
+      <div class="edition"><span class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
       <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>
       <div class="match-meta"><span>${escapeHtml(today.difficulty_label || t("daily.difficulty"))}</span><span><b>${today.points ?? 0}</b> ${escapeHtml(t("daily.points"))}</span><span>${escapeHtml(today.solved ? t("daily.solved") : done ? v("final") : t("daily.todayTitle"))}</span></div>
     </header>
+    ${state.introVisible && !done ? `<section class="daily-intro" aria-labelledby="daily-intro-title">
+      <h3 id="daily-intro-title">${v("introTitle")}</h3>
+      <ol><li>${v("introPath")}</li><li>${v("introAttempts")}</li><li>${v("introHints")}</li></ol>
+      <button type="button" class="btn ghost" id="daily-intro-dismiss">${v("introDismiss")}</button>
+    </section>` : ""}
+    ${done ? "" : `<button type="button" class="daily-answer-dock" id="daily-answer-dock" aria-controls="daily-interaction-card"><span>${v("answer")}</span><strong>${escapeHtml(t("daily.left"))} ${left}</strong>${icon("arrow")}</button>`}
     <div class="daily-layout">
       <section class="career-sheet" id="daily-career-card" aria-label="${v("career")}">
-        <div class="sheet-heading"><h3>${v("career")}</h3>${icon("career")}</div>
+        <div class="sheet-heading"><div><h3>${v("career")}</h3><p class="career-caption">${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</p></div>${icon("career")}</div>
         <div class="career-columns" aria-hidden="true"><span>${v("season")}</span><span>${v("club")}</span><span>${v("apps")}</span></div>
         ${renderCareerPath({ stops: today.career_path || [], emptyText: v("missing") })}
       </section>
       <section class="answer-desk" id="daily-interaction-card" aria-label="${v("answer")}">
         <div class="attempts-line"><span>${escapeHtml(done ? v("final") : t("daily.left"))}${done ? "" : ` <b>${left}</b>`}</span><div class="attempts" role="img" aria-label="${used}/${max}">${attempts}</div></div>
-        ${done ? (!state.feedback ? `<div class="feedback ${today.solved ? "ok" : "no"}" role="status"><h3>${escapeHtml(today.solved ? t("daily.solved") : v("final"))}</h3><p>${escapeHtml(today.solved ? v("next") : t("daily.outOfAttempts"))}</p></div>` : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
+        ${done ? (!state.feedback ? renderMatchReport(state) : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
         ${state.errorMessage ? `<div class="feedback no" role="alert">${escapeHtml(state.errorMessage)}</div>` : ""}
         ${renderFeedback(state.feedback, state)}
         ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: t("daily.hintsLeft"), noHintsLabel: t("daily.noHints") })}
@@ -182,7 +209,23 @@ export function attachDailyEventListeners(
   container: HTMLElement,
   controller: DailyController,
 ): void {
+  answerDockObserver?.disconnect();
+  container.querySelector<HTMLButtonElement>("#daily-intro-dismiss")?.addEventListener("click", () => {
+    controller.dismissIntro();
+    container.querySelector<HTMLInputElement>("#answer")?.focus();
+  });
+  answerDockObserver = null;
+  const dock = container.querySelector<HTMLButtonElement>("#daily-answer-dock");
   const input = container.querySelector<HTMLInputElement>("#answer");
+  if (dock && input) {
+    dock.onclick = () => input.focus();
+    if (typeof IntersectionObserver !== "undefined") {
+      answerDockObserver = new IntersectionObserver(([entry]) => {
+        dock.hidden = entry.isIntersecting;
+      }, { rootMargin: "0px 0px -110px 0px" });
+      answerDockObserver.observe(input);
+    }
+  }
   if (input) {
     input.oninput = () => {
       controller.setInputValue(input.value);
@@ -226,6 +269,14 @@ export function attachDailyEventListeners(
     share.onclick = (event: MouseEvent) => {
       event.preventDefault();
       controller.openShareUrl();
+    };
+  }
+
+  const copy = container.querySelector<HTMLButtonElement>("#share-copy");
+  if (copy) {
+    copy.onclick = (event: MouseEvent) => {
+      event.preventDefault();
+      void controller.copyShareText();
     };
   }
 

@@ -15,7 +15,8 @@ import yaml
 from services.firestore_backup import inventory
 
 ROOT = Path(__file__).resolve().parents[1]
-SCANNED = [ROOT / "bot.py", ROOT / "admin_ui.py", *(ROOT / "services").rglob("*.py"),
+SCANNED = [ROOT / "bot.py", ROOT / "admin_ui.py", *(ROOT / "apps").rglob("*.py"), *(ROOT / "domains").rglob("*.py"),
+           *(ROOT / "services").rglob("*.py"),
            *(ROOT / "handlers").rglob("*.py"), *(ROOT / "admin_pages").rglob("*.py"), *(ROOT / "scripts").glob("*.py")]
 DOC = (ROOT / "docs" / "backup-recovery.md").read_text(encoding="utf-8")
 

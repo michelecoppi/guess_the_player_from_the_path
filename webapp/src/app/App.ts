@@ -1,4 +1,5 @@
-import { renderPrototype } from "@/prototypes/screens";
+import { renderPrototype, attachSupportEventListeners } from "@/prototypes/screens";
+import { SupportController } from "@/features/support/controller";
 import { connectTheme } from "@/telegram/theme";
 import { renderHeader } from "@/components/Header";
 import { renderNavBar, type NavTabId } from "@/components/NavBar";
@@ -34,10 +35,11 @@ import {
   isMockTelegramEnvironment,
 } from "@/telegram/webapp";
 import { resolveLanguage, setLanguage } from "@/i18n";
-import { exposeLegacyBridge } from "@/utils/legacy-bridge";
+import { v } from "@/i18n/visual";
 import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
 import { TrainingController } from "@/features/training/controller";
+import { StoryController } from "@/features/story/controller";
 import { LeaderboardController } from "@/features/leaderboard/controller";
 import { ArchiveController } from "@/features/archive/controller";
 import { ProfileController } from "@/features/profile/controller";
@@ -52,13 +54,17 @@ export class App {
   private dailyController: DailyController;
   private arenaController: ArenaController;
   private trainingController: TrainingController;
+  private storyController: StoryController;
   private leaderboardController: LeaderboardController;
   private archiveController: ArchiveController;
   private profileController: ProfileController;
   private shopController: ShopController;
   private referralController: ReferralController;
   private eventsController: EventsController;
+  private supportController: SupportController;
   private lastArenaSubview: ArenaSubview;
+  private firstLoad: Promise<void> = Promise.resolve();
+  private resumeListenerAttached = false;
 
   constructor(
     rootElement: HTMLElement,
@@ -71,11 +77,19 @@ export class App {
     shopController?: ShopController,
     referralController?: ReferralController,
     eventsController?: EventsController,
+    supportController?: SupportController,
+    storyController?: StoryController,
   ) {
     this.rootElement = rootElement;
+    // The purchased theme's surface/glow/pattern now show behind every tab and the header,
+    // not just the profile card - see [data-cosmetic-shell] in editorial.css. It's a plain
+    // attribute (no inline style): the tokens already live on <html> from applyResolvedAppearance,
+    // so nothing here needs to know the current appearance or re-set this on every render.
+    this.rootElement.setAttribute("data-cosmetic-shell", "");
     this.dailyController = dailyController || new DailyController();
     this.arenaController = arenaController || new ArenaController();
     this.trainingController = trainingController || new TrainingController();
+    this.storyController = storyController || new StoryController();
     this.leaderboardController =
       leaderboardController || new LeaderboardController();
     this.archiveController = archiveController || new ArchiveController();
@@ -83,11 +97,11 @@ export class App {
     this.shopController = shopController || new ShopController();
     this.referralController = referralController || new ReferralController();
     this.eventsController = eventsController || new EventsController();
+    this.supportController = supportController || new SupportController();
     this.referralController.setEquipHandler((itemId: string) => {
       return this.shopController.equip(itemId);
     });
     this.lastArenaSubview = this.arenaController.getState().subview;
-    exposeLegacyBridge();
 
     this.shopController.onAppearanceChanged = (appearance) => {
       this.profileController.syncAppearance(appearance);
@@ -127,6 +141,12 @@ export class App {
             }
             this.renderArenaContent();
           }
+        } else if (state.subview === "story") {
+          if (subviewChanged) {
+            // Re-enters at the episode menu every time, so progress made elsewhere shows up.
+            void this.storyController.init();
+            this.renderArenaContent();
+          }
         } else {
           this.renderArenaContent();
         }
@@ -139,6 +159,15 @@ export class App {
       if (
         this.isArenaTab(this.activeTab) &&
         this.arenaController.getState().subview === "training"
+      ) {
+        this.renderArenaContent();
+      }
+    });
+
+    this.storyController.subscribe(() => {
+      if (
+        this.isArenaTab(this.activeTab) &&
+        this.arenaController.getState().subview === "story"
       ) {
         this.renderArenaContent();
       }
@@ -173,6 +202,12 @@ export class App {
         this.renderEventsContent();
       }
     });
+
+    this.supportController.subscribe(() => {
+      if (this.activeTab === "reports") {
+        this.renderReportsContent();
+      }
+    });
   }
 
   public getDailyController(): DailyController {
@@ -185,6 +220,10 @@ export class App {
 
   public getTrainingController(): TrainingController {
     return this.trainingController;
+  }
+
+  public getStoryController(): StoryController {
+    return this.storyController;
   }
 
   public getLeaderboardController(): LeaderboardController {
@@ -232,8 +271,17 @@ export class App {
     }
 
     this.render();
-    this.dailyController.init();
-    this.arenaController.init();
+    if (!this.resumeListenerAttached) {
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && this.activeTab === "play" &&
+            this.dailyController.getState().status !== "submitting") {
+          void this.dailyController.loadDailyData({ lightweight: true });
+        }
+      });
+      this.resumeListenerAttached = true;
+    }
+    this.firstLoad = Promise.resolve(this.dailyController.init());
+    if (inviteCode) void this.arenaController.init();
     if (this.activeTab === "leaderboard") {
       void this.leaderboardController.init();
     }
@@ -251,6 +299,11 @@ export class App {
     }
   }
 
+  /** Settles when the first Daily load of `init()` is done (startup timing, #32). */
+  public whenFirstLoaded(): Promise<void> {
+    return this.firstLoad;
+  }
+
   public setTab(tab: NavTabId): void {
     if (this.activeTab !== tab) {
       if (this.activeTab === "shop" && tab !== "shop") {
@@ -258,6 +311,7 @@ export class App {
         this.profileController.invalidateInventory();
       }
       if (this.activeTab === "leaderboard") this.leaderboardController.cancelSearch();
+      if (this.activeTab === "reports") this.supportController.reset();
       this.activeTab = tab;
 
       if (tab === "arena") {
@@ -327,18 +381,21 @@ export class App {
     if (mainEl && this.isArenaTab(this.activeTab)) {
       const arenaState = this.arenaController.getState();
       const trainingState = this.trainingController.getState();
+      const storyState = this.storyController.getState();
 
       if (arenaState.subview === "training") {
         const hadInputFocus =
           typeof document !== "undefined" &&
           document.activeElement?.id === "training-answer";
 
-        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
         attachArenaEventListeners(
           this.rootElement,
           this.arenaController,
           this.trainingController,
+          this.storyController,
         );
+        this.attachTabButtons(mainEl as HTMLElement);
 
         if (hadInputFocus && trainingState.status !== "loading") {
           mainEl
@@ -347,6 +404,31 @@ export class App {
         }
 
         if (trainingState.data?.feedback) {
+          mainEl
+            .querySelector(".feedback")
+            ?.scrollIntoView?.({ block: "nearest" });
+        }
+      } else if (arenaState.subview === "story") {
+        const hadInputFocus =
+          typeof document !== "undefined" &&
+          document.activeElement?.id === "story-answer";
+
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
+        attachArenaEventListeners(
+          this.rootElement,
+          this.arenaController,
+          this.trainingController,
+          this.storyController,
+        );
+        this.attachTabButtons(mainEl as HTMLElement);
+
+        if (hadInputFocus && storyState.status !== "loading") {
+          mainEl
+            .querySelector<HTMLInputElement>("#story-answer")
+            ?.focus({ preventScroll: true });
+        }
+
+        if (storyState.lastFeedback) {
           mainEl
             .querySelector(".feedback")
             ?.scrollIntoView?.({ block: "nearest" });
@@ -363,12 +445,14 @@ export class App {
             ? (document.activeElement as HTMLInputElement).selectionStart
             : null;
 
-        mainEl.innerHTML = renderArenaPage(arenaState, trainingState);
+        mainEl.innerHTML = renderArenaPage(arenaState, trainingState, storyState);
         attachArenaEventListeners(
           this.rootElement,
           this.arenaController,
           this.trainingController,
+          this.storyController,
         );
+        this.attachTabButtons(mainEl as HTMLElement);
 
         if (hadAnswerFocus && arenaState.status !== "submitting") {
           mainEl
@@ -430,6 +514,7 @@ export class App {
         document.activeElement?.id === "archive-answer";
       mainEl.innerHTML = renderArchivePage(this.archiveController.getState());
       attachArchiveEventListeners(this.rootElement, this.archiveController);
+      this.attachTabButtons(mainEl as HTMLElement);
       if (hadInputFocus && this.archiveController.getState().status !== "submitting") {
         mainEl
           .querySelector<HTMLInputElement>("#archive-answer")
@@ -452,17 +537,7 @@ export class App {
         this.rootElement,
         this.profileController,
       );
-      mainEl
-        .querySelectorAll<HTMLButtonElement>("button[data-tab]")
-        .forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            const tab = btn.dataset.tab as NavTabId;
-            if (tab) {
-              this.setTab(tab);
-            }
-          });
-        });
+      this.attachTabButtons(mainEl as HTMLElement);
       const heading = mainEl.querySelector<HTMLElement>("#profile-heading");
       if (heading) {
         heading.tabIndex = -1;
@@ -476,6 +551,15 @@ export class App {
     if (mainEl && this.activeTab === "shop") {
       mainEl.innerHTML = renderShopPage(this.shopController.getState());
       attachShopEventListeners(this.rootElement, this.shopController);
+    }
+  }
+
+  private renderReportsContent(): void {
+    const mainEl = this.rootElement.querySelector("#app-content");
+    if (mainEl && this.activeTab === "reports") {
+      mainEl.innerHTML = renderPrototype("reports", this.supportController.getState());
+      attachSupportEventListeners(this.rootElement, this.supportController);
+      this.attachTabButtons(mainEl as HTMLElement);
     }
   }
 
@@ -503,6 +587,7 @@ export class App {
           },
         },
       );
+      this.attachTabButtons(mainEl as HTMLElement);
       const state = this.eventsController.getState();
       const event = this.eventsController.selected();
       if (
@@ -555,6 +640,7 @@ export class App {
         pageHtml = renderArenaPage(
           this.arenaController.getState(),
           this.trainingController.getState(),
+          this.storyController.getState(),
         );
         break;
       case "profile":
@@ -581,7 +667,10 @@ export class App {
         pageHtml = renderEventsPage(this.eventsController);
         break;
       default:
-        pageHtml = renderPrototype(this.activeTab);
+        pageHtml = renderPrototype(
+          this.activeTab,
+          this.activeTab === "reports" ? this.supportController.getState() : undefined,
+        );
     }
 
     const mockBannerHtml =
@@ -592,7 +681,7 @@ export class App {
     this.rootElement.innerHTML = `
       ${renderHeader({ user, activeTab: this.activeTab })}
       ${mockBannerHtml}
-      <main id="app-content" role="region" aria-label="Page content">
+      <main id="app-content" role="region" aria-label="${v("pageContent")}">
         ${pageHtml}
       </main>
       ${renderNavBar({ activeTab: this.activeTab })}
@@ -601,18 +690,29 @@ export class App {
     this.attachEventListeners();
   }
 
-  private attachEventListeners(): void {
-    const navButtons =
-      this.rootElement.querySelectorAll<HTMLButtonElement>("button[data-tab]");
-    navButtons.forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const tab = btn.dataset.tab as NavTabId;
-        if (tab) {
-          this.setTab(tab);
-        }
+  /**
+   * Any button[data-tab] inside `scope` navigates via setTab() - the header, nav bar and
+   * every page that links elsewhere (profile -> referral, arena -> events/archive, the
+   * support screens' back link...) relies on this. A partial re-render of a single page
+   * (renderXContent()) replaces that page's DOM, so its data-tab buttons need rewiring here
+   * too, not just the header/nav bar that a full render() already covers.
+   */
+  private attachTabButtons(scope: HTMLElement): void {
+    scope
+      .querySelectorAll<HTMLButtonElement>("button[data-tab]")
+      .forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          const tab = btn.dataset.tab as NavTabId;
+          if (tab) {
+            this.setTab(tab);
+          }
+        });
       });
-    });
+  }
+
+  private attachEventListeners(): void {
+    this.attachTabButtons(this.rootElement);
 
     const details =
       this.rootElement.querySelector<HTMLDetailsElement>(".more-nav");
@@ -630,6 +730,7 @@ export class App {
         this.rootElement,
         this.arenaController,
         this.trainingController,
+        this.storyController,
       );
     } else if (this.activeTab === "leaderboard") {
       attachLeaderboardEventListeners(
@@ -675,6 +776,8 @@ export class App {
           },
         },
       );
+    } else if (this.activeTab === "reports") {
+      attachSupportEventListeners(this.rootElement, this.supportController);
     }
   }
 }

@@ -112,8 +112,8 @@ gcloud run deploy guess-the-player \
 | `BOT_USERNAME` | Username del bot **senza @**, es. `guess_the_player_bot`. Facoltativa: serve ai link di condivisione del risultato e agli inviti alle leghe; se manca, quei bottoni non compaiono |
 
 Se cambia l'URL del servizio (es. nuova region o nuovo nome), vanno aggiornati `WEBHOOK_URL` e
-`PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`bot.py`, funzione
-`lifespan`), non serve nessuna azione manuale su Telegram.
+`PUBLIC_BASE_URL`: il bot rifà `set_webhook` automaticamente al riavvio (`apps/bot/application.py`,
+`startup`, chiamata dal lifespan di `apps/api/app.py`), non serve nessuna azione manuale su Telegram.
 
 Le variabili si impostano una volta sola sul servizio e **sopravvivono ai deploy**: il workflow
 [`deploy.yml`](../.github/workflows/deploy.yml) non passa `--set-env-vars`, quindi non le
@@ -130,14 +130,12 @@ gcloud run services update guess-the-player \
 ### Mini app: pulsante nel menu del bot
 
 Con `PUBLIC_BASE_URL` impostata, la pagina risponde su `<PUBLIC_BASE_URL>/app`. All'avvio il bot
-imposta da solo il pulsante **Play** del menu su quell'URL (`set_chat_menu_button` in `bot.py`);
+imposta da solo il pulsante **Play** del menu su quell'URL (`set_chat_menu_button` in `apps/bot/application.py`);
 in alternativa si può configurare a mano da @BotFather → `/mybots` → il bot → *Bot Settings* →
 *Menu Button*. Telegram accetta solo HTTPS, che Cloud Run fornisce già.
 
-La Mini App V2 è servita dallo stesso servizio su `<PUBLIC_BASE_URL>/app/v2` (bundle compilato
-nel Dockerfile), ma **nessun pulsante la apre**: `/app` resta il default finché l'issue di
-rollout successiva a [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81)
-non la cambia. Vedi [miniapp.md](miniapp.md).
+La Mini App è il bundle Vite compilato nel Dockerfile e servito su `<PUBLIC_BASE_URL>/app`
+(se il bundle manca, `/app` risponde 503). Vedi [miniapp.md](miniapp.md).
 
 ### Termini e privacy in BotFather
 
@@ -169,6 +167,15 @@ la region e la durata dei backup. Se il codice cambia e loro no, descrivono un s
 esiste - che e' peggio che non avere l'informativa. `tests/test_legal_pages.py` controlla solo
 che le tre lingue restino allineate, non che dicano il vero.
 
+### Verifica URL di TikTok
+
+Per verificare il prefisso URL del servizio su developers.tiktok.com, metti il file `.txt`
+scaricato da TikTok in `webapp/site-verification/`, committalo e fai il deploy. Controlla che
+`<PUBLIC_BASE_URL>/<nome-file>.txt` restituisca il contenuto esatto, poi premi *Verify* su
+TikTok. Il Dockerfile copia la cartella nell'immagine insieme a `webapp/`; il file reale non va
+inventato. Per il modulo dell'app TikTok usa `<PUBLIC_BASE_URL>/terms` e
+`<PUBLIC_BASE_URL>/privacy`.
+
 ## 2. Cloud Scheduler (generazione contenuti)
 
 Un job HTTP chiama ogni notte l'endpoint interno con l'header di autorizzazione:
@@ -184,7 +191,7 @@ gcloud scheduler jobs create http daily-generation \
 
 L'orario (23:15 UTC) è poco dopo mezzanotte a Roma sia in ora solare che legale.
 
-Cosa fa la chiamata (`bot.py` → `@app.post("/internal/daily-job")` → `handlers/daily_job.py`,
+Cosa fa la chiamata (`apps/api/internal.py` → `@router.post("/internal/daily-job")` → `handlers/daily_job.py`,
 `update_daily_challenge()`):
 
 1. verifica l'header `x-cron-secret` contro `GENERATION_SECRET`, rifiuta con `403` se manca o

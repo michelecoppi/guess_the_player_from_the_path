@@ -16,6 +16,8 @@ export interface TranslationSchema {
     streak: string;
     anonymous: string;
     trophiesCount: PluralForms;
+    /** Server refused with FEATURE_DISABLED (#51). */
+    featureDisabled: string;
   };
   nav: {
     play: string;
@@ -24,9 +26,6 @@ export interface TranslationSchema {
     leaderboard: string;
   };
   shell: {
-    statusTitle: string;
-    statusDesc: string;
-    toolchainProven: string;
     activeTab: string;
     mockNotice: string;
   };
@@ -67,6 +66,9 @@ export interface TranslationSchema {
     younger: string;
     sameYear: string;
     share: string;
+    copyResult: string;
+    copied: string;
+    copyError: string;
     answerWas: string;
     showCard: string;
     cardHint: string;
@@ -74,8 +76,10 @@ export interface TranslationSchema {
     already: string;
     error: string;
     notRegistered: string;
+    dayChanged: string;
   };
   arena: {
+    feature_disabled: string;
     headline: string;
     intro: string;
     duel: string;
@@ -179,6 +183,7 @@ export interface TranslationSchema {
     featureAction: string;
   };
   events: {
+    feature_disabled: string;
     title: string;
     empty: string;
     emptyDesc: string;
@@ -197,6 +202,27 @@ export interface TranslationSchema {
     submit: string;
     careerHint: string;
     fatherSonHint: string;
+    blindEyebrow: string;
+    blindBoard: string;
+    blindCurrentPrize: string;
+    blindHidden: string;
+    blindSealed: string;
+    blindRevealPrompt: string;
+    blindReveal: string;
+    blindAllOpen: string;
+      blindHint: string;
+      linkEyebrow: string;
+      linkBoard: string;
+      linkQuestion: string;
+      linkHint: string;
+      linkFormLabel: string;
+      linkPlaceholder: string;
+      orderEyebrow: string;
+      orderBoard: string;
+      orderHint: string;
+      orderUp: string;
+      orderDown: string;
+      orderSubmit: string;
     stale: string;
     expired: string;
     finished: string;
@@ -218,6 +244,7 @@ export interface TranslationSchema {
     minCorrect: string;
   };
   training: {
+    feature_disabled: string;
     title: string;
     tag: string;
     desc: string;
@@ -242,6 +269,42 @@ export interface TranslationSchema {
     loadError: string;
     invalid_answer: string;
     backToArena: string;
+    placeholder: string;
+    submitBtn: string;
+  };
+  story: {
+    feature_disabled: string;
+    title: string;
+    tag: string;
+    desc: string;
+    levelN: string;
+    livesLeft: string;
+    chapterLocked: string;
+    chapterProgress: string;
+    reveal: string;
+    revealSure: string;
+    correct: string;
+    wrong: string;
+    levelFailed: string;
+    levelCleared: string;
+    levelClearedStar: string;
+    chapterCleared: string;
+    chapterCompleteTitle: string;
+    chapterCompleteDesc: string;
+    starsEarned: string;
+    rewardUnlocked: string;
+    perfectRewardUnlocked: string;
+    answer: string;
+    synced: string;
+    stale: string;
+    finished: string;
+    invalid_answer: string;
+    invalid: string;
+    missing_player: string;
+    loadError: string;
+    backToArena: string;
+    backToChapters: string;
+    backToLevels: string;
     placeholder: string;
     submitBtn: string;
   };
@@ -371,6 +434,7 @@ export interface TranslationSchema {
     leaderboardNotice: string;
   };
   shop: {
+    cardSample: string;
     title: string;
     kicker: string;
     headline: string;
@@ -380,7 +444,29 @@ export interface TranslationSchema {
     privacy: string;
     refunds: string;
     catalog: string;
+    discover: string;
+    discoverTitle: string;
+    discoverSubtitle: string;
+    browseAll: string;
+    catalogIntro: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    resultCount: string;
+    clearFilters: string;
+    showMore: string;
+    backToShop: string;
+    whereSeen: string;
+    placeTheme: string;
+    placeFrame: string;
+    placeTitle: string;
+    placeBadge: string;
+    placeSquares: string;
+    placeNumber: string;
+    placeCelebration: string;
+    placeCard: string;
+    placeBundle: string;
     wardrobe: string;
+    noOwnedItems: string;
     achievements: string;
     history: string;
     allCategories: string;

@@ -13,7 +13,7 @@ capability is missing it says so and links the roadmap issue.
 | Nightly content job | Cloud Scheduler, `15 23 * * *` UTC → `POST /internal/daily-job` | `handlers/daily_job.py::update_daily_challenge` | Fills the Daily buffer, may generate an event, assigns trophies of events that ended yesterday, prepares the monthly close on day 1, stores the immutable payload in `daily_jobs/{day}`, enqueues the broadcast. Re-running the same day reuses the stored payload |
 | Daily broadcast | Cloud Tasks `BROADCAST_QUEUE` (concurrency 1) → `POST /internal/broadcast` | `handlers/daily_job.py::broadcast_batch` | Pages of 100 subscribed users, per-recipient work receipts, `Forbidden` disables notifications, `RetryAfter` re-queues; the last page sends the admin summary |
 | Monthly close | Cloud Tasks → `POST /internal/monthly-close` | `services/monthly_closure.py` | Podium frozen in `monthly_closures/{YYYY-MM}`, per-user transactional reset in pages |
-| Telegram updates | Cloud Tasks `TASKS_QUEUE` → `POST /internal/telegram-update` | `bot.py`, `services/work_receipts.py` | Deduplicated and serialized per user; `uncertain` updates alert admins and are not replayed |
+| Telegram updates | Cloud Tasks `TASKS_QUEUE` → `POST /internal/telegram-update` | `apps/api/internal.py`, `services/work_receipts.py` | Deduplicated and serialized per user; `uncertain` updates alert admins and are not replayed |
 | Deploy | GitHub Actions `deploy.yml` after successful CI on `main` | [ci_cd_pipeline.md](ci_cd_pipeline.md) | Every merge to `main` that passes CI is deployed |
 | Firestore backup | GitHub Actions `backup.yml`, Mondays 03:30 UTC, or manual dispatch | `scripts/backup_firestore.py`, `services/firestore_backup/` | Typed v2 JSON, validated before upload, artifact kept 365 days ([backup-recovery.md](backup-recovery.md)) |
 | Restore verification | GitHub Actions `restore-verification.yml`, Tuesdays 05:00 UTC, or manual dispatch; also every CI run | `tests/test_backup_restore_emulator.py` | Synthetic backup→restore→compare on the emulator; no credentials |
@@ -32,6 +32,7 @@ broadcast, trophies and monthly close do not happen until the job runs.
 | Grow the dataset | [player-data-pipeline.md](player-data-pipeline.md) (legacy import or Review Queue), then PR |
 | Manual events (father/son) | `/admin_fs_add`, `/admin_event_create`, Admin “Eventi” |
 | Payment support and refunds | `/paysupport` requests → `/admin_support_reply`; `/admin_refund <charge_id>` |
+| Bug/data reports from the Mini App menu | "Segnalazioni" screen → `POST /app/api/support/report` → `/admin_report_reply <telegram_id> <messaggio>` |
 | Reconcile `uncertain` updates or broadcast pages | Cloud Run logs + user history; never delete an uncertain receipt blindly ([runtime-hardening.md](runtime-hardening.md)) |
 | Prune old challenges | `scripts/cleanup_daily_paths.py` (manual on purpose, dry-run first) |
 | Backfill/migrate user documents | `scripts/backfill_users.py`, `scripts/migrate_firestore.py` (historical) |
@@ -79,8 +80,10 @@ which relies on the verified procedure in [backup-recovery.md](backup-recovery.m
   `component`/`route`/`request_id`/`task_name` fields, and optional Sentry error tracking
   enabled by `SENTRY_DSN` (#18). Records carry the formal `release` (`VERSION`) and, on
   Cloud Run, the exact build `revision`. No log-based metrics are defined in this repository.
-- `/app/api/*` requests also return a `Server-Timing: app;dur=<ms>` header. See
-  [performance.md](performance.md).
+- `/app/api/*` requests also return a `Server-Timing: app;dur=<ms>` header (plus `fs` when
+  Firestore was used). Cold starts, Firestore cost per request, Telegram handler durations,
+  Mini App startup and budget breaches are log fields/events; `python -m tools.dev
+  perf-report` turns them into a baseline and trend. See [performance.md](performance.md).
 - Telegram messages to admins (`ADMIN_TELEGRAM_IDS`) for: unhandled handler errors
   (`handlers/error_handler.py`), `uncertain` interrupted updates
   (`services/alerts.py`), broadcast completion summary and broadcast problems
@@ -91,30 +94,34 @@ which relies on the verified procedure in [backup-recovery.md](backup-recovery.m
 - No uptime checks, alert policies or dashboards are part of the codebase.
 
 **Planned evolution.**
-[#32](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/32) —
-performance measurement (soft dependency on #18, see [evolutive-tracking.md](evolutive-tracking.md)).
 [#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38) — Admin
 system health and logs.
 
 ## Analytics
 
-**Current state.** There is **no product analytics**: no event tracking SDK, no event
-schema, no funnels and no analytics dashboards. The privacy page states that the Mini
-App has no analytics or third-party trackers. What exists are operational aggregates
-stored as part of game state:
+**Current state.** Product analytics ([#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29))
+is implemented: a typed event taxonomy sent to PostHog through
+[`services/product_analytics.py`](../services/product_analytics.py), off by default and
+requiring an operator-supplied `POSTHOG_API_KEY` to send anything. Full contract - event
+list, pseudonymous identity, privacy review, funnels, metric definitions, how to disable it
+- is authoritative in [product-analytics.md](product-analytics.md). It is a strictly
+separate system from the operational aggregates below and from
+[observability.md](observability.md) (#18).
 
-- `daily_path/{day}.players_count` and `solved_count` (Increment counters);
+Operational aggregates stored as part of game state (not analytics, must not be described
+as funnels):
+
+- `daily_path/{day}.players_count`, `solved_count`, `solved_attempts_total` and
+  `solved_hints_total` (Increment counters; observed difficulty, [difficolta.md §6](difficolta.md));
 - `/admin_stats` (registered users, notifications enabled, solved today) and the
   Admin overview/leaderboards;
 - per-user attempt histogram `solved_in`, streaks and referral qualification counts;
 - `daily_jobs/{day}.sent_total` for broadcasts.
 
-These are not a substitute for analytics and must not be described as funnels.
-
-**Planned evolution.** [#29](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/29)
-— product analytics and funnel definition. Related work:
+**Related, not implemented here.**
 [#39](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/39) (Admin
-analytics view) and [#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52)
-(experimentation, blocked by #29). Feature flags
-([#51](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/51)) are
-also not implemented. Any analytics change must update the privacy page.
+analytics view, to be built on top of the #29 event schema) and
+[#52](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/52)
+(experimentation - variants, assignment, statistical significance - explicitly out of scope
+for #29 and still blocked by it). Any further analytics change must keep the privacy page
+(`webapp/privacy.html`) accurate.

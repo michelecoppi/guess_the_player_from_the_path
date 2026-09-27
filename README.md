@@ -30,9 +30,10 @@ python -m tools.dev check
 
 ### Transizione alla mini app Telegram
 
-Con `PUBLIC_BASE_URL` configurato, `/start`, `/menu` e `/help` invitano ad aprire
-la mini app nelle chat private. `/app` registra anche chi arriva per la prima volta
-e mostra il pulsante per giocare; all'avvio il bot configura inoltre il pulsante
+Con `PUBLIC_BASE_URL` configurato, `/start` invita ad aprire la mini app nelle chat
+private (primo bottone del menu, anche per chi arriva per la prima volta), e `/help`
+spiega il gioco con il solo bottone della mini app (niente menu). `/app` e `/info` non
+esistono piu': facevano lo stesso di `/start` e `/help`. All'avvio il bot configura inoltre il pulsante
 fisso **Play** di Telegram. Le notifiche giornaliere degli utenti che le hanno
 attivate includono lo stesso accesso diretto. I testi sono disponibili in IT/ES/EN.
 
@@ -67,8 +68,12 @@ Le modifiche diventano operative al deploy e al successivo avvio del servizio.
   automaticamente agli amici.
 - **Eventi settimanali:** il centro mostra gli eventi attivi secondo il calendario
   esistente, con descrizioni tradotte, scadenza, sfida e classifica. Supporta i tipi
-  `path`, `transfer_guess`, `career` e `father_son`; tentativi, punti e bonus sono
-  condivisi con il bot. Non modifica la programmazione degli eventi.
+  `path`, `transfer_guess`, `career`, `father_son` e `blind_path`;
+  in **Carriera al buio** si vede prima solo il club più recente e si possono
+  scoprire fino a cinque tappe, perdendo un punto per ogni club aggiuntivo
+  (minimo un punto). Questa sfida si gioca nella Mini App; il bot apre l'evento
+  senza rivelarne il percorso. Gli altri tipi mantengono le regole condivise
+  fra bot e Mini App.
 
 L'endpoint `/app/api/arena` richiede la stessa firma Telegram degli altri endpoint.
 Le mosse di allenamento e duello controllano una revisione in transazione; gli
@@ -95,7 +100,7 @@ costa un punto. Chi non ci arriva scopre chi era a mezzanotte, o con `/solution`
 chiusa.
 
 Si gioca in due posti, con le stesse identiche regole: la **chat del bot** e la **mini app**
-(`webapp/index.html`), che aggiunge il completamento automatico sui nomi e il calendario delle
+(`webapp/src/`, Vite + TypeScript), che aggiunge il completamento automatico sui nomi e il calendario delle
 giornate passate. Le regole stanno in un modulo solo (`services/game.py`), quindi non esistono
 due versioni del punteggio da tenere allineate.
 
@@ -103,6 +108,7 @@ due versioni del punteggio da tenere allineate.
 |---|---|
 | `/start` | registrazione e menu; apre anche i link d'invito alle leghe |
 | `/menu` | la tastiera con tutto quello che si puo' fare |
+| `/help` | come si gioca, con il bottone per aprire la mini app |
 | `/show` | la sfida di oggi |
 | `/solution` (`/soluzione`) | chi era il calciatore di una giornata gia' chiusa |
 | `/guess <risposta>` | il modo classico di rispondere |
@@ -121,6 +127,12 @@ due versioni del punteggio da tenere allineate.
 | `/shop` (`/negozio`) | skin, cornici, titoli e distintivi con le Stelle di Telegram |
 | `/legend` (`/legenda`) | come si legge l'immagine del percorso |
 | `/notify`, `/language` | notifiche e lingua |
+
+Per le campagne di promozione esistono link tracciabili
+`https://t.me/<bot>?start=src_<canale>` (per esempio `src_tiktok`, `src_reddit`,
+`src_telegram_group`): aprono il normale benvenuto e registrano solo il canale di
+provenienza. L'elenco dei canali ammessi è in
+[`docs/product-analytics.md`](docs/product-analytics.md).
 
 Il menu "/" di Telegram (`set_my_commands`) viene impostato all'avvio nelle tre lingue: le
 **descrizioni** sono tradotte, i **nomi dei comandi** no — sono in inglese per tutti. Un bot
@@ -236,6 +248,11 @@ card da condividere. I contatori stanno sul documento della sfida (`players_coun
   gruppo, ed e' l'unica riga che non puo' spoilerare niente. Le sfide recuperate
   dall'archivio si condividono marcate come tali, cosi' in un gruppo dove quella di oggi e'
   ancora aperta non sembrano il risultato di oggi.
+  L'ultima riga invita a provare con il **link invito di chi condivide** ("Riesci a fare
+  meglio? 👉 `t.me/<bot>?start=ref_…`", tradotta in IT/ES/EN): chi si iscrive da li' conta
+  come suo invito ai fini dei premi referral e nelle analytics arriva come `referral`. Senza
+  `BOT_TOKEN`/`BOT_USERNAME` resta il link del bot. Nella mini app, accanto a "Condividi",
+  **📋 Copia** mette lo stesso testo negli appunti per WhatsApp, Instagram o X (#150).
 - **Archivio** (`handlers/archive_handler.py`): rigiocare i giorni passati **senza punti**.
   Aprire un giorno mette l'utente in "modalita' archivio" (`archive_day` sul suo documento,
   non in memoria: su Cloud Run l'istanza puo' sparire fra un messaggio e l'altro), e da li' le
@@ -287,7 +304,7 @@ subito con "👀 Rivela", visto che quella giornata è passata. I tentativi sono
 infiniti anche per una ragione meno ovvia: un campo che accetta nomi all'infinito e risponde
 "stessa nazionalità, ruolo diverso" sarebbe un modo comodo per sondare il dataset.
 
-**Partita di gruppo** (`/round`, `handlers/group_handler.py`): un round alla volta nel
+**Partita di gruppo** (`/round`, regole in `domains/groups/service.py`): un round alla volta nel
 gruppo, vince chi risponde per primo, punti per difficoltà come nel gioco vero. **Non** è la
 sfida di oggi ripubblicata — la risposta comparirebbe in chiaro davanti a chi non ha ancora
 giocato, bruciando la giornata anche a chi non stava guardando. Le altre tre conseguenze della stessa scelta:
@@ -321,10 +338,22 @@ condanna a restare ultimi.
 
 ### Negozio (Stelle di Telegram)
 
+Il set **Biglietto da trasferta** comprende tema (12 Stelle), cornice perforata (10),
+titolo (5) e card con matrice e timbro (15): insieme **32 Stelle** anziché 42.
+Notturna costa 15, Foil 22 e il distintivo Diamante 7 Stelle. I pacchetti continuano
+ad addebitare soltanto una quota proporzionale ai pezzi mancanti.
+Le card in prova sono esempi prodotti dal renderer dei risultati condivisi; i
+festeggiamenti si possono provare e rispettano la preferenza di movimento ridotto.
+
 `/shop` e la quinta scheda della mini app vendono **solo cose da guardare**, pagate in
 [Stelle di Telegram](https://core.telegram.org/bots/payments-stars): temi che ricolorano tutta
 la mini app, cornici per l'avatar, titoli sotto il nome, distintivi accanto al nome in
 classifica e i simboli della card che si incolla nei gruppi.
+Nella mini app **Scopri** presenta poche collezioni, **Catalogo** permette di cercare per
+nome e categoria, e **I miei oggetti** raccoglie il look indossato e quelli salvati.
+La scheda di ogni oggetto mostra dove appare, permette di provarlo temporaneamente e
+mostra il prezzo effettivo restituito dal server prima dell'acquisto. Traguardi e
+cronologia acquisti restano accessibili dallo Shop.
 
 La regola sta sopra il catalogo e non si negozia: **niente di quello che si compra cambia la
 partita.** Nessun punto, nessun tentativo in piu', nessun indizio scontato. Non e' prudenza: un
@@ -334,21 +363,34 @@ lo verifica sul catalogo (`test_nothing_on_sale_touches_the_game`), perche' e' i
 regola che si perde per strada un oggetto alla volta.
 
 Il catalogo e' **contenuto**, non codice: sta in `data/shop.json` come i calciatori e gli
-eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Cinque tipi di
+eventi, quindi prezzi, nomi e colori si ritoccano senza toccare un `.py`. Otto tipi di
 oggetto (uno per "slot": se ne indossa uno per tipo), piu' i pacchetti; ogni tipo ha il suo
 oggetto gratuito, che e' anche il modo di tornare indietro a com'era prima.
 
 | Tipo | Dove si vede | Prezzi |
 |---|---|---|
-| Temi | colori di tutta la mini app | 15 – 30 ⭐ |
-| Cornici | il cerchio intorno all'avatar | 15 – 25 ⭐ |
-| Titoli | una riga sotto il nome | 15 – 25 ⭐ |
-| Distintivi | accanto al nome, **anche nella classifica in chat** | 10 – 25 ⭐ |
-| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 10 – 20 ⭐ |
-| Numeri | il numero di maglia prima del nome, **anche in classifica** | 10 – 15 ⭐ |
+| Temi | colori di tutta la mini app | 7 – 15 ⭐ |
+| Cornici | il cerchio intorno all'avatar | 7 – 12 ⭐ |
+| Titoli | una riga sotto il nome | 7 – 12 ⭐ |
+| Distintivi | accanto al nome, **anche nella classifica in chat** | 5 – 12 ⭐ |
+| Quadratini | i simboli della card condivisa (🟩🟥⬜ → 💚❤️🤍) | 5 – 10 ⭐ |
+| Numeri | il numero di maglia prima del nome, **anche in classifica** | 5 – 7 ⭐ |
 | Festeggiamenti | cosa succede sullo schermo quando indovini | non in vendita |
-| Figurine | la finitura della card del risultato come immagine | 55 – 75 ⭐ |
-| Pacchetti | piu' cose insieme | 30 – 220 ⭐ |
+| Figurine | la finitura della card del risultato come immagine | 15 – 22 ⭐ |
+| Pacchetti | piu' cose insieme | 15 – 110 ⭐ |
+
+Il listino parte deliberatamente basso: sono cosmetici permanenti di un gioco gratuito, non
+contenuti o vantaggi competitivi. Le fasce 5/7/12/15 ⭐ tengono il primo acquisto successivo
+al benvenuto nella zona dell'impulso; i set principali stanno fra 26 e 35 ⭐ e la collezione
+completa a 110 ⭐. Il riferimento economico non è una conversione mostrata all'utente — il
+costo di acquisto delle Stelle varia per paese, imposte e canale — ma il valore ufficiale
+riconosciuto al developer, oggi pari all'equivalente di 0,013 USD per Stella. Le fonti da
+ricontrollare a ogni revisione sono la [guida ai pagamenti in
+Stelle](https://core.telegram.org/bots/payments-stars) e i [termini per i developer,
+sezione 6.2](https://telegram.org/tos/bot-developers#6-2-digital-goods-and-services).
+Finché non esiste uno storico sufficiente di visualizzazioni, acquisti e rimborsi, i prezzi
+non si alzano per imitare cataloghi di giochi più grandi: si misura prima la conversione del
+negozio e si rivede il listino come esperimento separato.
 
 I primi cinque sono i **fondamentali** (`CORE_KINDS`) e una collezione li riempie tutti; i tre
 in fondo sono arrivati dopo e una collezione puo' averli o no. Non e' pigrizia: un numero di
@@ -418,7 +460,7 @@ una finitura dedicata sulle immagini dei risultati condivisi; le animazioni risp
 la preferenza di movimento ridotto, si fermano quando il campo esce dallo schermo e nelle
 miniature dei premi non partono affatto.
 
-`services/referrals.py` conserva un documento per invitato nella collezione `referrals`,
+`domains/referrals/service.py` conserva un documento per invitato nella collezione `referrals`,
 con invitante, invitato, nome, timestamp di associazione, giornate conteggiate e timestamp
 di qualificazione. La chiave è un hash stabile dell'id dell'invitato. La transazione
 legge lo storico come prova e salva insieme qualificazione, contatore dell'invitante e
@@ -496,7 +538,7 @@ rimborsare il pacchetto, il tema l'aveva pagato e resta suo.
 La riga di quadratini si incolla; una figurina si guarda. `render_share_card`
 (`services/path_image.py`) disegna il risultato come PNG verticale 860×1075 — il formato che
 Telegram mostra piu' grande in una bolla senza tagliarlo — e la finitura e' un cosmetico
-(`kind: card`): piatta, notturna, olografica, di pellicola.
+(`kind: card`): piatta, notturna, olografica, di pellicola, tattica e biglietto da trasferta.
 
 Nel disegno **non entrano emoji**: il font non ha quei glifi e li stamperebbe come quadratini
 vuoti (`services/fonts.py`). I tentativi sono forme disegnate, ed e' anche il motivo per cui
@@ -525,7 +567,7 @@ lista dietro un bottone di `/stats`. Ora sono anche **targhe da indossare**: se 
 fino a tre (`services/trophies.py`) e vanno sul profilo, accanto al titolo comprato in
 negozio e sul profilo pubblico.
 
-Non passano da `services/shop.py`, pur finendo nello stesso posto. Un cosmetico si compra e
+Non passano da `domains/shop/service.py`, pur finendo nello stesso posto. Un cosmetico si compra e
 sta in un catalogo fisso, uguale per tutti; un trofeo si vince, e il suo catalogo e' diverso
 per ogni utente — e' la sua bacheca. Farlo entrare nel negozio avrebbe voluto dire un
 catalogo per utente, cioe' rompere la cosa su cui `get_item` e `owned_ids` sono costruiti.
@@ -552,16 +594,13 @@ lingue.
 
 ### Mini app Telegram
 
-> Questa sezione descrive la mini app **legacy** su `/app`, che è ancora quella aperta dai
-> pulsanti del bot. La nuova Mini App V2 (Vite + TypeScript) è servita su `/app/v2` e
-> diventerà il default solo con un'issue di rollout dopo
-> [#81](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/81): vedi
-> [`docs/miniapp.md`](docs/miniapp.md).
-
-`webapp/index.html` e' una pagina sola servita dallo stesso servizio FastAPI su `/app`, con
-cinque schede: **Gioca**, **Archivio**, **Statistiche**, **Leghe**, **Negozio**. Non e' piu'
-una vetrina:
-ci si gioca davvero, con le stesse regole della chat.
+La mini app e' scritta in Vite + TypeScript (`webapp/src/`, entry `index.html` alla radice),
+compilata in `webapp/dist/` e servita dallo stesso servizio FastAPI su `/app`: e' quella che
+aprono il pulsante **Play** e i bottoni del bot. La barra in basso ha cinque destinazioni:
+**Daily**, **Arena** (allenamento, duelli, eventi), **Classifica** (generale e leghe),
+**Negozio**, **Profilo**. L'archivio si apre dall'Arena, gli inviti dal Profilo, segnalazioni
+e pagine legali dal menu in alto. Struttura e contratto con il backend: [`docs/miniapp.md`](docs/miniapp.md).
+Ci si gioca davvero, con le stesse regole della chat.
 
 Cosa aggiunge rispetto al bot, e perche':
 
@@ -577,8 +616,9 @@ Cosa aggiunge rispetto al bot, e perche':
   `solved_in` sul documento utente, scritti quando si indovina, quindi non costa nessuna lettura;
 - **gestione delle leghe**: creare, entrare, uscire, classifica completa e invito con il
   selettore di chat nativo di Telegram;
-- **integrazione con l'app**: tema di Telegram (`--tg-theme-*`) e vibrazione su risposta
-  giusta o sbagliata. Il bottone per rispondere e' in pagina, sotto il campo, e non il
+- **integrazione con l'app**: vibrazione su risposta giusta o sbagliata; l'aspetto e' scuro
+  per costruzione e lo decidono i cosmetici, non il tema di Telegram
+  ([`docs/miniapp-appearance.md`](docs/miniapp-appearance.md)). Il bottone per rispondere e' in pagina, sotto il campo, e non il
   `MainButton` di sistema: quello sta sopra la tastiera ma a tastiera chiusa finisce sotto
   la barra delle schede, dove nessuno lo cerca, ed era l'unico posto dell'app in cui il
   bottone non stava dove si era appena scritto;
@@ -624,7 +664,7 @@ Elenco parziale; quello completo sta nelle rotte di `bot.py` (vedi [`docs/miniap
 - **Scheduler e code**: **Cloud Scheduler** chiama `POST /internal/daily-job` a mezzanotte italiana; gli update Telegram e il broadcast passano da **Cloud Tasks** ([`docs/runtime-hardening.md`](docs/runtime-hardening.md))
 - **Immagini**: percorso, banner evento, palmarès e avatar sono generati a runtime con **Pillow** (`services/path_image.py`), con un font TrueType di sistema (`fonts-dejavu-core` nel Dockerfile). Nessuna immagine ospitata fuori dal progetto
 - **Dataset calciatori**: JSON locale versionato in `data/players.json`
-- **Mini app**: legacy statica su `/app` (default) e V2 Vite + TypeScript su `/app/v2`, entrambe autenticate con la firma `initData` di Telegram ([`docs/miniapp.md`](docs/miniapp.md))
+- **Mini app**: Vite + TypeScript su `/app`, autenticata con la firma `initData` di Telegram ([`docs/miniapp.md`](docs/miniapp.md))
 
 ## Architettura dell'automazione
 
@@ -649,10 +689,11 @@ primo utilizzo. Gli eventi `manual_only` (es. padre/figlio) si creano solo a man
 [Eventi "coppie padre/figlio"](#eventi-coppie-padrefiglio-manuali).
 
 Il dettaglio architetturale (Daily, Archivio, Allenamento, duelli, eventi) è in
-[`docs/game-modes.md`](docs/game-modes.md). Un planner automatico su 30–90 giorni e gli
-eventi completamente data-driven **non esistono ancora**: sono le issue
-[#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30) e
-[#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31).
+[`docs/game-modes.md`](docs/game-modes.md), compreso il planner delle sfide su 7–90 giorni
+(dashboard → *Planner sfide*,
+[#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)). Gli eventi si
+definiscono in `data/event_templates.json` (filtri, regole, premi, calendario), validati in CI e
+modificabili dalla dashboard: vedi [`docs/event-templates.md`](docs/event-templates.md).
 
 ### Difficoltà
 
@@ -730,15 +771,15 @@ Serve a **guardare** i cosmetici prima di venderli: un tema, una cornice o una c
 giudicano addosso a una pagina vera, non su un francobollo nella scheda del negozio e ancor
 meno su sei stringhe esadecimali dentro `data/shop.json`.
 
-E' la pagina vera (`webapp/index.html`) servita dalle funzioni vere (`services/webapp_api.py`,
-`services/shop.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
+E' la mini app vera (il bundle in `webapp/dist/`, quindi prima `npm run build`) servita dalle funzioni vere (`services/webapp_api.py`,
+`domains/shop/service.py`, `services/trophies.py`): sotto, al posto di Firestore, c'e' un dizionario
 in memoria. L'utente finto ha gia' **tutto** il catalogo e cinque trofei, cosi' ogni oggetto
 si indossa con un click e ogni traguardo e' sbloccato; il negozio funziona ma "Compra"
 consegna subito, senza fattura, perche' non c'e' niente da pagare.
 
 Non tocca il database, non chiede credenziali e non serve Telegram: il finto `initData` lo
-inietta il server nella pagina servita, quindi `webapp/index.html` resta il file di
-produzione e non una sua variante. Si chiude e non resta niente.
+inietta il server nella pagina servita, quindi il bundle resta quello di produzione e non
+una sua variante. Si chiude e non resta niente.
 
 Due comode: `POST /app/api/preview/wear {"bundle": "pacchetto_neve"}` indossa un'intera
 collezione in un colpo, e `POST /app/api/preview/reset` rimette l'utente finto com'era.
@@ -763,6 +804,7 @@ in chat sarebbero scomode. **Scrive sul database di produzione.**
 | Eventi | stato (programmato/in corso/concluso), giorno corrente su totale, giorno per giorno con risposte, punti e bonus, elenco dei giorni **senza contenuto**, classifica dei partecipanti | attiva/disattiva, sposta le date (rimappa anche i contenuti e il giorno dei trofei), correggi le risposte di un giorno, riapri/chiudi il bonus di giornata, elimina, crea un evento manuale |
 | Utenti | classifiche, ricerca per id o per nome, scheda completa con striscia, trofei, leghe e archivio | punti totali e del mese, striscia, lingua, notifiche, azzeramento dei tentativi di oggi |
 | Leghe | leghe private con numero di membri e classifica interna | — |
+| Analytics | metriche di prodotto (completion rate, hint, referral, shop, Mini App) lette da PostHog in sola lettura ([`docs/product-analytics.md`](docs/product-analytics.md#15a-reading-metrics-back-admin-dashboard-39)); richiede `POSTHOG_PERSONAL_API_KEY`/`POSTHOG_PROJECT_ID` | — |
 | Dataset | quattro schede: salute del pool, **elenco completo** dei giocatori con difficoltà e punteggio scomposto, scheda singola con le tappe e il peso di ogni campionato, taratura della formula | notorietà (`popularity`), *verificato*, *solo allenamento*, campionato di una tappa; pesi e soglie della difficoltà, con anteprima di chi cambia fascia |
 | Review giocatori | coda dei candidati della pipeline di ingestion, con validazione, provenienza e duplicati ([`docs/player-data-pipeline.md`](docs/player-data-pipeline.md)); richiede `ADMIN_TELEGRAM_IDS` | modifica, approva (scrive `data/players.json` locale, con backup), rifiuta, merge, fonte errata, retry |
 | Giocatori sospesi | chi è escluso dalla selezione automatica | sospendi / riammetti |
@@ -1091,9 +1133,8 @@ viene toccata, la risposta rivelata solo a tentativi finiti), leghe private (cod
 classifica, link d'invito che iscrive da `/start`), firma `initData` della mini app (dato
 manomesso, token sbagliato, dati scaduti) e allineamento delle tre lingue: se una chiave o un
 segnaposto manca in una traduzione, la CI se ne accorge — sia per i messaggi del bot
-(`tests/test_i18n_keys.py`) sia per le stringhe della mini app, che stanno in
-`webapp/strings.js` proprio perché `node --test` possa caricarle e confrontarle
-(`tests/client.test.cjs`).
+(`tests/test_i18n_keys.py`) sia per le stringhe della mini app
+(`webapp/src/i18n/translations.ts`, confrontate da `tests/frontend/i18n.test.ts`).
 
 ### Le transazioni, su un Firestore vero
 

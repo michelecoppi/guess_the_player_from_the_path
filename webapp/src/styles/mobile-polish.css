@@ -1,0 +1,84 @@
+/* Mobile gameplay and discovery refinements. Product colours stay token-owned. */
+.daily-answer-dock { display:none; }
+.daily-answer-dock[hidden] { display:none !important; }
+.daily-intro { margin:12px 0 18px; padding:16px 18px; border:1px solid var(--edge); border-radius:12px; background:var(--card); }
+.daily-intro h3 { margin:0 0 8px; color:var(--text); font-size:19px; }
+.daily-intro ol { margin:0 0 12px; padding-left:22px; color:var(--muted); font-size:13px; line-height:1.5; }
+.daily-intro li + li { margin-top:5px; }
+.daily-intro .btn { min-height:42px; }
+
+.event-play-layout { display:grid; gap:16px; min-width:0; }
+.event-career-sheet { min-width:0; }
+.event-career-sheet .sheet-heading { padding-bottom:16px; }
+.event-career-sheet .career-path { margin-top:0; }
+.event-answer-desk { min-width:0; align-self:start; }
+.event-answer-desk .event-hint { margin:0 0 14px; line-height:1.45; }
+.event-answer-desk .event-attempts { padding-bottom:14px; margin-bottom:14px; border-bottom:1px solid var(--edge); }
+.event-answer-desk .event-attempts strong { color:var(--text); font-variant-numeric:tabular-nums; }
+.event-answer-desk .events-guess-form label { font-size:13px; font-weight:700; }
+.event-answer-desk .events-guess-form input { min-height:48px; font-size:16px; }
+.event-answer-desk .events-guess-form .btn { min-height:48px; }
+.event-detail:has(.event-play-layout) > h2 { font-size:clamp(38px,9vw,52px); }
+.event-detail:has(.event-play-layout) .event-description { font-size:14px; line-height:1.5; }
+.event-detail:has(.event-play-layout) .event-meta { padding:12px 0; border-block:1px solid var(--edge); }
+
+.player-search-control { margin:14px 0 6px; }
+.player-search-toggle { display:flex; align-items:center; gap:10px; width:100%; min-height:44px; padding:8px 0; border:0; background:transparent; color:var(--text); font:inherit; font-weight:700; text-align:left; cursor:pointer; }
+.player-search-toggle .icon:first-child { width:19px; height:19px; color:var(--skin-ink); }
+.player-search-toggle .icon:last-child { width:18px; height:18px; margin-left:auto; transition:transform .18s ease; }
+.player-search-toggle[aria-expanded="true"] .icon:last-child { transform:rotate(90deg); }
+.player-search-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.player-search { padding:4px 0 16px; margin-bottom:12px; }
+
+@media (min-width:700px) {
+  .event-play-layout { grid-template-columns:minmax(0,1.3fr) minmax(260px,.7fr); align-items:start; gap:24px; }
+}
+
+@media (max-width:699px) {
+  .event-career-sheet { padding:17px 13px 8px; border:1px solid var(--edge); border-radius:12px; background:color-mix(in srgb,var(--bg) 65%,transparent); }
+  .event-answer-desk { padding:16px; }
+  .event-header-actions { margin-bottom:4px; }
+
+  .arena-modes { gap:9px; margin-top:12px; }
+  .arena-modes .mode-entry { min-height:84px; padding:12px 14px; gap:12px; grid-template-columns:25px minmax(0,1fr) 18px; }
+  .arena-modes .mode-entry:first-child { min-height:112px; padding:18px 14px; }
+  .arena-modes .mode-entry b { font-size:23px; }
+  .arena-modes .mode-entry:first-child b { font-size:28px; }
+  .arena-modes .mode-entry small { font-size:12px; line-height:1.35; margin-top:3px; }
+  .arena-modes .mode-entry > .icon { width:21px; height:21px; }
+  .arena-hub .page-heading { padding-bottom:9px; }
+
+  .shop-shell { gap:11px; }
+  .shop-shell .shop-hero { padding:4px 2px 0; margin:0; min-height:0; }
+  .shop-shell .shop-heading { max-width:100%; padding-right:78px; }
+  .shop-shell .shop-hero h2 { font-size:32px; max-width:12ch; margin:7px 0 5px; }
+  .shop-shell .shop-hero p { font-size:11px; line-height:1.4; max-width:29ch; }
+  .shop-shell .shop-pitch-art { width:72px; height:88px; right:0; top:3px; opacity:.45; }
+  .shop-shell .shop-trust { margin-top:8px; }
+  .shop-shell .shop-trust details { font-size:10px; }
+  .shop-shell .shop-trust > .legal-links { font-size:10px; }
+  .shop-shell .shop-tabs { margin-top:2px; }
+  .shop-discover-intro { gap:8px; padding:7px 0 3px; }
+  .shop-discover-intro h2 { font-size:29px; }
+  .shop-discover-intro p { font-size:12px; }
+  .shop-discover-intro .btn { min-height:42px; }
+  .shop-shell .shop-section { padding:15px 0; }
+  .shop-catalog .shop-hero .shop-heading p,.shop-catalog .shop-pitch-art { display:none; }
+  .shop-catalog .shop-hero h2 { font-size:24px; max-width:none; margin:3px 0; }
+  .shop-catalog-header { padding-top:1px; }
+  .shop-catalog-header h2 { font-size:28px; }
+  .shop-catalog-header p { font-size:12px; }
+  .shop-catalog-tools { gap:10px; }
+  .shop-catalog-tools select { min-width:130px; }
+}
+
+@media (max-width:899px) {
+  .daily-answer-dock { display:flex; align-items:center; gap:8px; position:fixed; left:calc(12px + var(--safe-left)); right:calc(12px + var(--safe-right)); bottom:calc(74px + var(--safe-bottom)); z-index:99; min-height:48px; padding:8px 14px; border:1px solid var(--skin-accent); border-radius:10px; background:var(--card); box-shadow:0 8px 26px #0008; color:var(--text); font:inherit; cursor:pointer; }
+  .daily-answer-dock span { font-weight:800; }
+  .daily-answer-dock strong { margin-left:auto; color:var(--muted); font-size:11px; font-weight:600; }
+  .daily-answer-dock .icon { width:18px; height:18px; color:var(--skin-ink); }
+  .daily-answer-dock:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .daily-page { padding-bottom:58px; }
+}
+
+@media (prefers-reduced-motion:reduce) { .player-search-toggle .icon:last-child { transition:none; } }

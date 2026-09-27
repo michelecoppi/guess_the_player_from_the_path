@@ -13,7 +13,7 @@ export interface ShopCardCompletionItem {
   owned: boolean;
 }
 
-/** Server-calculated shop card from services/shop.py::_card. */
+/** Server-calculated shop card from domains/shop/service.py::_card. */
 export interface ShopCosmeticItem {
   id: string;
   kind: CosmeticSlot | "bundle";
@@ -130,9 +130,9 @@ export interface LookResponse {
   status: LookStatus;
 }
 
-export type ShopSubview = "catalog" | "wardrobe" | "achievements" | "history";
+export type ShopSubview = "discover" | "catalog" | "wardrobe" | "achievements" | "history";
 export type ShopKindFilter = "all" | CosmeticSlot | "bundle";
-export type ShopPriceFilter = "all" | "15" | "25" | "55" | "75";
+export type ShopPriceFilter = "all" | "7" | "12" | "28" | "38";
 export type ShopDeliveryStatus = "idle" | "delivering" | "delivered" | "pending";
 
 export interface ShopPreviewState {
@@ -148,6 +148,9 @@ export interface ShopState {
   kindFilter: ShopKindFilter;
   priceFilter: ShopPriceFilter;
   hideOwned: boolean;
+  searchQuery: string;
+  visibleCount: number;
+  selectedItemId: string | null;
   preview: ShopPreviewState | null;
   buying: boolean;
   deliveryStatus: ShopDeliveryStatus;

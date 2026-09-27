@@ -4,17 +4,12 @@ import logging
 from firebase_admin import firestore
 from google.api_core.exceptions import GoogleAPICallError
 
-from services.dates import shift_iso, today_iso
+from services.dates import today_iso
 
 
 def daily_path_ref(day_iso):
     from services import firebase_service as fs
     return fs.db.collection(fs.DAILY_PATH_COLLECTION).document(day_iso)
-
-
-def daily_path_exists(day_iso):
-    from services import firebase_service as fs
-    return fs.daily_path_ref(day_iso).get().exists
 
 
 def get_daily_path(day_iso):
@@ -35,21 +30,6 @@ def save_daily_path(day_iso, doc):
     logging.info(f"[GENERATOR] Salvata daily_path per {day_iso} (player_id={doc.get('player_id')})")
 
 
-def get_recent_player_ids(days):
-    """Gli id dei giocatori usati (o gia' programmati) nella finestra di anti-ripetizione.
-    Query di intervallo sulla data: possibile solo perche' le date sono ISO."""
-    from services import firebase_service as fs
-    start_day = shift_iso(today_iso(), -days)
-    docs = fs.db.collection(fs.DAILY_PATH_COLLECTION).where("day", ">=", start_day).stream()
-
-    ids = []
-    for doc in docs:
-        player_id = doc.to_dict().get("player_id")
-        if player_id:
-            ids.append(player_id)
-    return ids
-
-
 def claim_daily_first_correct(day_iso):
     """Assegna il bonus 'primo che indovina' a un solo utente, anche se due rispondono
     nello stesso istante. Ritorna True se il bonus spetta a chi ha appena chiamato."""
@@ -67,7 +47,7 @@ def claim_daily_first_correct(day_iso):
     return _claim(fs.db.transaction())
 
 
-def register_daily_outcome(day_iso, solved):
+def register_daily_outcome(day_iso, solved, attempts=None, hints=None):
     """Tiene il conto di quanti hanno **giocato** e quanti hanno **indovinato** una giornata.
 
     Serve alla riga "l'ha indovinato il 41%" che compare nella soluzione e nel messaggio di
@@ -81,12 +61,22 @@ def register_daily_outcome(day_iso, solved):
     sta la sfida, e vale per sempre.
 
     `solved=None` conta solo il giocatore (primo tentativo della giornata), `solved=True`
-    conta anche la risposta giusta. Sono due `Increment`: nessuna lettura, e due risposte
-    nello stesso istante non si sovrascrivono."""
+    conta anche la risposta giusta. Sono tutti `Increment`: nessuna lettura, e due risposte
+    nello stesso istante non si sovrascrivono.
+
+    Con la risposta giusta si sommano anche `attempts` e `hints` di chi ha indovinato
+    (`solved_attempts_total`, `solved_hints_total`): divisi per `solved_count` danno i
+    tentativi e gli indizi medi, cioe' la difficolta' **osservata** che
+    `services/difficulty_calibration.py` confronta con quella prevista (#21). Le giornate
+    precedenti a questi due contatori hanno solo la percentuale."""
     from services import firebase_service as fs
     fields = {}
     if solved:
         fields["solved_count"] = firestore.Increment(1)
+        if attempts:
+            fields["solved_attempts_total"] = firestore.Increment(int(attempts))
+        if hints is not None:
+            fields["solved_hints_total"] = firestore.Increment(int(hints))
     else:
         fields["players_count"] = firestore.Increment(1)
     try:
