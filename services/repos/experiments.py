@@ -67,4 +67,6 @@ def update(key: str, change: Callable[[dict[str, Any] | None], dict[str, Any]]) 
                               "experiments": records, "updated_at": firestore.SERVER_TIMESTAMP})
         return updated
 
-    return run(fs.db.transaction(max_attempts=10))
+    updated = run(fs.db.transaction(max_attempts=10))
+    experiments.clear_assignment_cache()
+    return updated

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+import threading
+import time
 from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -12,6 +14,9 @@ from services.product_analytics_query import CORE_METRICS
 METRICS = frozenset(row[0] for row in CORE_METRICS)
 _KEY = re.compile(r"[a-z][a-z0-9_]{2,63}\Z")
 _URL = re.compile(r"https://[^\s]{1,500}\Z")
+ASSIGNMENT_CACHE_TTL_SECONDS = 5
+_assignment_lock = threading.Lock()
+_assignment_cache: tuple[float, dict[str, dict[str, Any]]] | None = None
 
 
 def _text(value: Any, name: str) -> str:
@@ -33,22 +38,37 @@ def plan(key: str, hypothesis: str, metric: str, duration_days: int,
             "metric": metric, "duration_days": duration_days,
             "variants": {"control": "current behavior", "treatment": _text(treatment, "treatment")},
             "status": "planned", "started_at": None, "ends_at": None,
-            "result": None, "decision": None}
+            "result": None, "decision": None, "stop": None}
 
 
 def validate(raw: Any) -> dict[str, Any]:
-    if not isinstance(raw, Mapping) or set(raw) != {
+    if not isinstance(raw, Mapping) or set(raw) not in ({
         "key", "hypothesis", "metric", "duration_days", "variants", "status",
         "started_at", "ends_at", "result", "decision",
-    }:
+    }, {
+        "key", "hypothesis", "metric", "duration_days", "variants", "status",
+        "started_at", "ends_at", "result", "decision", "stop",
+    }):
         raise ValueError("experiment fields")
     variants = raw["variants"]
     if not isinstance(variants, Mapping) or set(variants) != {"control", "treatment"} or variants["control"] != "current behavior":
         raise ValueError("variants")
     planned = plan(raw["key"], raw["hypothesis"], raw["metric"], raw["duration_days"], variants["treatment"])
     state = raw["status"]
-    if state not in ("planned", "running", "finished", "decided"):
+    if state not in ("planned", "running", "stopped", "finished", "decided"):
         raise ValueError("status")
+    stop_info = raw.get("stop")
+    if state == "stopped":
+        if not isinstance(stop_info, Mapping) or set(stop_info) != {"at", "reason", "operator"}:
+            raise ValueError("stop audit")
+        if not isinstance(stop_info["at"], datetime) or stop_info["at"].tzinfo is None:
+            raise ValueError("stop audit")
+        _text(stop_info["reason"], "stop reason")
+        _text(stop_info["operator"], "stop operator")
+        if raw["result"] is not None or raw["decision"] is not None:
+            raise ValueError("stopped lifecycle")
+    elif stop_info is not None:
+        raise ValueError("stop audit")
     if state == "planned":
         if any(raw[field] is not None for field in ("started_at", "ends_at", "result", "decision")):
             raise ValueError("planned lifecycle")
@@ -60,6 +80,10 @@ def validate(raw: Any) -> dict[str, Any]:
             raise ValueError("ends_at")
         if state == "running" and (raw["result"] is not None or raw["decision"] is not None):
             raise ValueError("running lifecycle")
+        if state == "stopped":
+            assert isinstance(stop_info, Mapping)
+            if not started <= stop_info["at"] < ends:
+                raise ValueError("stop time")
         if state in ("finished", "decided"):
             result = raw["result"]
             if not isinstance(result, Mapping) or set(result) != {"summary", "evidence_url"}:
@@ -71,7 +95,7 @@ def validate(raw: Any) -> dict[str, Any]:
                 raise ValueError("decision")
             if state == "decided" and raw["decision"] not in ("ship", "iterate", "stop"):
                 raise ValueError("decision")
-    return dict(raw)
+    return {**raw, "stop": stop_info}
 
 
 def start(raw: Any, *, now: datetime, analytics_ready: bool) -> dict[str, Any]:
@@ -89,6 +113,16 @@ def finish(raw: Any, *, summary: str, evidence_url: str,
         raise ValueError("experiment duration has not elapsed")
     record.update(status="finished", result={"summary": _text(summary, "result summary"),
                   "evidence_url": evidence_url})
+    return validate(record)
+
+
+def stop(raw: Any, *, reason: str, operator: str, now: datetime) -> dict[str, Any]:
+    """Persist an early stop and its audit trail; retained plans are never deleted."""
+    record = validate(raw)
+    if record["status"] != "running" or now.tzinfo is None or not record["started_at"] <= now < record["ends_at"]:
+        raise ValueError("only a running experiment can be stopped before expiry")
+    record.update(status="stopped", stop={"at": now, "reason": _text(reason, "stop reason"),
+                                          "operator": _text(operator, "stop operator")})
     return validate(record)
 
 
@@ -133,8 +167,7 @@ def assign(key: str, *, user_id: Any, now: datetime | None = None) -> str | None
         from services import product_analytics
         if not product_analytics.is_enabled() or not product_analytics.settings().salt:
             return None
-        from services.repos import experiments as repository
-        record = repository.load().get(key)
+        record = _cached_registry().get(key)
         if record is None:
             return None
         variant = variant_for_subject(record, user_id=user_id, now=now)
@@ -147,3 +180,25 @@ def assign(key: str, *, user_id: Any, now: datetime | None = None) -> str | None
     except Exception:
         # Experiment infrastructure may not interrupt the product.
         return None
+
+
+def clear_assignment_cache() -> None:
+    """Discard this replica's snapshot after an operator change in this process."""
+    global _assignment_cache
+    with _assignment_lock:
+        _assignment_cache = None
+
+
+def _cached_registry() -> dict[str, dict[str, Any]]:
+    global _assignment_cache
+    with _assignment_lock:
+        moment = time.monotonic()
+        if _assignment_cache is None or moment >= _assignment_cache[0]:
+            from services.repos import experiments as repository
+            # A failed refresh cannot authorize treatment from an expired snapshot.
+            _assignment_cache = None
+            records = repository.load()
+            # Count the TTL from read start, including Firestore latency, so a
+            # stop racing this read cannot remain cached beyond five seconds.
+            _assignment_cache = (moment + ASSIGNMENT_CACHE_TTL_SECONDS, records)
+        return _assignment_cache[1]
