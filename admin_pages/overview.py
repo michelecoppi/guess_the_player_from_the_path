@@ -1,9 +1,11 @@
 """overview administration page."""
 from admin_pages.shared import (
+    MAX_ATTEMPTS,
     STATUS_ICON,
     after_write,
     cached_blocked_ids,
     cached_buffer_health,
+    cached_daily_stats,
     cached_daily_window,
     cached_dataset_report,
     cached_overview,
@@ -48,6 +50,7 @@ def render(today, now_italy):
             help=f"Il buffer previsto in data/config.json è di {health['target_days']} giorni.",
         )
 
+    overview = None
     try:
         overview = cached_overview()
         total = overview["users_total"] or 1
@@ -58,6 +61,34 @@ def render(today, now_italy):
         )
     except Exception as e:
         st.error(f"Errore leggendo gli utenti: {e}")
+
+    st.divider()
+    col5, col6, col7, col8 = st.columns(4)
+    col5.metric("Utenti attivi oggi", overview["active_users_today"] if overview else "—")
+
+    try:
+        players, solved = cached_daily_stats(today)
+        completion = f"{solved * 100 // players}%" if players else "—"
+        col6.metric("Completion rate oggi", completion, help=f"{solved} su {players} giocatori.")
+    except Exception as e:
+        col6.metric("Completion rate oggi", "—")
+        st.error(f"Errore leggendo le statistiche giornaliere: {e}")
+
+    col7.metric(
+        "Tentativi medi oggi",
+        f"{overview['avg_attempts_today']:.1f}" if overview else "—",
+        help=f"Su {MAX_ATTEMPTS} tentativi disponibili.",
+    )
+    col8.metric(
+        "Hint usati (media)",
+        f"{overview['avg_hints_today']:.1f}" if overview else "—",
+    )
+
+    if overview and overview["failed_jobs_recent"]:
+        st.warning(
+            f"⚠️ {overview['failed_jobs_recent']} job in stato incerto (lease scaduta senza "
+            "conferma) — dettaglio log e backup nella sezione dedicata di sistema."
+        )
 
     st.divider()
     left, right = st.columns(2)

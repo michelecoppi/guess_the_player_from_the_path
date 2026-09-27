@@ -1,14 +1,14 @@
 import type { ResolvedAppearance, CosmeticSlot } from "./types";
-import { FRAME_PAINTS, THEME_PATTERNS } from "./decorations";
+import { FRAME_MOTIONS, FRAME_PAINTS, THEME_MOTIONS, THEME_PATTERNS } from "./decorations";
 import type { SquareSymbols } from "@/utils/game";
 export type * from "./types";
 
 export const DEFAULT_SQUARE_SYMBOLS: SquareSymbols = { correct: "🟩", wrong: "🟥", unused: "⬜" };
-export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-secondary", "--skin-pitch", "--skin-profile-surface", "--skin-profile-glow", "--skin-pattern"] as const;
+export const SKIN_TOKENS = ["--skin-accent", "--skin-accent-text", "--skin-accent-secondary", "--skin-pitch", "--skin-profile-surface", "--skin-profile-glow", "--skin-pattern", "--skin-motion"] as const;
 export type SkinTokens = Partial<Record<typeof SKIN_TOKENS[number], string>>;
 const SLOTS: CosmeticSlot[] = ["theme", "frame", "title", "badge", "squares", "number", "celebration", "card"];
-const EFFECTS = new Set(["spotlight", "confetti", "dust", "flash", "paper", "snow", "mud", "fireworks"]);
-const FINISHES = new Set(["plain", "night", "foil", "grain"]);
+const EFFECTS = new Set(["spotlight", "confetti", "dust", "flash", "paper", "snow", "mud", "fireworks", "stadium_wave", "petals", "pixels", "comets", "bubbles", "flares", "lightning", "bounce"]);
+const FINISHES = new Set(["plain", "night", "foil", "grain", "tactics", "eleven", "ticket", "aurora", "pixel", "halftone"]);
 const record = (v: unknown): Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (v: unknown, max = 160): string => typeof v === "string" && v.length <= max ? v : "";
 const color = (v: unknown): string => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v : "";
@@ -33,8 +33,12 @@ export function parseResolvedAppearance(value: unknown): ResolvedAppearance {
     celebration: EFFECTS.has(text(source.celebration)) ? source.celebration as string : "",
     card: { finish: FINISHES.has(text(card.finish)) ? card.finish as string : "", ink: color(card.ink), paper: color(card.paper), glow: color(card.glow) },
   };
+  if (frame.tactics === 3 || frame.tactics === 11) result.frame!.tactics = frame.tactics;
+  if (theme.formation === true) result.theme!.formation = true;
+  if (FRAME_MOTIONS.has(text(frame.motion))) result.frame!.motion = frame.motion as string;
+  if (THEME_MOTIONS.has(text(theme.motion))) result.theme!.motion = theme.motion as string;
   // Structural colors are deliberately not forwarded to the presentation layer.
-  for (const key of ["accent", "edge", "track", "card"] as const) {
+  for (const key of ["accent", "accentText", "edge", "track", "card"] as const) {
     const valid = color(theme[key]);
     if (valid) result.theme![key] = valid;
   }
@@ -59,6 +63,7 @@ export function skinTokens(appearance: ResolvedAppearance): SkinTokens {
   const theme = appearance.theme || {};
   const tokens: SkinTokens = {};
   if (color(theme.accent)) tokens["--skin-accent"] = theme.accent!;
+  if (color(theme.accentText)) tokens["--skin-accent-text"] = theme.accentText!;
   if (color(theme.edge)) tokens["--skin-accent-secondary"] = theme.edge!;
   if (color(theme.track)) tokens["--skin-pitch"] = theme.track!;
   // The purchased surface must read as that theme, while product text stays legible:
@@ -71,6 +76,8 @@ export function skinTokens(appearance: ResolvedAppearance): SkinTokens {
   }
   if (color(theme.accent)) tokens["--skin-profile-glow"] = `radial-gradient(ellipse 680px 320px at 50% 0, color-mix(in srgb, ${theme.accent} 16%, transparent), transparent)`;
   if (theme.pattern && [...THEME_PATTERNS.values()].includes(theme.pattern)) tokens["--skin-pattern"] = theme.pattern;
+  const motion = THEME_MOTIONS.get(text(theme.motion));
+  if (motion) tokens["--skin-motion"] = motion;
   return tokens;
 }
 

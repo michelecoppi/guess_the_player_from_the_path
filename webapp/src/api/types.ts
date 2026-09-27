@@ -104,8 +104,27 @@ export interface ApiPublicProfileResponse {
   [key: string]: unknown;
 }
 
+/**
+ * Feature flags (#51) resolved by the server for the authenticated user. Only booleans:
+ * rules, rollout percentages and target lists never reach the client. Hiding a control
+ * based on these is cosmetic; the API still refuses with `FEATURE_DISABLED`.
+ */
+export type FeatureFlagKey =
+  | "arena"
+  | "shop"
+  | "daily_ui"
+  | "hints"
+  | "player_pipeline"
+  | "events_v2"
+  | "leaderboard";
+
+export type ApiResolvedFeatures = Partial<Record<FeatureFlagKey, boolean>>;
+
+export const FEATURE_DISABLED = "FEATURE_DISABLED";
+
 export interface ApiProfileResponse {
   language?: string;
+  features?: ApiResolvedFeatures;
   user: ApiUserSummary;
   cosmetics?: ApiCosmetics;
   trophies?: ApiTrophies;
@@ -119,6 +138,18 @@ export interface ApiProfileResponse {
 export interface ApiErrorResponse {
   detail: string;
   code?: string;
+  feature?: FeatureFlagKey;
+}
+
+/**
+ * Whether a feature is on for this profile. A missing block or key (an older server) means
+ * enabled: the flags default to the behaviour that existed before them.
+ */
+export function isFeatureEnabled(
+  profile: Pick<ApiProfileResponse, "features"> | null | undefined,
+  key: FeatureFlagKey,
+): boolean {
+  return profile?.features?.[key] !== false;
 }
 
 export interface ApiRequestPayload {

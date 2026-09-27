@@ -37,5 +37,5 @@ export interface NavBarProps {
   activeTab: NavTabId;
 }
 export function renderNavBar({ activeTab }: NavBarProps): string {
-  return `<nav class="app-nav" aria-label="Main navigation">${NAV_ITEMS.map((item) => `<button type="button" id="nav-tab-${item.id}" data-tab="${item.id}" ${item.id === primaryDestination(activeTab) ? 'aria-current="page"' : ""} aria-label="${escapeHtml(item.label())}">${icon(item.icon)}<span>${escapeHtml(item.label())}</span></button>`).join("")}</nav>`;
+  return `<nav class="app-nav" aria-label="${v("mainNavigation")}">${NAV_ITEMS.map((item) => `<button type="button" id="nav-tab-${item.id}" data-tab="${item.id}" ${item.id === primaryDestination(activeTab) ? 'aria-current="page"' : ""} aria-label="${escapeHtml(item.label())}">${icon(item.icon)}<span>${escapeHtml(item.label())}</span></button>`).join("")}</nav>`;
 }

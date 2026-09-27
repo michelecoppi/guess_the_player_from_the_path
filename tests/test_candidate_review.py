@@ -12,12 +12,10 @@ from typing import Any
 
 import pytest
 
-from services.adapters.base import AdapterResult, CareerEntry
-from services.candidate_player import (
-    CandidatePlayer,
-    CandidateState,
-)
-from services.candidate_review import (
+from domains.players.adapters.base import AdapterResult, CareerEntry
+from domains.players.candidates.model import CandidatePlayer, CandidateState
+from domains.players.candidates.repository import FileCandidatePlayerRepository
+from domains.players.candidates.review import (
     AdminIdentity,
     CandidateReviewService,
     ReviewAction,
@@ -28,9 +26,6 @@ from services.candidate_review import (
     make_production_player_id,
 )
 from services.player_pool import validate_dataset
-from services.repos.candidates import (
-    FileCandidatePlayerRepository,
-)
 
 
 @pytest.fixture
@@ -393,6 +388,10 @@ def test_approve_valid_ready_candidate(temp_env):
     assert del_piero_prod["full_name"] == "Alessandro Del Piero"
     assert del_piero_prod["verified"] is True
     assert len(del_piero_prod["career"]) == 2
+    assert del_piero_prod["source"] == "wikipedia"
+    assert del_piero_prod["source_id"] == "item_sample"
+    assert del_piero_prod["active"] is False  # career ends 2012, well in the past
+    assert "career_last_checked_at" in del_piero_prod
 
 
 def test_approve_valid_validated_candidate(temp_env):
@@ -869,6 +868,92 @@ def test_make_production_player_id_determinism_and_collision():
     assert pid_col2 == "francesco_totti_2"
 
 
+def test_approval_preserves_explicit_source_retirement_date(temp_env):
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    candidate = create_sample_candidate(
+        "cand_explicit_retirement",
+        "Recent Retiree",
+        state=CandidateState.READY,
+        career=[
+            {
+                "team": "Atalanta",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2020,
+                "end_year": 2024,
+            },
+            {
+                "team": "Milan",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2024,
+                "end_year": 2026,
+            }
+        ],
+        birth_year=1990,
+    )
+    candidate.raw_data["source_metadata"] = {"career_end": "2 luglio 2026"}
+    repo.save(candidate)
+
+    result = service.approve_candidate(
+        admin,
+        candidate.candidate_id,
+        expected_revision=candidate.revision,
+        allow_warnings=True,
+    )
+
+    assert result.success is True
+    promoted = next(
+        player
+        for player in service._load_production_players()
+        if player["id"] == result.promoted_player_id
+    )
+    assert promoted["active"] is False
+    assert promoted["source_career_end"] == "2 luglio 2026"
+
+
+def test_approval_preserves_one_club_career_marker(temp_env):
+    service = temp_env["service"]
+    repo = temp_env["repo"]
+    admin = temp_env["admin"]
+
+    candidate = create_sample_candidate(
+        "cand_one_club",
+        "Club Legend",
+        state=CandidateState.READY,
+        career=[
+            {
+                "team": "Roma",
+                "country": "Italia",
+                "league": "Serie A",
+                "start_year": 2000,
+                "end_year": 2020,
+            }
+        ],
+        birth_year=1980,
+    )
+    candidate.metadata["one_club_career"] = True
+    repo.save(candidate)
+
+    result = service.approve_candidate(
+        admin,
+        candidate.candidate_id,
+        expected_revision=candidate.revision,
+        allow_warnings=True,
+    )
+
+    assert result.success is True
+    promoted = next(
+        player
+        for player in service._load_production_players()
+        if player["id"] == result.promoted_player_id
+    )
+    assert promoted["one_club_career"] is True
+
+
 def test_path_traversal_rejection(temp_env):
     repo = temp_env["repo"]
     with pytest.raises(ValueError, match="candidate_id non valido per il filesystem"):
@@ -1269,7 +1354,7 @@ def test_retry_actually_invokes_existing_ingestion_pipeline(temp_env, monkeypatc
             ],
         )
 
-    from services.adapters.wikipedia import WikipediaAdapter
+    from domains.players.adapters.wikipedia import WikipediaAdapter
     monkeypatch.setattr(WikipediaAdapter, "fetch_player", mock_fetch_player)
 
     res = service.retry_ingestion(admin, "cand_pipe_retry", expected_revision=1, adapter_fetcher=None)
@@ -1336,8 +1421,8 @@ def test_source_wrong_retry_with_explicit_source_uses_real_adapter(temp_env, mon
     5. The wikipedia observation is excluded from blocking-conflict evaluation.
     6. approve_candidate() succeeds and the player lands in the production dataset.
     """
-    from services.adapters.base import AdapterResult, CareerEntry
-    from services.adapters.wikidata import WikidataAdapter
+    from domains.players.adapters.base import AdapterResult, CareerEntry
+    from domains.players.adapters.wikidata import WikidataAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1429,7 +1514,7 @@ def test_source_wrong_retry_with_explicit_source_uses_real_adapter(temp_env, mon
     assert obs_wdata.raw_value == "Wikidata Correct Name"
 
     # 4. The wikipedia observation is excluded from blocking-conflict evaluation
-    from services.candidate_review import get_candidate_provenance_conflicts
+    from domains.players.candidates.review import get_candidate_provenance_conflicts
     conflicts = get_candidate_provenance_conflicts(after_retry)
     assert "full_name" not in conflicts, (
         f"Wikipedia observation must not create a blocking conflict for full_name. Conflicts: {conflicts}"
@@ -1459,7 +1544,7 @@ def test_retry_without_alternative_fails_closed_when_source_marked_unreliable(te
 
     No adapter must be invoked; the candidate must remain unchanged.
     """
-    from services.adapters.wikipedia import WikipediaAdapter
+    from domains.players.adapters.wikipedia import WikipediaAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1522,7 +1607,7 @@ def test_trusted_sources_conflict_remains_blocking_after_source_wrong(temp_env):
     Separate verification:
     - If NEITHER source is marked wrong, the conflict still blocks approval (fail-closed).
     """
-    from services.candidate_review import get_candidate_provenance_conflicts
+    from domains.players.candidates.review import get_candidate_provenance_conflicts
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1583,7 +1668,7 @@ def test_review_projection_conflict_status_uses_review_aware_policy():
       projection.has_source_conflicts == False
       Both observations remain visible in field_observations.
     """
-    from services.candidate_review import build_review_projection
+    from domains.players.candidates.review import build_review_projection
 
     cand = create_sample_candidate("cand_proj_test", "Entity X", state=CandidateState.READY)
     cand.source = "wikipedia"
@@ -1635,8 +1720,8 @@ def test_successful_alternative_source_retry_updates_active_source_identity(temp
     - Old Wikipedia provenance still exists
     - SOURCE_WRONG history still exists
     """
-    from services.adapters.base import AdapterResult, CareerEntry
-    from services.adapters.wikidata import WikidataAdapter
+    from domains.players.adapters.base import AdapterResult, CareerEntry
+    from domains.players.adapters.wikidata import WikidataAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1723,9 +1808,9 @@ def test_successful_alternative_source_retry_updates_active_source_identity(temp
 
 def test_retry_without_override_after_recovery_resolves_updated_source(temp_env, monkeypatch):
     """After successful Wikidata recovery, retry_ingestion() with no override resolves Wikidata, NOT rejected Wikipedia."""
-    from services.adapters.base import AdapterResult, CareerEntry
-    from services.adapters.wikidata import WikidataAdapter
-    from services.adapters.wikipedia import WikipediaAdapter
+    from domains.players.adapters.base import AdapterResult, CareerEntry
+    from domains.players.adapters.wikidata import WikidataAdapter
+    from domains.players.adapters.wikipedia import WikipediaAdapter
 
     service = temp_env["service"]
     repo = temp_env["repo"]
@@ -1813,3 +1898,57 @@ def test_retry_without_override_after_recovery_resolves_updated_source(temp_env,
     assert res2.projection.source_id == "Q9999"
 
 
+
+
+# ---------------------------------------------------------------------------
+# Feature flag `player_pipeline` (#51)
+# ---------------------------------------------------------------------------
+
+def _pipeline_off():
+    from services import feature_flags
+    feature_flags.set_service(feature_flags.FeatureFlagService(
+        lambda: {"schema_version": 1, "revision": 1, "flags": {"player_pipeline": {"enabled": False}}}, ttl=300))
+
+
+def test_retry_ingestion_is_refused_without_calling_any_source_when_the_pipeline_is_disabled(temp_env):
+    _pipeline_off()
+    service, repo, admin = temp_env["service"], temp_env["repo"], temp_env["admin"]
+    repo.save(create_sample_candidate("cand_flag_off", "Paused Player", state=CandidateState.REVIEW_REQUIRED, career=[]))
+    before = repo.get_by_id("cand_flag_off").to_dict()
+
+    def fetcher(source, source_id):
+        pytest.fail("no external source may be contacted while player_pipeline is disabled")
+
+    result = service.retry_ingestion(admin, "cand_flag_off", expected_revision=1, adapter_fetcher=fetcher)
+    assert result.success is False
+    assert result.status == ReviewStatus.FEATURE_DISABLED
+    assert repo.get_by_id("cand_flag_off").to_dict() == before
+
+
+def test_retry_ingestion_still_checks_authorization_before_the_flag(temp_env):
+    _pipeline_off()
+    temp_env["repo"].save(create_sample_candidate("cand_flag_auth", "Someone", state=CandidateState.REVIEW_REQUIRED))
+    with pytest.raises(ReviewForbiddenError):
+        temp_env["service"].retry_ingestion(temp_env["stranger"], "cand_flag_auth", expected_revision=1)
+
+
+def test_existing_candidates_can_still_be_approved_and_rejected_with_the_pipeline_disabled(temp_env):
+    _pipeline_off()
+    service, repo, admin = temp_env["service"], temp_env["repo"], temp_env["admin"]
+    repo.save(create_sample_candidate("cand_flag_ok", "Alessandro Del Piero", state=CandidateState.READY))
+    repo.save(create_sample_candidate("cand_flag_no", "Wrong Person", state=CandidateState.REVIEW_REQUIRED))
+
+    assert service.approve(admin, "cand_flag_ok", expected_revision=1).status == ReviewStatus.SUCCESS
+    rejected = service.reject_candidate(admin, "cand_flag_no", expected_revision=1, reason="dati errati")
+    assert rejected.success is True
+
+
+def test_an_injected_gate_overrides_the_global_flag(temp_env, tmp_path):
+    service = CandidateReviewService(
+        candidate_repo=temp_env["repo"], players_path=temp_env["service"]._players_path,
+        backup_dir=tmp_path / "bk", admin_ids=[100], ingestion_enabled=lambda: False,
+    )
+    temp_env["repo"].save(create_sample_candidate("cand_flag_inject", "Injected", state=CandidateState.REVIEW_REQUIRED))
+    result = service.retry_ingestion(temp_env["admin"], "cand_flag_inject", expected_revision=1,
+                                     adapter_fetcher=lambda s, i: pytest.fail("gated"))
+    assert result.status == ReviewStatus.FEATURE_DISABLED

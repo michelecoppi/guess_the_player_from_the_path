@@ -5,7 +5,7 @@ import type { ShopCosmeticItem } from "@/features/shop/types";
  * Ownership: Issue #46 (Mini App: migrare feature Referral)
  */
 
-/** Authoritative friend row projection from services/referrals.py::dashboard */
+/** Authoritative friend row projection from domains/referrals/service.py::dashboard */
 export interface ReferralFriendRow {
   name: string;
   days: number;

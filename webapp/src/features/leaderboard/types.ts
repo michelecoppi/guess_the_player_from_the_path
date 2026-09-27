@@ -43,6 +43,7 @@ export interface ProfileSearchResult {
 }
 
 export interface LeaderboardState {
+  searchExpanded?: boolean;
   search?: { query: string; status: 'idle' | 'loading' | 'ready' | 'error'; results: ProfileSearchResult[] };
   status: "idle" | "loading" | "ready" | "error";
   error: string | null;

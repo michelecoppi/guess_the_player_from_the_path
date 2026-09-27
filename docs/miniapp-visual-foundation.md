@@ -67,13 +67,13 @@ npm ci
 npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
 ```
 
-- Real runtime: http://127.0.0.1:5174/app/v2/ (requires API on port 8000 and
+- Real runtime: http://127.0.0.1:5174/app/ (requires API on port 8000 and
   valid Telegram authentication to play).
-- Isolated visual review: http://127.0.0.1:5174/app/v2/?design-review
+- Isolated visual review: http://127.0.0.1:5174/app/?design-review
   (development build only). State/appearance controls appear below the page.
 - Build validation: `npm run typecheck`, `npm test`, `npm run build`,
   `npm audit --audit-level=high`.
-- Route regression: `python -m pytest -q tests/test_webapp_v2_serving.py tests/test_webapp_auth.py`.
+- Route regression: `python -m pytest -q tests/test_webapp_serving.py tests/test_webapp_auth.py`.
 
 Tailwind CSS and its official Vite plugin are development dependencies. There
 are no new runtime dependencies, web fonts or third-party icon requests. Vite

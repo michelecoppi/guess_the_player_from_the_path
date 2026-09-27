@@ -28,6 +28,38 @@ export function attachShopEventListeners(
     });
   });
 
+  root.querySelectorAll<HTMLButtonElement>("button[data-shop-detail]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.shopDetail;
+      if (id) {
+        controller.openDetail(id);
+        window.scrollTo?.({ top: 0, behavior: "instant" as ScrollBehavior });
+      }
+    });
+  });
+  root.querySelector<HTMLButtonElement>("#shop-detail-back")?.addEventListener("click", () => {
+    controller.closeDetail();
+  });
+
+  const searchInput = root.querySelector<HTMLInputElement>("#shop-search");
+  searchInput?.addEventListener("input", () => {
+    const start = searchInput.selectionStart;
+    const end = searchInput.selectionEnd;
+    controller.setSearchQuery(searchInput.value);
+    const next = document.querySelector<HTMLInputElement>("#shop-search");
+    if (next) {
+      next.focus();
+      if (start !== null && end !== null) next.setSelectionRange(start, end);
+    }
+  });
+  root.querySelector<HTMLButtonElement>("#shop-show-more")?.addEventListener("click", () => controller.showMore());
+  root.querySelector<HTMLButtonElement>("#shop-clear-filters")?.addEventListener("click", () => {
+    controller.setKindFilter("all");
+    controller.setPriceFilter("all");
+    controller.setHideOwned(false);
+    controller.setSearchQuery("");
+  });
+
   // Filter dropdown: category / kind
   const kindSelect = root.querySelector<HTMLSelectElement>("#shop-kind");
   if (kindSelect) {
@@ -35,6 +67,12 @@ export function attachShopEventListeners(
       controller.setKindFilter(kindSelect.value as ShopKindFilter);
     });
   }
+  root.querySelectorAll<HTMLButtonElement>("button[data-shop-kind]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const kind = btn.dataset.shopKind as ShopKindFilter | undefined;
+      if (kind) controller.setKindFilter(kind);
+    });
+  });
 
   // Filter dropdown: price ceiling
   const priceSelect = root.querySelector<HTMLSelectElement>("#shop-price");

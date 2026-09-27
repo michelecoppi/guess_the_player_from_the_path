@@ -74,3 +74,23 @@ def _wipe(client, host):
 
     url = f"http://{host}/emulator/v1/projects/{client.project}/databases/(default)/documents"
     urllib.request.urlopen(urllib.request.Request(url, method="DELETE"), timeout=10).close()
+
+
+@pytest.fixture(autouse=True)
+def isolated_feature_flags(request):
+    """Ogni test parte dai default del repository per i feature flag (#51).
+
+    Senza questa fixture il servizio dei flag andrebbe a leggere Firestore, che nei test
+    unitari e' vietato (vedi `no_live_firestore`), e la cache sopravvivrebbe da un test
+    all'altro. Chi usa `emulator_db` legge davvero `admin_settings/feature_flags`, senza cache,
+    cosi' una scrittura nel test si vede subito. Un test che vuole un flag spento installa il
+    suo servizio con `feature_flags.set_service`."""
+    from services import feature_flags
+
+    if "emulator_db" in request.fixturenames:
+        service = feature_flags.FeatureFlagService(feature_flags._firestore_loader, ttl=0)
+    else:
+        service = feature_flags.FeatureFlagService(lambda: None, ttl=feature_flags.MAX_TTL_SECONDS)
+    feature_flags.set_service(service)
+    yield service
+    feature_flags.set_service(None)

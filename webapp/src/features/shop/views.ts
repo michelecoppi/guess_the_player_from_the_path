@@ -1,8 +1,10 @@
+import { renderCardSample, renderFormation } from '@/components/CosmeticArt';
 import { renderStyleInventory } from "@/components/StyleInventory";
 import { escapeHtml, weekNumber } from "@/utils/format";
 import { t, getLanguage } from "@/i18n";
 import { renderAvatar } from "@/components/Avatar";
 import { icon } from "@/components/Icon";
+import { legalHref } from "@/components/LegalLinks";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
 import { DEFAULT_SQUARE_SYMBOLS, parseResolvedAppearance, skinTokens } from "@/appearance";
 import { getTelegramUser } from "@/telegram/webapp";
@@ -31,6 +33,14 @@ const CELEBRATION_GLYPH: Record<string, string> = {
   snow: "❄️",
   mud: "🟫",
   fireworks: "🎆",
+  stadium_wave: "〰️",
+  petals: "🌸",
+  pixels: "👾",
+  comets: "☄️",
+  bubbles: "🫧",
+  flares: "🎇",
+  lightning: "⚡",
+  bounce: "⚽",
 };
 
 const SHOT_STOPS = [
@@ -38,6 +48,16 @@ const SHOT_STOPS = [
   ["2021", "Club B"],
   ["2024", "Club C"],
 ];
+
+function searchable(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+}
+
+function localizedTitle(style: Record<string, unknown>): string {
+  const labels = style.label_i18n;
+  const label = labels && typeof labels === 'object' ? (labels as Record<string, unknown>)[getLanguage()] : undefined;
+  return typeof label === 'string' ? label : typeof style.label === 'string' ? style.label : '';
+}
 
 function previewDisplayName(): string {
   const user = getTelegramUser();
@@ -61,11 +81,10 @@ export function itemMatches(
 }
 
 export function legalLinks(): string {
-  const lang = encodeURIComponent(getLanguage());
   return `
     <footer class="shop-legal-links">
-      <a href="/privacy?lang=${lang}" target="_blank" rel="noopener">${escapeHtml(t("shop.privacy"))}</a>
-      <a href="/terms?lang=${lang}#refunds" target="_blank" rel="noopener">${escapeHtml(t("shop.refunds"))}</a>
+      <a href="${legalHref("privacy")}" target="_blank" rel="noopener">${escapeHtml(t("shop.privacy"))}</a>
+      <a href="${legalHref("terms", "refunds")}" target="_blank" rel="noopener">${escapeHtml(t("shop.refunds"))}</a>
     </footer>
   `;
 }
@@ -133,7 +152,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
     return `
       <div class="shop-stage theme-stage" ${profileSurfaceAttributes({ theme: style }).replace("data-cosmetic-profile ", "")}>
         ${caption}
-        ${themeShot(style)}
+        ${renderFormation({ theme: style })}${themeShot(style)}
       </div>
     `;
   }
@@ -141,7 +160,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
   if (kind === "frame") {
     const ring = typeof style.ring === "string" ? `background:${style.ring}` : undefined;
     const identityHtml = showIdentity
-      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame: style }).frame?.tactics, ringMotion: parseResolvedAppearance({ frame: style }).frame?.motion })}
          <div class="preview-name">${escapeHtml(previewDisplayName())}</div>`
       : "";
     return `
@@ -176,7 +195,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
   }
 
   if (kind === "title") {
-    const label = (style.label as string) || "—";
+    const label = localizedTitle(style) || "—";
     const color = (style.color as string) || "var(--muted)";
     return `
       <div class="shop-stage">
@@ -217,19 +236,7 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
   }
 
   if (kind === "card") {
-    const finish = (style.finish as string) || "plain";
-    const paper = (style.paper as string) || "#0a131e";
-    const ink = (style.ink as string) || "#ecf2f8";
-    const glow = (style.glow as string) || "#38bd82";
-    return `
-      <div class="shop-stage" style="padding:14px">
-        <div class="fig-mini fig-${escapeHtml(finish)}" style="--paper:${escapeHtml(paper)};--ink:${escapeHtml(ink)};--glow:${escapeHtml(glow)}">
-          <span class="n">#412</span>
-          <span class="sq"><i></i><i class="on"></i><i class="off"></i></span>
-          <span class="sc">2/3</span>
-        </div>
-      </div>
-    `;
+    return `<div class="shop-stage shop-card-art">${renderCardSample(style)}</div>`;
   }
 
   if (kind === "bundle" && item.contents && item.contents.length > 0) {
@@ -241,11 +248,8 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
     const badge = byKind("badge");
     const squares = byKind("squares");
 
-    const bg = (theme.bg as string) || "var(--bg)";
-    const pattern = (theme.pattern as string) || "none";
-    const text = (theme.text as string) || "var(--text)";
     const ring = typeof frame.ring === "string" ? `background:${frame.ring}` : undefined;
-    const titleLabel = (title.label as string) || "";
+    const titleLabel = localizedTitle(title);
     const titleColor = (title.color as string) || "var(--muted)";
     const badgeEmoji = (badge.emoji as string) || "";
 
@@ -254,18 +258,20 @@ function shopArtwork(item: ShopCosmeticItem, opts: ShopArtworkOptions = {}): str
     const unused = (squares.unused as string) || "";
 
     const identityHtml = showIdentity
-      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false })}
+      ? `${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: parseResolvedAppearance({ frame }).frame?.tactics, ringMotion: parseResolvedAppearance({ frame }).frame?.motion })}
          <div class="preview-name">${escapeHtml(previewDisplayName())} ${escapeHtml(badgeEmoji)}</div>`
       : badgeEmoji
         ? `<div class="emoji-preview">${escapeHtml(badgeEmoji)}</div>`
         : "";
 
     return `
-      <div class="shop-stage" style="background-color:${escapeHtml(bg)};background-image:${escapeHtml(pattern)};color:${escapeHtml(text)}">
+      <div class="shop-stage bundle-stage" ${profileSurfaceAttributes({ theme }).replace("data-cosmetic-profile", "data-cosmetic-preview")}>
         ${caption}
         ${identityHtml}
         ${titleLabel ? `<div class="title-tag" style="color:${escapeHtml(titleColor)}">${escapeHtml(titleLabel)}</div>` : ""}
         ${correct ? `<div class="emoji-preview">${escapeHtml(wrong + correct + unused)}</div>` : ""}
+        ${renderCardSample(byKind("card"))}
+        ${renderFormation({ theme })}
       </div>
     `;
   }
@@ -318,8 +324,9 @@ export function renderShopCell(item: ShopCosmeticItem, state: ShopState): string
   const isPartial =
     kind === "bundle" && item.price > 0 && item.price < item.full_price;
 
+  // Trying on what's already worn would just show what's already on screen - no button.
   const previewTrigger =
-    kind !== "bundle" || item.equippable
+    !item.equipped && (kind !== "bundle" || item.equippable)
       ? `<button type="button" class="shop-preview-trigger" data-try="${escapeHtml(item.id)}" aria-label="${escapeHtml(t("shop.tryOn") + " · " + item.name)}">${escapeHtml(t("shop.tryOn"))} <span aria-hidden="true">↗</span></button>`
       : "";
 
@@ -485,8 +492,9 @@ export function renderPreviewBar(state: ShopState): string {
       <div class="preview-layout">
       <div class="preview-profile" ${profileSurfaceAttributes(worn)}>
       <p class="eyebrow">${escapeHtml(t('profile.title'))}</p>
+      ${renderFormation(worn)}
       <div class="preview-person">
-        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, size: "large" })}
+        ${renderAvatar({ name: previewDisplayName(), ringStyle: ring, spinRing: false, tactics: worn.frame?.tactics, ringMotion: worn.frame?.motion, size: "large" })}
         <div class="preview-meta">
           <div class="preview-identity">
             ${worn.number ? `<span class="shirt">${escapeHtml(worn.number)}</span>` : ""}
@@ -528,6 +536,67 @@ export function renderShopSection(
         ${items.map((item) => renderShopCell(item, state)).join("")}
       </div>
     </div>
+  `;
+}
+
+function renderShopTile(item: ShopCosmeticItem): string {
+  const sectionKey = `section${item.kind.charAt(0).toUpperCase() + item.kind.slice(1)}`;
+  const status = item.equipped
+    ? t("shop.worn")
+    : item.owned
+      ? t("shop.owned")
+      : item.price > 0
+        ? `${item.price} ⭐`
+        : item.free ? t("shop.rarityFree") : t("shop.earn");
+  return `
+    <article class="shop-tile" data-item-id="${escapeHtml(item.id)}">
+      <div class="shop-tile-art">${shopArtwork(item)}</div>
+      <div class="shop-tile-meta"><span>${escapeHtml(t(`shop.${sectionKey}` as any) || item.kind)}</span><strong>${escapeHtml(status)}</strong></div>
+      <h3>${escapeHtml(item.name)}</h3>
+      <button type="button" class="shop-tile-open" data-shop-detail="${escapeHtml(item.id)}" aria-label="${escapeHtml(t("shop.details") + " · " + item.name)}">${escapeHtml(t("shop.details"))} →</button>
+    </article>`;
+}
+
+function renderShopDetail(item: ShopCosmeticItem, state: ShopState): string {
+  const sectionKey = `section${item.kind.charAt(0).toUpperCase() + item.kind.slice(1)}`;
+  const placeKey = `place${item.kind.charAt(0).toUpperCase() + item.kind.slice(1)}`;
+  const isEarned = Boolean(item.achievement || item.trophy || item.completes.length);
+  const partial = item.kind === "bundle" && item.price < item.full_price;
+  const action = item.equipped
+    ? `<span class="tag worn-tag">${escapeHtml(t("shop.worn"))}</span>`
+    : item.owned
+      ? item.equippable
+        ? `<button type="button" class="btn" data-equip="${escapeHtml(item.id)}" ${state.equippingItemId || state.lookMutation ? "disabled" : ""}>${escapeHtml(t(item.kind === "bundle" ? "shop.wearAll" : "shop.wear"))}</button>`
+        : `<span class="tag owned-tag">${escapeHtml(t("shop.owned"))}</span>`
+      : isEarned
+        ? item.achievement
+          ? `<p>${escapeHtml(t("shop.earn"))} · ${item.progress}/${item.achievement.target}</p><progress max="${item.achievement.target}" value="${item.progress}"></progress>`
+          : `<p>${escapeHtml(t(item.trophy ? "shop.podiumOnly" : "shop.completeMissing"))}</p>`
+        : `<button type="button" class="btn buy-btn" data-buy="${escapeHtml(item.id)}" ${state.buying ? "disabled" : ""}>${escapeHtml(t("shop.buy"))} · ${item.price} ⭐</button>`;
+
+  return `
+    <section class="shop-detail" aria-labelledby="shop-detail-title">
+      <button type="button" class="shop-back" id="shop-detail-back">← ${escapeHtml(t("shop.backToShop"))}</button>
+      <div class="shop-detail-layout">
+        <div class="shop-detail-art">${shopArtwork(item)}</div>
+        <div class="shop-detail-info">
+          <span class="shop-product-kind">${escapeHtml(t(`shop.${sectionKey}` as any) || item.kind)}</span>
+          <h2 id="shop-detail-title">${escapeHtml(item.name)}</h2>
+          <p>${escapeHtml(item.description)}</p>
+          <div class="shop-detail-place"><b>${escapeHtml(t("shop.whereSeen"))}</b><span>${escapeHtml(t(`shop.${placeKey}` as any))}</span></div>
+          ${item.kind === "bundle" ? `
+            <h3>${escapeHtml(t("shop.included"))}</h3>
+            <ul class="shop-detail-pieces">${(item.contents || []).map((piece) => `<li><span>${escapeHtml(piece.name)}</span><span>${escapeHtml(t(piece.owned ? "shop.owned" : "shop.missing"))}</span></li>`).join("")}</ul>
+          ` : ""}
+          ${!item.owned && !isEarned ? `<p class="shop-detail-price">${item.price} ⭐ ${partial ? `<small>${escapeHtml(t("shop.partial"))}</small>` : ""}</p>` : ""}
+          <div class="shop-detail-actions">
+            ${!item.equipped && (item.kind !== "bundle" || item.equippable) ? `<button type="button" class="btn ghost" data-try="${escapeHtml(item.id)}">${escapeHtml(t("shop.tryOn"))}</button>` : ""}
+            ${action}
+          </div>
+          <p class="shop-note">${escapeHtml(t("shop.cosmeticsOnly"))} · Telegram Stars</p>
+        </div>
+      </div>
+    </section>
   `;
 }
 
@@ -575,8 +644,9 @@ export function renderShopPage(state: ShopState): string {
     </header>
   `;
 
-  const views: ShopSubview[] = ["catalog", "wardrobe", "achievements", "history"];
+  const views: ShopSubview[] = ["discover", "catalog", "wardrobe"];
   const viewIcons: Record<ShopSubview, string> = {
+    discover: icon('shop'),
     catalog: icon('shop'),
     wardrobe: icon('profile'),
     achievements: icon('ranking'),
@@ -588,7 +658,7 @@ export function renderShopPage(state: ShopState): string {
       ${views
         .map(
           (view) => `
-        <button type="button" role="tab" data-shop-view="${view}" aria-selected="${state.view === view}" class="shop-tab-btn${state.view === view ? " active" : ""}">
+        <button type="button" role="tab" data-shop-view="${view}" aria-selected="${state.view === view || (view === "wardrobe" && (state.view === "achievements" || state.view === "history"))}" class="shop-tab-btn${state.view === view || (view === "wardrobe" && (state.view === "achievements" || state.view === "history")) ? " active" : ""}">
           <span class="shop-tab-icon" aria-hidden="true">${viewIcons[view]}</span>
           ${escapeHtml(t(`shop.${view}` as any))}
         </button>
@@ -609,6 +679,38 @@ export function renderShopPage(state: ShopState): string {
     ? `<div class="toast" role="status">${escapeHtml(state.toast)}</div>`
     : "";
 
+  const secondaryLinks = `
+    <div class="shop-secondary-nav">
+      <button type="button" data-shop-view="achievements">${escapeHtml(t("shop.achievements"))} ↗</button>
+      <button type="button" data-shop-view="history">${escapeHtml(t("shop.history"))} ↗</button>
+    </div>`;
+
+  const selected = state.selectedItemId && state.catalogue
+    ? [...state.catalogue.bundles, ...state.catalogue.sections.flatMap((section) => section.items)]
+        .find((item) => item.id === state.selectedItemId)
+    : undefined;
+  if (selected) {
+    return `<section class="shop-shell">${renderPreviewBar(state)}${deliveryBanner}${renderShopDetail(selected, state)}${legalLinks()}${toastHtml}</section>`;
+  }
+
+  if (state.view === "discover") {
+    const collections = (state.catalogue?.bundles || []).filter((item) => item.featured)
+      .sort((left, right) => Number(left.owned) - Number(right.owned)).slice(0, 3);
+    const picks = (state.catalogue?.showcase?.items || []).filter((item) => !collections.some((one) => one.id === item.id))
+      .sort((left, right) => Number(left.owned) - Number(right.owned)).slice(0, 3);
+    return `
+      <section class="shop-shell shop-discover">
+        ${renderPreviewBar(state)}${deliveryBanner}${introHtml}${tabsHtml}
+        <div class="shop-discover-intro">
+          <div><span class="shop-kicker">${escapeHtml(t("shop.discover"))}</span><h2>${escapeHtml(t("shop.discoverTitle"))}</h2><p>${escapeHtml(t("shop.discoverSubtitle"))}</p></div>
+          <button type="button" class="btn" data-shop-view="catalog">${escapeHtml(t("shop.browseAll"))} →</button>
+        </div>
+        ${collections.length ? `<section class="shop-section" id="shelf-collections"><div class="shop-section-heading"><h2>${escapeHtml(t("shop.sectionCollections"))}</h2></div><div class="shop-grid wide">${collections.map(renderShopTile).join("")}</div></section>` : ""}
+        ${picks.length ? `<section class="shop-section"><div class="shop-section-heading"><h2>${escapeHtml(t("shop.showcaseTitle"))}</h2></div><div class="shop-grid">${picks.map(renderShopTile).join("")}</div></section>` : ""}
+        ${secondaryLinks}${toastHtml}
+      </section>`;
+  }
+
   if (state.view === "history") {
     return `
       <section class="shop-shell">
@@ -616,12 +718,30 @@ export function renderShopPage(state: ShopState): string {
         ${deliveryBanner}
         ${introHtml}
         ${tabsHtml}
+        ${secondaryLinks}
         <div class="history-container">
           ${renderPurchaseHistory(state)}
         </div>
         ${toastHtml}
       </section>
     `;
+  }
+
+  if (state.view === "wardrobe") {
+    const owned = [
+      ...(state.catalogue?.bundles || []),
+      ...(state.catalogue?.sections || []).flatMap((section) => section.items),
+    ].filter((item) => item.owned && !item.free);
+    return `
+      <section class="shop-shell shop-wardrobe">
+        ${renderPreviewBar(state)}${deliveryBanner}${introHtml}${tabsHtml}${secondaryLinks}
+        ${renderStyleInventory([], state.catalogue!.sections.flatMap((section) => section.items).filter((item) => item.owned), state.catalogue!.equipped)}
+        ${renderSavedLooks(state)}
+        <section class="shop-section"><div class="shop-section-heading"><h2>${escapeHtml(t("shop.wardrobe"))}</h2><span>${owned.length}</span></div>
+          ${owned.length ? `<div class="shop-grid">${owned.map(renderShopTile).join("")}</div>` : `<p class="card center muted">${escapeHtml(t("shop.noOwnedItems"))}</p>`}
+        </section>
+        ${toastHtml}
+      </section>`;
   }
 
   const kinds: Array<{ key: ShopKindFilter; label: string }> = [
@@ -639,11 +759,42 @@ export function renderShopPage(state: ShopState): string {
 
   const prices: Array<{ key: ShopPriceFilter; label: string }> = [
     { key: "all", label: t("shop.anyPrice") },
-    { key: "15", label: "≤ 15 ⭐" },
-    { key: "25", label: "≤ 25 ⭐" },
-    { key: "55", label: "≤ 55 ⭐" },
-    { key: "75", label: "≤ 75 ⭐" },
+    { key: "7", label: "≤ 7 ⭐" },
+    { key: "12", label: "≤ 12 ⭐" },
+    { key: "28", label: "≤ 28 ⭐" },
+    { key: "38", label: "≤ 38 ⭐" },
   ];
+
+  if (state.view === "catalog") {
+    const query = searchable(state.searchQuery.trim());
+    const all = [
+      ...(state.catalogue?.bundles || []),
+      ...(state.catalogue?.sections || []).flatMap((section) => section.items),
+    ];
+    const matches = all.filter((item) =>
+      itemMatches(item, "catalog", state.kindFilter, state.priceFilter, state.hideOwned)
+      && (!query || searchable(`${item.name} ${item.description}`).includes(query)),
+    ).sort((left, right) => Number(left.owned) - Number(right.owned));
+    const shown = matches.slice(0, state.visibleCount);
+    return `
+      <section class="shop-shell shop-catalog">
+        ${renderPreviewBar(state)}${deliveryBanner}${introHtml}${tabsHtml}
+        <div class="shop-catalog-header"><h2>${escapeHtml(t("shop.catalog"))}</h2><p>${escapeHtml(t("shop.catalogIntro"))}</p></div>
+        <label class="shop-search-label" for="shop-search">${escapeHtml(t("shop.searchLabel"))}</label>
+        <input id="shop-search" type="search" value="${escapeHtml(state.searchQuery)}" placeholder="${escapeHtml(t("shop.searchPlaceholder"))}" autocomplete="off">
+        <div class="shop-categories" aria-label="${escapeHtml(t("shop.allCategories"))}">
+          ${kinds.map((kind) => `<button type="button" data-shop-kind="${kind.key}" aria-pressed="${state.kindFilter === kind.key}">${escapeHtml(kind.label)}</button>`).join("")}
+        </div>
+        <div class="shop-catalog-tools">
+          <label>${escapeHtml(t("shop.anyPrice"))}<select id="shop-price">${prices.map((price) => `<option value="${price.key}" ${state.priceFilter === price.key ? "selected" : ""}>${escapeHtml(price.label)}</option>`).join("")}</select></label>
+          <label class="shop-filter-checkbox"><input id="shop-hide-owned" type="checkbox" ${state.hideOwned ? "checked" : ""}>${escapeHtml(t("shop.hideOwned"))}</label>
+        </div>
+        <p class="shop-result-count" role="status">${escapeHtml(t("shop.resultCount", { n: matches.length }))}</p>
+        ${matches.length ? `<div class="shop-grid shop-results">${shown.map(renderShopTile).join("")}</div>` : `<div class="card shop-empty"><p>${escapeHtml(t("shop.empty"))}</p><button type="button" class="btn ghost" id="shop-clear-filters">${escapeHtml(t("shop.clearFilters"))}</button></div>`}
+        ${matches.length > shown.length ? `<button type="button" class="btn ghost shop-more" id="shop-show-more">${escapeHtml(t("shop.showMore"))}</button>` : ""}
+        ${secondaryLinks}${toastHtml}
+      </section>`;
+  }
 
   const filtersHtml = `
     <div class="shop-controls shop-filters" role="search" aria-label="${escapeHtml(t("shop.allCategories"))}">
@@ -665,16 +816,6 @@ export function renderShopPage(state: ShopState): string {
           )
           .join("")}
       </select>
-      ${
-        state.view === "catalog"
-          ? `
-        <label class="shop-filter-checkbox">
-          <input id="shop-hide-owned" type="checkbox" ${state.hideOwned ? "checked" : ""}>
-          <span>${escapeHtml(t("shop.hideOwned"))}</span>
-        </label>
-      `
-          : ""
-      }
     </div>
   `;
 
@@ -729,10 +870,7 @@ export function renderShopPage(state: ShopState): string {
   `
       : "";
 
-  const showcaseHtml = state.view === "catalog" ? renderWeeklyShowcase(state) : "";
-  const savedLooksHtml = state.view === "wardrobe" ? renderSavedLooks(state) : "";
-
-  const contentShelves = collectionsHtml + bundlesHtml + shelvesHtml;
+  const contentShelves = bundlesHtml + shelvesHtml;
   const emptyHtml = `<p class="card center muted">${escapeHtml(t("shop.empty"))}</p>`;
 
   return `
@@ -741,12 +879,11 @@ export function renderShopPage(state: ShopState): string {
       ${deliveryBanner}
       ${introHtml}
       ${tabsHtml}
-      ${state.view === 'wardrobe' ? renderStyleInventory([], state.catalogue!.sections.flatMap(section => section.items).filter(item => item.owned), state.catalogue!.equipped) : ''}
-      ${savedLooksHtml}
-      ${showcaseHtml}
+      ${secondaryLinks}
+      ${collectionsHtml}
       ${filtersHtml}
       ${shortcutsHtml}
-      ${contentShelves || emptyHtml}
+      ${contentShelves || (collectionsHtml ? "" : emptyHtml)}
       ${toastHtml}
     </section>
   `;

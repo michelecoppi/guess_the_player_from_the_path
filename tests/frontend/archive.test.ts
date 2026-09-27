@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { ArchiveController } from "../../webapp/src/features/archive/controller";
 import {
   renderArchiveViews,
@@ -1032,21 +1030,6 @@ test("34. no authenticated renderPrototype('archive'): verified across app navig
   assert.ok(!pageHtml.includes("prototype-banner"));
   assert.ok(!pageHtml.includes("PROTOTYPE"));
   assert.ok(pageHtml.includes("archive-calendar"));
-});
-
-test("35. legacy /app unchanged: legacy index.html, client.js, and arena.js remain untouched", () => {
-  const legacyHtmlPath = path.resolve(process.cwd(), "webapp/index.html");
-  const legacyClientPath = path.resolve(process.cwd(), "webapp/client.js");
-  const legacyArenaPath = path.resolve(process.cwd(), "webapp/arena.js");
-
-  assert.ok(fs.existsSync(legacyHtmlPath), "webapp/index.html must exist");
-  assert.ok(fs.existsSync(legacyClientPath), "webapp/client.js must exist");
-  assert.ok(fs.existsSync(legacyArenaPath), "webapp/arena.js must exist");
-
-  const legacyHtml = fs.readFileSync(legacyHtmlPath, "utf-8");
-  assert.ok(legacyHtml.includes("function statsTab()"), "Legacy statsTab must be present");
-  assert.ok(legacyHtml.includes("function leaguesTab()"), "Legacy leaguesTab must be present");
-  assert.ok(legacyHtml.includes("client.js"), "Legacy client.js script tag must be present");
 });
 
 // ===========================================================================

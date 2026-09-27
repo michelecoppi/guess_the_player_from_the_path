@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { ProfileController } from "../../webapp/src/features/profile/controller";
 import { getTrophyPlacementLabel } from "../../webapp/src/features/profile";
 import { setLanguage, getLanguage } from "../../webapp/src/i18n";
@@ -807,19 +805,6 @@ test("62. Dark-only appearance contract: Profile cosmetic theme does not comprom
   assert.equal((appearance.theme as any).bg, undefined);
 
   clearResolvedAppearance();
-});
-
-test("63. Legacy /app files (webapp/index.html, webapp/client.js) remain completely untouched", () => {
-  const rootDir = path.resolve(__dirname, "../../");
-  const indexPath = path.join(rootDir, "webapp/index.html");
-  const clientPath = path.join(rootDir, "webapp/client.js");
-
-  assert.ok(fs.existsSync(indexPath));
-  assert.ok(fs.existsSync(clientPath));
-
-  const indexContent = fs.readFileSync(indexPath, "utf-8");
-  assert.ok(indexContent.includes("function statsTab()"));
-  assert.ok(indexContent.includes("function cabinetView()"));
 });
 
 test("64. Profile runtime does not render Astra fixture data", async () => {

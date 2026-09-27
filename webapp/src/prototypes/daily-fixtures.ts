@@ -121,7 +121,7 @@ export function dailyFixture(view: ReviewState): DailyState {
     state.challenge!.bonus_available = false;
   }
   if (view === "correct")
-    state.feedback = { status: "correct", points_awarded: 4 };
+    state.feedback = { status: "correct", points_awarded: 4, answer: "Andrea Pirlo", attempts_used: 2 };
   if (view === "loading") {
     state.status = "loading";
     state.challenge = null;

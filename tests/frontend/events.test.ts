@@ -1,7 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
-import path from "node:path";
 import { EventsController } from "../../webapp/src/features/events/controller";
 import {
   renderEventsPage,
@@ -61,6 +59,43 @@ function createTestCard(overrides: Partial<EventCard> = {}): EventCard {
   };
 }
 
+test('path event shares the Daily career and answer presentation', () => {
+  const controller = new EventsController();
+  const card = createTestCard();
+  Object.assign(controller.getState(), { status: 'ready', events: [card], selectedCode: card.code });
+  const html = renderEventsPage(controller);
+  assert.match(html, /event-play-layout/);
+  assert.match(html, /career-sheet event-career-sheet/);
+  assert.match(html, /answer-desk event-answer-desk/);
+  assert.match(html, /id="events-answer"/);
+});
+
+test("Link Club displays only the two names and a club input, never the solution", () => {
+  setLanguage("it");
+  const controller = new EventsController();
+  const card = createTestCard({ type: "link_club", player_names: ["Andrea Pirlo", "Gianluigi Buffon"], career_path: [] });
+  Object.assign(controller.getState(), { status: "ready", events: [card], selectedCode: card.code });
+  const html = renderEventsPage(controller);
+  assert.match(html, /Andrea Pirlo/);
+  assert.match(html, /Gianluigi Buffon/);
+  assert.match(html, /Club in comune/);
+  assert.doesNotMatch(html, /Juventus/);
+});
+
+test("Order Career moves stops with accessible controls and submits the selected order", async () => {
+  setLanguage("it");
+  const card = createTestCard({ type: "order_career", player_name: "Andrea Pirlo", career_path: [],
+    shuffled_stops: [{ id: 71, team: "Milan" }, { id: 32, team: "Inter" }] });
+  const controller = new EventsController();
+  Object.assign(controller.getState(), { status: "ready", events: [card] });
+  controller.select(card.code);
+  assert.equal(controller.orderAnswer(), "71,32");
+  assert.match(renderEventsPage(controller), /Sposta Inter più in alto/);
+  controller.moveOrder(32, -1);
+  assert.equal(controller.orderAnswer(), "32,71");
+  assert.match(renderEventsPage(controller), /Conferma l'ordine/);
+});
+
 function mockClient(queue: Array<EventsResponse | Error | ((url: string, payload: any) => Promise<EventsResponse>)>) {
   const recordedCalls: Array<{ url: string; payload: any }> = [];
   const client: any = {
@@ -82,6 +117,37 @@ function mockClient(queue: Array<EventsResponse | Error | ((url: string, payload
   };
   return client;
 }
+
+test("Blind Career reveals only server-owned stops, keeps the skin surface and submits the new revision", async () => {
+  setLanguage("it");
+  const first = createTestCard({
+    type: "blind_path", code: "blind", total_stops: 3, points: 5,
+    career_path: [{ team: "Milan", start_year: 2007 }],
+    progress: { attempts: 0, revealed: 1, revision: 0, finished: false, solved: false, points: 0 },
+  });
+  const second = createTestCard({
+    ...first, points: 4,
+    career_path: [{ team: "Chelsea", start_year: 2003 }, { team: "Milan", start_year: 2007 }],
+    progress: { attempts: 0, revealed: 2, revision: 1, finished: false, solved: false, points: 0 },
+  });
+  const client = mockClient([{ events: [first] }, { events: [second] },
+    { events: [second], feedback: { status: "wrong", points: 0 } }]);
+  const controller = new EventsController(client);
+  await controller.load();
+  controller.select("blind");
+  const html = renderEventsPage(controller);
+  assert.match(html, /blind-board/);
+  assert.match(html, /id="events-reveal"/);
+  assert.match(html, /Milan/);
+  assert.doesNotMatch(html, /Chelsea/);
+  await controller.reveal();
+  assert.deepEqual(client.recordedCalls[1].payload, {
+    mode: "events", action: "reveal", code: "blind", day: first.day, revision: 0,
+  });
+  assert.match(renderEventsPage(controller), /Chelsea/);
+  await controller.submit("Pirlo");
+  assert.equal(client.recordedCalls[2].payload.revision, 1);
+});
 
 // ---------------------------------------------------------------------------
 // 1. GET CONTRACT & PUBLIC PROJECTION
@@ -538,6 +604,21 @@ test("19. Authoritative attempts: tied to canonical EVENT_MAX_ATTEMPTS = 3 and n
   const html = renderEventsPage(controller);
   // 3 - 1 = 2 attempts left
   assert.match(html, /Tentativi rimasti:\s*2|Attempts left:\s*2/);
+});
+
+test("19b. Attempts follow the event template when the backend sends max_attempts (#31)", async () => {
+  const card = createTestCard({
+    max_attempts: 5,
+    progress: { attempts: 1, finished: false, solved: false, points: 0 },
+  });
+  const client = mockClient([{ events: [card] }]);
+  const controller = new EventsController(client);
+  await controller.load();
+  controller.select("champions_cup");
+
+  const html = renderEventsPage(controller);
+  // 5 - 1 = 4 attempts left, not the pre-#31 fallback of 3
+  assert.match(html, /Tentativi rimasti:\s*4|Attempts left:\s*4/);
 });
 
 test("20. Terminal states: distinct rendering for solved vs exhausted", async () => {
@@ -1204,21 +1285,6 @@ test("34. App constructor injection: verifies custom EventsController parameter 
   } finally {
     cleanup();
   }
-});
-
-// ---------------------------------------------------------------------------
-// 17. LEGACY /APP UNCHANGED
-// ---------------------------------------------------------------------------
-
-test("35. Legacy /app files (webapp/arena.js, webapp/index.html, webapp/client.js) remain completely untouched", () => {
-  const rootDir = path.resolve(__dirname, "../../");
-  const arenaJs = fs.readFileSync(path.join(rootDir, "webapp/arena.js"), "utf-8");
-  const indexHtml = fs.readFileSync(path.join(rootDir, "webapp/index.html"), "utf-8");
-  const clientJs = fs.readFileSync(path.join(rootDir, "webapp/client.js"), "utf-8");
-
-  assert.ok(arenaJs.includes("function eventView"), "Legacy arena.js eventView must remain present");
-  assert.ok(indexHtml.includes("arena.js"), "Legacy index.html script tag must remain present");
-  assert.ok(clientJs.includes("escapeHtml"), "Legacy client.js must remain untouched");
 });
 
 // ---------------------------------------------------------------------------

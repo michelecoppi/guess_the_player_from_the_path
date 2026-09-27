@@ -37,23 +37,22 @@ fallisce); il file del workflow resta la fonte esatta:
 
 | Step | Cosa controlla | Comando |
 |---|---|---|
-| Frontend: dipendenze e type check | la Mini App V2 compila senza errori di tipo | `npm ci`, `npm run typecheck` |
-| Frontend: build | il bundle Vite di `/app/v2` si costruisce | `npm run build` |
-| Test client legacy | le funzioni pure della mini app `/app` (`webapp/client.js`) e l'allineamento delle stringhe | `node --test tests/client.test.cjs` |
-| Test frontend V2 | test unitari TypeScript | `npm run test:frontend` |
+| Frontend: dipendenze e type check | la Mini App compila senza errori di tipo | `npm ci`, `npm run typecheck` |
+| Frontend: build | il bundle Vite di `/app` si costruisce | `npm run build` |
+| Test frontend | test unitari TypeScript, compreso l'allineamento delle stringhe IT/EN/ES | `npm run test:frontend` |
 | Audit dipendenze frontend | vulnerabilità npm di livello alto | `npm audit --audit-level=high` |
-| Controllo sintassi | i moduli Python compilano | `python -m compileall -q bot.py config.py services handlers scripts admin_pages admin_ui.py tools` |
+| Controllo sintassi | i moduli Python compilano | `python -m compileall -q bot.py config.py apps domains services handlers scripts admin_pages admin_ui.py tools` |
 | Lint | regole `E`, `F`, `W`, `I` di ruff (`E501` disattivato) | `ruff check .` |
-| Type check | annotazioni coerenti in `services/` | `mypy services/` |
+| Type check | annotazioni coerenti in `services/` e `domains/` | `mypy services/ domains/` |
 | Sicurezza | pip-audit con eccezioni a scadenza, detect-secrets, npm audit (vedi [security.md](security.md)) | `python -m tools.security` |
 | Validazione dataset | i JSON in `data/` sono validi | script inline in `ci.yml` |
 | Salute del dataset | id duplicati, alias ambigui, cronologie incoerenti | `python scripts/dataset_report.py --strict` |
 | Regressione dataset | metriche di qualità non peggiorano rispetto a `data/dataset_baseline.json` | `python -m scripts.dataset_regression --check` |
 | Emulatore Firestore | Java 21 + `gcloud` avviano l'emulatore; se non parte la CI fallisce | `gcloud emulators firestore start` |
-| Test + coverage | l'intera suite pytest, transazioni reali sull'emulatore comprese, con soglia minima | `pytest -q --cov=services --cov=handlers --cov-report=term-missing --cov-fail-under=70` |
+| Test + coverage | l'intera suite pytest, transazioni reali sull'emulatore comprese, con soglia minima | `pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing --cov-fail-under=70` |
 
 Configurazione di ruff/mypy in [`pyproject.toml`](../pyproject.toml): niente `__init__.py` nei
-package (`services/`, `handlers/`), quindi mypy ha bisogno di `explicit_package_bases = true` e
+package (`services/`, `handlers/`, `domains/`), quindi mypy ha bisogno di `explicit_package_bases = true` e
 `mypy_path = "."` per non confondere `services.firebase_service` con `firebase_service`.
 
 **Soglia di coverage**: 70%, contro il 74% reale. È un guardrail contro regressioni, non un
@@ -81,7 +80,7 @@ Passi: checkout dello stesso commit testato (`ref: ${{ github.event.workflow_run
 autenticazione GCP via `google-github-actions/auth@v2` (Workload Identity Federation), poi
 `gcloud run deploy guess-the-player --source . --project guess-the-player-from-path-bot --region
 europe-west1 --max-instances 10 --quiet`. La build dell'immagine ([`Dockerfile`](../Dockerfile))
-compila anche il bundle Vite della Mini App V2 in uno stage Node separato.
+compila anche il bundle Vite della Mini App in uno stage Node separato.
 
 **Perché WIF e non una chiave di service account**: una chiave scaricata è un segreto di lunga
 durata che, se trapela, resta valido finché non lo revochi a mano. WIF fa scambiare a GitHub

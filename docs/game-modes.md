@@ -27,12 +27,10 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
 
 1. **Content creation.** `services/daily_generator.py::ensure_daily_buffer` writes
    missing `daily_path/{YYYY-MM-DD}` documents for the next `buffer_days_ahead` days
-   (`data/config.json`, currently 3). Selection uses only verified, non-blocked,
-   non-`practice_only` players with at least `min_teams_in_career` clubs, excludes players
-   used in the last `history_days_no_repeat` days (falling back to repeats, with a
-   warning, if the pool is exhausted), follows `difficulty_rotation` with nearest-band
-   fallback, and seeds the RNG with the date so a rerun picks the same player for the
-   same day.
+   (`data/config.json`). Player selection is owned by the Daily planner
+   ([`services/daily_planner.py`](../services/daily_planner.py), see
+   [Daily planner](#daily-planner)); the buffer only fills gaps and never touches an
+   existing day.
 2. **Triggers.** The nightly Cloud Scheduler call to `/internal/daily-job`
    ([`handlers/daily_job.py`](../handlers/daily_job.py)) runs the buffer; `/admin_regen`
    and `scripts/generate_content.py` run it on demand; if today's document is still
@@ -48,7 +46,9 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
    never serialized to the Mini App.
 5. **Per-user state.** Counters on `users/{id}` are anchored to `last_played_day`, so
    there is no nightly reset; the result of a finished day is written once to
-   `users/{id}/history/{day}`; `daily_path/{day}` keeps `players_count`/`solved_count`.
+   `users/{id}/history/{day}`; `daily_path/{day}` keeps `players_count`/`solved_count` and,
+   for solvers, `solved_attempts_total`/`solved_hints_total` (observed difficulty,
+   [difficolta.md §6](difficolta.md)).
 6. **Nightly side effects.** Broadcast to subscribed users, event trophies, and on the
    first of the month the season close ([operations.md](operations.md)).
 
@@ -57,12 +57,52 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
 answers/difficulty, reopen the bonus, delete or schedule a challenge on any date; rules
 such as “today's challenge cannot be deleted” live in the service, not the UI.
 
-**Planned evolution.** There is no long-horizon planner: the automatic 30–90-day Daily
-planner is [#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)
-(open). Admin Daily management beyond the current page is
-[#34](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/34); a
-data-driven difficulty model is
-[#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21).
+Every generated or manually set Daily carries a `difficulty_prediction` snapshot that the
+Admin compares with observed results
+([#21](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/21),
+[difficolta.md §6](difficolta.md)).
+
+**Planned evolution.** Admin Daily management beyond the current pages is
+[#34](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/34).
+
+### Daily planner
+
+**Current state** ([#30](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/30)).
+One module chooses every automatic Daily player: the nightly buffer, `/admin_regen`,
+`get_today_challenge`, the “Rigenera” button (`content_admin.regenerate_daily`) and the
+Admin “🗓️ Planner sfide” page, which proposes a 7–90-day calendar, lets the admin review it
+and writes it only on *Applica*.
+
+Rules, in priority order (parameters in `data/config.json`):
+
+| Rule | Parameter |
+| --- | --- |
+| Eligible: verified, complete, non-`practice_only`, not blocked (`/admin_block`), not excluded from the planner | `admin_settings/daily_planner.excluded` (reason, optional `until` day) |
+| No player repeated within N days **before or after** the day (future fixed days count) | `history_days_no_repeat` |
+| Band from the rotation (by day of year), at most N consecutive days in the same band | `difficulty_rotation`, `daily_planner.max_same_band_streak` |
+| No shared club / nationality with the neighbouring days | `daily_planner.club_cooldown_days`, `daily_planner.nationality_cooldown_days` |
+
+Among the valid candidates the planner prefers players not present anywhere in the read
+window, then picks with an RNG seeded by `day|variant`: the same state gives the same
+calendar, and “another player” changes the variant, not the randomness. When the rules
+cannot all hold, it relaxes them in this order instead of leaving a hole: nationality and
+club, then band, then the band streak, and last the player repetition. Every relaxation is
+recorded.
+
+**Modes.** *Fill* creates only missing days. *Replan* also replaces future days that are
+not locked and were not chosen by hand (`source: "manual"`). Today and past days are never
+replaced, and a past day without a Daily is reported, not created. Days that will be
+replaced do not constrain their neighbours.
+
+**Audit.** Every planned Daily stores `planner_audit`: target band, chosen band, relaxed
+rules, the candidate funnel (pool → not excluded → not repeated → no shared club → other
+nationality → final candidates), variant, mode and `planned_at`. The Admin shows it per day
+in the planner and in “Sfide giornaliere”.
+
+**Review controls.** Per proposed day: another player (preview only), exclude the player
+(with reason and expiry, then recompute); per existing future day: lock/unlock. *Applica*
+re-reads each day just before writing and skips it if it was locked, created or changed
+since the preview.
 
 ## Archive
 
@@ -92,45 +132,89 @@ updated transactionally. Finished results are copied to each profile
 and require `BOT_USERNAME` and `PUBLIC_BASE_URL`; nothing is sent to friends
 automatically. Duels do not affect the global leaderboard.
 
+## Story Mode
+
+**Current state.** Mini App only: `/app/api/arena` with `mode: "story"` uses the hand-curated
+chapters in [`data/story.json`](../data/story.json). Chapters unlock in order: Anni '90,
+Maglie incrociate, then Notti europee. Each has seven themed levels with five verified
+players. A failed or revealed player restarts the current level; earlier levels remain
+cleared. A level solved without a wrong guess on the successful attempt earns one star.
+Completing the chapter earns its badge; earning all seven stars also earns its theme.
+These rewards are chapter-specific, cannot be bought, and are recorded with the user's
+Story progress in the same transaction. The cosmetics live in
+[`data/shop.json`](../data/shop.json); [`scripts/preview_webapp.py`](../scripts/preview_webapp.py)
+offers a local, Firestore-free preview of all four new items.
+
 ## Group rounds
 
-**Current state.** Chat only, in Telegram groups: `handlers/group_handler.py`
-(`/round`, `/standings`) with `group_rounds/{chat_id}` and its `players` subcollection.
-Points stay inside the group. Rules still live in the handler plus
-`services/repos/groups.py`.
+**Current state.** Chat only, in Telegram groups: `/round`, `/standings` and `/guess` in a
+group, with `group_rounds/{chat_id}` and its `players` subcollection. Points stay inside the
+group. The rules (training material that cannot spoil today, three attempts per round,
+the first correct answer claims the round in a transaction, points by difficulty) live in
+[`domains/groups/service.py`](../domains/groups/service.py), Firestore access in
+[`domains/groups/repository.py`](../domains/groups/repository.py);
+`handlers/group_handler.py` only reads the update and renders the localized reply (#147).
 
 ## Events
 
 **Current state.**
 
-- **Definition.** Event types are templates in
-  [`data/event_templates.json`](../data/event_templates.json) (`path`, `career`,
-  `transfer_guess`, `father_son`) with pool filters, duration, points and translated
-  name/description; tuning keys (`event_min_gap_days`,
-  `event_history_no_repeat_templates`, `event_default_duration_days`) are in
-  `data/config.json`.
+- **Definition.** Every event is a template in
+  [`data/event_templates.json`](../data/event_templates.json) (schema v2): type, pool
+  `filters`, game `rules` (attempts, `career` ratio), `rewards` (points per day,
+  first-solver bonus, podium trophies), `schedule` and translated name/description.
+  Schema, validation and examples: [event-templates.md](event-templates.md)
+  ([#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31)). Type
+  behaviour is a registry in `services/event_config.py` (`EVENT_TYPES`), not branches per
+  handler. Rotation tuning keys (`event_min_gap_days`, `event_history_no_repeat_templates`)
+  are in `data/config.json`.
+- **Validation.** `scripts/dataset_report.py --strict` (CI) and
+  `tests/test_event_config.py` reject an invalid template file; at runtime an invalid
+  template is skipped and logged, never fatal.
 - **Generation.** `services/event_generator.py::maybe_generate_event`, called by the
-  nightly job, rotates templates not used recently, respects the minimum gap and
-  `weekend_only`, and writes an `events/{code}` document with per-day `daily_data`.
-  Translated `name_i18n`/`description_i18n` are copied onto the event at generation time
-  (Italian `name`/`description` stay as fallback), so a running event does not change if
-  the template does; `tests/test_event_translations.py` fails if a template lacks
-  translations. `career` events never store a career image, to avoid revealing the answer.
-- **Manual events.** Templates marked `manual_only` (father/son pairs, which need a
-  photo) are never generated automatically; admins create them with `/admin_fs_add` +
+  nightly job, first creates `fixed`-schedule events up to 7 days ahead (no minimum gap;
+  skipped with an error if they would overlap an existing event), then, only when no event
+  is active, rotates `rotation` templates that are allowed today (`start_weekdays`,
+  recurring `window`), not used recently, past the minimum gap and not overlapping an
+  upcoming fixed event. It writes `events/{code}` with per-day `daily_data` and copies
+  texts, translations, `rules` and `rewards` onto the event, so a running event does not
+  change if the template does. `career` events never store a career image, to avoid
+  revealing the answer.
+- **Manual events.** `manual`-schedule templates (father/son pairs, which need a photo)
+  are never generated automatically; admins create them with `/admin_fs_add` +
   `/admin_event_create` or from the Admin “Eventi” page
   (`services/manual_event_service.py`). `/admin_event_create` can also force any
-  template to start on a chosen date.
+  template to start on a chosen date. Templates are created and edited, with validation,
+  preview and backup, in Admin “Eventi → Template eventi”.
 - **Playing.** Answer evaluation is shared (`services/event_rules.py`). Chat:
   `handlers/events_handler.py`. Mini App: `/app/api/arena` with `mode: "events"` →
-  `services/app_events.py` (transactional, revision-checked). Participants are
-  `events/{code}/participants/{user_id}` documents; trophies are assigned by the
-  nightly job the day after an event ends.
+  `services/app_events.py` (transactional, revision-checked; the card exposes
+  `max_attempts`). Attempts and the first-solver bonus come from the event's `rules` and
+  `rewards` (defaults 3 and +1 for events created before #31). Participants are
+  `events/{code}/participants/{user_id}` documents; trophies for the top
+  `rewards.podium_trophies` positions are assigned by the nightly job the day after an
+  event ends.
 
-**Planned evolution.** Fully data-driven, automatable event configuration and
-scheduling is [#31](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/31)
-(open). Today scheduling is template rotation plus manual creation; the Mini App does
-not change event scheduling.
+- **Carriera al buio (#128).** This event type draws players with five distinct
+  recent clubs. The Mini App starts with the most recent stop and can reveal
+  earlier stops one at a time. Participant state records the revealed count and
+  revision for that day; both guessing and revealing validate the revision in
+  a Firestore transaction. Each reveal costs one of the five base points, down
+  to one, and the existing first-solver bonus is added separately. Chat shows
+  a spoiler-free banner and directs players to the Mini App.
+
+- **Trova il collegamento (#129).** The generator chooses two players whose
+  careers share exactly one club. The public event card contains their names,
+  while the answer stays server-side. The Mini App presents the pair on a skin
+  surface and accepts a club name; chat directs players to the Mini App.
+
+- **Metti in ordine la carriera (#130).** The generator selects five distinct
+  recent clubs and sends them shuffled with opaque IDs, without years. The
+  correct order stays server-side. In the Mini App the player moves stops with
+  touch-sized, keyboard-accessible up and down controls, then submits the order.
+  The usual event attempts, score and leaderboard apply; chat directs users
+  to the Mini App without exposing the solution.
+
 
 ## Leaderboards, seasons and leagues
 
@@ -143,7 +227,48 @@ by `/league_*` commands and `/app/api/league`.
 
 ## Referral
 
-**Current state.** `services/referrals.py`: invite attribution via the `/start` payload,
+**Current state.** `domains/referrals/service.py`: invite attribution via the `/start` payload,
 qualification counted only from server-recorded daily finishes (`REQUIRED_DAYS`),
 cosmetic rewards at fixed thresholds, stored in `referrals/{key}`; Mini App dashboard at
 `/app/api/referrals` (higher rate-limit cost).
+
+## Offline streak balance comparison (#123)
+
+`python -m tools.streak_simulation --demo` replays a synthetic 30-day Daily calendar
+under the current daily-tier bonus and a proposed one-off bonus at days 3, 7 and 30.
+`--input path/to/normalized.json` instead reads a local normalized history. Neither
+mode reads Firestore, calls external services or changes live scoring. Output defaults
+to Markdown; `--format json` produces structured results with a `synthetic` flag.
+
+Input shape (anonymous identifiers, one final Daily result per user/day):
+
+```json
+{
+  "players": [{"id": "player_a", "initial_streak": 2, "last_correct_day": "2026-08-31"}],
+  "results": [{"player": "player_a", "day": "2026-09-01", "solved": true,
+    "difficulty": "hard", "hints_used": 1, "first_correct": false}]
+}
+```
+
+For a new streak use `initial_streak: 0` and omit `last_correct_day`. A nonzero
+streak requires its last correct date before that player's first input row. The
+history must be complete for the selected window: missing dates break continuity,
+just like not playing. Input order does not matter; duplicates, unknown difficulty,
+ambiguous booleans, inconsistent Daily bands and multiple first winners are rejected.
+Results include solves, base plus first-solver points, both streak bonuses, totals,
+delta and competition ranks (ties 1, 1, 3). Ranks cover only the supplied period;
+they do not include previously earned points or rebuild a production leaderboard.
+
+Historical source limitations matter: user Daily history is not a ready-made input.
+Difficulty must come from the Daily snapshot, and the per-result first-solver flag
+must be known. `daily_path.first_correct_user` is only a boolean, not the winner's
+ID; an aggregate user bonus count cannot reconstruct the winning dates. Do not
+invent unknown values or label an approximate reconstruction as exact history.
+Use the demo until a complete, appropriately anonymized input is available.
+
+The proposed bonus pays once per uninterrupted streak. A loss or missing date
+resets it; on day 31+ there is no recurring bonus. Initial streak continuity is
+preserved across the input boundary, so an established player does not receive
+old milestones again. Both policies use identical outcomes, hints and first bonuses.
+This replay does not predict changes in participation, retention or purchases.
+See [the synthetic report](streak-balance-report.md) for the checked example.

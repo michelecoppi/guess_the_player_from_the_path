@@ -2,7 +2,8 @@ import json
 
 import pytest
 
-from services import shop, webapp_api
+from domains.shop import service as shop
+from services import webapp_api
 
 
 def test_public_profile_only_exposes_statistics_and_equipped_cosmetics(monkeypatch):

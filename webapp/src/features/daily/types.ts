@@ -43,15 +43,6 @@ export interface DailyGuessResult {
   };
 }
 
-export interface DailyCardPayload {
-  attempts: number;
-  max_attempts: number;
-  solved: boolean;
-  hints: number;
-  streak: number;
-  day?: string;
-}
-
 export interface DailyCardResponse {
   image: string;
 }
@@ -64,8 +55,11 @@ export interface DailyState {
   feedback?: DailyGuessResult | null;
   cardImage?: string | null;
   cardLoading?: boolean;
+  /** Outcome of the last "copy the result" tap (#150), shown under the buttons. */
+  copyNotice?: string | null;
   squaresSymbols: SquareSymbols;
   inputValue: string;
+  introVisible?: boolean;
 }
 
 export const DAILY_FEATURE_METADATA = {
