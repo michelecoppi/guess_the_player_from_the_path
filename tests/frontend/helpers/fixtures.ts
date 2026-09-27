@@ -48,6 +48,7 @@ export function createTestCareerPath(): CareerStop[] {
 }
 
 export interface TestDailyChallengeState {
+  day: string;
   available: boolean;
   number: number;
   difficulty_label: string;
@@ -69,6 +70,7 @@ export function createTestDailyChallenge(
   overrides: Partial<TestDailyChallengeState> = {}
 ): TestDailyChallengeState {
   return {
+    day: "2026-09-26",
     available: true,
     number: 42,
     difficulty_label: "Media",

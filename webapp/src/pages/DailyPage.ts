@@ -139,7 +139,7 @@ function renderFeedback(
 }
 
 export function renderDailyPage(state?: DailyState): string {
-  const title = `<header class="daily-heading"><p class="eyebrow">Daily Challenge</p><h2>${v("who")}</h2><p class="muted">${v("follow")}</p></header>`;
+  const title = `<header class="daily-heading"><p class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</p><h2>${v("who")}</h2><p class="muted">${v("follow")}</p></header>`;
   if (!state || (state.status === "loading" && !state.challenge)) {
     return `${title}<div class="career-loading">${renderLoadingState({ message: t("daily.loading") })}<div class="loading-lines" aria-hidden="true">${"<i></i>".repeat(5)}</div></div>`;
   }
@@ -177,10 +177,15 @@ export function renderDailyPage(state?: DailyState): string {
   const hints = today.hints;
   return `<article class="daily-page" data-state="${state.status}">
     <header class="daily-heading" id="daily-challenge-card">
-      <div class="edition"><span class="eyebrow">Daily Challenge</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
+      <div class="edition"><span class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
       <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>
       <div class="match-meta"><span>${escapeHtml(today.difficulty_label || t("daily.difficulty"))}</span><span><b>${today.points ?? 0}</b> ${escapeHtml(t("daily.points"))}</span><span>${escapeHtml(today.solved ? t("daily.solved") : done ? v("final") : t("daily.todayTitle"))}</span></div>
     </header>
+    ${state.introVisible && !done ? `<section class="daily-intro" aria-labelledby="daily-intro-title">
+      <h3 id="daily-intro-title">${v("introTitle")}</h3>
+      <ol><li>${v("introPath")}</li><li>${v("introAttempts")}</li><li>${v("introHints")}</li></ol>
+      <button type="button" class="btn ghost" id="daily-intro-dismiss">${v("introDismiss")}</button>
+    </section>` : ""}
     ${done ? "" : `<button type="button" class="daily-answer-dock" id="daily-answer-dock" aria-controls="daily-interaction-card"><span>${v("answer")}</span><strong>${escapeHtml(t("daily.left"))} ${left}</strong>${icon("arrow")}</button>`}
     <div class="daily-layout">
       <section class="career-sheet" id="daily-career-card" aria-label="${v("career")}">
@@ -205,6 +210,10 @@ export function attachDailyEventListeners(
   controller: DailyController,
 ): void {
   answerDockObserver?.disconnect();
+  container.querySelector<HTMLButtonElement>("#daily-intro-dismiss")?.addEventListener("click", () => {
+    controller.dismissIntro();
+    container.querySelector<HTMLInputElement>("#answer")?.focus();
+  });
   answerDockObserver = null;
   const dock = container.querySelector<HTMLButtonElement>("#daily-answer-dock");
   const input = container.querySelector<HTMLInputElement>("#answer");

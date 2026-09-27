@@ -17,12 +17,13 @@ from services import feature_flags, firebase_service, game, observability, perfo
 from services import leagues as league_rules
 from services import product_analytics as analytics
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
+from services.dates import is_iso, today_iso
 from services.feature_flags import FeatureDisabled, Flag
+from services.hints import MAX_HINTS
 from services.i18n import DEFAULT_LANGUAGE
 from services.rate_limit import TokenBucket
 from services.share import card_image
 from services.webapp_api import (
-    MAX_ARCHIVE_ATTEMPTS,
     build_archive_challenge,
     build_calendar,
     build_profile,
@@ -70,6 +71,17 @@ def _webapp_user(payload, cost=1):
 
 def _webapp_language(user_data):
     return user_data.get("language") or DEFAULT_LANGUAGE
+
+
+def _require_current_daily(payload):
+    """Reject a stale Daily before an attempt or hint can change today's state."""
+    expected_day = payload.get("expected_day")
+    if expected_day is None:
+        return  # Older clients did not send a day.
+    if not isinstance(expected_day, str) or not is_iso(expected_day):
+        raise HTTPException(status_code=422, detail="expected_day non valido")
+    if expected_day != today_iso():
+        raise HTTPException(status_code=409, detail="daily_changed")
 
 
 @router.post("/app/api/perf")
@@ -144,6 +156,7 @@ def webapp_guess(payload: dict = Body(default={})):
     if is_daily_play(payload.get("day")):
         # L'archivio passa di qui ma non e' la superficie Daily: resta giocabile.
         _require_feature(Flag.DAILY_UI, user_id)
+        _require_current_daily(payload)
     answer = (payload.get("answer") or "").strip()
     if not answer:
         raise HTTPException(status_code=400, detail="risposta vuota")
@@ -159,6 +172,7 @@ def webapp_hint(payload: dict = Body(default={})):
     """Un indizio sulla sfida di oggi, allo stesso prezzo che si paga in chat."""
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.HINTS, user_id)
+    _require_current_daily(payload)
     return game.take_hint(user_id, _webapp_language(user_data), surface="miniapp")
 
 
@@ -412,17 +426,34 @@ def webapp_result_card(payload: dict = Body(default={})):
     bene per una card che porta il nome di chi l'ha fatta."""
     user_id, user_data = _webapp_user(payload, cost=6)
     lang = _webapp_language(user_data)
-    day = payload.get("day")
-    attempts = int(payload.get("attempts") or 0)
-    total = int(payload.get("max_attempts") or 0) or MAX_ATTEMPTS
-    if not (1 <= attempts <= total <= MAX_ARCHIVE_ATTEMPTS + MAX_ATTEMPTS):
-        raise HTTPException(status_code=400, detail="tentativi fuori scala")
+    # Keep old open Mini App pages compatible while ignoring their declared result.
+    legacy_numbers = ("attempts", "max_attempts", "hints", "streak")
+    if set(payload) - {"initData", *legacy_numbers, "solved", "day"}:
+        raise HTTPException(status_code=422, detail="campi card non validi")
+    if any(type(payload[name]) is not int for name in legacy_numbers if name in payload):
+        raise HTTPException(status_code=422, detail="campi card non validi")
+    if "solved" in payload and type(payload["solved"]) is not bool:
+        raise HTTPException(status_code=422, detail="campi card non validi")
+    day = today_iso()
+    if "day" in payload and payload["day"] != day:
+        raise HTTPException(status_code=409, detail="daily_changed")
+    history = firebase_service.get_daily_history(user_id, limit=1)
+    result = history[0] if history and history[0].get("day") == day else None
+    if not result:
+        raise HTTPException(status_code=409, detail="partita non conclusa")
+    attempts = result.get("attempts")
+    hints = result.get("hints")
+    if type(attempts) is not int or not 1 <= attempts <= MAX_ATTEMPTS:
+        raise HTTPException(status_code=422, detail="tentativi non validi")
+    if type(hints) is not int or not 0 <= hints <= MAX_HINTS:
+        raise HTTPException(status_code=422, detail="indizi non validi")
+    solved = result.get("solved") is True
     pinned = trophies.showcase(user_data, lang)
     buffer = card_image(
-        user_data, lang, challenge_number(day), attempts, total,
-        solved=bool(payload.get("solved", True)),
-        streak=int(payload.get("streak") or 0),
-        hints=int(payload.get("hints") or 0),
+        user_data, lang, challenge_number(day), attempts, MAX_ATTEMPTS,
+        solved=solved,
+        streak=int(user_data.get("current_streak") or 0) if solved else 0,
+        hints=hints,
         honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
     )
     return {"image": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}

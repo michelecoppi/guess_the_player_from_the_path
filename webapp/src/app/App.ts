@@ -35,6 +35,7 @@ import {
   isMockTelegramEnvironment,
 } from "@/telegram/webapp";
 import { resolveLanguage, setLanguage } from "@/i18n";
+import { v } from "@/i18n/visual";
 import { DailyController } from "@/features/daily/controller";
 import { ArenaController } from "@/features/arena/controller";
 import { TrainingController } from "@/features/training/controller";
@@ -63,6 +64,7 @@ export class App {
   private supportController: SupportController;
   private lastArenaSubview: ArenaSubview;
   private firstLoad: Promise<void> = Promise.resolve();
+  private resumeListenerAttached = false;
 
   constructor(
     rootElement: HTMLElement,
@@ -269,8 +271,17 @@ export class App {
     }
 
     this.render();
+    if (!this.resumeListenerAttached) {
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && this.activeTab === "play" &&
+            this.dailyController.getState().status !== "submitting") {
+          void this.dailyController.loadDailyData({ lightweight: true });
+        }
+      });
+      this.resumeListenerAttached = true;
+    }
     this.firstLoad = Promise.resolve(this.dailyController.init());
-    this.arenaController.init();
+    if (inviteCode) void this.arenaController.init();
     if (this.activeTab === "leaderboard") {
       void this.leaderboardController.init();
     }
@@ -670,7 +681,7 @@ export class App {
     this.rootElement.innerHTML = `
       ${renderHeader({ user, activeTab: this.activeTab })}
       ${mockBannerHtml}
-      <main id="app-content" role="region" aria-label="Page content">
+      <main id="app-content" role="region" aria-label="${v("pageContent")}">
         ${pageHtml}
       </main>
       ${renderNavBar({ activeTab: this.activeTab })}

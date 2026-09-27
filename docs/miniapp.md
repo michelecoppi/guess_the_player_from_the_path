@@ -58,6 +58,13 @@ and cards remain spoiler-free. Points continue to come from `points_awarded`.
 - A feature switched off by a flag answers 403
   `{"detail": "feature_disabled", "code": "FEATURE_DISABLED", "feature": "<key>"}`, and
   `me` carries `features` (resolved booleans only). See [feature-flags.md](feature-flags.md).
+- Daily `guess` and `hint` carry the day shown by the client as `expected_day`.
+  A page left open across midnight receives 409 `{"detail":"daily_changed"}` before
+  consuming a guess or hint; the client reloads the new Daily. Older clients without
+  `expected_day` remain accepted during rollout.
+- `card` renders only a finished current Daily from the user's saved history. It does not
+  trust the browser's attempts, result, hints or streak. Legacy card fields are accepted
+  with type validation but ignored so an already open Mini App can still load its card.
 
 ## Frontend structure
 
@@ -80,6 +87,12 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 
 Navigation: Daily, Arena (hub for duels, events, archive and training), Classifica,
 Shop, Profilo; referral lives under Profile.
+
+The initial Daily uses `me` with `lightweight: true`; Arena's duel list loads only
+when Arena is opened (unless a duel invite deep link is present). Returning to a visible
+Daily refreshes its state. New players see a dismissible three-step guide before their
+first attempt. Its seen marker is stored locally under a key scoped to the Telegram user;
+no guide state is sent to the server.
 
 On narrow screens, an active Daily keeps a small answer shortcut above the fixed
 navigation while the career path is in view. It focuses the existing guess field and

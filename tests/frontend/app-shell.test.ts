@@ -11,6 +11,57 @@ import {
   createTestDuelData,
 } from "./helpers";
 
+test("startup loads only lightweight Daily; Arena loads when opened", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const { requests, restore: restoreFetch } = captureFetchRequests({
+    user: { name: "Marco", players_guessed: 3 },
+    today: createTestDailyChallenge(),
+  });
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    assert.deepEqual(requests.map((r) => r.url), ["/app/api/me"]);
+    assert.equal(requests[0].body.lightweight, true);
+    app.setTab("arena");
+    assert.ok(requests.some((r) => r.url === "/app/api/arena"));
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("returning to a visible Daily refreshes its day", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const originalFetch = globalThis.fetch;
+  let day = "2026-09-26";
+  let meCalls = 0;
+  globalThis.fetch = (async (url: string) => {
+    if (String(url).endsWith("/me")) meCalls++;
+    return new Response(JSON.stringify({
+      user: { name: "Marco", players_guessed: 3 },
+      today: createTestDailyChallenge({ day }),
+    }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    day = "2026-09-27";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(meCalls, 2);
+    assert.equal(app.getDailyController().getState().challenge?.day, day);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+    cleanup();
+  }
+});
+
 test("App mounts into DOM and renders shared components with real Daily feature data", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();

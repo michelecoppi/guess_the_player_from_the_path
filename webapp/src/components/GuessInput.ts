@@ -1,5 +1,6 @@
 import { escapeHtml } from "@/utils/format";
 import { renderButton } from "./Button";
+import { v } from "@/i18n/visual";
 
 export interface GuessInputProps {
   id?: string;
@@ -40,7 +41,7 @@ export function renderGuessInput(props: GuessInputProps): string {
   });
 
   return `
-    <form class="${classAttr}"${idAttr} onsubmit="return false;" role="search" aria-label="Guess player form">
+    <form class="${classAttr}"${idAttr} onsubmit="return false;" role="search" aria-label="${v("guessPlayerForm")}">
       <label for="${escapeHtml(inputId)}" class="guess-label">${escapeHtml(placeholder)}</label>
       <input
         id="${escapeHtml(inputId)}"

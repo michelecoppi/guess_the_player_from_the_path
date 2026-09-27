@@ -65,7 +65,7 @@ export function renderCareerPath(props: CareerPathProps): string {
   const classAttr = `path ${props.extraClass || ""}`.trim();
 
   return `
-    <div class="${classAttr}"${idAttr} role="list" aria-label="Career path">
+    <div class="${classAttr}"${idAttr} role="list" aria-label="${v("careerPathLabel")}">
       ${rows}
     </div>
   `.trim();
