@@ -93,7 +93,6 @@ def webapp_page(request: Request):
 _ASSET_MEDIA_TYPES = {
     ".js": "application/javascript",
     ".css": "text/css",
-    ".map": "application/json",
     ".woff2": "font/woff2",
 }
 
@@ -108,7 +107,8 @@ def webapp_assets(file_path: str, request: Request):
 
     if not target.is_relative_to(base_assets) or target == base_assets:
         raise HTTPException(status_code=403, detail="Forbidden")
-    if not target.is_file():
+    # Source maps rebuild the whole TypeScript source: never public, even if one is in dist (#181).
+    if not target.is_file() or target.suffix.lower() == ".map":
         raise HTTPException(status_code=404, detail="Not Found")
 
     with open(target, "rb") as f:

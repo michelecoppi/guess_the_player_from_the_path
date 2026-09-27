@@ -11,7 +11,9 @@ export default defineConfig({
   build: {
     outDir: "webapp/dist",
     emptyOutDir: true,
-    sourcemap: true,
+    // Maps are generated (to decode production stack traces locally, #180) but the bundles do
+    // not reference them and they are never served or shipped (#181).
+    sourcemap: "hidden",
   },
   resolve: {
     alias: {

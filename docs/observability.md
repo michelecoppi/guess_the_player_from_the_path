@@ -74,7 +74,15 @@ Firestore (budget 0 reads, [performance.md](performance.md)) and keeps only the 
 bounded set of fields of [`services/client_errors.py`](../services/client_errors.py), scrubbed
 with `scrub_text`. The record is logged at **WARNING**: it is queryable in Cloud Logging
 (`jsonPayload.event="miniapp.client_error"`) but, being below `ERROR`, it does not create Sentry
-events or consume Sentry quota. Stack traces point at the minified bundle.
+events or consume Sentry quota.
+
+Stack traces point at the minified bundle. Source maps are **hidden** (#181): Vite generates
+them but the bundles carry no `sourceMappingURL`, the Docker build deletes them and
+`/app/assets/*.map` always answers 404. The build is reproducible, so to decode a trace check
+out the deployed commit (`revision` → commit in the deploy history), run `npm ci && npm run
+build` and use `webapp/dist/assets/<bundle>.js.map` (same hashed name as in the trace) with any
+source-map tool (for example the `source-map` npm package's
+`SourceMapConsumer.originalPositionFor({ line, column })`).
 
 ## Configuration
 
