@@ -35,6 +35,24 @@ export class ApiError extends Error {
   get isFeatureDisabled(): boolean {
     return this.code === FEATURE_DISABLED;
   }
+
+  /** The server refused the signed initData: expired (older than 24 h) or invalid (#179). */
+  get isSessionExpired(): boolean {
+    return this.status === 401;
+  }
+}
+
+type SessionExpiredListener = () => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+
+/**
+ * Called whenever an authenticated request gets a 401 (#179). Telegram keeps a minimised
+ * Mini App alive, so a session reopened the next day carries an initData the server rejects:
+ * only reopening the app signs a new one. Returns the unsubscribe function.
+ */
+export function onSessionExpired(listener: SessionExpiredListener): () => void {
+  sessionExpiredListeners.add(listener);
+  return () => sessionExpiredListeners.delete(listener);
 }
 
 export interface ApiClientConfig {
@@ -127,11 +145,15 @@ export class ApiClient {
         errorData && typeof errorData === "object" && "detail" in errorData
           ? String((errorData as { detail: unknown }).detail)
           : response.statusText;
-      throw new ApiError(
+      const error = new ApiError(
         `API error ${response.status}: ${detail}`,
         response.status,
         errorData
       );
+      if (error.isSessionExpired && !options.skipAuth) {
+        sessionExpiredListeners.forEach((listener) => listener());
+      }
+      throw error;
     }
 
     const data = (await response.json()) as T;

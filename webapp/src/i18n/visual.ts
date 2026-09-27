@@ -163,6 +163,13 @@ const copy = {
     "El partido puede esperar",
   ],
   points: ["Punti in palio", "Points available", "Puntos en juego"],
+  sessionExpiredTitle: ["Sessione scaduta", "Session expired", "Sesión caducada"],
+  sessionExpiredMessage: [
+    "L'app è rimasta aperta troppo a lungo. Chiudila e riaprila dalla chat del bot per continuare.",
+    "The app has been open for too long. Close it and reopen it from the bot chat to continue.",
+    "La app ha estado abierta demasiado tiempo. Ciérrala y vuelve a abrirla desde el chat del bot para continuar.",
+  ],
+  sessionExpiredAction: ["Chiudi e riapri", "Close and reopen", "Cerrar y volver a abrir"],
 } as const;
 export function v(key: keyof typeof copy): string {
   return copy[key][({ it: 0, en: 1, es: 2 } as const)[getLanguage()]];
