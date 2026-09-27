@@ -1,3 +1,4 @@
+import sys
 from unittest.mock import MagicMock, patch
 
 from tools.dev import COMMANDS, main
@@ -9,7 +10,6 @@ def test_commands_table_has_all_required_tasks():
         "check-api",
         "test",
         "test-cov",
-        "test-node",
         "lint",
         "typecheck",
         "syntax",
@@ -22,8 +22,41 @@ def test_commands_table_has_all_required_tasks():
         "security-check",
         "dataset-regression-check",
         "dataset-baseline-update",
+        "release-version",
+        "release-check",
+        "release-notes",
+        "perf-report",
+        "architecture",
     }
     assert expected.issubset(COMMANDS.keys())
+
+
+def test_release_commands_delegate_to_tools_release():
+    with patch("tools.dev._run_cmd", return_value=0) as mock_run:
+        from tools.dev import main as dev_main
+
+        assert dev_main(["release-version"]) == 0
+        assert mock_run.call_args[0][0] == [sys.executable, "-m", "tools.release", "version"]
+
+        assert dev_main(["release-check", "--tag", "v1.0.0"]) == 0
+        assert mock_run.call_args[0][0] == [
+            sys.executable, "-m", "tools.release", "check", "--tag", "v1.0.0",
+        ]
+
+        assert dev_main(["release-notes"]) == 0
+        assert mock_run.call_args[0][0] == [sys.executable, "-m", "tools.release", "notes"]
+
+
+def test_perf_report_delegates_to_tools_perf_report():
+    with patch("tools.dev._run_cmd", return_value=0) as mock_run:
+        assert main(["perf-report", "--fetch", "--days", "7"]) == 0
+        assert mock_run.call_args[0][0] == [sys.executable, "-m", "tools.perf_report", "--fetch", "--days", "7"]
+
+
+def test_architecture_delegates_to_tools_architecture():
+    with patch("tools.dev._run_cmd", return_value=0) as mock_run:
+        assert main(["architecture", "--graph"]) == 0
+        assert mock_run.call_args[0][0] == [sys.executable, "-m", "tools.architecture", "--graph"]
 
 
 def test_help_command_returns_zero(capsys):

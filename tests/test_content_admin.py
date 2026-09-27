@@ -2,6 +2,7 @@ import pytest
 
 from services import content_admin
 from services.content_admin import ContentAdminError
+from services.event_rules import order_teams
 from services.player_pool import get_all_players
 
 TODAY = "2026-03-10"
@@ -59,7 +60,7 @@ def fake_db(monkeypatch):
     monkeypatch.setattr(content_admin.firebase_service, "delete_event", delete_event)
     monkeypatch.setattr(content_admin.firebase_service, "get_active_events", get_active_events)
     monkeypatch.setattr(content_admin.firebase_service, "get_blocked_player_ids", lambda: state["blocked"])
-    monkeypatch.setattr(content_admin.firebase_service, "get_recent_player_ids", lambda days: state["recent"])
+    monkeypatch.setattr(content_admin.firebase_service, "get_planner_exclusions", lambda: {})
     return state
 
 
@@ -230,6 +231,61 @@ def test_delete_daily_removes_a_planned_challenge(fake_db):
     assert "2026-03-12" not in fake_db["daily"]
 
 
+def test_set_daily_locked_requires_an_existing_challenge(fake_db):
+    with pytest.raises(ContentAdminError):
+        content_admin.set_daily_locked("2026-03-12", True)
+
+
+def test_set_daily_locked_toggles_the_flag(fake_db):
+    fake_db["daily"]["2026-03-12"] = {"day": "2026-03-12", "player_id": "messi"}
+
+    assert content_admin.set_daily_locked("2026-03-12", True) is True
+    assert fake_db["daily"]["2026-03-12"]["locked"] is True
+    assert content_admin.describe_daily("2026-03-12", fake_db["daily"]["2026-03-12"])["locked"] is True
+
+    assert content_admin.set_daily_locked("2026-03-12", False) is False
+    assert fake_db["daily"]["2026-03-12"]["locked"] is False
+
+
+@pytest.mark.parametrize(
+    "action",
+    [
+        lambda day: content_admin.set_daily_player(day, "messi"),
+        lambda day: content_admin.regenerate_daily(day),
+        lambda day: content_admin.update_daily_answers(day, ["messi"]),
+        lambda day: content_admin.update_daily_difficulty(day, "hard"),
+        lambda day: content_admin.delete_daily(day, today=TODAY),
+    ],
+)
+def test_locked_challenge_refuses_content_edits(fake_db, action):
+    day = "2026-03-12"
+    fake_db["daily"][day] = {"day": day, "player_id": "messi", "locked": True}
+
+    with pytest.raises(ContentAdminError):
+        action(day)
+
+    assert fake_db["daily"][day]["player_id"] == "messi"
+
+
+def test_locked_challenge_still_allows_bonus_toggle(fake_db):
+    day = "2026-03-12"
+    fake_db["daily"][day] = {"day": day, "player_id": "messi", "locked": True, "first_correct_user": True}
+
+    content_admin.set_daily_first_correct(day, False)
+
+    assert fake_db["daily"][day]["first_correct_user"] is False
+
+
+def test_unlocking_allows_edits_again(fake_db):
+    day = "2026-03-12"
+    fake_db["daily"][day] = {"day": day, "player_id": "messi", "locked": True}
+
+    content_admin.set_daily_locked(day, False)
+    content_admin.update_daily_difficulty(day, "hard")
+
+    assert fake_db["daily"][day]["difficulty"] == "hard"
+
+
 # ---------------------------------------------------------------------------
 # Eventi
 # ---------------------------------------------------------------------------
@@ -258,6 +314,21 @@ def test_describe_event_reports_days_without_content():
 
     assert detail["days_without_content"] == ["11/03/26"]
     assert detail["days"][2]["has_content"] is False
+
+
+def test_describe_event_keeps_the_pair_and_the_order_of_the_new_formats():
+    event = _event()
+    event["daily_data"]["2026-03-09"] = {"player_names": ["Iker Casillas", "Jerzy Dudek"],
+                                         "correct_answers": ["Real Madrid"]}
+    event["daily_data"]["2026-03-10"] = {"player_name": "Angel Di Maria",
+                                         "shuffled_stops": [{"id": 7, "team": "Juventus"}, {"id": 3, "team": "Benfica"}],
+                                         "order_stop_ids": [3, 7]}
+
+    days = content_admin.describe_event(event, today=TODAY)["days"]
+
+    assert days[0]["player_names"] == ["Iker Casillas", "Jerzy Dudek"]
+    assert order_teams(days[1]) == ["Benfica", "Juventus"]
+    assert days[2]["order_stop_ids"] == [] and days[2]["player_names"] == []
 
 
 def test_update_event_day_answers_refuses_a_day_outside_the_event(fake_db):
@@ -335,3 +406,10 @@ def test_unknown_event_code_is_a_readable_error(fake_db):
     with pytest.raises(ContentAdminError) as excinfo:
         content_admin.set_event_active("non_esiste", False)
     assert "non_esiste" in str(excinfo.value)
+
+
+def test_a_manual_challenge_also_photographs_the_prediction(fake_db):
+    content_admin.set_daily_player(TODAY, "jankto")
+    prediction = fake_db["daily"][TODAY]["difficulty_prediction"]
+    assert prediction["band"] == "hard"
+    assert prediction["band"] == fake_db["daily"][TODAY]["difficulty"]

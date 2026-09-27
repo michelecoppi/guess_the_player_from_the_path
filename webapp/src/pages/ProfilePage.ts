@@ -1,56 +1,59 @@
-import { renderCard, renderMigrationNotice } from "@/components";
-import { t } from "@/i18n";
-import { PROFILE_FEATURE_METADATA } from "@/features/profile";
-import type { TelegramUser } from "@/telegram/types";
+import type { ProfileController } from "@/features/profile/controller";
+import type { CabinetFilter, ProfileState } from "@/features/profile/types";
+import { renderProfileView } from "@/features/profile/views";
 
-export interface ProfilePageProps {
-  user?: TelegramUser | null;
+export function renderProfilePage(state: ProfileState): string {
+  return renderProfileView(state);
 }
 
-export function renderProfilePage(props: ProfilePageProps = {}): string {
-  const user = props.user;
-  const lang = user?.language_code || "it";
+export function attachProfileEventListeners(
+  root: HTMLElement,
+  controller: ProfileController,
+): void {
+  // Open cabinet button
+  const openCabinetBtn = root.querySelector<HTMLButtonElement>("#open-cabinet");
+  openCabinetBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    controller.openCabinet();
+  });
 
-  const bodyHtml = `
-    <div style="display: flex; flex-direction: column; gap: 14px;">
-      <div class="shell-status-banner">
-        <span class="shell-status-icon" role="img" aria-label="Player">🎖️</span>
-        <div class="shell-status-content">
-          <h3>Statistiche e Bacheca</h3>
-          <p>Visualizzazione carriera, bacheca trofei e gestione cosmetici.</p>
-        </div>
-      </div>
+  // Close cabinet / back button
+  const closeCabinetBtn = root.querySelector<HTMLButtonElement>("#close-cabinet");
+  closeCabinetBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    controller.closeCabinet();
+  });
 
-      <div class="details-list">
-        <div class="detail-row">
-          <span class="detail-label">ID Telegram:</span>
-          <span class="detail-value">${user?.id || 42}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Lingua account:</span>
-          <span class="detail-value">${lang.toUpperCase()}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Serie record:</span>
-          <span class="detail-value">0 🔥</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Punti totali:</span>
-          <span class="detail-value">0 ⭐️</span>
-        </div>
-      </div>
+  // Cabinet filter buttons
+  const filterButtons = root.querySelectorAll<HTMLButtonElement>(
+    "button[data-cabinet-filter]",
+  );
+  filterButtons.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const filter = btn.dataset.cabinetFilter as CabinetFilter | undefined;
+      if (filter) {
+        controller.setCabinetFilter(filter);
+      }
+    });
+  });
 
-      ${renderMigrationNotice({
-        issueNumber: PROFILE_FEATURE_METADATA.owningIssue,
-        messageKey: "migration.profileNotice",
-      })}
-    </div>
-  `;
+  // Trophy pin toggle buttons
+  const pinButtons = root.querySelectorAll<HTMLButtonElement>("button[data-pin]");
+  pinButtons.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const code = btn.dataset.pin;
+      if (code) {
+        void controller.togglePin(code);
+      }
+    });
+  });
 
-  return renderCard({
-    id: "profile-card",
-    kicker: t("pages.profileKicker"),
-    title: t("pages.profileTitle"),
-    bodyHtml,
+  // Retry profile load button
+  const retryBtn = root.querySelector<HTMLButtonElement>("#profile-retry-btn");
+  retryBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    void controller.refresh();
   });
 }

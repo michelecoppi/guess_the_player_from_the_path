@@ -1,11 +1,13 @@
 import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  base: "/app/v2/",
+  plugins: [tailwindcss()],
+  base: "/app/",
   build: {
     outDir: "webapp/dist",
     emptyOutDir: true,

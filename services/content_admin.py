@@ -17,19 +17,17 @@ Le funzioni che modificano qualcosa alzano `ContentAdminError` con un messaggio 
 leggibile: la dashboard lo mostra cosi' com'e'.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from services import firebase_service
+from services import daily_planner, firebase_service
 from services.daily_challenge import challenge_number
-from services.daily_generator import pick_player_for_date
-from services.dates import ITALY_TZ, normalize_day, parse_iso, shift_iso, to_display, to_iso, today_iso
+from services.dates import normalize_day, parse_iso, shift_iso, to_display, to_iso, today_iso
 from services.difficulty import (
     DIFFICULTY_ORDER,
-    compute_difficulty,
     compute_difficulty_score,
     points_for_difficulty,
 )
-from services.player_pool import get_answer_aliases, get_player_by_id, load_config
+from services.player_pool import get_player_by_id, load_config
 
 WEEKDAYS_IT = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
 
@@ -101,6 +99,8 @@ def describe_daily(day_iso, doc, today=None):
         "source": None,
         "generated_at": None,
         "first_correct_taken": None,
+        "locked": False,
+        "planner_audit": None,
     }
     if not doc:
         return info
@@ -124,6 +124,8 @@ def describe_daily(day_iso, doc, today=None):
         "source": doc.get("source", "auto"),
         "generated_at": doc.get("generated_at"),
         "first_correct_taken": bool(doc.get("first_correct_user")),
+        "locked": bool(doc.get("locked", False)),
+        "planner_audit": doc.get("planner_audit"),
     })
     return info
 
@@ -168,19 +170,15 @@ def buffer_health(today=None):
     }
 
 
-def _daily_doc_for_player(player, difficulty=None, source="manual", keep=None):
-    keep = keep or {}
-    return {
-        "player_id": player["id"],
-        "correct_answers": get_answer_aliases(player),
-        "difficulty": difficulty or compute_difficulty(player),
-        "career_path": player["career"],
-        # il bonus gia' assegnato non si riapre da solo cambiando il giocatore: sarebbe un
-        # secondo bonus per lo stesso giorno.
-        "first_correct_user": bool(keep.get("first_correct_user", False)),
-        "generated_at": datetime.now(ITALY_TZ),
-        "source": source,
-    }
+def _ensure_unlocked(day_iso, existing):
+    """Una sfida bloccata (`set_daily_locked`) e' protetta da modifiche accidentali:
+    va sbloccata esplicitamente prima di sostituire, rigenerare, correggere o eliminare
+    il contenuto. Il bonus del primo che indovina resta escluso: e' uno stato di gioco,
+    non contenuto della sfida."""
+    if (existing or {}).get("locked"):
+        raise ContentAdminError(
+            f"La sfida del {to_display(day_iso)} e' bloccata: sbloccala prima di modificarla."
+        )
 
 
 def set_daily_player(day_iso, player_id):
@@ -195,38 +193,33 @@ def set_daily_player(day_iso, player_id):
         )
 
     existing = firebase_service.get_daily_path(day_iso) or {}
-    doc = _daily_doc_for_player(player, source="manual", keep=existing)
+    _ensure_unlocked(day_iso, existing)
+    doc = daily_planner.challenge_doc(player, source="manual", keep=existing)
     firebase_service.save_daily_path(day_iso, doc)
     logging.info(f"[ADMIN] Sfida del {day_iso} impostata a mano su '{player['id']}'")
     return describe_daily(day_iso, doc)
 
 
 def regenerate_daily(day_iso, avoid_current=True):
-    """Rigenera un giorno con le stesse regole del generatore automatico.
+    """Rigenera un giorno con le stesse regole del planner (services/daily_planner.py):
+    anti-ripetizione in entrambe le direzioni, rotazione della fascia, club e nazionalita'
+    diversi dai giorni vicini, sospesi ed esclusi fuori.
 
     La scelta e' deterministica sulla data: senza escludere il giocatore attuale si
     rigenererebbe sempre lo stesso. Per questo `avoid_current` e' il comportamento di
     default - chi clicca "rigenera" vuole un'altra sfida."""
     day_iso = _require_iso(normalize_day(day_iso))
-    config = load_config()
 
-    recent = set(firebase_service.get_recent_player_ids(config.get("history_days_no_repeat", 60)))
     existing = firebase_service.get_daily_path(day_iso) or {}
-    if avoid_current and existing.get("player_id"):
-        recent.add(existing["player_id"])
+    _ensure_unlocked(day_iso, existing)
+    avoid = {existing["player_id"]} if avoid_current and existing.get("player_id") else set()
 
-    date_dt = parse_iso(day_iso)
     try:
-        player, difficulty = pick_player_for_date(
-            date_dt,
-            recent,
-            rotation_index=date_dt.timetuple().tm_yday,
-            blocked_ids=firebase_service.get_blocked_player_ids(),
-        )
-    except ValueError as e:
+        player, difficulty, audit = daily_planner.choose_single_day(day_iso, avoid_ids=avoid)
+    except daily_planner.PlannerError as e:
         raise ContentAdminError(str(e))
 
-    doc = _daily_doc_for_player(player, difficulty=difficulty, source="auto", keep=existing)
+    doc = daily_planner.challenge_doc(player, difficulty=difficulty, source="auto", keep=existing, audit=audit)
     firebase_service.save_daily_path(day_iso, doc)
     logging.info(f"[ADMIN] Sfida del {day_iso} rigenerata su '{player['id']}'")
     return describe_daily(day_iso, doc)
@@ -249,8 +242,10 @@ def update_daily_answers(day_iso, answers):
     day_iso = _require_iso(normalize_day(day_iso))
     if not answers:
         raise ContentAdminError("Serve almeno una risposta accettata.")
-    if not firebase_service.get_daily_path(day_iso):
+    existing = firebase_service.get_daily_path(day_iso)
+    if not existing:
         raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
+    _ensure_unlocked(day_iso, existing)
     firebase_service.update_daily_path(day_iso, {"correct_answers": list(answers)})
     return answers
 
@@ -259,10 +254,23 @@ def update_daily_difficulty(day_iso, difficulty):
     day_iso = _require_iso(normalize_day(day_iso))
     if difficulty not in DIFFICULTY_ORDER:
         raise ContentAdminError(f"Difficolta' '{difficulty}' sconosciuta: usa {', '.join(DIFFICULTY_ORDER)}.")
-    if not firebase_service.get_daily_path(day_iso):
+    existing = firebase_service.get_daily_path(day_iso)
+    if not existing:
         raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
+    _ensure_unlocked(day_iso, existing)
     firebase_service.update_daily_path(day_iso, {"difficulty": difficulty})
     return difficulty
+
+
+def set_daily_locked(day_iso, locked):
+    """Blocca (o sblocca) una sfida contro modifiche accidentali dall'admin: sostituzione,
+    rigenerazione, correzione di risposte/difficolta' ed eliminazione richiedono di
+    sbloccarla prima. Utile soprattutto sui giorni futuri gia' verificati a mano."""
+    day_iso = _require_iso(normalize_day(day_iso))
+    if not firebase_service.get_daily_path(day_iso):
+        raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
+    firebase_service.update_daily_path(day_iso, {"locked": bool(locked)})
+    return bool(locked)
 
 
 def set_daily_first_correct(day_iso, taken):
@@ -286,6 +294,7 @@ def delete_daily(day_iso, today=None):
             "La sfida di oggi non si elimina: e' in gioco. Se il contenuto e' sbagliato, "
             "sostituisci il giocatore o rigenerala."
         )
+    _ensure_unlocked(day_iso, firebase_service.get_daily_path(day_iso))
     if not firebase_service.delete_daily_path(day_iso):
         raise ContentAdminError(f"Non c'e' nessuna sfida per il {to_display(day_iso)}.")
     return True
@@ -329,6 +338,9 @@ def describe_event(event, today=None):
             "min_correct": data.get("min_correct"),
             "points": data.get("points"),
             "player_name": data.get("player_name"),
+            "player_names": data.get("player_names") or [],
+            "shuffled_stops": data.get("shuffled_stops") or [],
+            "order_stop_ids": data.get("order_stop_ids") or [],
             "pair_id": data.get("pair_id"),
             "image_url": data.get("image_url"),
             "career": data.get("career_path") or [],

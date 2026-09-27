@@ -1,7 +1,7 @@
 import os
 import sys
 
-# I test del negozio firmano una quota di pagamento (services/shop.py), e per firmarla
+# I test del negozio firmano una quota di pagamento (domains/shop/service.py), e per firmarla
 # serve BOT_TOKEN. Senza questa riga il token arriva dal .env locale, che e' gitignorato:
 # i test passano sulla macchina di chi ce l'ha e falliscono in CI, che il .env non ce l'ha.
 # E' il tipo di test che da' un verde bugiardo, quindi il valore va fissato qui.

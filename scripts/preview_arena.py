@@ -10,7 +10,7 @@ from services.i18n import t
 from services.player_pool import get_practice_players
 
 
-def install(app, state, lang):
+def create_handler(lang):
     puzzles = [practice_content.from_player(p) for p in get_practice_players()[:5]]
     if not puzzles:
         return
@@ -27,7 +27,6 @@ def install(app, state, lang):
                                                  "them": {"solved": i < 3, "attempts": [2, 1, 2, 3, 3][i]}}
                                                 for i, puzzle in enumerate(puzzles)]}]}
 
-    @app.post("/app/api/arena")
     def preview(payload: dict = Body(default={})):
         mode, action = payload.get("mode"), payload.get("action", "get")
         try:
@@ -79,3 +78,5 @@ def install(app, state, lang):
             raise arena.ArenaError("invalid")
         except arena.ArenaError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
+
+    return preview

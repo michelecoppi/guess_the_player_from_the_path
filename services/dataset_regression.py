@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from services.candidate_finding import CandidateFinding, FindingSeverity
-from services.candidate_player import CandidatePlayer
-from services.candidate_validation import validate_candidate_data
+from domains.players.candidates.finding import CandidateFinding, FindingSeverity
+from domains.players.candidates.model import CandidatePlayer
+from domains.players.candidates.validation import validate_candidate_data
 from services.player_pool import validate_player
 
 

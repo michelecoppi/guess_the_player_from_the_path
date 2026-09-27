@@ -1,10 +1,15 @@
-import type { ApiProfileResponse, ApiRequestPayload } from "./types";
+import { clearResolvedAppearance } from "@/appearance";
+import { FEATURE_DISABLED } from "./types";
+import type { ApiProfileResponse, ApiPublicProfileResponse, ApiRequestPayload, FeatureFlagKey } from "./types";
 import { getInitData } from "@/telegram/webapp";
 
 export class ApiError extends Error {
   status: number;
   data?: unknown;
   detail?: string;
+  /** Stable machine code when the server sends one (e.g. `FEATURE_DISABLED`). */
+  code?: string;
+  feature?: FeatureFlagKey;
 
   constructor(message: string, status: number, data?: unknown) {
     super(message);
@@ -19,6 +24,16 @@ export class ApiError extends Error {
     ) {
       this.detail = (data as { detail: string }).detail;
     }
+    if (data && typeof data === "object") {
+      const body = data as { code?: unknown; feature?: unknown };
+      if (typeof body.code === "string") this.code = body.code;
+      if (typeof body.feature === "string") this.feature = body.feature as FeatureFlagKey;
+    }
+  }
+
+  /** The server refused because a feature flag is off for this user (#51). */
+  get isFeatureDisabled(): boolean {
+    return this.code === FEATURE_DISABLED;
   }
 }
 
@@ -35,6 +50,7 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
 export class ApiClient {
   private baseUrl: string;
   private getAuthToken: () => string;
+  private lastAuthToken: string | undefined;
 
   constructor(config: ApiClientConfig = {}) {
     this.baseUrl = (config.baseUrl || "/app/api").replace(/\/+$/, "");
@@ -57,6 +73,9 @@ export class ApiClient {
    * By default, Mini App endpoints use POST with a JSON body containing { initData, ...payload }.
    */
   async request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
+    const authToken = options.skipAuth ? undefined : this.getAuthToken();
+    if (this.lastAuthToken !== undefined && authToken !== undefined && authToken !== this.lastAuthToken) clearResolvedAppearance();
+    if (authToken !== undefined) this.lastAuthToken = authToken;
     const url = this.resolveUrl(endpoint);
     const method = (options.method || "POST").toUpperCase();
     const headers = new Headers(options.headers || {});
@@ -71,7 +90,7 @@ export class ApiClient {
       if (typeof options.body === "string") {
         body = options.body;
       } else {
-        const token = options.skipAuth ? undefined : this.getAuthToken();
+        const token = authToken;
         const payload: ApiRequestPayload = {
           ...(token !== undefined ? { initData: token } : {}),
           ...(options.body || {}),
@@ -87,6 +106,16 @@ export class ApiClient {
       body,
     });
 
+    const checkSession = () => {
+      if (authToken !== undefined && this.getAuthToken() !== authToken) {
+        if (this.lastAuthToken === authToken) {
+          clearResolvedAppearance();
+          this.lastAuthToken = this.getAuthToken();
+        }
+        throw new ApiError("Session changed", 409);
+      }
+    };
+    checkSession();
     if (!response.ok) {
       let errorData: unknown;
       try {
@@ -105,7 +134,9 @@ export class ApiClient {
       );
     }
 
-    return (await response.json()) as T;
+    const data = (await response.json()) as T;
+    checkSession();
+    return data;
   }
 
   /**
@@ -136,6 +167,13 @@ export class ApiClient {
    */
   async getProfile(payload: { lightweight?: boolean } = {}): Promise<ApiProfileResponse> {
     return this.getMe(payload);
+  }
+
+  /**
+   * Fetches public player profile from POST /app/api/profile/public.
+   */
+  async getPublicProfile(profileId: number): Promise<ApiPublicProfileResponse> {
+    return this.post<ApiPublicProfileResponse>("/profile/public", { profile_id: profileId });
   }
 }
 

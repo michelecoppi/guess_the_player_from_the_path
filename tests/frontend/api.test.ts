@@ -191,3 +191,41 @@ test("ApiClient request shape matches backend _webapp_user payload extraction co
     globalThis.fetch = originalFetch;
   }
 });
+
+test("isFeatureEnabled reads resolved booleans and treats a missing flag as enabled", async () => {
+  const { isFeatureEnabled } = await import("../../webapp/src/api");
+  assert.equal(isFeatureEnabled({ features: { shop: false, arena: true } }, "shop"), false);
+  assert.equal(isFeatureEnabled({ features: { shop: false, arena: true } }, "arena"), true);
+  assert.equal(isFeatureEnabled({ features: {} }, "leaderboard"), true);
+  assert.equal(isFeatureEnabled({}, "hints"), true);
+  assert.equal(isFeatureEnabled(null, "daily_ui"), true);
+});
+
+test("ApiError exposes the FEATURE_DISABLED contract from a 403 response", async () => {
+  const client = new ApiClient({ baseUrl: "/app/api", getAuthToken: () => "t" });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ detail: "feature_disabled", code: "FEATURE_DISABLED", feature: "shop" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    })) as any;
+  try {
+    await assert.rejects(client.post("/shop"), (err: unknown) => {
+      assert.ok(err instanceof ApiError);
+      assert.equal(err.status, 403);
+      assert.equal(err.detail, "feature_disabled");
+      assert.equal(err.code, "FEATURE_DISABLED");
+      assert.equal(err.feature, "shop");
+      assert.equal(err.isFeatureDisabled, true);
+      return true;
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("ApiError without a code is not a feature refusal", () => {
+  const err = new ApiError("API error 409: stale", 409, { detail: "stale" });
+  assert.equal(err.code, undefined);
+  assert.equal(err.isFeatureDisabled, false);
+});

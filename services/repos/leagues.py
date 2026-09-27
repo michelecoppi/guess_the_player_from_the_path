@@ -141,6 +141,26 @@ def add_points_to_leagues(user_id, codes, points, name=None):
     return updated
 
 
+def delete_league(code):
+    """Elimina una lega e tutti i suoi membri: uso amministrativo (spam, abuso, richiesta
+    del proprietario). Il codice viene rimosso anche dalla lista `leagues` di ogni iscritto,
+    altrimenti resterebbe agganciato a una lega che non esiste piu'."""
+    from services import firebase_service as fs
+    ref = fs.league_ref(code)
+    if not ref.get().exists:
+        return False
+
+    member_ids = [doc.id for doc in ref.collection(fs.MEMBERS_SUBCOLLECTION).stream()]
+    batch = fs.db.batch()
+    for member_id in member_ids:
+        batch.delete(fs.member_ref(code, member_id))
+        batch.update(fs.user_ref(member_id), {"leagues": firestore.ArrayRemove([code])})
+    batch.delete(ref)
+    batch.commit()
+    logging.info(f"[LEAGUE] Lega {code} eliminata da admin ({len(member_ids)} membri)")
+    return True
+
+
 def list_leagues(limit=50):
     from services import firebase_service as fs
     query = fs.db.collection(fs.LEAGUES_COLLECTION).order_by(

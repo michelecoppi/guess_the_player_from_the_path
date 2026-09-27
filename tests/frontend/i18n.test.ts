@@ -5,6 +5,7 @@ import {
   setLanguage,
   getLanguage,
   t,
+  tCount,
   TRANSLATIONS,
 } from "../../webapp/src/i18n";
 
@@ -31,6 +32,26 @@ test("t() retrieves translation with fallback and interpolation", () => {
     "In arrivo in #40"
   );
   assert.equal(t("non.existent.key"), "non.existent.key");
+});
+
+test("tCount() picks the singular form only for exactly 1, in every supported language (#89)", () => {
+  assert.equal(tCount("common.trophiesCount", 0, "it"), "0 trofei");
+  assert.equal(tCount("common.trophiesCount", 1, "it"), "1 trofeo");
+  assert.equal(tCount("common.trophiesCount", 2, "it"), "2 trofei");
+  assert.equal(tCount("common.trophiesCount", 10, "it"), "10 trofei");
+
+  assert.equal(tCount("common.trophiesCount", 0, "en"), "0 trophies");
+  assert.equal(tCount("common.trophiesCount", 1, "en"), "1 trophy");
+  assert.equal(tCount("common.trophiesCount", 2, "en"), "2 trophies");
+
+  assert.equal(tCount("common.trophiesCount", 0, "es"), "0 trofeos");
+  assert.equal(tCount("common.trophiesCount", 1, "es"), "1 trofeo");
+  assert.equal(tCount("common.trophiesCount", 2, "es"), "2 trofeos");
+});
+
+test("tCount() falls back to the path when the key is not a plural pair", () => {
+  assert.equal(tCount("common.appName", 1, "it"), "common.appName");
+  assert.equal(tCount("does.not.exist", 1, "it"), "does.not.exist");
 });
 
 test("all supported languages (it, en, es) have identical translation structure", () => {
