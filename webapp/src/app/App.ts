@@ -82,6 +82,7 @@ export class App {
   private sessionExpired = false;
   private stopSessionExpiredListener: (() => void) | null = null;
   private backButton: TelegramBackButton | null = null;
+  private closingConfirmationEnabled = false;
   private readonly handleBack = (): void => this.goBack();
 
   constructor(
@@ -145,6 +146,7 @@ export class App {
     });
 
     this.arenaController.subscribe((state) => {
+      this.syncClosingConfirmation();
       if (this.isArenaTab(this.activeTab)) {
         const subviewChanged = state.subview !== this.lastArenaSubview;
         this.lastArenaSubview = state.subview;
@@ -216,6 +218,7 @@ export class App {
     });
 
     this.eventsController.subscribe(() => {
+      this.syncClosingConfirmation();
       if (this.activeTab === "events") {
         this.renderEventsContent();
       }
@@ -717,6 +720,30 @@ export class App {
     else button.hide();
   }
 
+  /** Keep Telegram's close prompt scoped to the match currently on screen. */
+  private syncClosingConfirmation(): void {
+    const arena = this.arenaController.getState();
+    const duel = arena.data;
+    const event = this.eventsController.selected();
+    const activeDuel = this.isArenaTab(this.activeTab) && arena.subview === "duel" &&
+      !!arena.activeDuelCode && duel?.code === arena.activeDuelCode &&
+      !!duel.session && !duel.session.finished && !duel.complete;
+    const activeEvent = this.activeTab === "events" && !!event &&
+      event.available && !event.progress.finished;
+    const shouldEnable = !this.sessionExpired && (activeDuel || activeEvent);
+    const tg = getTelegramWebApp(false);
+    if (!tg || (tg.isVersionAtLeast && !tg.isVersionAtLeast("6.2"))) return;
+    if (shouldEnable === (tg.isClosingConfirmationEnabled ?? this.closingConfirmationEnabled)) return;
+    const method = shouldEnable ? tg.enableClosingConfirmation : tg.disableClosingConfirmation;
+    if (typeof method !== "function") return;
+    try {
+      method.call(tg);
+      this.closingConfirmationEnabled = shouldEnable;
+    } catch (err) {
+      console.warn("Telegram WebApp closing confirmation error:", err);
+    }
+  }
+
   public goBack(): void {
     if (!this.hasBackTarget()) return;
     const control = this.pageBackControl();
@@ -781,6 +808,7 @@ export class App {
   }
 
   private render(): void {
+    this.syncClosingConfirmation();
     if (this.sessionExpired) {
       this.renderSessionExpired();
       this.syncBackButton();

@@ -116,6 +116,11 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 Navigation: Daily, Arena (hub for duels, events, archive and training), Classifica,
 Shop, Profilo; referral lives under Profile.
 
+On Telegram clients with Bot API 6.2+, the close confirmation is enabled while an
+unfinished Arena duel or playable event detail is visible. It is disabled when the
+match finishes, the user leaves that view, or the session expires. Daily and other
+screens do not request confirmation.
+
 The initial Daily uses `me` with `lightweight: true`; Arena's duel list loads only
 when Arena is opened (unless a duel invite deep link is present). Returning to a visible
 Daily refreshes its state. New players see a dismissible three-step guide before their
