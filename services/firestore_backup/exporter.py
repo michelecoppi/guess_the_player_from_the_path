@@ -45,7 +45,7 @@ def export_collection(client: Any, collection_ref: Any, path: tuple[str, ...]) -
         location = archive.pattern(doc_path)
         snapshot = snapshots.get(reference.path)
         node: dict[str, Any] = {"exists": bool(snapshot is not None and snapshot.exists)}
-        if node["exists"]:
+        if snapshot is not None and snapshot.exists:
             node["fields"] = codec.encode_fields(snapshot.to_dict() or {}, location)
         subcollections = {}
         for subcollection in reference.collections():
