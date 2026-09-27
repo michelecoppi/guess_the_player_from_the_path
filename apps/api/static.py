@@ -89,6 +89,15 @@ def webapp_page(request: Request):
     return Response(content, media_type="text/html", headers=headers)
 
 
+# Fonts need their own type: some WebViews refuse or re-sniff a font served as octet-stream.
+_ASSET_MEDIA_TYPES = {
+    ".js": "application/javascript",
+    ".css": "text/css",
+    ".map": "application/json",
+    ".woff2": "font/woff2",
+}
+
+
 @router.get("/app/assets/{file_path:path}")
 def webapp_assets(file_path: str, request: Request):
     base_assets = Path(DIST_DIR).resolve() / "assets"
@@ -104,12 +113,7 @@ def webapp_assets(file_path: str, request: Request):
 
     with open(target, "rb") as f:
         content = f.read()
-    suffix = target.suffix.lower()
-    media_type = "application/javascript" if suffix == ".js" else (
-        "text/css" if suffix == ".css" else (
-            "application/json" if suffix == ".map" else "application/octet-stream"
-        )
-    )
+    media_type = _ASSET_MEDIA_TYPES.get(target.suffix.lower(), "application/octet-stream")
     etag = '"' + hashlib.sha256(content).hexdigest() + '"'
     headers = {"ETag": etag, "Cache-Control": "public, max-age=31536000, immutable"}
     candidates = request.headers.get("if-none-match", "").split(",")

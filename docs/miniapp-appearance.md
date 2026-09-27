@@ -14,7 +14,8 @@ or the meaning of progress. Arena fractions show completed paths out of total,
 not a score against an opponent. All existing modes remain reachable.
 
 Display typography uses locally bundled Barlow Condensed SemiBold (SIL OFL,
-`webapp/src/assets/fonts/OFL.txt`) with `font-display: swap`; no third-party font
+`webapp/src/assets/fonts/OFL.txt`), shipped as WOFF2 (~39 KB instead of the 109 KB TTF,
+#186; served as `font/woff2`) with `font-display: swap`; no third-party font
 request is made. Body text retains the system stack. The result entrance obeys
 reduced motion and supplements the existing equipped celebration.
 
