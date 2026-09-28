@@ -1,8 +1,7 @@
 import { renderPrototype, attachSupportEventListeners } from "@/prototypes/screens";
 import { SupportController } from "@/features/support/controller";
 import { connectTheme } from "@/telegram/theme";
-import { renderHeader } from "@/components/Header";
-import { renderNavBar, type NavTabId } from "@/components/NavBar";
+import type { NavTabId } from "@/components/NavBar";
 import { renderDailyPage, attachDailyEventListeners } from "@/pages/DailyPage";
 import {
   renderArenaPage,
@@ -49,6 +48,9 @@ import { ReferralController } from "@/features/referral/controller";
 import { EventsController } from "@/features/events/controller";
 import { renderLoadingState } from "@/components/LoadingState";
 import { lazyModule, type LazyModule } from "./lazy";
+import { Router } from "./Router";
+import { renderScreen } from "./ShellRenderer";
+import { renderActivePage } from "./PageRenderer";
 
 // Shop, Story and Events views are separate chunks, fetched on first use or by
 // prefetchLazyViews() once the Daily is on screen (#187).
@@ -64,7 +66,10 @@ const LAZY_VIEWS: LazyModule<unknown>[] = [shopView, eventsView, storyView];
 
 export class App {
   private rootElement: HTMLElement;
-  private activeTab: NavTabId = "play";
+  private readonly router = new Router();
+  private get activeTab(): NavTabId {
+    return this.router.activeTab;
+  }
   private dailyController: DailyController;
   private arenaController: ArenaController;
   private trainingController: TrainingController;
@@ -272,7 +277,7 @@ export class App {
   }
 
   public isArenaTab(tab: NavTabId): boolean {
-    return tab === "arena" || tab === "duels" || tab === "challenge";
+    return Router.isArenaTab(tab);
   }
 
   public init(): void {
@@ -289,7 +294,7 @@ export class App {
     // Deep-link check for duel invite
     const inviteCode = this.arenaController.detectInvitationCode();
     if (inviteCode) {
-      this.activeTab = "arena";
+      this.router.navigate("arena");
     }
 
     this.sessionExpired = false;
@@ -342,7 +347,7 @@ export class App {
       }
       if (this.activeTab === "leaderboard") this.leaderboardController.cancelSearch();
       if (this.activeTab === "reports") this.supportController.reset();
-      this.activeTab = tab;
+      this.router.navigate(tab);
 
       if (tab === "arena") {
         this.arenaController.setSubview("hub");
@@ -609,7 +614,7 @@ export class App {
         this.eventsController,
         {
           onOpenTraining: () => {
-            this.activeTab = "arena";
+            this.router.navigate("arena");
             this.arenaController.setSubview("training");
             if (
               !this.trainingController.getState().data &&
@@ -817,59 +822,25 @@ export class App {
     const user = getTelegramUser();
     const isMock = isMockTelegramEnvironment();
 
-    let pageHtml = "";
-    switch (this.activeTab) {
-      case "play":
-        pageHtml = renderDailyPage(this.dailyController.getState());
-        break;
-      case "arena":
-      case "duels":
-      case "challenge":
-        pageHtml = this.arenaPageHtml();
-        break;
-      case "profile":
-        pageHtml = renderProfilePage(this.profileController.getState());
-        break;
-      case "leaderboard":
-        pageHtml = renderLeaderboardPage(
-          this.leaderboardController.getState(),
-        );
-        break;
-      case "archive":
-        pageHtml = renderArchivePage(this.archiveController.getState());
-        break;
-      case "shop":
-        pageHtml = this.lazyPageHtml(shopView, (view) => view.renderShopPage(this.shopController.getState()));
-        break;
-      case "referral":
-        pageHtml = renderReferralPage(
-          this.referralController.getState(),
-          this.referralController.getSelectedMilestone(),
-        );
-        break;
-      case "events":
-        pageHtml = this.lazyPageHtml(eventsView, (view) => view.renderEventsPage(this.eventsController));
-        break;
-      default:
-        pageHtml = renderPrototype(
-          this.activeTab,
-          this.activeTab === "reports" ? this.supportController.getState() : undefined,
-        );
-    }
+    const arena = () => this.arenaPageHtml();
+    const pageHtml = renderActivePage(this.activeTab, {
+      play: () => renderDailyPage(this.dailyController.getState()),
+      arena, duels: arena, challenge: arena,
+      profile: () => renderProfilePage(this.profileController.getState()),
+      leaderboard: () => renderLeaderboardPage(this.leaderboardController.getState()),
+      archive: () => renderArchivePage(this.archiveController.getState()),
+      shop: () => this.lazyPageHtml(shopView, (view) => view.renderShopPage(this.shopController.getState())),
+      referral: () => renderReferralPage(this.referralController.getState(), this.referralController.getSelectedMilestone()),
+      events: () => this.lazyPageHtml(eventsView, (view) => view.renderEventsPage(this.eventsController)),
+      fallback: (tab) => renderPrototype(tab, tab === "reports" ? this.supportController.getState() : undefined),
+    });
 
     const mockBannerHtml =
       isMock && user
         ? `<p class="environment-note">Local preview · Telegram not connected</p>`
         : "";
 
-    this.rootElement.innerHTML = `
-      ${renderHeader({ user, activeTab: this.activeTab })}
-      ${mockBannerHtml}
-      <main id="app-content" role="region" aria-label="${v("pageContent")}">
-        ${pageHtml}
-      </main>
-      ${renderNavBar({ activeTab: this.activeTab })}
-    `;
+    renderScreen(this.rootElement, this.activeTab, user, mockBannerHtml, pageHtml);
 
     this.attachEventListeners();
     this.syncBackButton();
@@ -886,13 +857,13 @@ export class App {
     scope
       .querySelectorAll<HTMLButtonElement>("button[data-tab]")
       .forEach((btn) => {
-        btn.addEventListener("click", (e) => {
+        btn.onclick = (e) => {
           e.preventDefault();
           const tab = btn.dataset.tab as NavTabId;
           if (tab) {
             this.setTab(tab);
           }
-        });
+        };
       });
   }
 
@@ -950,7 +921,7 @@ export class App {
         this.eventsController,
         {
           onOpenTraining: () => {
-            this.activeTab = "arena";
+            this.router.navigate("arena");
             this.arenaController.setSubview("training");
             if (
               !this.trainingController.getState().data &&

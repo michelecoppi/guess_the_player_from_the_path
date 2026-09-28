@@ -118,6 +118,33 @@ test("App mounts into DOM and renders shared components with real Daily feature 
   }
 });
 
+test("navigation keeps the shell and page landmark mounted", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const restoreFetch = mockFetchResponse({
+    user: { name: "Marco" },
+    today: createTestDailyChallenge(),
+  });
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    const landmark = container.querySelector("#app-content");
+    const shell = container;
+    app.setTab("arena");
+    assert.equal(container, shell);
+    assert.equal(container.querySelector("#app-content"), landmark);
+    assert.equal(container.querySelector("#nav-tab-arena")?.getAttribute("aria-current"), "page");
+    app.setTab("play");
+    assert.equal(container.querySelector("#app-content"), landmark);
+    assert.ok(container.querySelector("#answer"));
+  } finally {
+    restoreFetch();
+    restoreTg();
+    cleanup();
+  }
+});
+
 test("Arena hub's 'Eventi'/'Archivio' still navigate after the async duel-list load re-renders the hub (regression)", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { container, cleanup: cleanupDom } = setupGlobalDom();

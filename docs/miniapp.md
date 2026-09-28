@@ -103,7 +103,7 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 
 | Folder | Responsibility |
 | --- | --- |
-| `app/` | `App.ts` shell: navigation state, creates one controller per feature, mounts pages. The Shop, Story and Events **views** are separate chunks (`lazy.ts`, dynamic `import()`, #187): a loading state until the chunk arrives, an error with retry if it fails, and `bootstrap.ts` prefetches them ~1 s after the Daily is on screen. Their controllers stay in the main bundle (they hold state the shell syncs across features). A new heavy page can be split the same way |
+| `app/` | `Router.ts` tracks destinations, `PageRenderer.ts` selects the active page and `ShellRenderer.ts` keeps the shell mounted while updating the active screen; `App.ts` wires controllers and listeners. The Shop, Story and Events **views** are separate chunks (`lazy.ts`, dynamic `import()`, #187): a loading state until the chunk arrives, an error with retry if it fails, and `bootstrap.ts` prefetches them ~1 s after the Daily is on screen. Their controllers stay in the main bundle (they hold state the shell syncs across features). A new heavy page can be split the same way |
 | `features/<name>/` | Per feature `api.ts` (typed calls), `controller.ts` (state, loading/error, stale-response guards), `types.ts`, `views.ts`. Features: daily, arena, training, events, archive, leaderboard, profile, shop, referral |
 | `pages/` | Page composition and event wiring per destination |
 | `components/` | Shared UI (CareerPath, GuessInput, NavBar, Header, Modal, states…) |
