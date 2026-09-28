@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#214](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/214) | Reproducible Python dependencies across CI and deploy |
 | [#174](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/174) | Serialize production deploys and deploy only the `main` tip |
 | [#167](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/167) | Align current Admin and architecture documentation with delivered work |
 | [#165](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/165) | Two themed Story chapters and chapter-specific earned cosmetics |
@@ -145,6 +146,10 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-28: #214 tracks the gap between CI and Docker Python dependency resolution:
+  direct requirements are pinned, but transitive versions are not, so rebuilding the same
+  commit can produce a different runtime graph. This is preventive infrastructure work.
 
 - 2026-09-27: #174 fixes the production deploy race seen when eight Dependabot PRs were
   merged together: parallel Deploy runs conflicted and an older commit could win. Deploys
