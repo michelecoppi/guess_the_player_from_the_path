@@ -198,6 +198,9 @@ CAMPAIGN_SOURCES = (
     "telegram_group", "telegram_channel", "creator", "producthunt", "directory", "qr",
 )
 ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", *CAMPAIGN_SOURCES, "other")
+# `/start src_<channel>-<campaign>` (#218): the campaign names one piece of content inside a
+# channel. It is a short slug, never free text, so a malformed one is simply dropped.
+CAMPAIGN_ID = re.compile(r"^[a-z0-9-]{1,24}$")
 
 
 # One validator per property NAME (the same name means the same shape everywhere it is
@@ -211,6 +214,7 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "referral_attached": _bool,
     "enabled": _bool,
     "acquisition_channel": _enum(*ACQUISITION_CHANNELS),
+    "campaign_id": _pattern(CAMPAIGN_ID),
     "scope": _enum("global", "monthly"),
     "status": _enum("correct", "wrong", "refused", "failed"),
     "reason": _enum(
@@ -254,7 +258,7 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
 # terminal event per user per day. A property with no event that allows it can never be sent.
 EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
     Event.EXPERIMENT_ASSIGNED: frozenset({"experiment_key", "variant"}),
-    Event.BOT_STARTED: frozenset({"language", "is_new_user", "acquisition_channel"}),
+    Event.BOT_STARTED: frozenset({"language", "is_new_user", "acquisition_channel", "campaign_id"}),
     Event.MINIAPP_OPENED: frozenset({"language"}),
     Event.DAILY_VIEWED: frozenset({"surface", "language"}),
     Event.DAILY_GUESS_SUBMITTED: frozenset({

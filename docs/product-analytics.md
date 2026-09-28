@@ -191,7 +191,7 @@ and **intent vs. completion**.
 
 | Event | Trigger | Source | Idempotency | Properties | Intent/completion |
 | --- | --- | --- | --- | --- | --- |
-| `bot_started` | `/start` (any argument), `handlers/start_handler.py` | server | none needed — one event per `/start`, `is_new_user` distinguishes first contact | `language`, `is_new_user`, `acquisition_channel` | completion (the interaction happened) |
+| `bot_started` | `/start` (any argument), `handlers/start_handler.py` | server | none needed — one event per `/start`, `is_new_user` distinguishes first contact | `language`, `is_new_user`, `acquisition_channel`, `campaign_id` (optional) | completion (the interaction happened) |
 | `miniapp_opened` | First non-lightweight call to `POST /app/api/me` (`services/webapp_api.build_profile`, `include_social=True`) | server | none needed — fires on every full bootstrap call, not on the lightweight polling variant used to refresh in-game state | `language` | completion |
 | `experiment_assigned` | A concrete treatment calls `services.experiments.assign` at its decision boundary; no treatment is wired by the registry itself | server | one exposure per call; analysis uses distinct pseudonymous users per experiment and variant | `experiment_key`, `variant` | exposure, not a success event |
 
@@ -219,6 +219,18 @@ Campaign links are `https://t.me/<BOT_USERNAME>?start=src_<source>`: they show t
 welcome and change nothing else. The raw argument is never sent, so a link cannot smuggle
 free text or personal data into analytics; a new source needs a code change to
 `CAMPAIGN_SOURCES`, until then it reads as `other`.
+
+`campaign_id` ([#218](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/218))
+says which piece of content inside a channel brought someone. A campaign link may carry a
+suffix, `src_<source>-<campaign>` (for example `src_tiktok-2026w40-whois`), and then
+`bot_started` gets `acquisition_channel=<source>` plus `campaign_id=<campaign>`
+(`handlers/start_handler.py::campaign_id`). The campaign is lowercased and must match
+`[a-z0-9-]{1,24}` (`services/product_analytics.py::CAMPAIGN_ID`), so the whole argument stays
+well within Telegram's 64-character `start` limit. A missing, malformed or too long campaign,
+or one on an unknown source, sends no `campaign_id` and never changes the channel: a valid
+source still reads as that source, never `other`. Links without a suffix behave exactly as
+before. One campaign identifies one piece of content; there is no separate `content_id`,
+and the campaign is not stored on the user profile.
 
 ### Daily
 
@@ -771,6 +783,12 @@ The optional referral funnel (§11, `referral_opened{referral_attached=true}` �
 Build it only after attached opens and conversions have enough volume to inspect, and
 keep all steps on the invitee identity (§6). Use at least 30 attached opens before
 interpreting a conversion rate. `referral_reward_granted` is not a funnel step.
+
+The same activation query can also be grouped by the start's optional `campaign_id` (§6,
+[#218](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/218)) to
+compare individual pieces of content within one channel; starts without a campaign form
+their own group. The saved insight groups by channel only, and the same minimum of 30 new
+users per group applies before ranking campaigns.
 
 ### Recreate and check
 

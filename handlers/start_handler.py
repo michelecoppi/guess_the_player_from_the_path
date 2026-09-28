@@ -24,8 +24,24 @@ def acquisition_channel(argument: str) -> str:
         return "duel"
     if argument.startswith(DEEP_LINK_PREFIX):
         return "league"
-    source = argument[len(CAMPAIGN_PREFIX):].lower() if argument.startswith(CAMPAIGN_PREFIX) else ""
+    source = _campaign_parts(argument)[0]
     return source if source in analytics.CAMPAIGN_SOURCES else "other"
+
+
+def campaign_id(argument: str) -> str | None:
+    """The `<campaign>` of a `src_<source>-<campaign>` link, only for a known source and a valid slug."""
+    source, campaign = _campaign_parts(argument)
+    if source in analytics.CAMPAIGN_SOURCES and analytics.CAMPAIGN_ID.fullmatch(campaign):
+        return campaign
+    return None
+
+
+def _campaign_parts(argument: str) -> tuple[str, str]:
+    # Sources never contain "-", so the first one separates the source from the campaign.
+    if not argument.startswith(CAMPAIGN_PREFIX):
+        return "", ""
+    source, _, campaign = argument[len(CAMPAIGN_PREFIX):].lower().partition("-")
+    return source, campaign
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -42,13 +58,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lang = result["language"]
     # bot_started: fires on every /start, `is_new_user` distinguishes first contact from a
-    # returning one; `acquisition_channel` says which link brought them. referral_opened only when the deep link actually carried a referral
+    # returning one; `acquisition_channel` says which link brought them and `campaign_id`, when
+    # the link has one, which content. referral_opened only when the deep link actually carried a referral
     # code - a bare `/start` is not a referral event.
-    analytics.capture(
-        analytics.Event.BOT_STARTED, user_id=user.id,
-        properties={"language": lang, "is_new_user": bool(result["created"]),
-                    "acquisition_channel": acquisition_channel(argument)},
-    )
+    properties = {"language": lang, "is_new_user": bool(result["created"]),
+                  "acquisition_channel": acquisition_channel(argument)}
+    campaign = campaign_id(argument)
+    if campaign:
+        properties["campaign_id"] = campaign
+    analytics.capture(analytics.Event.BOT_STARTED, user_id=user.id, properties=properties)
     if argument.startswith("ref_"):
         analytics.capture(
             analytics.Event.REFERRAL_OPENED, user_id=user.id,
