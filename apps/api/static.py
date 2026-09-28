@@ -94,6 +94,7 @@ _ASSET_MEDIA_TYPES = {
     ".js": "application/javascript",
     ".css": "text/css",
     ".woff2": "font/woff2",
+    ".webp": "image/webp",
 }
 
 

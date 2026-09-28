@@ -133,6 +133,7 @@ def test_webapp_assets_sibling_directory_containment():
 
 @pytest.mark.parametrize("suffix, media_type", [
     (".woff2", "font/woff2"),
+    (".webp", "image/webp"),
     (".js", "application/javascript"),
     (".css", "text/css"),
     (".bin", "application/octet-stream"),

@@ -50,7 +50,7 @@ test('travel try-on includes one identity, four slots and the actual shared card
     const controller = new ShopController();
     const html = renderPreviewBar({...controller.getState(),preview:{item,appearance}});
     assert.equal((html.match(/class="avatar-wrap/g) || []).length, 1);
-    assert.match(html, /card_trasferta\.png/);
+    assert.match(html, /card_trasferta\.webp/);
     assert.match(html, /data-cosmetic-preview/);
     assert.equal((html.match(/Always away/g) || []).length, 2);
     assert.doesNotMatch(html, /Sempre in trasferta/);
