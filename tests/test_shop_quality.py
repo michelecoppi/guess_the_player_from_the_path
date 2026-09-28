@@ -16,12 +16,14 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_card_samples_cover_exact_catalogue_styles_and_current_renderer():
     target = ROOT / "webapp/src/assets/card-previews"
     manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
+    assert not list(target.glob("*.png")), "Legacy PNG previews would still ship in the bundle"
     assert manifest["cards"] == [{"id": i["id"], "style": i["style"]}
                                  for i in shop.all_items() if i["kind"] == "card"]
     renderer = (ROOT / "services/path_image.py").read_text(encoding="utf-8").encode("utf-8")
     assert manifest["renderer_sha256"] == hashlib.sha256(renderer).hexdigest(), "Run python -m scripts.shop_previews"
     for card in manifest["cards"]:
-        with Image.open(target / f"{card['id']}.png") as image:
+        with Image.open(target / f"{card['id']}.webp") as image:
+            assert image.format == "WEBP"
             assert image.size == (400, 500)
             assert image.getextrema() != ((0, 0), (0, 0), (0, 0))
 
