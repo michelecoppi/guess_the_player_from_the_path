@@ -40,7 +40,7 @@ def test_report_reaches_every_admin(server, monkeypatch):
 
     monkeypatch.setattr(server.telegram_app, "bot", SimpleNamespace(send_message=send_message))
 
-    response = request(server, "/app/api/support/report", json={"message": "Le presenze del Milan sono sbagliate"})
+    response = request(server, "/app/api/support/report", json={"initData": "x", "message": "Le presenze del Milan sono sbagliate"})
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
@@ -55,7 +55,7 @@ def test_report_requires_a_message(server, monkeypatch):
     monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
     monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: {"first_name": "Anna"})
 
-    response = request(server, "/app/api/support/report", json={"message": "   "})
+    response = request(server, "/app/api/support/report", json={"initData": "x", "message": "   "})
 
     assert response.status_code == 400
 
@@ -65,7 +65,7 @@ def test_report_fails_closed_without_admins(server, monkeypatch):
     monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
     monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: {"first_name": "Anna"})
 
-    response = request(server, "/app/api/support/report", json={"message": "Qualcosa non va"})
+    response = request(server, "/app/api/support/report", json={"initData": "x", "message": "Qualcosa non va"})
 
     assert response.status_code == 503
 
@@ -75,6 +75,6 @@ def test_report_requires_registration(server, monkeypatch):
     monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
     monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: None)
 
-    response = request(server, "/app/api/support/report", json={"message": "Qualcosa non va"})
+    response = request(server, "/app/api/support/report", json={"initData": "x", "message": "Qualcosa non va"})
 
     assert response.status_code == 404

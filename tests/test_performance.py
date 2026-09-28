@@ -193,7 +193,7 @@ def test_perf_endpoint_requires_a_signature_and_reads_nothing(server, monkeypatc
 
     monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
     monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: pytest.fail("no user read for a metric"))
-    assert call(server, "/app/api/perf", json={"app": "v2", "metrics": {"x": 1}}).status_code == 422
+    assert call(server, "/app/api/perf", json={"initData": "signed", "app": "v2", "metrics": {"x": 1}}).status_code == 422
 
     response = call(server, "/app/api/perf", json={
         "initData": "signed", "app": "v2", "outcome": "ok", "metrics": {"first_data_ms": 950, "api_me_ms": 400},

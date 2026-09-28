@@ -45,6 +45,46 @@ from services.webapp_auth import user_id_from_init_data
 router = APIRouter()
 # Per process, like the Cloud Run instance it runs in (docs/performance.md).
 api_limiter = TokenBucket()
+MAX_INIT_DATA = 4096
+MAX_ANSWER = 220
+
+
+def _text(payload, key, *, limit, required=False, strip=False):
+    """Validate client text before handing it to a service or an external API."""
+    value = payload.get(key)
+    if value is None and not required:
+        return None
+    if not isinstance(value, str) or len(value) > limit:
+        raise HTTPException(status_code=422, detail=f"{key} non valido")
+    if strip:
+        value = value.strip()
+    if required and not value:
+        raise HTTPException(status_code=422, detail=f"{key} non valido")
+    return value
+
+
+def _integer(payload, key, *, maximum=1_000_000):
+    value = payload.get(key)
+    if value is not None and (type(value) is not int or value < 0 or value > maximum):
+        raise HTTPException(status_code=422, detail=f"{key} non valido")
+    return value
+
+
+def _day(payload, key="day"):
+    value = _text(payload, key, limit=10)
+    if value and not is_iso(value):
+        raise HTTPException(status_code=422, detail=f"{key} non valido")
+    return value
+
+
+def _authenticated_id(payload):
+    init_data = _text(payload, "initData", limit=MAX_INIT_DATA)
+    if not init_data:
+        raise HTTPException(status_code=401, detail="initData mancante")
+    try:
+        return user_id_from_init_data(init_data, config.BOT_TOKEN)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e)) from None
 
 
 def _require_feature(flag, user_id):
@@ -63,10 +103,7 @@ def _webapp_user(payload, cost=1):
     Il client non manda mai un id: se lo mandasse, chiunque potrebbe chiedere i dati di
     chiunque - e adesso che la mini app gioca davvero, potrebbe anche giocare al posto di un
     altro. Ritorna (user_id, documento utente); 404 se non ha mai fatto /start."""
-    try:
-        user_id = user_id_from_init_data(payload.get("initData", ""), config.BOT_TOKEN)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e)) from None
+    user_id = _authenticated_id(payload)
 
     wait = api_limiter.retry_after(user_id, cost)
     if wait:
@@ -99,10 +136,7 @@ def webapp_startup_timing(payload: dict = Body(default={})):
     Serve la firma di initData, ma non il documento utente: nessuna lettura Firestore per
     una misura. Nel log finisce solo un insieme chiuso di numeri limitati
     (`performance.miniapp_startup_fields`), senza id ne' testo del client."""
-    try:
-        user_id = user_id_from_init_data(payload.get("initData", ""), config.BOT_TOKEN)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e)) from None
+    user_id = _authenticated_id(payload)
     wait = api_limiter.retry_after(user_id, 1)
     if wait:
         raise HTTPException(status_code=429, detail="Troppe richieste", headers={"Retry-After": str(wait)})
@@ -119,10 +153,7 @@ def webapp_client_error(payload: dict = Body(default={})):
 
     Come `/app/api/perf`: firma di initData e rate limit, nessuna lettura Firestore. Nel log
     finisce solo il sottoinsieme chiuso e limitato di `client_errors.client_error_fields`."""
-    try:
-        user_id = user_id_from_init_data(payload.get("initData", ""), config.BOT_TOKEN)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e)) from None
+    user_id = _authenticated_id(payload)
     wait = api_limiter.retry_after(user_id, 1)
     if wait:
         raise HTTPException(status_code=429, detail="Troppe richieste", headers={"Retry-After": str(wait)})
@@ -146,7 +177,8 @@ def webapp_me(payload: dict = Body(default={})):
 @router.post("/app/api/profile/public")
 def webapp_public_profile(payload: dict = Body(default={})):
     _, viewer = _webapp_user(payload)
-    result = build_public_profile(payload.get("profile_id"), lang=_webapp_language(viewer))
+    profile_id = _integer(payload, "profile_id", maximum=2**52)
+    result = build_public_profile(profile_id, lang=_webapp_language(viewer))
     if result is None:
         raise HTTPException(status_code=404, detail="profilo non disponibile")
     return result
@@ -168,7 +200,7 @@ def webapp_referrals(payload: dict = Body(default={})):
 def webapp_search_profiles(payload: dict = Body(default={})):
     """Cerca profili per nome senza esporre il documento utente completo."""
     _webapp_user(payload, cost=2)
-    query = payload.get("query")
+    query = _text(payload, "query", limit=100)
     if not isinstance(query, str) or len(query.strip()) < 2:
         raise HTTPException(status_code=400, detail="servono almeno due caratteri")
     return {"profiles": search_public_profiles(query)}
@@ -181,17 +213,15 @@ def webapp_guess(payload: dict = Body(default={})):
     Le regole sono quelle di services/game.py, cioe' **le stesse** che applica la chat: qui
     non si decide niente, si traduce solo il risultato in JSON."""
     user_id, user_data = _webapp_user(payload)
-    if is_daily_play(payload.get("day")):
+    day = _day(payload)
+    answer = _text(payload, "answer", limit=MAX_ANSWER, required=True, strip=True)
+    if is_daily_play(day):
         # L'archivio passa di qui ma non e' la superficie Daily: resta giocabile.
         _require_feature(Flag.DAILY_UI, user_id)
         _require_current_daily(payload)
-    answer = (payload.get("answer") or "").strip()
-    if not answer:
-        raise HTTPException(status_code=400, detail="risposta vuota")
-
     return play(
         user_id, user_data, answer,
-        day=payload.get("day"), lang=_webapp_language(user_data),
+        day=day, lang=_webapp_language(user_data),
     )
 
 
@@ -199,6 +229,7 @@ def webapp_guess(payload: dict = Body(default={})):
 def webapp_hint(payload: dict = Body(default={})):
     """Un indizio sulla sfida di oggi, allo stesso prezzo che si paga in chat."""
     user_id, user_data = _webapp_user(payload)
+    _day(payload, "expected_day")
     _require_feature(Flag.HINTS, user_id)
     _require_current_daily(payload)
     return game.take_hint(user_id, _webapp_language(user_data), surface="miniapp")
@@ -209,14 +240,19 @@ def webapp_arena(payload: dict = Body(default={})):
     from services import app_events, arena, story
     user_id, user = _webapp_user(payload, cost=2)
     lang = _webapp_language(user)
-    mode, action = payload.get("mode"), payload.get("action", "get")
+    mode = _text(payload, "mode", limit=20)
+    action = _text(payload, "action", limit=20) if "action" in payload else "get"
+    answer = _text(payload, "answer", limit=MAX_ANSWER)
+    code = _text(payload, "code", limit=100)
+    day = _day(payload)
+    revision = _integer(payload, "revision")
     if mode in _ARENA_MODE_FLAGS:
         # Spento: nessuna lettura ne' mossa nuova. Duelli e sessioni restano intatti su
         # Firestore e ricompaiono tali e quali quando il flag si riaccende.
         _require_feature(_ARENA_MODE_FLAGS[mode], user_id)
     try:
         if mode == "training":
-            return arena.training(user_id, action, payload.get("answer"), payload.get("revision"), lang)
+            return arena.training(user_id, action, answer, revision, lang)
         if mode == "duel":
             if action == "create" and (not config.BOT_USERNAME or not config.WEBAPP_URL):
                 raise arena.ArenaError("unavailable")
@@ -224,14 +260,14 @@ def webapp_arena(payload: dict = Body(default={})):
                 # Tutti i duelli ancora aperti: in attesa di un avversario, in corso o
                 # conclusi ma non ancora archiviati sul profilo di chi li guarda.
                 return arena.list_duels(user_id, profile=user)
-            code = payload.get("code") or user.get("app_duel")
+            code = code or user.get("app_duel")
             if action == "get" and not code:
                 # Nessuna partita aperta: resta lo storico, che e' gia' nel documento utente.
                 return {"session": None, "ledger": arena.ledger(user)}
             was_new = action == "create"
             was_join = action == "join"
             result = arena.duel(user_id, user.get("first_name", "?"), action, code,
-                                payload.get("answer"), payload.get("revision"), lang, profile=user)
+                                answer, revision, lang, profile=user)
             if action != "delete":
                 result["invite_url"] = f"https://t.me/{config.BOT_USERNAME}?start=duel_{result['code']}" if config.BOT_USERNAME else None
             if was_new:
@@ -249,20 +285,20 @@ def webapp_arena(payload: dict = Body(default={})):
         if mode == "events":
             feedback = None
             if action == "guess":
-                feedback = app_events.guess(user_id, user.get("first_name", "?"), payload.get("code"),
-                                            payload.get("day"), payload.get("answer"), payload.get("revision"))
+                feedback = app_events.guess(user_id, user.get("first_name", "?"), code,
+                                            day, answer, revision)
             elif action == "reveal":
-                app_events.reveal(user_id, payload.get("code"), payload.get("day"), payload.get("revision"))
+                app_events.reveal(user_id, code, day, revision)
             elif action != "get":
                 raise arena.ArenaError("invalid")
             return {**app_events.list_events(user_id, lang), "feedback": feedback}
         if mode == "story":
             if action == "list":
                 return story.list_chapters(user_id, lang)
-            chapter_id = payload.get("chapter_id")
+            chapter_id = _text(payload, "chapter_id", limit=100)
             if not isinstance(chapter_id, str) or not chapter_id:
                 raise story.StoryError("invalid")
-            return story.chapter(user_id, chapter_id, action, payload.get("answer"), payload.get("revision"), lang)
+            return story.chapter(user_id, chapter_id, action, answer, revision, lang)
         raise arena.ArenaError("invalid")
     except (arena.ArenaError, story.StoryError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from None
@@ -273,7 +309,7 @@ def webapp_calendar(payload: dict = Body(default={})):
     """Il calendario delle giornate passate, con com'e' andata a chi guarda."""
     user_id, user_data = _webapp_user(payload)
     lang = _webapp_language(user_data)
-    day = payload.get("day")
+    day = _day(payload)
     if day:
         challenge = build_archive_challenge(user_id, day, lang)
         if challenge is None:
@@ -287,21 +323,23 @@ def webapp_league(payload: dict = Body(default={})):
     """Crea una lega, entra o esce. Le regole (limiti, lunghezza del nome, codici) stanno in
     services/leagues.py: le stesse dei comandi /league_*."""
     user_id, user_data = _webapp_user(payload)
-    action = payload.get("action")
+    action = _text(payload, "action", limit=20)
+    league_name = _text(payload, "name", limit=100)
+    league_code = _text(payload, "code", limit=100)
     name = user_data.get("first_name")
 
     if action == "create":
-        status, code = league_rules.create(user_id, user_data, payload.get("name"), name)
+        status, code = league_rules.create(user_id, user_data, league_name, name)
         if status == "ok":
             analytics.capture(analytics.Event.LEAGUE_CREATED, user_id=user_id, properties={"surface": "miniapp"})
         return {"status": status, "code": code, "link": league_rules.invite_link(code, config.BOT_USERNAME) if code else ""}
     if action == "join":
-        status, league = league_rules.join(user_id, user_data, payload.get("code"), name)
+        status, league = league_rules.join(user_id, user_data, league_code, name)
         if status == "ok":
             analytics.capture(analytics.Event.LEAGUE_JOINED, user_id=user_id, properties={"surface": "miniapp"})
         return {"status": status, "league": league}
     if action == "leave":
-        status, league = league_rules.leave(user_id, payload.get("code"))
+        status, league = league_rules.leave(user_id, league_code)
         return {"status": status, "league": league}
 
     raise HTTPException(status_code=400, detail="azione sconosciuta")
@@ -324,6 +362,7 @@ async def webapp_shop_buy(request: Request, payload: dict = Body(default={})):
     oggetto vuole, e quanto costa lo dice il catalogo. Se il prezzo arrivasse dal client,
     chiunque potrebbe comprare la collezione completa per una Stella."""
     user_id, user_data = await run_in_threadpool(_webapp_user, payload)
+    item_id = _text(payload, "item", limit=100, required=True)
     if not await run_in_threadpool(feature_flags.is_enabled, Flag.SHOP, user_id=user_id):
         # Prima di creare la fattura: nessun link, quindi nessun addebito possibile.
         observability.log_event("payment.invoice.refused", reason="feature_disabled")
@@ -331,7 +370,6 @@ async def webapp_shop_buy(request: Request, payload: dict = Body(default={})):
             "surface": "miniapp", "reason": "feature_disabled", "success": False,
         })
         raise FeatureDisabled(Flag.SHOP)
-    item_id = payload.get("item")
     status = shop.purchase_status(user_data, item_id)
     if status != "ok":
         observability.log_event("payment.invoice.refused", reason=status,
@@ -369,7 +407,7 @@ def webapp_shop_equip(payload: dict = Body(default={})):
     solo l'utente autenticato dalla firma di initData, mai un id arrivato dal client."""
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.SHOP, user_id)
-    item_id = payload.get("item")
+    item_id = _text(payload, "item", limit=100, required=True)
     status = shop.equip(user_id, user_data, item_id)
     if status != "ok":
         return {"status": status}
@@ -387,8 +425,10 @@ def webapp_shop_equip(payload: dict = Body(default={})):
 def webapp_shop_look(payload: dict = Body(default={})):
     user_id, user_data = _webapp_user(payload)
     _require_feature(Flag.SHOP, user_id)
-    action = payload.get("action")
-    name = payload.get("name")
+    action = _text(payload, "action", limit=20)
+    name = _text(payload, "name", limit=30)
+    if action in ("save", "wear", "delete") and not name:
+        raise HTTPException(status_code=422, detail="name non valido")
     if action == "save":
         status = shop.save_look(user_id, user_data, name)
     elif action == "wear":
@@ -421,7 +461,7 @@ async def webapp_report(request: Request, payload: dict = Body(default={})):
     """Segnala un errore in una carriera o nella mini app: stesso canale di /paysupport (un
     messaggio agli admin), ma per bug e dati, non per acquisti - vedi /admin_report_reply."""
     user_id, user_data = await run_in_threadpool(_webapp_user, payload, 5)
-    body = (payload.get("message") or "").strip()
+    body = _text(payload, "message", limit=3500, strip=True)
     if not body:
         raise HTTPException(status_code=400, detail="messaggio vuoto")
     if not config.ADMIN_TELEGRAM_IDS:
@@ -513,10 +553,7 @@ def webapp_share_sent(payload: dict = Body(default={})):
 
     Non legge Firestore. Un client puo' dichiarare un invio che non c'e' stato, ma al massimo
     gonfia un conteggio: nessun premio dipende da questo."""
-    try:
-        user_id = user_id_from_init_data(payload.get("initData", ""), config.BOT_TOKEN)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e)) from None
+    user_id = _authenticated_id(payload)
     wait = api_limiter.retry_after(user_id, 1)
     if wait:
         raise HTTPException(status_code=429, detail="Troppe richieste", headers={"Retry-After": str(wait)})
@@ -531,7 +568,12 @@ def webapp_pin_trophies(payload: dict = Body(default={})):
     services/trophies.py: qui arriva una lista di codici dal client, e un codice non e' una
     prova di aver vinto niente."""
     user_id, user_data = _webapp_user(payload)
-    status = trophies.pin(user_id, user_data, payload.get("codes"))
+    codes = payload.get("codes")
+    if not isinstance(codes, list) or len(codes) > 10 or any(
+        not isinstance(code, str) or len(code) > 100 for code in codes
+    ):
+        raise HTTPException(status_code=422, detail="codes non validi")
+    status = trophies.pin(user_id, user_data, codes)
     if status != "ok":
         return {"status": status}
     lang = _webapp_language(user_data)
