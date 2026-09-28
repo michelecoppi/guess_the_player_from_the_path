@@ -1817,7 +1817,7 @@ test("44. Referral initialization in App.init() is preserved when activeTab is r
       undefined,
       referralController,
     );
-    (app as any).activeTab = "referral";
+    (app as any).router.navigate("referral");
     app.init();
 
     assert.equal(app.getActiveTab(), "referral");
