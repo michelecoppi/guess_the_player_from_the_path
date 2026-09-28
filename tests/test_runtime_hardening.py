@@ -124,8 +124,8 @@ def test_authenticated_rate_limit_precedes_firestore(server, monkeypatch):
     monkeypatch.setattr(miniapp, "user_id_from_init_data", lambda *args: 42)
     monkeypatch.setattr(firebase_service, "get_user_data", lambda uid: reads.append(uid) or {})
     monkeypatch.setattr(miniapp, "api_limiter", rate_limit.TokenBucket(capacity=1, refill=0.01))
-    assert request(server, "/app/api/shop", json={}).status_code == 200
-    response = request(server, "/app/api/shop", json={})
+    assert request(server, "/app/api/shop", json={"initData": "signed"}).status_code == 200
+    response = request(server, "/app/api/shop", json={"initData": "signed"})
     assert response.status_code == 429
     assert int(response.headers["retry-after"]) > 0
     assert reads == [42]

@@ -64,7 +64,7 @@ def test_profile_route_reads_user_only_once(server, monkeypatch):
 
     async def exercise():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://test") as client:
-            response = await client.post("/app/api/me", json={"lightweight": True})
+            response = await client.post("/app/api/me", json={"initData": "signed", "lightweight": True})
             assert response.status_code == 200
             assert response.json()["user"]["name"] == "Anna"
             assert "leaderboard" not in response.json()

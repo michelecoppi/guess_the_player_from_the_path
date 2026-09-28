@@ -58,6 +58,12 @@ the card is deliberately never created: the card shows the player's name.
   bot token, max age 24 h), applies the per-user token bucket
   ([`services/rate_limit.py`](../services/rate_limit.py)), and loads the user document
   (404 if the user never ran `/start`). The client never sends a user id.
+- Malformed field types and oversized client strings return 422 before a game move,
+  payment link or support message. `initData` must be a string of at most 4096
+  characters; missing or empty authentication still returns 401. Daily and Archive
+  `guess.answer` must be nonblank text of at most 220 characters. Optional `day`
+  and `expected_day` values use ISO dates; the absent `expected_day` remains
+  accepted for older clients. Support reports accept at most 3500 characters.
 - A rejected `initData` (expired after 24 h or invalid) returns 401. Telegram keeps a
   minimised Mini App alive, so this is what a session resumed the next day gets: the
   `ApiClient` notifies `onSessionExpired` listeners and `App` replaces the whole shell
