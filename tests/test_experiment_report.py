@@ -85,3 +85,32 @@ def test_preflight_accepts_empty_but_rejects_malformed(monkeypatch):
     monkeypatch.setattr(paq, "_run_hogql", lambda *a: [["control", 1]])
     with pytest.raises(paq.QueryError, match="malformata"):
         reports.preflight(paq.Settings(), "daily_intro_v1", "daily_completion_rate", NOW)
+
+
+@pytest.mark.parametrize("metric,denominator", [
+    ("miniapp_activation_rate", "bot_started"),
+    ("referral_conversion_rate", "referral_opened"),
+])
+def test_start_rejects_denominator_before_exposure(monkeypatch, metric, denominator):
+    # /start emits bot_started (and referral_opened for a referral); the later
+    # Mini App treatment emits experiment_assigned, then miniapp_opened.
+    timeline = ["bot_started", "referral_opened", "experiment_assigned", "miniapp_opened"]
+    assert timeline.index(denominator) < timeline.index("experiment_assigned")
+    assert "e.timestamp >= x.first_exposure" in reports.query(
+        "daily_intro_v1", metric, NOW, NOW + timedelta(days=1))
+    monkeypatch.setattr(cli, "_analytics_ready", lambda: True)
+    monkeypatch.setattr(cli.store, "load", lambda: {"daily_intro_v1": planned(metric)})
+    monkeypatch.setattr(cli.store, "update", lambda *a: pytest.fail("must not start"))
+    monkeypatch.setattr(paq, "_run_hogql", lambda *a: pytest.fail("must reject before query"))
+    with pytest.raises(ValueError, match=f"{metric}.*{denominator}.*first experiment_assigned"):
+        cli.main(["start", "daily_intro_v1"])
+
+
+def test_valid_post_exposure_denominator_reaches_query(monkeypatch):
+    # The Daily treatment boundary precedes a submitted guess and completion.
+    timeline = ["experiment_assigned", "daily_guess_submitted", "daily_completed"]
+    assert timeline.index("experiment_assigned") < timeline.index("daily_guess_submitted")
+    captured = []
+    monkeypatch.setattr(paq, "_run_hogql", lambda _config, sql: captured.append(sql) or [])
+    reports.preflight(paq.Settings(), "daily_intro_v1", "daily_completion_rate", NOW)
+    assert "e.event = 'daily_guess_submitted' AND e.timestamp >= x.first_exposure" in captured[0]
