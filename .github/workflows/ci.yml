@@ -73,7 +73,7 @@ jobs:
       # setup-gcloud e non la gcloud gia' presente sul runner: quella e' installata da apt e
       # rifiuta `components install`. Se questo passo fallisce, i test delle transazioni non
       # si saltano in silenzio - la fixture in tests/conftest.py fallisce quando c'e' CI.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"

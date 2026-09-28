@@ -32,7 +32,7 @@ jobs:
       - name: Installa le dipendenze
         run: pip install -r requirements-dev.txt
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
