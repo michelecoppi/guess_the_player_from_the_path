@@ -14,7 +14,7 @@ import { celebrate } from "../../webapp/src/features/daily/celebrate";
 import { renderDailyPage } from "../../webapp/src/pages/DailyPage";
 import { dailyFixture } from "../../webapp/src/prototypes/daily-fixtures";
 
-const css = readFileSync("webapp/src/styles/vars.css", "utf8").replace(/@import[^;]+;|@source[^;]+;|@theme inline \{[^}]+\}/g, "");
+const css = readFileSync("webapp/src/styles/foundation.css", "utf8").replace(/@import[^;]+;|@source[^;]+;|@theme inline \{[^}]+\}/g, "");
 function dom() {
   const env = setupGlobalDom();
   const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);

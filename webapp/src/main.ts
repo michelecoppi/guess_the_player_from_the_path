@@ -1,11 +1,7 @@
-import "./styles/vars.css";
-import "./styles/app.css";
-import "./styles/editorial.css";
-import "./styles/matchday.css";
-import "./styles/event-modes.css";
-import "./styles/cosmetic-effects.css";
-import "./styles/shop-redesign.css";
-import "./styles/mobile-polish.css";
+import "./styles/foundation.css";
+import "./styles/components.css";
+import "./styles/features.css";
+import "./styles/feature-overrides.css";
 import { bootstrap } from "./app/bootstrap";
 
 if (typeof document !== "undefined") {

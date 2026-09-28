@@ -29,7 +29,7 @@
   --focus: #84e2b2;
   --disabled-opacity: 0.5;
   /* Decorative skin. --skin-accent/--skin-accent-text are the one pair a theme is allowed to
-     push onto --accent/--accent-text (see [data-cosmetic-shell] in editorial.css) - every
+     push onto --accent/--accent-text (see [data-cosmetic-shell] in feature-overrides.css) - every
      other --skin-* value here stays purely decorative, never text or interactive states. */
   --skin-accent: #46cc91;
   --skin-accent-text: #072d22;

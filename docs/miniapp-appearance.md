@@ -2,11 +2,22 @@
 
 Primary cosmetic contract (#66, #115, #122). The Vite Mini App is served at `/app`. Project #2 remains the source of work status.
 
+## Stylesheet ownership
+
+`webapp/src/main.ts` loads four stylesheets in cascade order: `foundation.css`
+defines product and skin tokens; `components.css` contains the shell and shared
+page components; `features.css` contains Shop, game modes, profile, events and
+referral layouts; `feature-overrides.css` contains the later editorial, matchday,
+cosmetic, Shop and mobile refinements. Later refinements deliberately keep their
+precedence over the base feature rules. Keep each new rule in its owning area and
+check the existing cascade before adding an override.
+
 ## Theme and token ownership
 
 ### Matchday presentation (#126)
 
-`styles/matchday.css`, loaded after the existing layout and cosmetic rules, owns
+`styles/feature-overrides.css`, loaded after the foundation, components and feature
+rules, contains the matchday presentation. Its matchday section owns
 the career sheet, final match report, player pass, primary/secondary profile
 statistics, Arena match presentation and collection-first Shop layout. It uses
 the existing product and scoped skin tokens; it never changes ownership, prices
@@ -34,7 +45,8 @@ a dark tint (30% accent with #0b121b); dark surfaces retain 70% of their card co
 Glow uses 16% accent. Descriptions must describe this result, including Ghiaccio.
 
 The CSS shell applies decorative surface, glow, pattern and accent to the header,
-navigation and tabs. `styles/cosmetic-effects.css` (loaded last) extends that to every
+navigation and tabs. The cosmetic effects section of `styles/feature-overrides.css`
+extends that to every
 tab: inside `[data-cosmetic-shell]` the structural `--bg`, `--bg-secondary`, `--card`,
 `--edge` and `--track` are derived from the scoped skin (darkened or lightly lifted
 `--skin-profile-surface`, never the theme's own `bg`/`bg2`), and the decorative

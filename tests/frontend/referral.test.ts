@@ -826,7 +826,7 @@ test("Referral Feature Test Suite (#46 Parity & Hardening)", async (t) => {
   );
 
   await t.test("41. Reduced motion supported in markup and CSS", () => {
-    const cssPath = path.resolve(__dirname, "../../webapp/src/styles/app.css");
+    const cssPath = path.resolve(__dirname, "../../webapp/src/styles/features.css");
     const cssContent = fs.readFileSync(cssPath, "utf-8");
     assert.ok(cssContent.includes("prefers-reduced-motion: reduce"));
     assert.ok(cssContent.includes(".rf-pitch *"));

@@ -106,7 +106,7 @@ export class App {
   ) {
     this.rootElement = rootElement;
     // The purchased theme's surface/glow/pattern now show behind every tab and the header,
-    // not just the profile card - see [data-cosmetic-shell] in editorial.css. It's a plain
+    // not just the profile card - see [data-cosmetic-shell] in feature-overrides.css. It's a plain
     // attribute (no inline style): the tokens already live on <html> from applyResolvedAppearance,
     // so nothing here needs to know the current appearance or re-set this on every render.
     this.rootElement.setAttribute("data-cosmetic-shell", "");
