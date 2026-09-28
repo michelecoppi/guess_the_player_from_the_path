@@ -17,6 +17,7 @@ from services import product_analytics as analytics
     ("src_tiktok", "tiktok"),
     ("src_TikTok", "tiktok"),
     ("src_telegram_group", "telegram_group"),
+    ("src_telegram_channel", "telegram_channel"),
     ("src_someone_s_private_name", "other"),
     ("src_", "other"),
     ("hello", "other"),

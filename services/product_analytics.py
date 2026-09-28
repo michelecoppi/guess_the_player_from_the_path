@@ -195,7 +195,7 @@ def _item_kind(value: Any) -> bool:
 # never as the raw text someone typed into a link.
 CAMPAIGN_SOURCES = (
     "tiktok", "instagram", "youtube", "reddit", "x", "threads", "facebook",
-    "telegram_group", "creator", "producthunt", "directory", "qr",
+    "telegram_group", "telegram_channel", "creator", "producthunt", "directory", "qr",
 )
 ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", *CAMPAIGN_SOURCES, "other")
 

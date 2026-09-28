@@ -212,7 +212,7 @@ another. It is derived from the `/start` argument by
 | `ref_…` (a referral link, including the one at the end of every shared result, #150) | `referral` |
 | `duel_…` | `duel` |
 | `lega_…` | `league` |
-| `src_<source>` with `<source>` in `CAMPAIGN_SOURCES` (`tiktok`, `instagram`, `youtube`, `reddit`, `x`, `threads`, `facebook`, `telegram_group`, `creator`, `producthunt`, `directory`, `qr`; case-insensitive) | `<source>` |
+| `src_<source>` with `<source>` in `CAMPAIGN_SOURCES` (`tiktok`, `instagram`, `youtube`, `reddit`, `x`, `threads`, `facebook`, `telegram_group`, `telegram_channel`, `creator`, `producthunt`, `directory`, `qr`; case-insensitive) | `<source>` |
 | anything else, including an unknown `src_` value | `other` |
 
 Campaign links are `https://t.me/<BOT_USERNAME>?start=src_<source>`: they show the normal
