@@ -18,6 +18,24 @@ _METRIC_EVENTS = {
     "miniapp_activation_rate": ("miniapp_opened", "bot_started"),
 }
 
+# These denominator events are emitted during /start, before a treatment assigned
+# at a later product boundary can expose the user. The dashboard's global metric
+# remains valid; its denominator is incompatible with this post-exposure report.
+_PRE_EXPOSURE_DENOMINATORS = frozenset({"bot_started", "referral_opened"})
+
+
+def validate_metric_window(metric: str) -> None:
+    """Reject metrics whose denominator cannot follow a product exposure."""
+    if metric not in _METRIC_EVENTS:
+        raise ValueError(f"unknown experiment report metric: {metric}")
+    denominator = _METRIC_EVENTS[metric][1]
+    if denominator in _PRE_EXPOSURE_DENOMINATORS:
+        raise ValueError(
+            f"{metric}: denominator '{denominator}' is emitted during /start, "
+            "before the treatment exposure; the report counts only events from "
+            "first experiment_assigned through the experiment end"
+        )
+
 
 def _stamp(value: datetime) -> str:
     if value.tzinfo is None:
@@ -92,6 +110,7 @@ def _rows(rows: list[list[Any]], metric: str) -> list[dict[str, Any]]:
 def preflight(config: analytics.Settings, key: str, metric: str, now: datetime) -> None:
     """Execute the actual metric query; empty results are valid before any exposure."""
     from datetime import timedelta
+    validate_metric_window(metric)
     rows = analytics._run_hogql(config, query(key, metric, now, now + timedelta(seconds=1)))
     _rows(rows, metric)
 

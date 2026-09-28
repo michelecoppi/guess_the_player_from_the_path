@@ -37,6 +37,13 @@ control and treatment descriptions, duration, result evidence, and a decision.
   result is expected before the first exposure and is accepted. The transaction
   verifies that the selected metric has not changed since preflight. No experiment
   is started by deployment.
+- The report uses a **post-exposure window** for both numerator and denominator:
+  an event counts only from the user's first `experiment_assigned` (inclusive)
+  through the experiment end or early stop (exclusive). The metric query
+  preflight rejects `miniapp_activation_rate` and `referral_conversion_rate`
+  before the start transaction: their `bot_started` and `referral_opened`
+  denominators are emitted during `/start`, before a later Mini App treatment
+  assignment. The error names the metric, denominator and report window.
 - `report` reads the exposed cohort by pseudonymous `distinct_id`. The first
   `experiment_assigned` event in the experiment window fixes each user in one
   variant, so repeat exposures do not increase the sample. Metric events are
@@ -46,6 +53,26 @@ control and treatment descriptions, duration, result evidence, and a decision.
   `insufficient_data` and `query_error` are explicit states. No statistical
   significance or causal effect is claimed. This query returns aggregates only;
   it never displays pseudonymous IDs or raw Telegram identifiers.
+
+### Metric and assignment boundary
+
+The registry's global metric names come from [product analytics](product-analytics.md).
+Their dashboard definitions are unchanged. For this report, the treatment call
+site must assign the user **before the denominator event**; the preflight can
+check a query but cannot infer the placement of future treatment code.
+
+| Metric | Denominator | Supported assignment point for this report |
+| --- | --- | --- |
+| `daily_completion_rate` | `daily_guess_submitted` | Before the user's first Daily guess to be measured. |
+| `guesses_per_completed_daily` | `daily_completed` (same event as numerator) | Before the Daily completion to be measured. |
+| `hint_usage_rate` | `daily_guess_submitted` | Before the user's first Daily guess to be measured. |
+| `shop_purchase_conversion_rate` | `shop_viewed` | Before the Shop view to be measured. This is an event-count rate, not a session funnel. |
+| `referral_conversion_rate` | `referral_opened` | Rejected at start: the referral open is captured during `/start`, before a later treatment boundary. |
+| `miniapp_activation_rate` | `bot_started` | Rejected at start: bot start precedes Mini App treatment assignment. |
+
+If a future treatment needs a rejected metric, design a cohort denominator and
+its report query in a separate change before starting it. Merely making the
+PostHog query executable does not make the event sequence valid.
 
 The registry provides assignment, but a specific treatment still needs a product
 call site that uses `assign` and a PostHog insight that segments the selected
