@@ -34,6 +34,7 @@ from fastapi.responses import HTMLResponse, Response  # noqa: E402
 from domains.shop import service as shop  # noqa: E402
 from services import firebase_service, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number  # noqa: E402
+from services.dates import today_iso  # noqa: E402
 from services.share import card_image, share_text, share_url  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -428,7 +429,8 @@ async def result_card(payload: dict = Body(default={})):
         int(payload.get("attempts") or 2), int(payload.get("max_attempts") or MAX_ATTEMPTS),
         solved=bool(payload.get("solved", True)), streak=int(payload.get("streak") or 0),
         hints=int(payload.get("hints") or 0),
-        honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
+        trophy=pinned[0] if pinned else None,
+        day=payload.get("day") or today_iso(),
     )
     return {"image": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}
 

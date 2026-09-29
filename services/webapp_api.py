@@ -417,7 +417,8 @@ def result_card_png(user_data, lang, result):
         solved=solved,
         streak=int(user_data.get("current_streak") or 0) if solved else 0,
         hints=result["hints"],
-        honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else "",
+        trophy=pinned[0] if pinned else None,
+        day=result["day"],
     )
     return buffer.getvalue()
 

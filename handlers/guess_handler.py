@@ -274,7 +274,7 @@ async def share_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     solved, attempts, hints = result["solved"], result["attempts"], result["hints"]
     streak = daily_result.card_streak(user_data, result)
     pinned = trophies.showcase(user_data, lang)
-    image = (await asyncio.to_thread(card_image, user_data, lang, number, attempts, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints, honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else ""))
+    image = (await asyncio.to_thread(card_image, user_data, lang, number, attempts, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints, trophy=pinned[0] if pinned else None, day=result["day"]))
     text = share_text(lang, number, attempts, MAX_ATTEMPTS, solved=solved,
                       streak=streak, hints=hints, symbols=shop.squares_symbols(user_data),
                       link=referrals.invite_link(user.id))

@@ -106,3 +106,43 @@ def test_card_image_hands_streak_and_hints_to_the_drawing(monkeypatch):
     monkeypatch.setattr(share, "render_share_card", lambda *args, **kwargs: seen.update(kwargs))
     share.card_image(user(), "it", 7, 2, 3, streak=4, hints=2)
     assert seen["streak"] == 4 and seen["hints"] == 2
+
+
+GOLD = {"label": "Un amore, una maglia", "detail": "08/09/2026", "color": "#e8b647", "position": 1,
+        "kind": "event"}
+
+
+def _band_has(image, colour, top, bottom, tolerance=6):
+    band = image.convert("RGB").crop((0, top, path_image.CARD_WIDTH, bottom))
+    return any(all(abs(a - b) <= tolerance for a, b in zip(pixel, colour))
+               for _, pixel in band.getcolors(1 << 20))
+
+
+@pytest.mark.parametrize("title, top, bottom", [("", 875, 950), ("Bomber", 885, 960)])
+def test_the_pinned_trophy_is_a_drawn_medal_below_the_title(title, top, bottom):
+    """Una data sotto "#479" si leggeva come la data della sfida (#226): il trofeo ha una
+    medaglia del colore del piazzamento, e scende sotto il titolo quando c'e'."""
+    image = opened(path_image.render_share_card(9, 2, 3, name="Anna", title=title, trophy=GOLD))
+    gold = path_image._hex(GOLD["color"], "#000000")
+    assert _band_has(image, gold, top, bottom)
+    assert _band_has(image, path_image.MEDAL_RIBBON[0], top - 10, bottom)
+    plain = opened(path_image.render_share_card(9, 2, 3, name="Anna", title=title))
+    assert not _band_has(plain, gold, top, bottom)
+
+
+def test_the_daily_pill_is_drawn_only_when_there_is_a_day():
+    glow = (56, 189, 130)
+    with_day = opened(path_image.render_share_card(9, 2, 3, solved=False, daily="Sfida del giorno · 29/09/2026"))
+    without = opened(path_image.render_share_card(9, 2, 3, solved=False))
+    assert _band_has(with_day, glow, 200, 250)
+    assert not _band_has(without, glow, 200, 250)
+
+
+def test_card_image_writes_the_daily_line_and_names_event_trophies(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(share, "render_share_card", lambda *args, **kwargs: seen.update(kwargs))
+    share.card_image(user(), "it", 479, 2, 3, trophy=GOLD, day="2026-09-29")
+    assert seen["daily"] == "Sfida del giorno · 29/09/2026"
+    assert seen["trophy"]["detail"] == "Evento · 08/09/2026"
+    share.card_image(user(), "en", 479, 2, 3, trophy={**GOLD, "kind": "monthly", "detail": "x"})
+    assert seen["daily"] == "" and seen["trophy"]["detail"] == "x"

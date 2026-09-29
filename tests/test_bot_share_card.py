@@ -72,7 +72,7 @@ def test_the_card_uses_the_recorded_result_and_the_number_of_that_day(world):
     world["history"][YESTERDAY] = record(YESTERDAY, 2, hints=1)
     query = press(f"sharecard:{YESTERDAY}")
     assert world["drawn"] == [{"number": challenge_number(YESTERDAY), "attempts": 2, "solved": True,
-                               "streak": 0, "hints": 1, "honour": ""}]
+                               "streak": 0, "hints": 1, "trophy": None, "day": YESTERDAY}]
     assert f"#{challenge_number(YESTERDAY)}" in query.photos[0]
     assert query.answers == [(None, False)]
 
