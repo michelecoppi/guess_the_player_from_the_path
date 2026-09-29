@@ -49,15 +49,8 @@ PROMO_CALLS = (
     Call("difficulty", "compute_difficulty", args=({},), note="GameRepo.difficulty"),
     Call("career_order", "order_career", args=([],), note="GameRepo.order_career"),
     Call("content_i18n", "localize_career", args=([], "it"), note="GameRepo.localize_career"),
-    # API pubblica (#234): quella a cui Promo deve passare.
-    Call("path_image", "years_label", args=({},), note="API pubblica per Promo (GameRepo.years_label)"),
-    Call("path_image", "color_for_team", args=("team",), note="API pubblica per Promo (GameRepo.team_color)"),
-    # Alias privati: la versione attuale di Promo li chiama ancora. Quando Promo usera' i nomi
-    # pubblici, queste righe e gli alias in services/path_image.py si potranno togliere.
-    Call("path_image", "_years_label", args=({},),
-         note="GameRepo.years_label (alias privato, da dismettere dopo l'aggiornamento di Promo)"),
-    Call("path_image", "_color_for_team", args=("team",),
-         note="GameRepo.team_color (alias privato, da dismettere dopo l'aggiornamento di Promo)"),
+    Call("path_image", "years_label", args=({},), note="GameRepo.years_label"),
+    Call("path_image", "color_for_team", args=("team",), note="GameRepo.team_color"),
     Call("path_image", "CARD_COLOR", called=False, note="GameRepo.palette"),
     Call("path_image", "TRACK_COLOR", called=False, note="GameRepo.palette"),
     Call("path_image", "TEXT_COLOR", called=False, note="GameRepo.palette"),
@@ -66,15 +59,8 @@ PROMO_CALLS = (
     Call("fonts", "font_path", kwargs={"bold": True}, note="GameRepo.text_font_path"),
     Call("observability", "scrub_text", args=("text",), note="GameRepo.__init__ -> log.use_game_scrubber"),
     Call("product_analytics", "CAMPAIGN_SOURCES", called=False, note="GameRepo.campaign_sources"),
-    Call("product_analytics_query", "settings", note="GameRepo.hogql"),
     Call("product_analytics_query", "QueryError", called=False, note="GameRepo.hogql"),
-    # API pubblica (#230): quella a cui Promo deve passare.
-    Call("product_analytics_query", "run_hogql", args=("SELECT 1",), note="API pubblica per Promo"),
-    # Privata, ma la versione attuale di Promo la chiama ancora come
-    # `paq._run_hogql(paq.settings(), query)`. Quando Promo usera' `run_hogql`, questa riga
-    # (e se si vuole `_run_hogql` stessa) si potra' togliere.
-    Call("product_analytics_query", "_run_hogql", args=(object(), "SELECT 1"),
-         note="GameRepo.hogql (privata, da dismettere dopo l'aggiornamento di Promo)"),
+    Call("product_analytics_query", "run_hogql", args=("SELECT 1",), note="GameRepo.hogql"),
 )
 
 
@@ -127,23 +113,3 @@ def test_values_read_by_promo_keep_their_shape():
     assert issubclass(product_analytics_query.QueryError, Exception), (
         f"services.product_analytics_query.QueryError deve restare un'eccezione: la cattura {PROMO_FILE}"
     )
-
-
-def test_path_image_private_names_are_aliases_of_the_public_ones():
-    """Promo oggi chiama `_years_label`/`_color_for_team`: devono restare le stesse funzioni pubbliche."""
-    from services import path_image
-
-    assert path_image._years_label is path_image.years_label
-    assert path_image._color_for_team is path_image.color_for_team
-
-
-def test_public_and_legacy_hogql_entrypoints_agree(monkeypatch):
-    """`run_hogql(query)` fa quello che Promo oggi ottiene con `_run_hogql(settings(), query)`."""
-    from services import product_analytics_query as paq
-
-    calls = []
-    monkeypatch.setattr(paq, "_run_hogql", lambda config, query: calls.append((config, query)) or [[1]])
-    monkeypatch.setattr(paq, "settings", lambda: "env-settings")
-
-    assert paq.run_hogql("SELECT 1") == [[1]]
-    assert calls == [("env-settings", "SELECT 1")]

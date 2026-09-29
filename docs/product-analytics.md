@@ -765,7 +765,7 @@ it reads the same settings from the environment when `config` is omitted, return
 result rows and raises `QueryError` exactly like the metrics above. Promo Studio uses it
 (through the cross-repository contract in
 [architecture.md § External consumers](architecture.md#external-consumers)); the private
-`_run_hogql(config, query)` stays until Promo has switched.
+`_run_hogql(config, query)` is an internal helper and is not part of that contract.
 
 Unconfigured (either variable missing) means the admin page shows a configuration notice
 and makes no network call — same fail-closed posture as `product_analytics.py` itself.
