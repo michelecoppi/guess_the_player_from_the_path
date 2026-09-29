@@ -6,6 +6,8 @@ from telegram.ext import ContextTypes
 
 from handlers.keyboards import app_keyboard
 from handlers.league_handler import league_join
+from handlers.training_handler import play_inline_card
+from services import inline_challenge
 from services import product_analytics as analytics
 from services.firebase_service import save_user
 from services.i18n import resolve_language, t
@@ -24,6 +26,10 @@ def acquisition_channel(argument: str) -> str:
         return "duel"
     if argument.startswith(DEEP_LINK_PREFIX):
         return "league"
+    # Il bottone di una card inline (`inl_<codice>`) o il bottone "apri il bot" dell'elenco
+    # inline di chi non si era ancora registrato (`inline`), #240.
+    if argument == "inline" or argument.startswith(inline_challenge.START_PREFIX):
+        return "inline"
     source = _campaign_parts(argument)[0]
     return source if source in analytics.CAMPAIGN_SOURCES else "other"
 
@@ -73,6 +79,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             properties={"referral_attached": bool(result.get("referral_attached"))},
         )
     key = "start.welcome_new" if result["created"] else "start.welcome_back"
+    card_link = inline_challenge.parse_start(argument)
+    if card_link:
+        # Chi arriva da una card vuole giocare quella: il benvenuto solo al primo ingresso,
+        # poi subito il percorso.
+        if result["created"]:
+            await update.effective_message.reply_text(t(lang, key, name=escape(user.first_name)), parse_mode="HTML")
+        code, card = card_link
+        await play_inline_card(update.effective_message, user.id, code, card, lang)
+        return
     if argument.startswith("duel_"):
         from config import WEBAPP_URL
         from services.arena import CODE

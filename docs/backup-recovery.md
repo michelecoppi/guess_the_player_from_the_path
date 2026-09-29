@@ -58,6 +58,7 @@ entry is no longer used, or if this table disagrees with the inventory module.
 | `group_rounds` | durable | yes | `players` | no | Current group round and accumulated in-group standings |
 | `purchases` | durable | yes | — | yes | Stars ledger; the Telegram charge id is needed for refunds and idempotent delivery |
 | `app_duels` | durable | yes | — | no | Arena duels (7-day expiry) referenced by `users.app_duel`; expired duels are ignored by the code |
+| `inline_cards` | durable | yes | — | no | Tally of each inline challenge card (#240): counts and the inline message id, no user ids; losing it only resets old counters |
 | `referrals` | durable | yes | — | yes | Attribution and qualification ledger; the invite code is consumed at registration, so it cannot be recomputed |
 | `admin_settings` | durable | yes | — | yes | Admin overrides (`dataset_overrides`, `feature_flags`, `daily_planner`); the whole collection is exported, so documents added later are covered |
 | `father_son_pairs` | durable | yes | — | no | Manual event content with Telegram file ids, not in any file |

@@ -20,8 +20,9 @@ import logging
 from telegram import InlineKeyboardButton, Update
 from telegram.ext import ContextTypes
 
+from handlers.inline_handler import report_card_result
 from handlers.legend_handler import legend_keyboard
-from services import firebase_service, practice_content
+from services import firebase_service, inline_challenge, practice_content
 from services import product_analytics as analytics
 from services.difficulty import points_for_difficulty
 from services.guess_feedback import build_comparison, comparison_text
@@ -40,6 +41,13 @@ def _lang_for(update: Update, user_data=None):
     if user_data and user_data.get("language"):
         return user_data["language"]
     return resolve_language(getattr(update.effective_user, "language_code", None))
+
+
+async def _report_card(context, user_id, user_data, solved):
+    """Se la sessione e' partita da una card inline, ne aggiorna il conto (#240)."""
+    card = (user_data or {}).get("training_card")
+    if card and context is not None:
+        await report_card_result(context.bot, user_id, card, solved)
 
 
 def _keyboard(lang, with_reveal=True):
@@ -73,8 +81,24 @@ async def _serve_new_challenge(message, user_id, exclude_key, lang):
     if not challenge or not challenge.get("career_path"):
         await message.reply_text(t(lang, "training.empty"))
         return
+    await _send_challenge(message, user_id, challenge, lang)
 
-    (await asyncio.to_thread(firebase_service.set_training_key, user_id, challenge["key"]))
+
+async def play_inline_card(message, user_id, code, card, lang):
+    """Apre l'allenamento sul calciatore di una card inline (#240): e' il bottone
+    "Indovina" di una card mandata in un'altra chat."""
+    challenge = (await asyncio.to_thread(inline_challenge.challenge_for, code))
+    if not challenge or not challenge.get("career_path"):
+        await message.reply_text(t(lang, "inline.gone"))
+        return
+    await _send_challenge(message, user_id, challenge, lang, card=card)
+
+
+async def _send_challenge(message, user_id, challenge, lang, card=None):
+    if card:
+        (await asyncio.to_thread(firebase_service.set_training_key, user_id, challenge["key"], card=card))
+    else:
+        (await asyncio.to_thread(firebase_service.set_training_key, user_id, challenge["key"]))
     analytics.capture(analytics.Event.TRAINING_STARTED, user_id=user_id,
                       properties={"surface": "telegram_chat"})
 
@@ -114,6 +138,7 @@ async def training_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
+    await _report_card(context, user_id, user_data, solved=False)
     await query.message.reply_text(
         t(lang, "training.revealed", answer=challenge["answer"]),
         reply_markup=_keyboard(lang, with_reveal=False),
@@ -138,6 +163,7 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
 
     if find_match(user_answer, challenge.get("correct_answers", [])):
         (await asyncio.to_thread(firebase_service.register_training_solved, user_id))
+        await _report_card(context, user_id, user_data, solved=True)
         analytics.capture(analytics.Event.TRAINING_GUESS_SUBMITTED, user_id=user_id,
                           properties={"surface": "telegram_chat", "status": "correct", "attempt_index": attempts})
         analytics.capture(analytics.Event.TRAINING_COMPLETED, user_id=user_id,
@@ -159,6 +185,7 @@ async def process_training_answer(update: Update, context: ContextTypes.DEFAULT_
         return
 
     (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
+    await _report_card(context, user_id, user_data, solved=False)
     analytics.capture(analytics.Event.TRAINING_COMPLETED, user_id=user_id,
                       properties={"surface": "telegram_chat", "status": "failed", "attempts_used": attempts})
     await message.reply_text(

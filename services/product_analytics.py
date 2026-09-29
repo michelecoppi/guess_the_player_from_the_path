@@ -197,7 +197,7 @@ CAMPAIGN_SOURCES = (
     "tiktok", "instagram", "youtube", "reddit", "x", "threads", "facebook",
     "telegram_group", "telegram_channel", "creator", "producthunt", "directory", "qr",
 )
-ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", *CAMPAIGN_SOURCES, "other")
+ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", "inline", *CAMPAIGN_SOURCES, "other")
 # `/start src_<channel>-<campaign>` (#218): the campaign names one piece of content inside a
 # channel. It is a short slug, never free text, so a malformed one is simply dropped.
 CAMPAIGN_ID = re.compile(r"^[a-z0-9-]{1,24}$")

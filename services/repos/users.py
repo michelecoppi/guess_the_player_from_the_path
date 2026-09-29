@@ -535,7 +535,7 @@ def reset_monthly_points(closure=None):
     return count
 
 
-def set_training_key(user_id, key):
+def set_training_key(user_id, key, card=None):
     """Apre una sessione di allenamento sulla sfida indicata.
 
     La chiave dice anche da dove viene la sfida (`pool:maldini` o `day:2026-09-07`), quindi
@@ -549,12 +549,14 @@ def set_training_key(user_id, key):
     from services import firebase_service as fs
     fs.user_ref(user_id).update({
         "training_key": key, "training_attempts": 0, "archive_day": None, "event_key": None,
+        # La card inline da cui e' partita la sessione (#240), per contarne il risultato.
+        "training_card": card,
     })
 
 
 def clear_training_key(user_id):
     from services import firebase_service as fs
-    fs.user_ref(user_id).update({"training_key": None, "training_attempts": 0})
+    fs.user_ref(user_id).update({"training_key": None, "training_attempts": 0, "training_card": None})
 
 
 def register_training_attempt(user_id):
@@ -573,6 +575,7 @@ def register_training_solved(user_id):
     return fs._bump_counters(user_id, {
         "training_key": None,
         "training_attempts": 0,
+        "training_card": None,
         "training_solved": firestore.Increment(1),
     }, training_solved=1)
 

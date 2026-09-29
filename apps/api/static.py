@@ -1,4 +1,4 @@
-"""Static pages and assets: service root, health check, Mini App bundle, legal pages."""
+"""Static pages and assets: service root, health check, Mini App bundle, legal pages, inline cards."""
 import hashlib
 import os
 import re
@@ -7,7 +7,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 
-from services import version
+from services import inline_challenge, version
+from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 
 router = APIRouter()
 
@@ -121,6 +122,19 @@ def webapp_assets(file_path: str, request: Request):
     if any(value.strip().removeprefix("W/") in (etag, "*") for value in candidates):
         return Response(status_code=304, headers=headers)
     return Response(content, media_type=media_type, headers=headers)
+
+
+@router.get("/inline/card/{code}.jpg")
+def inline_card(code: str, lang: str = DEFAULT_LANGUAGE):
+    """The image of an inline challenge card (#240). Telegram downloads it from here, so it is
+    public: the path carries an opaque code (never the player), and only Training material and
+    past Dailies have one. A card never changes, so clients may cache it for a day."""
+    if not inline_challenge.CODE.fullmatch(code):
+        raise HTTPException(status_code=404, detail="Not Found")
+    jpeg = inline_challenge.card_jpeg(code, lang if lang in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE)
+    if jpeg is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return Response(jpeg, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
 
 
 VERIFICATION_DIR = Path(WEBAPP_DIR) / "site-verification"

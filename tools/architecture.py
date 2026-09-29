@@ -136,6 +136,9 @@ COMPONENTS: dict[str, str] = {
     "services.arena": "game",
     "services.story": "game",
     "services.practice_content": "game",
+    # Inline challenge (#240): opaque card codes, card picking and the per-card tally.
+    "services.inline_challenge": "game",
+    "services.repos.inline_cards": "game",
     "services.path_image": "game",
     "services.share": "game",
     "services.daily_result": "game",
