@@ -30,8 +30,9 @@ from handlers.league_handler import AWAITING_KEY as LEAGUE_AWAITING_KEY
 from handlers.league_handler import league_create, league_join
 from handlers.notify_handler import ENABLE_INLINE, notifications_enabled
 from handlers.training_handler import process_training_answer
-from services import firebase_service, game, trophies
+from services import daily_result, firebase_service, game, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number, get_today_challenge
+from services.dates import today_iso
 from services.guess_feedback import comparison_text
 from services.i18n import resolve_language, t
 from services.matching import looks_like_an_answer
@@ -120,12 +121,13 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
 
     # Le regole (tentativi, punti, indizi, striscia) stanno in services/game.py: le stesse
     # che usa la mini app. Qui resta solo la resa in un messaggio Telegram.
+    day = today_iso()
     challenge = (await asyncio.to_thread(get_today_challenge))
     if not challenge:
         await message.reply_text(t(lang, "common.no_challenge"))
         return
 
-    result = (await asyncio.to_thread(game.play_daily, user_id, user_data, user_answer, first_name=update.effective_user.first_name, challenge=challenge, surface="telegram_chat"))
+    result = (await asyncio.to_thread(game.play_daily, user_id, user_data, user_answer, first_name=update.effective_user.first_name, day_iso=day, challenge=challenge, surface="telegram_chat"))
 
     if result["status"] == "no_challenge":
         await message.reply_text(t(lang, "common.no_challenge"))
@@ -153,7 +155,7 @@ async def process_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, use
         text,
         reply_markup=_share_keyboard(
             lang, result["attempts_used"], streak, hints=result["hints_used"],
-            symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id),
+            symbols=shop.squares_symbols(user_data), link=referrals.invite_link(user_id), day=day,
         ),
     )
 
@@ -215,22 +217,37 @@ def _share_button(lang, attempts_used, streak, solved, hints=0, symbols=None, li
     return InlineKeyboardButton(t(lang, "share.button"), url=url)
 
 
-# Il payload del bottone della figurina. Sta tutto qui dentro e non in memoria perche' un
-# bottone di Telegram sopravvive al processo che lo ha creato: un riavvio non deve
-# trasformare "La figurina" in un bottone che non fa niente. Sessantaquattro byte bastano
-# per quattro numeri.
+# Il payload del bottone della figurina: solo il giorno. Sta nel bottone e non in memoria
+# perche' un bottone di Telegram sopravvive al processo che lo ha creato. I numeri no: il
+# `callback_data` lo scrive il client, e un client modificato puo' mandare quello che vuole.
+# Tentativi, indizi ed esito si rileggono dallo storico salvato (services/daily_result.py),
+# e il numero della sfida viene da quel giorno, non da oggi (#222).
 CARD_PREFIX = "sharecard"
 
 
-def _card_payload(attempts_used, streak, solved, hints):
-    return f"{CARD_PREFIX}:{attempts_used}:{1 if solved else 0}:{hints}:{streak}"
+def _card_payload(day):
+    return f"{CARD_PREFIX}:{day}"
 
 
-def _card_button(lang, attempts_used, streak, solved, hints):
-    return InlineKeyboardButton(
-        t(lang, "share.button_card"),
-        callback_data=_card_payload(attempts_used, streak, solved, hints),
-    )
+def _card_button(lang, day):
+    return InlineKeyboardButton(t(lang, "share.button_card"), callback_data=_card_payload(day))
+
+
+def _card_result(user_id, data):
+    """Il risultato che il bottone chiede di disegnare, riletto dal server.
+
+    I bottoni gia' in chat prima di #222 portano `sharecard:<tentativi>:<risolto>:<indizi>:
+    <serie>` e nessun giorno: per quelli vale l'ultima giornata chiusa, ma solo se coincide
+    con i numeri del bottone - altrimenti il bottone parla di un'altra partita."""
+    parts = data.split(":")
+    if len(parts) == 2:
+        return daily_result.result_for_day(user_id, parts[1])
+    if len(parts) == 5:
+        result = daily_result.latest_result(user_id)
+        if [str(result["attempts"]), "1" if result["solved"] else "0", str(result["hints"])] != parts[1:4]:
+            raise daily_result.ResultUnavailable(409, "bottone di un'altra partita")
+        return result
+    raise daily_result.ResultUnavailable(422, "bottone non valido")
 
 
 async def share_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -243,33 +260,35 @@ async def share_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     La riga di testo non sparisce: resta sul messaggio di prima, e questa foto le sta
     accanto. Chi vuole condividere inoltra la foto, chi vuole incollare copia la riga."""
     query = update.callback_query
-    await query.answer()
-    try:
-        _, attempts, solved, hints, streak = query.data.split(":")
-        attempts, hints, streak = int(attempts), int(hints), int(streak)
-        solved = solved == "1"
-    except ValueError:
-        return
-
     user = update.effective_user
     user_data = (await asyncio.to_thread(firebase_service.get_user_data, user.id)) or {}
     lang = _language_for(update, user_data)
+    try:
+        result = await asyncio.to_thread(_card_result, user.id, query.data)
+    except daily_result.ResultUnavailable:
+        await query.answer(t(lang, "share.card_unavailable"), show_alert=True)
+        return
+    await query.answer()
+
+    number = challenge_number(result["day"])
+    solved, attempts, hints = result["solved"], result["attempts"], result["hints"]
+    streak = daily_result.card_streak(user_data, result)
     pinned = trophies.showcase(user_data, lang)
-    image = (await asyncio.to_thread(card_image, user_data, lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints, honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else ""))
-    text = share_text(lang, challenge_number(), attempts, MAX_ATTEMPTS, solved=solved,
+    image = (await asyncio.to_thread(card_image, user_data, lang, number, attempts, MAX_ATTEMPTS, solved=solved, streak=streak, hints=hints, honour=f"{pinned[0]['label']} - {pinned[0]['detail']}" if pinned else ""))
+    text = share_text(lang, number, attempts, MAX_ATTEMPTS, solved=solved,
                       streak=streak, hints=hints, symbols=shop.squares_symbols(user_data),
                       link=referrals.invite_link(user.id))
     await query.message.reply_photo(photo=image, caption=text)
 
 
-def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=None, link=None):
+def _share_keyboard(lang, attempts_used, streak, solved=True, hints=0, symbols=None, link=None, day=None):
     """Il risultato in quadratini, da incollare in un gruppo senza rivelare la risposta.
 
     Vale anche per chi non ci e' arrivato (`solved=False`, cioe' "X/3"): la sconfitta e'
     meta' di quello che si condivide in un gruppo, ed e' l'unica riga che non puo'
     spoilerare niente."""
     button = _share_button(lang, attempts_used, streak, solved, hints, symbols, link)
-    card = _card_button(lang, attempts_used, streak, solved, hints)
+    card = _card_button(lang, day or today_iso())
     rows = [row for row in ([button] if button else [], [card]) if row]
     return InlineKeyboardMarkup(rows) if rows else None
 

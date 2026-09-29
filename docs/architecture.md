@@ -111,7 +111,7 @@ describes the components, not their files.
 | Domain | `players` | Production dataset, player names and matching, career order, difficulty model, dataset health/regression, Candidate ingestion pipeline | `domains/players/candidates/` (`model`, `provenance`, `finding`, `normalization`, `validation`, `review`, `repository`), `domains/players/adapters/`; still in `services/`: `player_pool`, `matching`, `career_order`, `difficulty`, `dataset_*` |
 | Domain | `daily` | Daily Challenge lifecycle, generator and planner, archive, calibration, admin content | `daily_*`, `past_challenges`, `content_admin`, `repos/challenges`, `repos/archive`, `repos/admin` |
 | Domain | `analytics` | Product analytics (#29) and experiment registry (#52), not observability | `product_analytics*`, `experiments`, `repos/experiments` |
-| Domain | `game` | Guessing and scoring, hints, guess feedback, Training and Arena, result card rendering | `game`, `hints`, `guess_feedback`, `arena`, `practice_content`, `path_image`, `share` |
+| Domain | `game` | Guessing and scoring, hints, guess feedback, Training and Arena, result card rendering and the recorded result it draws | `game`, `hints`, `guess_feedback`, `arena`, `practice_content`, `path_image`, `share`, `daily_result` |
 | Domain | `events` | Event templates, generation, rules, manual events, Mini App events | `event_*`, `manual_event_service`, `app_events`, `repos/events` |
 | Domain | `users` | User documents, streaks, leaderboards and seasons, monthly closure, trophies | `repos/users`, `repos/seasons`, `streak`, `monthly_closure`, `trophies` |
 | Domain | `shop` | Cosmetics catalogue, purchases, looks, shop editor | `domains/shop/` (`service`, `repository`, `editor`) |

@@ -138,6 +138,7 @@ COMPONENTS: dict[str, str] = {
     "services.practice_content": "game",
     "services.path_image": "game",
     "services.share": "game",
+    "services.daily_result": "game",
     # --- events ------------------------------------------------------------------------------
     "services.event_config": "events",
     "services.event_generator": "events",
