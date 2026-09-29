@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generated_at": "2026-09-12T09:47:00Z",
+  "generated_at": "2026-09-29T23:29:50Z",
   "source_file": "data/players.json",
   "reference_year": 2026,
   "metrics": {
-    "valid_players": 650,
+    "valid_players": 1267,
     "unknown_clubs": 0,
     "duplicate_players": 0,
     "career_validation_errors": 23
@@ -12,7 +12,7 @@
   "tolerances": {
     "valid_players": {
       "direction": "at_least",
-      "expected": 650
+      "expected": 1267
     },
     "unknown_clubs": {
       "direction": "at_most",

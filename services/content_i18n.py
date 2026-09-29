@@ -27,6 +27,7 @@ from services.i18n import DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES
 # Vale sia per `career[].country` sia per `nationality`: nel dataset sono lo stesso
 # vocabolario, quindi la tabella e' una sola.
 COUNTRY_NAMES = {
+    "Albania": {"es": "Albania", "en": "Albania"},
     "Algeria": {"es": "Argelia", "en": "Algeria"},
     "Angola": {"es": "Angola", "en": "Angola"},
     "Arabia Saudita": {"es": "Arabia Saudí", "en": "Saudi Arabia"},
@@ -64,6 +65,7 @@ COUNTRY_NAMES = {
     "Georgia": {"es": "Georgia", "en": "Georgia"},
     "Germania": {"es": "Alemania", "en": "Germany"},
     "Ghana": {"es": "Ghana", "en": "Ghana"},
+    "Giamaica": {"es": "Jamaica", "en": "Jamaica"},
     "Giappone": {"es": "Japón", "en": "Japan"},
     "Gibuti": {"es": "Yibuti", "en": "Djibouti"},
     "Giordania": {"es": "Jordania", "en": "Jordan"},
