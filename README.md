@@ -840,9 +840,9 @@ decidere quando parte invece di aspettare la rotazione:
 
 ## Ampliare il dataset dei calciatori
 
-Il dataset è pensato per crescere nel tempo: oggi contiene **608 calciatori**, tutti
-verificati. 456 alimentano il gioco vero — 456 giorni di sfide senza mai ripetere nessuno,
-contro i 60 giorni della finestra anti-ripetizione — e 152 sono riservati all'allenamento e ai
+Il dataset è pensato per crescere nel tempo: oggi contiene **1267 calciatori**, tutti
+verificati. 518 alimentano il gioco vero — 518 giorni di sfide senza mai ripetere nessuno,
+contro i 60 giorni della finestra anti-ripetizione — e 749 sono riservati all'allenamento e ai
 round di gruppo, dove non possono spoilerare niente.
 
 Questi numeri invecchiano da soli a ogni import, ed è già successo che restassero indietro:
@@ -912,10 +912,13 @@ Presenze e gol sono quelli di **campionato**, come li conta Wikipedia: alla Juve
 Piero risulta con ~478 presenze, non con le ~700 di tutte le competizioni.
 
 `practice_only: true` toglie un calciatore dal gioco quotidiano e lo mette fra il materiale
-di allenamento (vedi [Allenamento e partite di gruppo](#allenamento-e-partite-di-gruppo)). Non
-si mette a mano: lo assegna `scripts/reserve_practice_players.py`, che tiene la fetta
-bilanciata fra le fasce di difficoltà. Una volta riservato, un giocatore resta riservato — è
-la ragione per cui il flag sopravvive a un reimport.
+di allenamento (vedi [Allenamento e partite di gruppo](#allenamento-e-partite-di-gruppo)). Sui
+giocatori gia' nel dataset non si mette a mano: lo assegna `scripts/reserve_practice_players.py`,
+che tiene la fetta bilanciata fra le fasce di difficoltà. L'unica eccezione e' un batch di
+giocatori **nuovi** scritto apposta per l'allenamento (come quello di #239): quei giocatori non
+sono mai stati una sfida ne' un evento, quindi entrano gia' con `"practice_only": true` nel batch
+senza togliere niente alla rotazione quotidiana. Una volta riservato, un giocatore resta
+riservato — è la ragione per cui il flag sopravvive a un reimport.
 
 `one_club_career: true` serve a distinguere una **bandiera** (Totti, Maldini, Puyol: una sola
 squadra e i dati sono completi) da una **scheda incompleta**: senza questo flag un percorso
@@ -1180,8 +1183,8 @@ variabili d'ambiente in [`docs/deploy.md`](docs/deploy.md) e
 
 ## Limiti noti / cosa resta da fare
 
-- **Dataset**: 608 calciatori, tutti verificati; 456 selezionabili per la sfida del giorno
-  (456 giorni senza ripetizioni) e 152 riservati all'allenamento. Il pool va comunque
+- **Dataset**: 1267 calciatori, tutti verificati; 518 selezionabili per la sfida del giorno
+  (518 giorni senza ripetizioni) e 749 riservati all'allenamento. Il pool va comunque
   ampliato periodicamente: il segnale è l'avviso di `/admin_pool`, non il calendario.
 - **Classificazione dei campionati**: `top_leagues` e `known_leagues` (`data/config.json`)
   si confrontano per stringa esatta, e quello che non è in nessuna delle due pesa come
