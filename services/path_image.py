@@ -786,6 +786,9 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     draw = ImageDraw.Draw(img)
 
     muted = tuple(round(channel * 0.45 + paper[i] * 0.55) for i, channel in enumerate(ink))
+    # Un grigio piu' chiaro per i testi piccoli accanto alle icone (serie, indizi, dettaglio
+    # del trofeo): su finiture fitte come la grana o il foil il `muted` spariva.
+    soft = tuple(round(channel * 0.72 + paper[i] * 0.28) for i, channel in enumerate(ink))
 
     draw.text((CARD_WIDTH / 2, 92), kicker, font=get_font(23, bold=True), fill=muted, anchor="mm")
     draw.text((CARD_WIDTH / 2, 152), f"#{number}", font=get_font(64, bold=True), fill=ink, anchor="mm")
@@ -820,7 +823,7 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     score = f"{attempts_used}/{max_attempts}" if solved else f"X/{max_attempts}"
     draw.text((CARD_WIDTH / 2, 486), score, font=get_font(72, bold=True), fill=ink, anchor="mm")
 
-    _draw_meta(img, 572, streak, hints, muted)
+    _draw_meta(img, 572, streak, hints, soft)
 
     # Chi l'ha fatta: nome, numero di maglia, titolo e l'eventuale trofeo appeso. Il
     # distintivo del negozio e' un'emoji e qui non si puo' disegnare; il trofeo si', con una
@@ -837,7 +840,7 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
         draw.text((CARD_WIDTH / 2, plate_top + 118), _truncate(draw, title, get_font(28), 660),
                   font=get_font(28), fill=glow, anchor="mm")
     if trophy:
-        _draw_trophy(img, plate_top + (150 if title else 104), trophy, ink, muted)
+        _draw_trophy(img, plate_top + (150 if title else 104), trophy, ink, soft)
     if footer:
         draw.text((CARD_WIDTH / 2, CARD_HEIGHT - 56), footer, font=get_font(24), fill=muted, anchor="mm")
 
