@@ -91,7 +91,16 @@ which relies on the verified procedure in [backup-recovery.md](backup-recovery.m
 - [runtime-hardening.md](runtime-hardening.md) recommends Cloud Logging alerts for
   `uncertain`, worker errors and exhausted task retries. Whether they are configured
   lives in GCP, not in this repository, and is not verified here.
-- No uptime checks, alert policies or dashboards are part of the codebase.
+- GitHub Actions: `ci.yml` (only on `main`), `backup.yml` and `release-check.yml` end with an
+  "Avviso di errore su Telegram" step, and `deploy.yml` has a separate `alert` job (so every step
+  of the `deploy` job stays gated on the selected commit) (#228). On failure they send the admin a
+  message with the run link via `curl`. `restore-verification.yml` has none on purpose: it must
+  not reference any secret; the external supervisor reports its failures. It needs the repository secret `ALERT_TELEGRAM_BOT_TOKEN` and the variable
+  `ALERT_TELEGRAM_CHAT_ID`; without them the step does nothing. Actions are pinned to a full commit
+  SHA (`uses: owner/action@<sha> # vN`); Dependabot proposes the updates.
+- No uptime checks, alert policies or dashboards are part of the codebase. The external supervisor
+  (`gtp_orchestrator`) polls the service (`GET /`) and the Telegram webhook read-only; see its
+  runbook.
 
 **Planned evolution.**
 [#38](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/38) — Admin

@@ -60,19 +60,19 @@ jobs:
             echo "sha=" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: ${{ steps.target.outputs.sha != '' }}
         with:
           ref: ${{ steps.target.outputs.sha }}
 
       - id: auth
         if: ${{ steps.target.outputs.sha != '' }}
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
         if: ${{ steps.target.outputs.sha != '' }}
 
       - name: Deploy su Cloud Run
@@ -90,3 +90,25 @@ jobs:
             --region europe-west1 \
             --max-instances 10 \
             --quiet
+
+  # Se il deploy fallisce: avviso diretto all'admin su Telegram (#228). Job a parte, senza permessi e
+  # senza checkout, cosi' i passi del deploy restano tutti legati al commit scelto. Con curl e non con
+  # Python; senza ALERT_TELEGRAM_BOT_TOKEN e ALERT_TELEGRAM_CHAT_ID non fa nulla.
+  alert:
+    needs: deploy
+    if: ${{ failure() }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Avviso di errore su Telegram
+        env:
+          TG_TOKEN: ${{ secrets.ALERT_TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ vars.ALERT_TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
+          text=$(printf '❌ <b>Gioco · %s fallito</b> · job deploy\n<a href="%s">Apri la run</a>' "$WORKFLOW" "$RUN_URL")
+          curl -s -o /dev/null -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$text" \
+            -d parse_mode=HTML -d disable_web_page_preview=true || true

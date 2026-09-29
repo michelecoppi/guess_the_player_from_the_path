@@ -9,16 +9,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.11"
 
       - name: Installa le dipendenze
         run: pip install -r requirements-dev.txt
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
           cache: "npm"
@@ -73,12 +73,12 @@ jobs:
       # setup-gcloud e non la gcloud gia' presente sul runner: quella e' installata da apt e
       # rifiuta `components install`. Se questo passo fallisce, i test delle transazioni non
       # si saltano in silenzio - la fixture in tests/conftest.py fallisce quando c'e' CI.
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
 
       - name: Avvia l'emulatore Firestore
         run: |
@@ -99,3 +99,21 @@ jobs:
         env:
           FIRESTORE_EMULATOR_HOST: 127.0.0.1:8571
         run: pytest -q --cov=services --cov=domains --cov=handlers --cov-report=term-missing --cov-fail-under=70
+
+      # Se un passo fallisce: avviso diretto all'admin su Telegram (#228). Con curl e non con Python,
+      # cosi' funziona anche quando e' l'installazione a rompersi. Senza ALERT_TELEGRAM_BOT_TOKEN e
+      # ALERT_TELEGRAM_CHAT_ID non fa nulla. Nessun effetto se il job riesce o viene annullato.
+      - name: Avviso di errore su Telegram
+        if: failure() && github.ref == 'refs/heads/main'
+        env:
+          TG_TOKEN: ${{ secrets.ALERT_TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ vars.ALERT_TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          JOB: ${{ github.job }}
+        run: |
+          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
+          text=$(printf '❌ <b>Gioco · %s fallito</b> · job %s\n<a href="%s">Apri la run</a>' "$WORKFLOW" "$JOB" "$RUN_URL")
+          curl -s -o /dev/null -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$text" \
+            -d parse_mode=HTML -d disable_web_page_preview=true || true
