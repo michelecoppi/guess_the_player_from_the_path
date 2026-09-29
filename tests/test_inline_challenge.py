@@ -14,6 +14,9 @@ from services import inline_challenge, practice_content
 from services.player_pool import get_all_players, get_practice_players
 
 TODAY = "2026-09-30"
+# Un codice e una card finti, ben formati: servono solo a provare il formato dei link.
+FAKE_CODE = "abcdefghijkl"
+FAKE_CARD = "0123456789"
 
 
 @pytest.fixture(autouse=True)
@@ -77,9 +80,9 @@ def test_malformed_codes_are_rejected(code):
 
 
 @pytest.mark.parametrize("argument, expected", [
-    ("inl_abcdefghijkl", ("abcdefghijkl", None)),
-    ("inl_abcdefghijkl_0123456789", ("abcdefghijkl", "0123456789")),
-    ("inl_abcdefghijkl_xyz", None),
+    ("inl_" + FAKE_CODE, (FAKE_CODE, None)),
+    ("inl_" + FAKE_CODE + "_" + FAKE_CARD, (FAKE_CODE, FAKE_CARD)),
+    ("inl_" + FAKE_CODE + "_xyz", None),
     ("inl_ABCDEFGHIJKL", None),
     ("inline", None),
     ("ref_abc", None),
@@ -89,9 +92,9 @@ def test_start_parameter_parsing(argument, expected):
 
 
 def test_start_parameter_fits_telegram_limit():
-    parameter = inline_challenge.start_parameter("abcdefghijkl", "0123456789")
+    parameter = inline_challenge.start_parameter(FAKE_CODE, FAKE_CARD)
     assert len(parameter) <= 64
-    assert inline_challenge.parse_start(parameter) == ("abcdefghijkl", "0123456789")
+    assert inline_challenge.parse_start(parameter) == (FAKE_CODE, FAKE_CARD)
 
 
 # --- tetto e scelta ------------------------------------------------------------------------
@@ -240,7 +243,7 @@ def test_a_chosen_card_is_recorded_and_gets_its_own_counter(monkeypatch):
     assert sent == [(42, key)]
     (message_id, markup), = bot.markups
     assert message_id == "IMID"
-    assert markup.inline_keyboard[0][0].url.endswith(f"start=inl_{code}_0123456789")
+    assert markup.inline_keyboard[0][0].url.endswith(f"start=inl_{code}_{FAKE_CARD}")
 
 
 def test_a_forged_result_id_records_nothing(monkeypatch):
@@ -304,7 +307,7 @@ def test_the_guess_button_opens_training_on_that_card(monkeypatch):
         effective_chat=message.chat, effective_message=message,
     )
 
-    asyncio.run(start_handler.start(update, SimpleNamespace(args=[f"inl_{code}_0123456789"])))
+    asyncio.run(start_handler.start(update, SimpleNamespace(args=[f"inl_{code}_{FAKE_CARD}"])))
 
     assert opened == [(practice_content.POOL_PREFIX + player["id"], "0123456789")]
     assert message.photos
