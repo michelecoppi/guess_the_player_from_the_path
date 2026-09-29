@@ -61,6 +61,22 @@ def settings() -> Settings:
     return Settings.from_env()
 
 
+def run_hogql(query: str, config: Optional[Settings] = None) -> list[list[Any]]:
+    """API pubblica: esegue una query HogQL sola-lettura e ritorna le righe grezze.
+
+    Senza `config` legge le credenziali di lettura dall'ambiente (`settings()`). Solleva
+    `QueryError` se PostHog non e' configurato, non risponde o risponde in modo non valido.
+    E' il punto d'ingresso per chi sta fuori da questo modulo, compreso Promo Studio
+    (`promo/game.py` in michelecoppi/promo_studio): il contratto e' verificato da
+    `tests/test_promo_contract.py`."""
+    return _run_hogql(settings() if config is None else config, query)
+
+
+# Implementazione usata dalle metriche qui sotto e da `services/experiment_report.py`.
+# La versione attuale di Promo Studio la chiama ancora direttamente
+# (`paq._run_hogql(paq.settings(), query)`): per questo nome e firma sono coperti da
+# tests/test_promo_contract.py. Quando Promo sara' passato a `run_hogql`, `_run_hogql` si
+# potra' togliere dal contratto (e rinominare o rimuovere) insieme al suo controllo nel test.
 def _run_hogql(config: Settings, query: str) -> list[list[Any]]:
     """Esegue una query HogQL sola-lettura e ritorna le righe grezze del risultato."""
     if not config.configured:
