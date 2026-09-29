@@ -711,8 +711,56 @@ def _draw_meta(img, y, streak, hints, color):
         x += width + sep
 
 
+# Il trofeo appeso sulla figurina. Prima era una riga grigia "etichetta - dettaglio", e una
+# data sotto il numero della sfida si leggeva come la data della sfida (#226): la medaglia
+# dice subito che e' un trofeo, e il suo colore e il numero dicono che piazzamento.
+MEDAL_RIBBON = ((70, 120, 200), (200, 70, 80))
+MEDAL_INK = (16, 24, 32)
+
+
+def _medal_icon(size, colour, position):
+    s = size * _ICON_SUPERSAMPLE
+    layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    r = s * 0.33
+    cx, cy = s * 0.5, s - r - s * 0.03
+    w = s * 0.17
+    neck = cy - r * 0.6
+    draw.polygon([(cx - w * 1.6, 0), (cx - w * 0.6, 0), (cx + w * 0.2, neck), (cx - w * 0.8, neck)],
+                 fill=MEDAL_RIBBON[0])
+    draw.polygon([(cx + w * 0.6, 0), (cx + w * 1.6, 0), (cx + w * 0.8, neck), (cx - w * 0.2, neck)],
+                 fill=MEDAL_RIBBON[1])
+    draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=colour)
+    inner = r * 0.78
+    shade = tuple(int(channel * 0.82) for channel in colour)
+    draw.ellipse((cx - inner, cy - inner, cx + inner, cy + inner), outline=shade, width=int(s * 0.03))
+    draw.text((cx, cy + s * 0.01), str(position), font=get_font(int(r * 1.05), bold=True),
+              fill=MEDAL_INK, anchor="mm")
+    return layer.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def _draw_trophy(img, top, trophy, ink, muted):
+    """Medaglia a sinistra, due righe a destra: il nome del trofeo e sotto cosa e' (evento e
+    data, classifica mensile e stagione). Il blocco intero e' centrato."""
+    draw = ImageDraw.Draw(img)
+    icon, gap = 64, 18
+    label_font, detail_font = get_font(28, bold=True), get_font(22)
+    label = _truncate(draw, trophy.get("label") or "", label_font, 560)
+    detail = _truncate(draw, trophy.get("detail") or "", detail_font, 560)
+    width = max(draw.textlength(label, font=label_font), draw.textlength(detail, font=detail_font))
+    x = (CARD_WIDTH - (icon + gap + width)) / 2
+    position = trophy.get("position")
+    medal = _medal_icon(icon, _hex(trophy.get("color"), "#8ea2b6"),
+                        position if type(position) is int and 0 < position < 100 else "")
+    img.paste(medal, (int(x), int(top)), medal)
+    draw.text((x + icon + gap, top + 22), label, font=label_font, fill=ink, anchor="lm")
+    if detail:
+        draw.text((x + icon + gap, top + 52), detail, font=detail_font, fill=muted, anchor="lm")
+
+
 def render_share_card(number, attempts_used, max_attempts, solved=True, name="", style=None,
-                      title="", shirt="", honour="", streak=0, hints=0, footer="", kicker="GUESS THE PLAYER"):
+                      title="", shirt="", trophy=None, daily="", streak=0, hints=0, footer="",
+                      kicker="GUESS THE PLAYER"):
     """La card del risultato come immagine.
 
     Non dice mai chi era il calciatore, esattamente come la riga di testo: la si incolla in
@@ -723,8 +771,11 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     disegnata sarebbe peggio di una senza finitura.
 
     `streak` e `hints` sono numeri: la fiamma e la lampadina le disegna `_draw_meta`.
-    `title`, `honour` e `footer` arrivano gia' scritti nella lingua giusta: qui non
-    si traduce niente, si disegna e basta (services/share.py mette insieme le parole)."""
+    `trophy` e' il trofeo appeso ({label, detail, color, position}, services/trophies.py),
+    o None; `daily` la riga sotto il numero ("Sfida del giorno · 29/09/2026").
+    `title`, `daily`, `footer` e le parole del trofeo arrivano gia' scritti nella lingua
+    giusta: qui non si traduce niente, si disegna e basta (services/share.py mette insieme
+    le parole)."""
     style = style or {}
     paper = _hex(style.get("paper"), "#0a131e")
     ink = _hex(style.get("ink"), "#ecf2f8")
@@ -738,6 +789,16 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
 
     draw.text((CARD_WIDTH / 2, 92), kicker, font=get_font(23, bold=True), fill=muted, anchor="mm")
     draw.text((CARD_WIDTH / 2, 152), f"#{number}", font=get_font(64, bold=True), fill=ink, anchor="mm")
+
+    # Quale sfida e di che giorno, in una pastiglia sotto il numero: "#479" da solo non dice
+    # che e' la Daily, e la data evita di confonderla con quella del trofeo piu' in basso.
+    if daily:
+        daily_font = get_font(22, bold=True)
+        daily = _truncate(draw, daily, daily_font, 600)
+        half = draw.textlength(daily, font=daily_font) / 2 + 22
+        draw.rounded_rectangle([CARD_WIDTH / 2 - half, 204, CARD_WIDTH / 2 + half, 244], radius=20,
+                               outline=glow, width=2)
+        draw.text((CARD_WIDTH / 2, 224), daily, font=daily_font, fill=glow, anchor="mm")
 
     # I tentativi: uno per casella. Piena e accesa quella giusta, piena e spenta quella
     # sbagliata, vuota quella non usata - le stesse tre cose che dicono i quadratini.
@@ -761,9 +822,12 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
 
     _draw_meta(img, 572, streak, hints, muted)
 
-    # Chi l'ha fatta: nome, numero di maglia, titolo e l'eventuale trofeo appeso. Sono tutte
-    # parole, ed e' voluto - il distintivo e' un'emoji e qui non si puo' disegnare.
-    plate_top = CARD_HEIGHT - 300
+    # Chi l'ha fatta: nome, numero di maglia, titolo e l'eventuale trofeo appeso. Il
+    # distintivo del negozio e' un'emoji e qui non si puo' disegnare; il trofeo si', con una
+    # medaglia (`_draw_trophy`), che scende sotto il titolo quando c'e'.
+    # Con titolo e trofeo insieme la targa ha una riga in piu': sale, invece di schiacciarsi
+    # sul link in fondo. Lo spazio c'e', sotto la riga di serie e indizi.
+    plate_top = CARD_HEIGHT - (340 if title and trophy else 300)
     draw.line([(120, plate_top), (CARD_WIDTH - 120, plate_top)], fill=muted, width=2)
     label = f"{shirt}  {name}".strip() if shirt else name
     if label:
@@ -772,9 +836,8 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     if title:
         draw.text((CARD_WIDTH / 2, plate_top + 118), _truncate(draw, title, get_font(28), 660),
                   font=get_font(28), fill=glow, anchor="mm")
-    if honour:
-        draw.text((CARD_WIDTH / 2, plate_top + 166), _truncate(draw, honour, get_font(25), 660),
-                  font=get_font(25), fill=muted, anchor="mm")
+    if trophy:
+        _draw_trophy(img, plate_top + (150 if title else 104), trophy, ink, muted)
     if footer:
         draw.text((CARD_WIDTH / 2, CARD_HEIGHT - 56), footer, font=get_font(24), fill=muted, anchor="mm")
 

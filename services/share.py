@@ -88,23 +88,39 @@ def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0,
     return "\n".join(lines)
 
 
+def _full_date(day_iso):
+    """gg/mm/aaaa, come la data dei trofei: sulla figurina l'anno a due cifre si legge male."""
+    return f"{day_iso[8:10]}/{day_iso[5:7]}/{day_iso[0:4]}" if len(day_iso or "") == 10 else day_iso or ""
+
+
 def card_image(user, lang, number, attempts_used, max_attempts, solved=True, streak=0,
-               hints=0, honour=""):
+               hints=0, trophy=None, day=None):
     """La figurina del risultato: la stessa riga, ma da guardare.
 
     La riga di testo resta e non se ne va: e' quella che funziona sempre - si incolla ovunque,
     non pesa niente e si legge anche a immagini spente. La figurina e' in piu', ed e' il posto
     dove una finitura comprata in negozio si vede davvero.
 
-    Le parole arrivano gia' tradotte da qui: `render_share_card` disegna e basta."""
+    Le parole arrivano gia' tradotte da qui: `render_share_card` disegna e basta.
+
+    `trophy` e' il trofeo appeso (il primo di `trophies.showcase`), `day` il giorno ISO della
+    Daily di questo risultato: senza, la riga "Sfida del giorno" non compare."""
     look = shop.appearance(user or {}, lang)
+    daily = t(lang, "share.card_daily", date=_full_date(day)) if day else ""
+    if trophy:
+        detail = trophy.get("detail") or ""
+        if trophy.get("kind") == "event":
+            event = t(lang, "share.trophy_event")
+            detail = f"{event} · {detail}" if detail else event
+        trophy = {**trophy, "detail": detail}
     return render_share_card(
         number, attempts_used, max_attempts, solved=solved,
         name=(user or {}).get("first_name", ""),
         style=look.get("card") or {},
         title=(look.get("title") or {}).get("label", ""),
         shirt=look.get("number", ""),
-        honour=honour,
+        trophy=trophy,
+        daily=daily,
         streak=streak,
         hints=hints,
         footer=bot_link().replace("https://", ""),
