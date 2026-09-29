@@ -72,11 +72,8 @@ def run_hogql(query: str, config: Optional[Settings] = None) -> list[list[Any]]:
     return _run_hogql(settings() if config is None else config, query)
 
 
-# Implementazione usata dalle metriche qui sotto e da `services/experiment_report.py`.
-# La versione attuale di Promo Studio la chiama ancora direttamente
-# (`paq._run_hogql(paq.settings(), query)`): per questo nome e firma sono coperti da
-# tests/test_promo_contract.py. Quando Promo sara' passato a `run_hogql`, `_run_hogql` si
-# potra' togliere dal contratto (e rinominare o rimuovere) insieme al suo controllo nel test.
+# Implementazione interna, usata dalle metriche qui sotto e da `services/experiment_report.py`.
+# I consumatori esterni (Promo Studio) usano `run_hogql`: vedi tests/test_promo_contract.py.
 def _run_hogql(config: Settings, query: str) -> list[list[Any]]:
     """Esegue una query HogQL sola-lettura e ritorna le righe grezze del risultato."""
     if not config.configured:

@@ -112,14 +112,6 @@ def years_label(stop):
     return f"→ {span}" if stop.get("loan") else span
 
 
-# `years_label` e `color_for_team` sono pubbliche perche' le usa anche Promo Studio
-# (`promo/game.py` in michelecoppi/promo_studio, contratto in tests/test_promo_contract.py).
-# Promo in produzione legge il `main` di questo repository e oggi chiama ancora i vecchi nomi
-# privati: gli alias restano finche' Promo non passa ai nomi pubblici (#234), poi si tolgono
-# insieme alle loro righe nel test di contratto.
-_years_label = years_label
-_color_for_team = color_for_team
-
 
 def _layout_for(rows):
     """Misure delle righe in base a quante tappe ci sono.
