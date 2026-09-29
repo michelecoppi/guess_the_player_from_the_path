@@ -68,3 +68,41 @@ def test_the_text_line_is_untouched_by_the_card():
     line = share.share_text("it", 7, 2, 3, solved=True, streak=4)
     assert "2/3" in line
     assert "\U0001f7e5\U0001f7e9⬜" in line
+
+
+def _has_colour(image, colour, tolerance=6):
+    """I bordi delle icone sono smussati, ma dentro il colore arriva pieno: basta trovarne
+    qualche pixel vicino, nella fascia sotto il punteggio."""
+    band = image.convert("RGB").crop((0, 540, path_image.CARD_WIDTH, 610))
+    return any(all(abs(a - b) <= tolerance for a, b in zip(pixel, colour))
+               for _, pixel in band.getcolors(1 << 20))
+
+
+@pytest.mark.parametrize("streak, hints, flame, bulb", [
+    (5, 2, True, True),
+    (3, 0, True, False),
+    (1, 1, False, True),
+    (0, 0, False, False),
+])
+def test_streak_and_hints_are_drawn_icons_not_emoji(streak, hints, flame, bulb):
+    """Il font della figurina non ha le emoji: 🔥 e 💡 uscivano come quadratini vuoti. Ora
+    sono una fiamma e una lampadina disegnate, e la serie compare da 2 giorni in su come
+    nella riga di testo."""
+    image = opened(path_image.render_share_card(9, 2, 3, streak=streak, hints=hints))
+    assert _has_colour(image, path_image.FLAME_OUTER) is flame
+    assert _has_colour(image, path_image.BULB_GLASS) is bulb
+
+
+def test_the_card_takes_numbers_not_emoji_text():
+    """Non c'e' piu' un parametro dove far passare una stringa con le emoji dentro."""
+    import inspect
+    signature = inspect.signature(path_image.render_share_card).parameters
+    assert "meta" not in signature
+    assert {"streak", "hints"} <= set(signature)
+
+
+def test_card_image_hands_streak_and_hints_to_the_drawing(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(share, "render_share_card", lambda *args, **kwargs: seen.update(kwargs))
+    share.card_image(user(), "it", 7, 2, 3, streak=4, hints=2)
+    assert seen["streak"] == 4 and seen["hints"] == 2

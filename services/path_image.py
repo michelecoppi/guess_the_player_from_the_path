@@ -631,8 +631,88 @@ FINISHES: dict[str, Callable[..., Image.Image]] = {
 }
 
 
+# La serie e gli indizi, sotto il punteggio. Nella riga di testo sono 🔥 e 💡, ma qui il font
+# non li ha: sono disegnati come forme, grandi il quadruplo e poi rimpiccioliti, perche'
+# Pillow non smussa i bordi dei poligoni. I colori sono fissi e non seguono la figurina: sono
+# riconoscibili proprio perche' ricordano le emoji.
+_ICON_SUPERSAMPLE = 4
+FLAME_OUTER = (255, 138, 61)
+FLAME_INNER = (255, 208, 92)
+BULB_GLASS = (255, 214, 102)
+BULB_SHINE = (255, 245, 210)
+
+
+def _bezier(p0, p1, p2, steps=24):
+    return [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t ** 2 * p2[0],
+             (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t ** 2 * p2[1])
+            for t in (i / steps for i in range(steps + 1))]
+
+
+def _flame_outline(cx, cy, r):
+    """Una goccia rovesciata: mezzo cerchio sotto, due curve che salgono verso una punta
+    spostata un po' a destra, come una fiamma mossa."""
+    arc = [(cx + r * math.cos(math.radians(a)), cy + r * math.sin(math.radians(a)))
+           for a in range(-25, 206, 5)]
+    tip = (cx + 0.2 * r, cy - 2.3 * r)
+    return (arc + _bezier(arc[-1], (cx - 1.15 * r, cy - 1.35 * r), tip)
+            + _bezier(tip, (cx + 1.25 * r, cy - 0.95 * r), arc[0]))
+
+
+def _flame_icon(size):
+    s = size * _ICON_SUPERSAMPLE
+    layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    r = s * 0.3
+    cx, cy = s * 0.5, s - r - s * 0.04
+    draw.polygon(_flame_outline(cx, cy, r), fill=FLAME_OUTER)
+    inner = r * 0.55
+    draw.polygon(_flame_outline(cx, cy + r - inner - s * 0.03, inner), fill=FLAME_INNER)
+    return layer.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def _bulb_icon(size, socket):
+    s = size * _ICON_SUPERSAMPLE
+    layer = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    r = s * 0.3
+    cx, cy = s * 0.5, s * 0.38
+    draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=BULB_GLASS)
+    neck = cy + r * 0.6
+    draw.polygon([(cx - r * 0.62, neck), (cx + r * 0.62, neck),
+                  (cx + r * 0.42, cy + r * 1.3), (cx - r * 0.42, cy + r * 1.3)], fill=BULB_GLASS)
+    y = cy + r * 1.42
+    for _ in range(2):
+        draw.rounded_rectangle((cx - r * 0.45, y, cx + r * 0.45, y + s * 0.07), radius=s * 0.03, fill=socket)
+        y += s * 0.1
+    draw.arc((cx - r * 0.62, cy - r * 0.62, cx + r * 0.62, cy + r * 0.62), 200, 260,
+             fill=BULB_SHINE, width=int(s * 0.045))
+    return layer.resize((size, size), Image.Resampling.LANCZOS)
+
+
+def _draw_meta(img, y, streak, hints, color):
+    """Fiamma + giorni di fila (da 2 in su, come nella riga di testo) e lampadina + indizi
+    chiesti, centrati sotto il punteggio."""
+    items = []
+    if streak >= 2:
+        items.append((_flame_icon, str(streak)))
+    if hints > 0:
+        items.append((lambda size: _bulb_icon(size, color), str(hints)))
+    if not items:
+        return
+    draw = ImageDraw.Draw(img)
+    font = get_font(30)
+    icon, pad, sep = 38, 8, 40
+    widths = [icon + pad + draw.textlength(text, font=font) for _, text in items]
+    x = (CARD_WIDTH - (sum(widths) + sep * (len(items) - 1))) / 2
+    for (make, text), width in zip(items, widths):
+        glyph = make(icon)
+        img.paste(glyph, (int(x), int(y - icon / 2 - 2)), glyph)
+        draw.text((x + icon + pad, y), text, font=font, fill=color, anchor="lm")
+        x += width + sep
+
+
 def render_share_card(number, attempts_used, max_attempts, solved=True, name="", style=None,
-                      title="", shirt="", honour="", meta="", footer="", kicker="GUESS THE PLAYER"):
+                      title="", shirt="", honour="", streak=0, hints=0, footer="", kicker="GUESS THE PLAYER"):
     """La card del risultato come immagine.
 
     Non dice mai chi era il calciatore, esattamente come la riga di testo: la si incolla in
@@ -642,7 +722,8 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     finitura. Se manca, si ripiega sui colori del tema di partenza - una figurina mezza
     disegnata sarebbe peggio di una senza finitura.
 
-    `meta`, `title`, `honour` e `footer` arrivano gia' scritti nella lingua giusta: qui non
+    `streak` e `hints` sono numeri: la fiamma e la lampadina le disegna `_draw_meta`.
+    `title`, `honour` e `footer` arrivano gia' scritti nella lingua giusta: qui non
     si traduce niente, si disegna e basta (services/share.py mette insieme le parole)."""
     style = style or {}
     paper = _hex(style.get("paper"), "#0a131e")
@@ -678,9 +759,7 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
     score = f"{attempts_used}/{max_attempts}" if solved else f"X/{max_attempts}"
     draw.text((CARD_WIDTH / 2, 486), score, font=get_font(72, bold=True), fill=ink, anchor="mm")
 
-    if meta:
-        draw.text((CARD_WIDTH / 2, 572), _truncate(draw, meta, get_font(30), 680),
-                  font=get_font(30), fill=muted, anchor="mm")
+    _draw_meta(img, 572, streak, hints, muted)
 
     # Chi l'ha fatta: nome, numero di maglia, titolo e l'eventuale trofeo appeso. Sono tutte
     # parole, ed e' voluto - il distintivo e' un'emoji e qui non si puo' disegnare.

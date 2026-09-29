@@ -23,8 +23,9 @@ from services.path_image import render_share_card
 CORRECT = "🟩"
 WRONG = "🟥"
 UNUSED = "⬜"
-# Un indizio chiesto = una lampadina. Come i quadratini, e' un segno e non una parola:
-# nella card non c'e' niente da tradurre.
+# Un indizio chiesto = una lampadina. Come i quadratini, e' un segno e non una parola.
+# Vale per la riga di testo: nella figurina il font non ha le emoji, e la lampadina (come la
+# fiamma della serie) la disegna services/path_image.py.
 HINT = "💡"
 
 
@@ -96,11 +97,6 @@ def card_image(user, lang, number, attempts_used, max_attempts, solved=True, str
 
     Le parole arrivano gia' tradotte da qui: `render_share_card` disegna e basta."""
     look = shop.appearance(user or {}, lang)
-    meta = []
-    if streak >= 2:
-        meta.append(t(lang, "share.streak", streak=streak))
-    if hints > 0:
-        meta.append(HINT * hints)
     return render_share_card(
         number, attempts_used, max_attempts, solved=solved,
         name=(user or {}).get("first_name", ""),
@@ -108,7 +104,8 @@ def card_image(user, lang, number, attempts_used, max_attempts, solved=True, str
         title=(look.get("title") or {}).get("label", ""),
         shirt=look.get("number", ""),
         honour=honour,
-        meta="   ".join(meta),
+        streak=streak,
+        hints=hints,
         footer=bot_link().replace("https://", ""),
     )
 
