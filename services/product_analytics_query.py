@@ -66,14 +66,12 @@ def run_hogql(query: str, config: Optional[Settings] = None) -> list[list[Any]]:
 
     Senza `config` legge le credenziali di lettura dall'ambiente (`settings()`). Solleva
     `QueryError` se PostHog non e' configurato, non risponde o risponde in modo non valido.
-    E' il punto d'ingresso per chi sta fuori da questo modulo, compreso Promo Studio
-    (`promo/game.py` in michelecoppi/promo_studio): il contratto e' verificato da
-    `tests/test_promo_contract.py`."""
+    E' il punto d'ingresso per chi sta fuori da questo modulo."""
     return _run_hogql(settings() if config is None else config, query)
 
 
 # Implementazione interna, usata dalle metriche qui sotto e da `services/experiment_report.py`.
-# I consumatori esterni (Promo Studio) usano `run_hogql`: vedi tests/test_promo_contract.py.
+# Chi sta fuori da questo modulo usa `run_hogql`.
 def _run_hogql(config: Settings, query: str) -> list[list[Any]]:
     """Esegue una query HogQL sola-lettura e ritorna le righe grezze del risultato."""
     if not config.configured:

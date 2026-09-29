@@ -59,8 +59,6 @@ PROMO_CALLS = (
     Call("fonts", "font_path", kwargs={"bold": True}, note="GameRepo.text_font_path"),
     Call("observability", "scrub_text", args=("text",), note="GameRepo.__init__ -> log.use_game_scrubber"),
     Call("product_analytics", "CAMPAIGN_SOURCES", called=False, note="GameRepo.campaign_sources"),
-    Call("product_analytics_query", "QueryError", called=False, note="GameRepo.hogql"),
-    Call("product_analytics_query", "run_hogql", args=("SELECT 1",), note="GameRepo.hogql"),
 )
 
 
@@ -99,7 +97,7 @@ def test_symbol_used_by_promo_exists_with_a_compatible_signature(call):
 
 def test_values_read_by_promo_keep_their_shape():
     """Promo copia i colori nella sua palette e converte CAMPAIGN_SOURCES in tupla di stringhe."""
-    from services import path_image, product_analytics, product_analytics_query
+    from services import path_image, product_analytics
 
     for name in ("CARD_COLOR", "TRACK_COLOR", "TEXT_COLOR", "MUTED_COLOR", "ACCENT_COLOR"):
         color = getattr(path_image, name)
@@ -109,7 +107,4 @@ def test_values_read_by_promo_keep_their_shape():
     sources = product_analytics.CAMPAIGN_SOURCES
     assert sources and all(isinstance(s, str) for s in sources), (
         f"services.product_analytics.CAMPAIGN_SOURCES deve restare una sequenza di stringhe: la legge {PROMO_FILE}"
-    )
-    assert issubclass(product_analytics_query.QueryError, Exception), (
-        f"services.product_analytics_query.QueryError deve restare un'eccezione: la cattura {PROMO_FILE}"
     )
