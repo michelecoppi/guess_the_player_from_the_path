@@ -5,11 +5,11 @@ from services.path_image import (
     COMPACT_FROM_ROWS,
     MAX_ROWS,
     _stats_label,
-    _years_label,
     render_avatar,
     render_career_path_image,
     render_event_banner,
     render_palmares_image,
+    years_label,
 )
 from services.player_pool import get_all_players
 
@@ -108,11 +108,11 @@ def test_loans_are_marked_without_words():
     italiani, inglesi e spagnoli."""
     permanent = {"team": "A", "country": "Italia", "league": "Serie A", "start_year": 2010, "end_year": 2012}
     loaned = dict(permanent, loan=True)
-    assert _years_label(permanent) == "2010 – 2012"
-    assert _years_label(loaned).startswith("→")
+    assert years_label(permanent) == "2010 – 2012"
+    assert years_label(loaned).startswith("→")
     # la tappa ancora in corso non deve usare la stessa freccia del prestito
     ongoing = {"team": "A", "start_year": 2010, "end_year": None}
-    assert "→" not in _years_label(ongoing)
+    assert "→" not in years_label(ongoing)
 
 
 def test_appearances_and_goals_use_the_wikipedia_convention():
