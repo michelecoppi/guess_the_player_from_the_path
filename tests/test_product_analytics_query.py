@@ -60,6 +60,30 @@ def test_run_hogql_sends_a_bearer_token_and_the_project_scoped_url(monkeypatch):
     assert captured["timeout"] == paq.REQUEST_TIMEOUT_SECONDS
 
 
+def test_public_run_hogql_reads_the_env_settings_and_returns_the_rows(monkeypatch):
+    captured = {}
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        captured.update(url=url, json=json)
+        return FakeResponse(200, {"results": [["a", 1]]})
+    monkeypatch.setattr(paq.requests, "post", fake_post)
+    monkeypatch.setenv("POSTHOG_PERSONAL_API_KEY", "phx_env_key")  # pragma: allowlist secret
+    monkeypatch.setenv("POSTHOG_PROJECT_ID", "777")
+    monkeypatch.delenv("POSTHOG_HOST", raising=False)
+
+    assert paq.run_hogql("SELECT 2") == [["a", 1]]
+    assert captured["url"] == f"{paq.DEFAULT_HOST}/api/projects/777/query/"
+    assert captured["json"]["query"]["query"] == "SELECT 2"
+
+
+def test_public_run_hogql_accepts_explicit_settings_and_fails_loudly_when_unconfigured(monkeypatch):
+    monkeypatch.setattr(paq.requests, "post", lambda *a, **k: FakeResponse(200, {"results": []}))
+    assert paq.run_hogql("SELECT 1", _settings()) == []
+
+    with pytest.raises(paq.QueryError, match="non configurato"):
+        paq.run_hogql("SELECT 1", paq.Settings.from_env({}))
+
+
 def test_a_non_200_response_is_a_readable_query_error(monkeypatch):
     monkeypatch.setattr(paq.requests, "post", lambda *a, **k: FakeResponse(401, text="invalid key"))
 

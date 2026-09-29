@@ -760,6 +760,13 @@ funnel insight to correlate ordered events within one person's session, which a 
 `SELECT` cannot express as a simple ratio. The admin page (`admin_pages/analytics.py`)
 shows the core metrics and links to PostHog for those funnels instead.
 
+For an arbitrary read-only query the public entry point is `run_hogql(query, config=None)`:
+it reads the same settings from the environment when `config` is omitted, returns the raw
+result rows and raises `QueryError` exactly like the metrics above. Promo Studio uses it
+(through the cross-repository contract in
+[architecture.md § External consumers](architecture.md#external-consumers)); the private
+`_run_hogql(config, query)` stays until Promo has switched.
+
 Unconfigured (either variable missing) means the admin page shows a configuration notice
 and makes no network call — same fail-closed posture as `product_analytics.py` itself.
 
