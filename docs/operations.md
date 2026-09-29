@@ -91,9 +91,11 @@ which relies on the verified procedure in [backup-recovery.md](backup-recovery.m
 - [runtime-hardening.md](runtime-hardening.md) recommends Cloud Logging alerts for
   `uncertain`, worker errors and exhausted task retries. Whether they are configured
   lives in GCP, not in this repository, and is not verified here.
-- GitHub Actions: every job of every workflow ends with an "Avviso di errore su Telegram" step
-  (#228). When the job fails (for `ci.yml` only on `main`), it sends the admin a message with the
-  run link via `curl`. It needs the repository secret `ALERT_TELEGRAM_BOT_TOKEN` and the variable
+- GitHub Actions: `ci.yml` (only on `main`), `backup.yml` and `release-check.yml` end with an
+  "Avviso di errore su Telegram" step, and `deploy.yml` has a separate `alert` job (so every step
+  of the `deploy` job stays gated on the selected commit) (#228). On failure they send the admin a
+  message with the run link via `curl`. `restore-verification.yml` has none on purpose: it must
+  not reference any secret; the external supervisor reports its failures. It needs the repository secret `ALERT_TELEGRAM_BOT_TOKEN` and the variable
   `ALERT_TELEGRAM_CHAT_ID`; without them the step does nothing. Actions are pinned to a full commit
   SHA (`uses: owner/action@<sha> # vN`); Dependabot proposes the updates.
 - No uptime checks, alert policies or dashboards are part of the codebase. The external supervisor

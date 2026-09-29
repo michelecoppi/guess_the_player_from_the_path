@@ -64,21 +64,3 @@ jobs:
             pytest -q -p no:cacheprovider tests/test_backup_restore_emulator.py \
               tests/test_backup_format.py tests/test_backup_restore_safety.py tests/test_backup_inventory.py
           done
-
-      # Se un passo fallisce: avviso diretto all'admin su Telegram (#228). Con curl e non con Python,
-      # cosi' funziona anche quando e' l'installazione a rompersi. Senza ALERT_TELEGRAM_BOT_TOKEN e
-      # ALERT_TELEGRAM_CHAT_ID non fa nulla. Nessun effetto se il job riesce o viene annullato.
-      - name: Avviso di errore su Telegram
-        if: failure()
-        env:
-          TG_TOKEN: ${{ secrets.ALERT_TELEGRAM_BOT_TOKEN }}
-          TG_CHAT: ${{ vars.ALERT_TELEGRAM_CHAT_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          WORKFLOW: ${{ github.workflow }}
-          JOB: ${{ github.job }}
-        run: |
-          [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ] || exit 0
-          text=$(printf '❌ <b>Gioco · %s fallito</b> · job %s\n<a href="%s">Apri la run</a>' "$WORKFLOW" "$JOB" "$RUN_URL")
-          curl -s -o /dev/null -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
-            --data-urlencode "chat_id=$TG_CHAT" --data-urlencode "text=$text" \
-            -d parse_mode=HTML -d disable_web_page_preview=true || true
