@@ -14,11 +14,12 @@ client: nessuna di queste funzioni riceve un id da fuori.
 """
 from domains.referrals import service as referrals
 from domains.shop import service as shop
-from services import feature_flags, firebase_service, game, trophies
+from services import daily_result, feature_flags, firebase_service, game, trophies
 from services import product_analytics as analytics
 from services.career_order import order_career
 from services.content_i18n import localize_career
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number
+from services.daily_result import ResultUnavailable as ResultUnavailable  # re-export for apps/api/miniapp.py
 from services.dates import normalize_day, to_display, today_iso
 from services.difficulty import points_for_difficulty
 from services.feature_flags import Flag
@@ -396,32 +397,15 @@ def with_share_card(result, lang, max_attempts, day=None, archive=False, symbols
 # ---------------------------------------------------------------------------
 
 
-class ResultUnavailable(Exception):
-    """Today's result cannot be shown: `status` is the HTTP status, `detail` the reason."""
-
-    def __init__(self, status, detail):
-        super().__init__(detail)
-        self.status = status
-        self.detail = detail
-
-
 def todays_result(user_id, today=None):
     """Today's Daily result as the **server** recorded it, never as a page declares it.
 
     Returns {day, attempts, hints, solved}; raises ResultUnavailable when the game is not
-    finished (409) or the stored numbers are out of range (422)."""
+    finished (409) or the stored numbers are out of range (422). The checks live in
+    services/daily_result.py, shared with the bot's card button."""
     day = today or today_iso()
     history = firebase_service.get_daily_history(user_id, limit=1)
-    result = history[0] if history and history[0].get("day") == day else None
-    if not result:
-        raise ResultUnavailable(409, "partita non conclusa")
-    attempts = result.get("attempts")
-    hints = result.get("hints")
-    if type(attempts) is not int or not 1 <= attempts <= MAX_ATTEMPTS:
-        raise ResultUnavailable(422, "tentativi non validi")
-    if type(hints) is not int or not 0 <= hints <= MAX_HINTS:
-        raise ResultUnavailable(422, "indizi non validi")
-    return {"day": day, "attempts": attempts, "hints": hints, "solved": result.get("solved") is True}
+    return daily_result.checked(history[0] if history else None, day)
 
 
 def result_card_png(user_data, lang, result):

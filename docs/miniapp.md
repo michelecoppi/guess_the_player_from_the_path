@@ -37,7 +37,8 @@ and cards remain spoiler-free. Points continue to come from `points_awarded`.
 
 1. when the game ends, the page calls `POST /app/api/share/prepare` (rate cost 10);
 2. the server rebuilds the result from the saved history (`webapp_api.todays_result`,
-   never from the page), renders the figurina and the chat card text with the sharer's
+   never from the page; the range checks live in `services/daily_result.py` and are shared
+   with the bot's "📸 card" button, whose payload carries only the day - #222), renders the figurina and the chat card text with the sharer's
    invite link, uploads the image once to the private storage chat
    `SHARE_STORAGE_CHAT_ID` (`file_id` cached per process by image hash) and calls
    `savePreparedInlineMessage` (photo + caption + "Play too" link button; user, group and
