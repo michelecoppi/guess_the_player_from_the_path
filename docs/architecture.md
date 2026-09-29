@@ -203,7 +203,7 @@ debt in `KNOWN_VIOLATIONS` is paid down the same way.
 
 **Promo Studio** ([`michelecoppi/promo_studio`](https://github.com/michelecoppi/promo_studio))
 checks out this repository and imports game code instead of rewriting it (dataset, past
-challenges, career order and translation, club colours, fonts, PostHog reads). Every import
+challenges, career order and translation, club colours, fonts, campaign sources). Every import
 goes through one file there, `promo/game.py`; nothing else in Promo imports `services.*`.
 That makes the symbols it uses a cross-repository contract, recorded and enforced by
 [`tests/test_promo_contract.py`](../tests/test_promo_contract.py) (#230): the test imports
@@ -213,17 +213,16 @@ covers `dates.today_iso`, `firebase_service.get_past_daily_paths`/`get_daily_pat
 `player_pool.get_practice_players`/`get_player_by_id`, `difficulty.compute_difficulty`,
 `career_order.order_career`, `content_i18n.localize_career`, `path_image` (`years_label`,
 `color_for_team` and the five palette colours), `fonts.font_path`,
-`observability.scrub_text`, `product_analytics.CAMPAIGN_SOURCES` and
-`product_analytics_query.QueryError`/`run_hogql`. Promo no longer uses private names.
+`observability.scrub_text` and `product_analytics.CAMPAIGN_SOURCES`. Promo no longer uses
+private names, and since promo_studio#23 it no longer reads PostHog, so
+`product_analytics_query` is outside the contract (#237).
 
 - Renaming, removing or changing the signature of one of these symbols fails CI with a
   message that points to Promo Studio. That is a coordination signal, not a veto: update
   `promo/game.py` first (or keep a compatible alias here, as step 3 of
   [Moving a domain into its package](#moving-a-domain-into-its-package) allows for a
   consumer outside this repository), then the table in the test.
-- New Promo needs should use a public name. `product_analytics_query.run_hogql(query,
-  config=None)` is the public HogQL entry point (`_run_hogql` is internal again);
-  `path_image.years_label(stop)` and `color_for_team(team_name)` are public (#234) and their
+- New Promo needs should use a public name. `path_image.years_label(stop)` and `color_for_team(team_name)` are public (#234) and their
   former private aliases were removed once Promo switched (promo_studio#20).
 - If the contract keeps growing, a small versioned shared package is the option to evaluate
   (proposed in #230, not implemented).
