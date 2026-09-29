@@ -122,3 +122,10 @@ def test_the_share_button_points_at_the_invite_link():
     query = parse_qs(urlparse(share.share_url("testo", INVITE)).query)
     assert query["url"] == [INVITE]
     assert query["text"] == ["testo"]
+
+
+def test_the_streak_comes_before_the_hints_like_on_the_card():
+    """La figurina disegna prima la fiamma e poi la lampadina: la riga di testo segue lo
+    stesso ordine, cosi' lo stesso risultato si legge uguale nei due formati (#224)."""
+    line = share_text("it", 142, 2, 3, streak=5, hints=2).splitlines()[1]
+    assert line.endswith("2/3  🔥 5  💡💡")

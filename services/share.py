@@ -75,10 +75,11 @@ def share_text(lang, number, attempts_used, max_attempts, solved=True, streak=0,
 
     score = f"{attempts_used}/{max_attempts}" if solved else f"X/{max_attempts}"
     line = f"{result_squares(attempts_used, max_attempts, solved, symbols)} {score}"
-    if hints > 0:
-        line += "  " + HINT * hints
+    # Prima la serie, poi gli indizi: lo stesso ordine della figurina (#224).
     if streak >= 2:
         line += "  " + t(lang, "share.streak", streak=streak)
+    if hints > 0:
+        line += "  " + HINT * hints
     lines.append(line)
 
     link = link or bot_link()
