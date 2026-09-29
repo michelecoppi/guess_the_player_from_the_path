@@ -211,8 +211,9 @@ exactly those symbols and, where Promo passes arguments, binds Promo's call shap
 current signature with `inspect.signature` (no network, no Firestore). Today the contract
 covers `dates.today_iso`, `firebase_service.get_past_daily_paths`/`get_daily_path`/`db`,
 `player_pool.get_practice_players`/`get_player_by_id`, `difficulty.compute_difficulty`,
-`career_order.order_career`, `content_i18n.localize_career`, `path_image` (the private
-`_years_label`, `_color_for_team` and the five palette colours), `fonts.font_path`,
+`career_order.order_career`, `content_i18n.localize_career`, `path_image` (`years_label`,
+`color_for_team`, their private aliases `_years_label`/`_color_for_team` and the five
+palette colours), `fonts.font_path`,
 `observability.scrub_text`, `product_analytics.CAMPAIGN_SOURCES` and
 `product_analytics_query.settings`/`QueryError`/`run_hogql`/`_run_hogql`.
 
@@ -224,7 +225,10 @@ covers `dates.today_iso`, `firebase_service.get_past_daily_paths`/`get_daily_pat
 - New Promo needs should use a public name. `product_analytics_query.run_hogql(query,
   config=None)` is the public HogQL entry point; `_run_hogql(config, query)` is still in the
   contract only because the current Promo calls it, and leaves it once Promo switches to
-  `run_hogql`.
+  `run_hogql`. Likewise `path_image.years_label(stop)` and `color_for_team(team_name)` are
+  public (#234); `_years_label` and `_color_for_team` are kept as aliases of them only
+  because the current Promo still calls the private names, and are removed (with their rows
+  in the test) once Promo switches.
 - If the contract keeps growing, a small versioned shared package is the option to evaluate
   (proposed in #230, not implemented).
 

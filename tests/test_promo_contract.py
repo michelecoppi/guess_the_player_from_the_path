@@ -49,8 +49,15 @@ PROMO_CALLS = (
     Call("difficulty", "compute_difficulty", args=({},), note="GameRepo.difficulty"),
     Call("career_order", "order_career", args=([],), note="GameRepo.order_career"),
     Call("content_i18n", "localize_career", args=([], "it"), note="GameRepo.localize_career"),
-    Call("path_image", "_years_label", args=({},), note="GameRepo.years_label (privata)"),
-    Call("path_image", "_color_for_team", args=("team",), note="GameRepo.team_color (privata)"),
+    # API pubblica (#234): quella a cui Promo deve passare.
+    Call("path_image", "years_label", args=({},), note="API pubblica per Promo (GameRepo.years_label)"),
+    Call("path_image", "color_for_team", args=("team",), note="API pubblica per Promo (GameRepo.team_color)"),
+    # Alias privati: la versione attuale di Promo li chiama ancora. Quando Promo usera' i nomi
+    # pubblici, queste righe e gli alias in services/path_image.py si potranno togliere.
+    Call("path_image", "_years_label", args=({},),
+         note="GameRepo.years_label (alias privato, da dismettere dopo l'aggiornamento di Promo)"),
+    Call("path_image", "_color_for_team", args=("team",),
+         note="GameRepo.team_color (alias privato, da dismettere dopo l'aggiornamento di Promo)"),
     Call("path_image", "CARD_COLOR", called=False, note="GameRepo.palette"),
     Call("path_image", "TRACK_COLOR", called=False, note="GameRepo.palette"),
     Call("path_image", "TEXT_COLOR", called=False, note="GameRepo.palette"),
@@ -120,6 +127,14 @@ def test_values_read_by_promo_keep_their_shape():
     assert issubclass(product_analytics_query.QueryError, Exception), (
         f"services.product_analytics_query.QueryError deve restare un'eccezione: la cattura {PROMO_FILE}"
     )
+
+
+def test_path_image_private_names_are_aliases_of_the_public_ones():
+    """Promo oggi chiama `_years_label`/`_color_for_team`: devono restare le stesse funzioni pubbliche."""
+    from services import path_image
+
+    assert path_image._years_label is path_image.years_label
+    assert path_image._color_for_team is path_image.color_for_team
 
 
 def test_public_and_legacy_hogql_entrypoints_agree(monkeypatch):

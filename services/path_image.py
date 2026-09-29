@@ -50,7 +50,7 @@ ACCENT_COLOR = (56, 189, 130)
 TRACK_COLOR = (44, 68, 92)
 
 
-def _color_for_team(team_name):
+def color_for_team(team_name):
     """Colore stabile per squadra: la tinta viene dall'hash del nome, saturazione e
     luminosita' sono fisse. Cosi' i colori sono sempre gli stessi per lo stesso club e non
     escono mai fango o fluorescenti come con un hash usato direttamente su RGB."""
@@ -94,7 +94,7 @@ def _stint_years(stop):
     return max(end - start, 1)
 
 
-def _years_label(stop):
+def years_label(stop):
     """Etichetta degli anni, senza parole: l'immagine e' la stessa per utenti italiani,
     spagnoli e inglesi, quindi niente "oggi" o "present" dentro il disegno.
 
@@ -110,6 +110,15 @@ def _years_label(stop):
     end = stop.get("end_year")
     span = f"{start} – {end}" if end else f"{start} – …"
     return f"→ {span}" if stop.get("loan") else span
+
+
+# `years_label` e `color_for_team` sono pubbliche perche' le usa anche Promo Studio
+# (`promo/game.py` in michelecoppi/promo_studio, contratto in tests/test_promo_contract.py).
+# Promo in produzione legge il `main` di questo repository e oggi chiama ancora i vecchi nomi
+# privati: gli alias restano finche' Promo non passa ai nomi pubblici (#234), poi si tolgono
+# insieme alle loro righe nel test di contratto.
+_years_label = years_label
+_color_for_team = color_for_team
 
 
 def _layout_for(rows):
@@ -177,7 +186,7 @@ def render_career_path_image(career, title="Percorso misterioso", subtitle=None,
     `career` e' la lista di tappe come in players.json.
 
     `lang` traduce l'unico dato del dataset che finisce disegnato: il **paese** sotto il nome
-    della squadra. Il resto della card e' gia' senza parole (vedi `_years_label`), ma il
+    della squadra. Il resto della card e' gia' senza parole (vedi `years_label`), ma il
     paese nel dataset e' scritto in italiano, quindi senza questo passaggio un inglese
     leggerebbe "La Liga · Spagna". Il campionato non si tocca: e' un nome proprio.
 
@@ -214,7 +223,7 @@ def render_career_path_image(career, title="Percorso misterioso", subtitle=None,
         center_y = centers[index]
 
         team_name = stop.get("team", "?")
-        club_color = _color_for_team(team_name)
+        club_color = color_for_team(team_name)
 
         is_loan = bool(stop.get("loan"))
 
@@ -245,7 +254,7 @@ def render_career_path_image(career, title="Percorso misterioso", subtitle=None,
             anchor="mm",
         )
 
-        years_text = _years_label(stop)
+        years_text = years_label(stop)
         years_width = draw.textlength(years_text, font=years_font)
         draw.text(
             (CARD_RIGHT - 26, center_y - row_height * 0.13),
@@ -366,7 +375,7 @@ def render_avatar(name, size=400):
     img = _vertical_gradient(size, size, BG_TOP, BG_BOTTOM)
     draw = ImageDraw.Draw(img)
 
-    color = _color_for_team(name or "?")
+    color = color_for_team(name or "?")
     margin = size * 0.14
     draw.ellipse([margin, margin, size - margin, size - margin], fill=color)
     draw.text(
