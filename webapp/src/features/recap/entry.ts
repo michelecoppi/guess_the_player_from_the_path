@@ -124,5 +124,5 @@ export async function openRecap(month?: string): Promise<void> {
   }
   markSeen(recap.month);
   document.getElementById(SLOT_ID)?.replaceChildren();
-  openRecapStory(recap, response?.name || "");
+  openRecapStory(recap, response?.name || "", response?.look);
 }

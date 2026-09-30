@@ -208,70 +208,41 @@ def recap_for(user_id, user_data, month, today=None):
 # ---------------------------------------------------------------------------
 # La card da condividere
 #
-# Stessi colori della schermata finale della mini app. Solo forme e testo: il font non ha
-# i glifi emoji (services/fonts.py), come per la figurina del risultato.
+# Disegnata come la figurina del risultato (services/path_image.render_recap_card): chi ha
+# comprato una card, un titolo o un numero di maglia li ritrova addosso anche qui. `look` e'
+# `domains/shop/service.appearance(...)`, passato da chi chiama perche' il dominio del gioco non
+# dipende dal negozio.
 # ---------------------------------------------------------------------------
 
-CARD_SIZE = (860, 1075)
-GREEN = (70, 204, 145)
-DARK_GREEN = (7, 45, 34)
-MINT = (132, 226, 178)
-NIGHT = (16, 24, 32)
 
-
-def recap_card_png(recap, name, lang):
+def recap_card_png(recap, name, lang, look=None):
     """La card finale del recap, in PNG. Le parole arrivano tradotte da services/i18n."""
-    from io import BytesIO
-
-    from PIL import Image, ImageDraw
-
-    from services.fonts import get_font
     from services.i18n import t
+    from services.path_image import render_recap_card
     from services.share import bot_link
 
-    width, height = CARD_SIZE
-    image = Image.new("RGB", CARD_SIZE, NIGHT)
-    draw = ImageDraw.Draw(image)
-    margin = 60
-    draw.rounded_rectangle((margin, margin, width - margin, height - margin), radius=40, fill=GREEN)
-
-    small, label = get_font(28, bold=True), get_font(26)
-    draw.text((margin + 44, margin + 40), "GUESS THE PLAYER", font=small, fill=DARK_GREEN)
-    month_label = t(lang, f"recap.month.{int(recap['month'][5:])}").upper() + " " + recap["month"][:4]
-    month_width = draw.textlength(month_label, font=small)
-    draw.text((width - margin - 44 - month_width, margin + 40), month_label, font=small, fill=DARK_GREEN)
-
-    draw.text((margin + 44, margin + 110), (name or "?").upper()[:14], font=get_font(120, bold=True), fill=DARK_GREEN)
+    look = look or {}
+    month = t(lang, f"recap.month.{int(recap['month'][5:])}").upper() + " " + recap["month"][:4]
     subtitle = t(lang, f"recap.style.{recap['style']['key']}")
     if recap.get("lucky_club"):
         subtitle += " · " + recap["lucky_club"]["team"]
-    draw.text((margin + 44, margin + 260), subtitle, font=get_font(34), fill=DARK_GREEN)
-
     tiles = [
         (f"{recap['solved']}/{recap['played']}", t(lang, "recap.card.solved")),
         (str(recap["best_streak"]), t(lang, "recap.card.streak")),
     ]
     if recap.get("gem"):
         tiles.append((f"{recap['gem']['rate']}%", t(lang, "recap.card.gem")))
-    if recap.get("better_than") is not None:
-        tiles.append((f"TOP {max(1, 100 - recap['better_than'])}%", t(lang, "recap.card.rank")))
     else:
         tiles.append((str(recap["attempts"][0]), t(lang, "recap.card.first_try")))
-
-    tile_w, tile_h, gap = (width - 2 * margin - 88 - 24) // 2, 220, 24
-    top = margin + 340
-    value_font = get_font(84, bold=True)
-    for index, (value, caption) in enumerate(tiles[:4]):
-        x = margin + 44 + (index % 2) * (tile_w + gap)
-        y = top + (index // 2) * (tile_h + gap)
-        draw.rounded_rectangle((x, y, x + tile_w, y + tile_h), radius=24, fill=DARK_GREEN)
-        draw.text((x + 28, y + 36), value, font=value_font, fill=MINT)
-        draw.text((x + 28, y + 150), caption, font=label, fill=MINT)
-
-    footer = bot_link().replace("https://", "")
-    if footer:
-        draw.text((margin + 44, height - margin - 70), footer, font=small, fill=DARK_GREEN)
-
-    out = BytesIO()
-    image.save(out, format="PNG")
-    return out.getvalue()
+    if recap.get("better_than") is not None:
+        tiles.append((f"TOP {max(1, 100 - recap['better_than'])}%", t(lang, "recap.card.rank")))
+    buffer = render_recap_card(
+        month, name or "?", tiles,
+        style=look.get("card") or {},
+        title=(look.get("title") or {}).get("label", ""),
+        shirt=look.get("number", ""),
+        subtitle=subtitle,
+        note=t(lang, "recap.card.gem_line", name=recap["gem"]["name"]) if recap.get("gem") else "",
+        footer=bot_link().replace("https://", ""),
+    )
+    return buffer.getvalue()

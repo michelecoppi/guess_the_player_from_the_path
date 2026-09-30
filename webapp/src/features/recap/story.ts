@@ -3,7 +3,7 @@ import { getTelegramWebApp } from "@/telegram/webapp";
 import { escapeHtml } from "@/utils/format";
 import { prepareRecapShare } from "./api";
 import { monthName, rs } from "./strings";
-import type { MonthlyRecap } from "./types";
+import type { MonthlyRecap, RecapLook } from "./types";
 
 /**
  * The animated monthly recap (#245): a full-screen story, one slide per interesting number.
@@ -47,7 +47,19 @@ function years(stop: { start_year?: number; end_year?: number | null }): string 
   return stop.end_year && stop.end_year !== stop.start_year ? `${stop.start_year} – ${stop.end_year}` : `${stop.start_year}`;
 }
 
-export function buildSlides(recap: MonthlyRecap, name: string): Slide[] {
+const HEX = /^#[0-9a-f]{6}$/i;
+
+/** The final card wears the equipped card cosmetic: only validated colours reach the style. */
+function cardStyle(look?: RecapLook): string {
+  const card = look?.card || {};
+  const vars: string[] = [];
+  if (card.paper && HEX.test(card.paper)) vars.push(`--recap-paper:${card.paper}`);
+  if (card.ink && HEX.test(card.ink)) vars.push(`--recap-ink:${card.ink}`);
+  if (card.glow && HEX.test(card.glow)) vars.push(`--recap-glow:${card.glow}`);
+  return vars.join(";");
+}
+
+export function buildSlides(recap: MonthlyRecap, name: string, look?: RecapLook): Slide[] {
   const month = monthName(recap.month);
   const solved = recap.solved ?? 0;
   const days = recap.days ?? 30;
@@ -186,9 +198,11 @@ export function buildSlides(recap: MonthlyRecap, name: string): Slide[] {
     tone: "night",
     duration: Number.POSITIVE_INFINITY,
     html: `<div class="recap-center">
-      <div class="recap-final a pop">
-        <p class="recap-final-top"><span>GUESS THE PLAYER</span><span>${escapeHtml(month.toUpperCase())} ${escapeHtml(recap.month.slice(0, 4))}</span></p>
-        <p class="recap-display recap-final-name">${escapeHtml(name || "?")}</p>
+      <div class="recap-final a pop" style="${cardStyle(look)}" data-finish="${escapeHtml(look?.card?.finish || "plain")}">
+        <p class="recap-final-top">GUESS THE PLAYER</p>
+        <p class="recap-final-month">${escapeHtml(month.toUpperCase())} ${escapeHtml(recap.month.slice(0, 4))}</p>
+        <p class="recap-display recap-final-name">${look?.number ? `<small>${escapeHtml(look.number)}</small> ` : ""}${escapeHtml(name || "?")}</p>
+        ${look?.title ? `<p class="recap-final-title">${escapeHtml(look.title)}</p>` : ""}
         <p class="recap-final-sub">${escapeHtml(recap.style ? rs(`style.${recap.style.key}`) : "")}${recap.lucky_club ? ` · ${escapeHtml(recap.lucky_club.team)}` : ""}</p>
         <div class="recap-final-grid">${tiles.map(([value, label]) => `<div><b class="recap-display">${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></div>`).join("")}</div>
       </div>
@@ -202,9 +216,9 @@ export function buildSlides(recap: MonthlyRecap, name: string): Slide[] {
 
 let current: { close: () => void } | null = null;
 
-export function openRecapStory(recap: MonthlyRecap, name: string): void {
+export function openRecapStory(recap: MonthlyRecap, name: string, look?: RecapLook): void {
   current?.close();
-  const slides = buildSlides(recap, name);
+  const slides = buildSlides(recap, name, look);
   const opener = document.activeElement as HTMLElement | null;
   const root = document.createElement("div");
   root.className = "recap-overlay";

@@ -585,7 +585,8 @@ def webapp_recap(payload: dict = Body(default={})):
     month = _month(payload)
     recap = monthly_recap.recap_for(user_id, user_data, month)
     return {"recap": recap, "months": monthly_recap.recent_months(),
-            "name": (user_data or {}).get("first_name") or ""}
+            "name": (user_data or {}).get("first_name") or "",
+            "look": webapp_api.recap_look(user_data, _webapp_language(user_data))}
 
 
 @router.post("/app/api/recap/share")

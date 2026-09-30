@@ -27,8 +27,16 @@ export interface MonthlyRecap {
   firsts?: number;
 }
 
+/** The equipped card cosmetic, title and shirt number (webapp_api.recap_look). */
+export interface RecapLook {
+  card?: { paper?: string; ink?: string; glow?: string; finish?: string };
+  title?: string;
+  number?: string;
+}
+
 export interface RecapResponse {
   recap: MonthlyRecap | null;
   months: string[];
   name: string;
+  look?: RecapLook;
 }

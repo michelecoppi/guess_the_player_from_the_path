@@ -166,3 +166,36 @@ def test_the_share_card_renders():
                                     closure={"points_distribution": [1, 2, 9, 20]})
     png = monthly_recap.recap_card_png(recap, "Anna", "it")
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_the_share_card_wears_the_equipped_cosmetics(monkeypatch):
+    """Card, titolo e numero di maglia equipaggiati finiscono sulla card condivisa (#245)."""
+    from services import path_image
+
+    drawn = {}
+
+    def fake_render(month_label, name, tiles, **kwargs):
+        drawn.update(kwargs, name=name, tiles=tiles)
+        from io import BytesIO
+        return BytesIO(b"png")
+
+    monkeypatch.setattr(path_image, "render_recap_card", fake_render)
+    recap = monthly_recap.summarize(MONTH, [day(n) for n in range(1, 12)], {}, monthly_points=9,
+                                    closure={"points_distribution": [1, 2, 9, 20]})
+    look = {"card": {"finish": "foil", "paper": "#10112e", "ink": "#fdf7ff", "glow": "#ff9ce3"},
+            "title": {"label": "Al novantesimo"}, "number": "10"}
+    monthly_recap.recap_card_png(recap, "Anna", "it", look)
+
+    assert drawn["style"]["finish"] == "foil"
+    assert drawn["title"] == "Al novantesimo" and drawn["shirt"] == "10"
+    assert ("TOP 50%", "del mese") in drawn["tiles"]
+
+
+def test_the_recap_look_exposes_only_card_title_and_number():
+    from services import webapp_api
+
+    user = {"cosmetics": {"owned": ["figurina_foil", "titolo_novantesimo"],
+                          "equipped": {"card": "figurina_foil", "title": "titolo_novantesimo"}}}
+    look = webapp_api.recap_look(user, "it")
+    assert set(look) == {"card", "title", "number"}
+    assert look["card"]["finish"] == "foil" and look["title"] == "Al novantesimo"

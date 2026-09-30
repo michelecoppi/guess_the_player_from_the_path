@@ -846,3 +846,68 @@ def render_share_card(number, attempts_used, max_attempts, solved=True, name="",
         draw.text((CARD_WIDTH / 2, CARD_HEIGHT - 56), footer, font=get_font(24), fill=muted, anchor="mm")
 
     return _to_buffer(img, "risultato.png")
+
+
+def render_recap_card(month_label, name, tiles, style=None, title="", shirt="", subtitle="",
+                      note="", footer="", kicker="GUESS THE PLAYER"):
+    """La card finale del recap mensile (#245), da condividere nei gruppi.
+
+    Stessa carta della figurina del risultato: `style` e' lo `style` del cosmetico `card`
+    indossato (tre colori e una finitura), `title` il titolo equipaggiato, `shirt` il numero di
+    maglia. Le parole arrivano gia' tradotte (services/monthly_recap.py); `tiles` sono al massimo
+    quattro coppie (valore, etichetta)."""
+    style = style or {}
+    paper = _hex(style.get("paper"), "#0a131e")
+    ink = _hex(style.get("ink"), "#ecf2f8")
+    glow = _hex(style.get("glow"), "#38bd82")
+
+    img = Image.new("RGB", (CARD_WIDTH, CARD_HEIGHT), paper)
+    img = FINISHES.get(style.get("finish"), _finish_plain)(img, paper, glow)
+    draw = ImageDraw.Draw(img)
+    muted = tuple(round(channel * 0.45 + paper[i] * 0.55) for i, channel in enumerate(ink))
+    soft = tuple(round(channel * 0.72 + paper[i] * 0.28) for i, channel in enumerate(ink))
+    tile_fill = tuple(round(channel * 0.10 + paper[i] * 0.90) for i, channel in enumerate(ink))
+
+    draw.text((CARD_WIDTH / 2, 92), kicker, font=get_font(23, bold=True), fill=muted, anchor="mm")
+    pill_font = get_font(24, bold=True)
+    month_label = _truncate(draw, month_label, pill_font, 600)
+    half = draw.textlength(month_label, font=pill_font) / 2 + 24
+    draw.rounded_rectangle([CARD_WIDTH / 2 - half, 128, CARD_WIDTH / 2 + half, 172], radius=22,
+                           outline=glow, width=2)
+    draw.text((CARD_WIDTH / 2, 150), month_label, font=pill_font, fill=glow, anchor="mm")
+
+    label = f"{shirt}  {name}".strip() if shirt else name
+    name_font = get_font(92, bold=True)
+    draw.text((CARD_WIDTH / 2, 262), _truncate(draw, label or "?", name_font, 740), font=name_font,
+              fill=ink, anchor="mm")
+    line = 332
+    if title:
+        draw.text((CARD_WIDTH / 2, line), _truncate(draw, title, get_font(30), 700), font=get_font(30),
+                  fill=glow, anchor="mm")
+        line += 46
+    if subtitle:
+        draw.text((CARD_WIDTH / 2, line), _truncate(draw, subtitle, get_font(28), 720), font=get_font(28),
+                  fill=soft, anchor="mm")
+
+    tile_w, tile_h, gap, top = 330, 206, 28, 462
+    left = (CARD_WIDTH - 2 * tile_w - gap) / 2
+    caption_font = get_font(26)
+    for index, (value, caption) in enumerate(tiles[:4]):
+        x = left + (index % 2) * (tile_w + gap)
+        y = top + (index // 2) * (tile_h + gap)
+        draw.rounded_rectangle([x, y, x + tile_w, y + tile_h], radius=26, fill=tile_fill, outline=glow, width=3)
+        # Il valore si rimpicciolisce finche' ci sta ("TOP 18%" e' piu' largo di "7"): mai tagliato.
+        size = 76
+        while size > 40 and draw.textlength(value, font=get_font(size, bold=True)) > tile_w - 44:
+            size -= 4
+        draw.text((x + tile_w / 2, y + 88), value, font=get_font(size, bold=True), fill=ink, anchor="mm")
+        draw.text((x + tile_w / 2, y + 152), _truncate(draw, caption, caption_font, tile_w - 30),
+                  font=caption_font, fill=soft, anchor="mm")
+
+    if note:
+        note_y = top + 2 * tile_h + gap + 64
+        draw.text((CARD_WIDTH / 2, note_y), _truncate(draw, note, get_font(32, bold=True), 740),
+                  font=get_font(32, bold=True), fill=glow, anchor="mm")
+    if footer:
+        draw.text((CARD_WIDTH / 2, CARD_HEIGHT - 56), footer, font=get_font(24), fill=muted, anchor="mm")
+    return _to_buffer(img, "recap.png")

@@ -68,3 +68,19 @@ test("the recap speaks the three languages", () => {
   assert.equal(rs("bannerTitle", { month: monthName("2026-09") }), "Your September is ready");
   setLanguage("it");
 });
+
+test("the final card wears the equipped card colours, title and number", () => {
+  setLanguage("it");
+  const look = { card: { paper: "#10112e", ink: "#fdf7ff", glow: "#ff9ce3", finish: "foil" }, title: "Al novantesimo", number: "10" };
+  const final = buildSlides(FULL, "Anna", look).at(-1)!.html;
+  assert.match(final, /--recap-paper:#10112e/);
+  assert.match(final, /data-finish="foil"/);
+  assert.match(final, /Al novantesimo/);
+  assert.match(final, /<small>10<\/small>/);
+});
+
+test("invalid cosmetic colours never reach the style attribute", () => {
+  setLanguage("it");
+  const final = buildSlides(FULL, "Anna", { card: { paper: "red;background:url(x)" } }).at(-1)!.html;
+  assert.doesNotMatch(final, /url\(x\)/);
+});

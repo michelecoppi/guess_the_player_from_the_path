@@ -39,6 +39,18 @@
 body.recap-open { overflow: hidden; }
 
 .recap-overlay {
+  /* The equipped theme, like the app shell ([data-cosmetic-shell] in feature-overrides.css):
+     the story is appended to <body>, outside the shell, so it maps the same --skin-* tokens
+     itself. --success/--danger/--warn stay product-owned, as everywhere. */
+  --accent: var(--skin-accent);
+  --accent-text: var(--skin-accent-text);
+  --bg: color-mix(in srgb, var(--skin-profile-surface), #000000 32%);
+  --bg-secondary: color-mix(in srgb, var(--skin-profile-surface), #000000 16%);
+  --card: color-mix(in srgb, var(--skin-profile-surface), #ffffff 5%);
+  --edge: color-mix(in srgb, var(--skin-accent-secondary) 45%, var(--skin-profile-surface));
+  --track: color-mix(in srgb, var(--skin-pitch) 60%, var(--skin-profile-surface));
+  --sport-surface: color-mix(in srgb, var(--skin-accent) 20%, var(--skin-profile-surface));
+  --sport-highlight: color-mix(in srgb, var(--skin-accent) 62%, #ffffff);
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -257,20 +269,48 @@ body.recap-open { overflow: hidden; }
 .recap-row small { color: var(--muted); font-size: 12px; }
 
 .recap-final {
-  width: min(270px, 86%);
-  background: var(--accent);
-  color: var(--accent-text);
+  /* The equipped card cosmetic (paper, ink, glow), as on the shared image; the theme otherwise. */
+  --paper: var(--recap-paper, var(--bg));
+  --ink: var(--recap-ink, var(--text));
+  --glow: var(--recap-glow, var(--accent));
+  width: min(280px, 86%);
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--glow);
   border-radius: 18px;
-  padding: 18px;
-  text-align: left;
+  padding: 16px 16px 18px;
+  text-align: center;
 }
-.recap-final-top { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; margin: 0; }
-.recap-final-name { font-size: 46px; margin: 10px 0 2px; }
-.recap-final-sub { font-size: 12px; margin: 0 0 14px; }
+.recap-final[data-finish="foil"], .recap-final[data-finish="aurora"] {
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--glow) 22%, transparent), transparent 55%, color-mix(in srgb, var(--glow) 16%, transparent));
+}
+.recap-final[data-finish="pixel"] { background-image: repeating-linear-gradient(0deg, color-mix(in srgb, var(--glow) 10%, transparent) 0 2px, transparent 2px 8px); }
+.recap-final[data-finish="ticket"] { border-style: dashed; }
+.recap-final-top { font-size: 11px; font-weight: 600; letter-spacing: 1px; margin: 0; color: color-mix(in srgb, var(--ink) 55%, var(--paper)); }
+.recap-final-month {
+  display: inline-block;
+  margin: 8px 0 4px;
+  padding: 3px 12px;
+  border: 1.5px solid var(--glow);
+  border-radius: 999px;
+  color: var(--glow);
+  font-size: 11px;
+  font-weight: 700;
+}
+.recap-final-name { font-size: 46px; margin: 8px 0 2px; }
+.recap-final-name small { font-size: 0.55em; color: var(--glow); }
+.recap-final-title { font-size: 13px; color: var(--glow); margin: 0; }
+.recap-final-sub { font-size: 12px; margin: 2px 0 14px; color: color-mix(in srgb, var(--ink) 75%, var(--paper)); }
 .recap-final-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.recap-final-grid div { background: var(--accent-text); color: var(--sport-highlight); border-radius: 10px; padding: 9px; }
+.recap-final-grid div {
+  background: color-mix(in srgb, var(--ink) 10%, var(--paper));
+  border: 1.5px solid var(--glow);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 9px 6px;
+}
 .recap-final-grid b { display: block; font-size: 28px; }
-.recap-final-grid span { font-size: 11px; }
+.recap-final-grid span { font-size: 11px; color: color-mix(in srgb, var(--ink) 75%, var(--paper)); }
 .recap-toast { font-size: 12px; color: var(--sport-highlight); min-height: 16px; }
 
 .recap-slide .a { opacity: 0; transform: translateY(14px); }

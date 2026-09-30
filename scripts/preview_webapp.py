@@ -623,10 +623,11 @@ def _demo_recap():
 
 @app.post("/app/api/recap")
 async def recap(payload: dict = Body(default={})):
-    from services import monthly_recap
+    from services import monthly_recap, webapp_api
 
     return {"recap": _demo_recap(), "months": monthly_recap.recent_months(),
-            "name": STATE["user"].get("first_name", "Anna")}
+            "name": STATE["user"].get("first_name", "Anna"),
+            "look": webapp_api.recap_look(STATE["user"], _lang())}
 
 
 @app.post("/app/api/recap/share")

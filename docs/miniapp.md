@@ -164,6 +164,11 @@ An animated, story-style summary of a closed month, in `webapp/src/features/reca
 - **Share.** `POST /app/api/recap/share` prepares the server-drawn card
   (`monthly_recap.recap_card_png`) for `WebApp.shareMessage`, like the Daily card; without a
   storage chat the page falls back to the classic share link.
+- **Cosmetics.** The story wears the equipped theme: the overlay maps the same `--skin-*`
+  tokens as the app shell (`.recap-overlay` in `styles/recap.css`), with success/warning/danger
+  colours still product-owned. The final card, in the story and in the shared image
+  (`path_image.render_recap_card`), wears the equipped card cosmetic (paper, ink, glow and
+  finish), title and shirt number, like the Daily result card (`webapp_api.recap_look`).
 - **Motion.** Tap right/left or arrow keys to move, hold (or Space) to pause, Escape to close;
   `prefers-reduced-motion` turns the animations off.
 

@@ -452,4 +452,17 @@ def recap_share(user_id, user_data, lang, recap):
     if link:
         text += "\n" + link
     name = (user_data or {}).get("first_name") or ""
-    return {"text": text, "image": monthly_recap.recap_card_png(recap, name, lang), "link": link}
+    look = shop.appearance(user_data or {}, lang)
+    return {"text": text, "image": monthly_recap.recap_card_png(recap, name, lang, look), "link": link}
+
+
+def recap_look(user_data, lang):
+    """The equipped cosmetics the recap's final card wears in the Mini App (#245): the same
+    card colours, title and shirt number as the shared image, nothing else."""
+    look = shop.appearance(user_data or {}, lang)
+    card = look.get("card") or {}
+    return {
+        "card": {key: card[key] for key in ("paper", "ink", "glow", "finish") if card.get(key)},
+        "title": (look.get("title") or {}).get("label", ""),
+        "number": look.get("number", ""),
+    }
