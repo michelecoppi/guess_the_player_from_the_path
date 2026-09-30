@@ -116,6 +116,38 @@ def test_lightweight_profile_skips_social_queries_but_refreshes_game(firebase, m
     assert "correct_answers" not in json.dumps(fresh)
 
 
+def test_profile_reads_run_together_not_one_after_the_other(firebase, monkeypatch):
+    """#260: sfida, due classifiche, documento e classifica della lega partono insieme. Ogni
+    lettura finta aspetta tutte le altre: in fila, la prima resterebbe ad aspettare da sola
+    e la barriera scadrebbe."""
+    import threading
+
+    barrier = threading.Barrier(5, timeout=5)
+    for name in ("get_daily_path", "get_top_users", "get_league", "get_league_leaderboard"):
+        original = getattr(webapp_api.firebase_service, name)
+
+        def waiting(*args, _original=original, **kwargs):
+            barrier.wait()  # sfida + generale + mensile + lega + classifica della lega = 5
+            return _original(*args, **kwargs)
+
+        monkeypatch.setattr(webapp_api.firebase_service, name, waiting)
+
+    profile = webapp_api.build_profile(42, day_iso=DAY, user=firebase["user"])
+    assert profile["today"]["available"] is True
+    assert [row["name"] for row in profile["leaderboard"]] == ["Bea", "Anna"]
+    assert [row["name"] for row in profile["monthly_leaderboard"]] == ["Anna", "Bea"]
+    assert profile["leagues"][0]["standings"][1]["me"] is True
+
+
+def test_a_failed_profile_read_still_fails_the_request(firebase, monkeypatch):
+    def broken(*args, **kwargs):
+        raise RuntimeError("firestore down")
+
+    monkeypatch.setattr(webapp_api.firebase_service, "get_league_leaderboard", broken)
+    with pytest.raises(RuntimeError, match="firestore down"):
+        webapp_api.build_profile(42, day_iso=DAY, user=firebase["user"])
+
+
 def test_today_is_marked_solved_only_for_the_current_day(firebase):
     solved = webapp_api.build_profile(42, day_iso=DAY)["today"]
     assert solved["solved"] is True
