@@ -59,6 +59,14 @@ def test_every_later_step_is_gated_on_the_selected_commit():
     assert "head_sha" not in str(checkout)
 
 
+def test_deploy_pins_the_execution_environment():
+    """#264: the environment is chosen on purpose (faster cold start), never left to Cloud Run.
+    Removing the flag would not revert it: a rollback sets gen2 explicitly."""
+    deploy = next(s for s in _job()["steps"] if "gcloud run deploy" in s.get("run", ""))
+    assert "--execution-environment gen1" in deploy["run"]
+    assert "--max-instances 10" in deploy["run"]
+
+
 def test_permissions_allow_reading_ci_runs_and_nothing_more():
     assert _load()["permissions"] == {
         "actions": "read",

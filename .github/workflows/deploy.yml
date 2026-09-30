@@ -83,12 +83,17 @@ jobs:
         # tetto il limite dice poco, ed e' scritto anche in docs/performance.md.
         # Dieci istanze sono abbondanti per il carico di questo bot e tengono il budget
         # massimo di un utente entro un ordine di grandezza noto.
+        # --execution-environment gen1 (#264): il cold start e' quasi tutto avvio
+        # dell'istanza (docs/performance.md, decisione 10) e gen1 e' l'ambiente con l'avvio
+        # piu' rapido, allo stesso prezzo. Prima non era fissato e sceglieva Cloud Run. Per
+        # tornare indietro si mette gen2: togliere il flag non cambia la revisione.
         run: |
           gcloud run deploy guess-the-player \
             --source . \
             --project guess-the-player-from-path-bot \
             --region europe-west1 \
             --max-instances 10 \
+            --execution-environment gen1 \
             --quiet
 
   # Se il deploy fallisce: avviso diretto all'admin su Telegram (#228). Job a parte, senza permessi e

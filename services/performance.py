@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -333,8 +334,12 @@ def startup_phases() -> Iterator[dict[str, Any]]:
 
     `before_lifespan_ms` is the process age when the lifespan began (interpreter start,
     imports, module-level setup); `lifespan_ms` is the lifespan itself (Telegram
-    initialisation and webhook registration). The yielded dict takes extra fields."""
-    details: dict[str, Any] = {"before_lifespan_ms": process_age_ms()}
+    initialisation and webhook registration). The yielded dict takes extra fields.
+
+    `kernel` tells which Cloud Run execution environment served the start (#264): gen1 runs
+    in gVisor, which reports `4.4.0`; gen2 reports a real Linux kernel. Without it a cold
+    start comparison between the two could not tell which one it was measuring."""
+    details: dict[str, Any] = {"before_lifespan_ms": process_age_ms(), "kernel": platform.release() or None}
     started = perf_counter()
     yield details
     observability.log_event(
