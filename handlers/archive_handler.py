@@ -18,6 +18,7 @@ from telegram.ext import ContextTypes
 
 from domains.referrals import service as referrals
 from domains.shop import service as shop
+from handlers.keyboards import app_keyboard
 from handlers.legend_handler import legend_keyboard
 from services import firebase_service
 from services.daily_challenge import challenge_number
@@ -94,7 +95,7 @@ async def archive_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == BACK_TO_TODAY:
         (await asyncio.to_thread(firebase_service.set_archive_day, user_id, None))
-        await query.message.reply_text(t(lang, "archive.exited"))
+        await query.message.reply_text(t(lang, "archive.exited"), reply_markup=app_keyboard(lang))
         return
 
     day_iso = query.data[len(CALLBACK_PREFIX):]
@@ -154,7 +155,7 @@ async def back_to_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.effective_message.reply_text(t(lang, "archive.not_in_archive"))
         return
 
-    await update.effective_message.reply_text(t(lang, message_key))
+    await update.effective_message.reply_text(t(lang, message_key), reply_markup=app_keyboard(lang))
 
 
 async def process_archive_answer(update: Update, context: ContextTypes.DEFAULT_TYPE, user_answer, user_data):

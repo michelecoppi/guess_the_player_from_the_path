@@ -78,9 +78,8 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
   `apps/api/` authenticate, rate-limit and delegate; a few small behaviors are still inline
   (for example the `/app/api/arena` mode dispatch and `/app/api/shop/look` delete branch).
   `admin_ui.py` is the composition root of the Streamlit Admin.
-- Game rules shared by chat and Mini App live in services — `services/game.py` is used
-  by both `handlers/guess_handler.py` and `/app/api/guess`, so there is one scoring
-  implementation. The same holds for leagues (`services/leagues.py`) and the shop
+- Game rules live in services — `services/game.py` is the one scoring implementation behind
+  `/app/api/guess` (today's challenge is Mini App only, #243). The same holds for leagues (`services/leagues.py`) and the shop
   catalogue/prices (`domains/shop/service.py`).
 - Domain code is moving from the technical layers (`handlers/`, `services/`,
   `admin_pages/`) into domain packages under `domains/`, one domain at a time. Already

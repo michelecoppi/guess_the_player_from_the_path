@@ -39,7 +39,7 @@ deploying with no document (or an empty one) changes nothing.
 | `arena` | on | Mini App Arena: `/app/api/arena` with `mode` `training` or `duel` (all actions) |
 | `shop` | on | Shop browsing, equipping and purchase initiation: `/app/api/shop`, `/shop/buy`, `/shop/equip`, `/shop/look`; chat `/shop` and shop buttons; Stars pre-checkout |
 | `daily_ui` | on | Mini App Daily surface: `/app/api/guess` for today's challenge (no `day`, or `day` = today) |
-| `hints` | on | Daily hint acquisition: `/app/api/hint`, chat hint button (`hint_daily`) |
+| `hints` | on | Daily hint acquisition: `/app/api/hint` (the old chat hint button only points to the Mini App, #243) |
 | `player_pipeline` | on | New external-source ingestion: `CandidateReviewService.retry_ingestion` |
 | `events_v2` | on | Mini App events experience: `/app/api/arena` with `mode: "events"` |
 | `leaderboard` | on | Global/monthly rankings: `leaderboard` in `/app/api/me`, chat `/top` and its buttons |
@@ -210,7 +210,7 @@ exposes it as `ApiError.code` / `isFeatureDisabled` (`webapp/src/api`).
 | `arena` | 403 for every `training`/`duel` action (get, list, next, guess, create, join, delete) | Stored duels, sessions and ledgers are untouched and reappear when re-enabled; chat `/training` and group rounds (`/round`) are separate modes |
 | `shop` | 403 on catalogue, buy (no invoice link is created), equip, look; chat `/shop` and shop buttons show a notice; pre-checkout is refused **before** any reservation, so nothing is charged | `successful_payment` delivery (Stars already taken; idempotent on the charge id), `/admin_refund`, `/paysupport`, `/app/api/shop/history` (the charge id for refunds), owned cosmetics in profiles and cards |
 | `daily_ui` | 403 on `/app/api/guess` for today | Archive guesses through the same route, `/me` `today` block, the chat Daily (`/guess`, free text, `/show`), challenge generation. No challenge is deleted or regenerated |
-| `hints` | 403 on `/app/api/hint`; the chat hint button shows an alert and takes nothing | Hints already paid for (still shown); attempts and challenge state |
+| `hints` | 403 on `/app/api/hint` | Hints already paid for (still shown); attempts and challenge state |
 | `player_pipeline` | `retry_ingestion` returns `ReviewStatus.FEATURE_DISABLED` before any adapter call or candidate write (Admin shows a warning) | Queue, detail, edit, approve, reject, merge, source-wrong on existing candidates; `players.json` is never written by flags |
 | `events_v2` | 403 on `/app/api/arena` `mode: "events"` (list and guess) | Chat `/events`, event generation, participants, trophies |
 | `leaderboard` | `/me` returns `"leaderboard": []`; chat `/top` and its buttons show a notice | Points, monthly points, rankings data, monthly closure, private leagues, public profiles and profile search |

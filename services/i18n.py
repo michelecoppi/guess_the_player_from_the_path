@@ -147,14 +147,6 @@ TRANSLATIONS = {
         "guess.error.no_attempts": "❌ Hai esaurito i tentativi per oggi! Riprova domani.",
         "guess.error.default": "❗ Non è stato possibile registrare il tentativo, riprova.",
 
-        "show.bonus_info": "💎 Bonus: +1 punto se sei il primo a rispondere!",
-        "show.caption": (
-            "🎯 Difficoltà: {difficulty}\n"
-            "🏆 Punti: {points}\n"
-            "{bonus_info}\n\n"
-            "✍️ Scrivi qui il nome del calciatore: non serve nessun comando.\n"
-            "🔢 Hai {attempts} tentativi. Dopo il primo sbagliato puoi chiedere un indizio."
-        ),
 
         "stats.not_registered": "❗ Non sei registrato! Usa /start per registrarti.",
         "stats.message": (
@@ -327,7 +319,8 @@ TRANSLATIONS = {
         "cmd.help": "Come si gioca",
 
         # --- risposta libera (senza /guess) ---
-        "guess.free_text_hint": "💬 Scrivimi il nome del calciatore per tentare la sfida di oggi, oppure apri /start per rivederla dal menu.",
+        "guess.free_text_hint": "💬 La sfida di oggi si gioca nella mini app: tocca il bottone qui sotto. In chat puoi allenarti o rigiocare l'archivio dal menu.",
+        "guess.daily_in_app": "🎯 La sfida di oggi si gioca solo nella mini app: tocca il bottone qui sotto. Qui in chat non consuma tentativi.",
         "guess.typo_note": "\n✍️ Accettata anche se avevi scritto «{written}».",
 
         # --- striscia, condivisione e archivio ---
@@ -365,15 +358,15 @@ TRANSLATIONS = {
         "inline.start_button": "Apri il bot per lanciare sfide",
         "inline.limit_button": "Per oggi hai lanciato tutte le sfide: torna domani",
         "inline.gone": "Questa sfida non è più disponibile. Dal menu del bot trovi l'allenamento con tanti altri percorsi.",
-        "training.opened": "🏋️ <b>Allenamento</b>: scrivi il nome del calciatore.\nNon vale punti e non tocca la sfida di oggi. Hai {attempts} tentativi.\nEsci con il bottone qui sotto per tornare alla sfida di oggi.",
+        "training.opened": "🏋️ <b>Allenamento</b>: scrivi il nome del calciatore.\nNon vale punti. Hai {attempts} tentativi.",
         "training.correct": "✅ Preso in {attempts} tentativi!\nNessun punto: è allenamento.",
         "training.wrong": "❌ No. Tentativi rimasti: {attempts_left}.",
         "training.wrong_last": "❌ Tentativi finiti: era {answer}.",
         "training.revealed": "👀 Era {answer}.",
         "training.not_open": "Non hai nessuna sfida di allenamento aperta: apri l'Allenamento dal menu per cominciarne una.",
         "training.gone": "❗ Quella sfida di allenamento non è più disponibile: apri l'Allenamento dal menu per un'altra.",
-        "training.exited": "👋 Allenamento chiuso. Scrivimi il nome del calciatore per la sfida di oggi.",
-        "training.button_exit": "🚪 Torna a oggi",
+        "training.exited": "👋 Allenamento chiuso. La sfida di oggi ti aspetta nella mini app.",
+        "training.button_exit": "🚪 Chiudi",
 
         "group.private_hint": "👥 Questa è una modalità da gruppo: aggiungimi a un gruppo e scrivi /round. Qui in privato c'è /training.",
         "group.empty": "👥 Non ci sono ancora sfide passate da riproporre in un round.",
@@ -405,16 +398,16 @@ TRANSLATIONS = {
         "archive.title": "🗂 <b>Archivio</b>\nRigioca le sfide dei giorni scorsi: non danno punti, valgono per il gusto di riuscirci.\nScegli un giorno:",
         "archive.empty": "🗂 Non c'è ancora nessuna sfida in archivio.",
         "archive.not_registered": "❗ Devi registrarti con /start prima di usare l'archivio.",
-        "archive.opened": "🗂 Sfida del {date}. Scrivi il nome del calciatore: questa non assegna punti.\nTorna alla sfida di oggi col bottone qui sotto.",
+        "archive.opened": "🗂 Sfida del {date}. Scrivi il nome del calciatore: questa non assegna punti.\nChiudi con il bottone qui sotto.",
         "archive.missing_day": "❗ Quella sfida non è più disponibile.",
-        "archive.correct": "✅ Preso! Sfida del {date} recuperata in {attempts} tentativi.\nApri un altro giorno dal menu (Archivio), oppure scrivimi già il nome per la sfida di oggi.",
+        "archive.correct": "✅ Preso! Sfida del {date} recuperata in {attempts} tentativi.\nApri un altro giorno dal menu (Archivio).",
         "archive.wrong": "❌ No. Tentativi rimasti per questa sfida: {attempts_left}.",
-        "archive.wrong_last": "❌ Tentativi finiti: era {answer}.\nApri un altro giorno dal menu (Archivio), oppure scrivimi già il nome per la sfida di oggi.",
-        "archive.already_solved": "✅ Questa sfida l'avevi già recuperata. Apri un altro giorno dal menu, o torna a oggi col bottone qui sotto.",
-        "archive.no_attempts": "❌ Hai finito i tentativi su questa sfida. Apri un altro giorno dal menu, o torna a oggi col bottone qui sotto.",
-        "archive.exited": "👋 Torniamo alla sfida di oggi: scrivimi il nome del calciatore.",
+        "archive.wrong_last": "❌ Tentativi finiti: era {answer}.\nApri un altro giorno dal menu (Archivio).",
+        "archive.already_solved": "✅ Questa sfida l'avevi già recuperata. Apri un altro giorno dal menu, o chiudi con il bottone qui sotto.",
+        "archive.no_attempts": "❌ Hai finito i tentativi su questa sfida. Apri un altro giorno dal menu, o chiudi con il bottone qui sotto.",
+        "archive.exited": "👋 Archivio chiuso. La sfida di oggi ti aspetta nella mini app.",
         "archive.not_in_archive": "Non stai giocando nessuna sfida d'archivio. Apri l'Archivio dal menu.",
-        "archive.button_today": "🎯 Torna a oggi",
+        "archive.button_today": "🚪 Chiudi",
 
         # --- leghe private ---
         "league.intro": "👥 <b>Le tue leghe</b>\nUna lega è una classifica privata fra amici: si contano i punti che fai da quando ne fai parte.\n\nCreane una o entra in una esistente con i bottoni qui sotto.",
@@ -587,14 +580,6 @@ TRANSLATIONS = {
         "guess.error.no_attempts": "❌ ¡Has agotado los intentos de hoy! Vuelve mañana.",
         "guess.error.default": "❗ No se ha podido registrar el intento, inténtalo de nuevo.",
 
-        "show.bonus_info": "💎 Bono: +1 punto si eres el primero en responder!",
-        "show.caption": (
-            "🎯 Dificultad: {difficulty}\n"
-            "🏆 Puntos: {points}\n"
-            "{bonus_info}\n\n"
-            "✍️ Escribe aquí el nombre del futbolista: no hace falta ningún comando.\n"
-            "🔢 Tienes {attempts} intentos. Tras el primer fallo puedes pedir una pista."
-        ),
 
         "stats.not_registered": "❗ ¡No estás registrado! Usa /start para registrarte.",
         "stats.message": (
@@ -767,7 +752,8 @@ TRANSLATIONS = {
         "cmd.help": "Cómo se juega",
 
         # --- respuesta libre (sin /guess) ---
-        "guess.free_text_hint": "💬 Escríbeme el nombre del futbolista para intentar el desafío de hoy, o abre /start para volver a verlo desde el menú.",
+        "guess.free_text_hint": "💬 El desafío de hoy se juega en la mini app: toca el botón de abajo. En el chat puedes entrenar o rejugar el archivo desde el menú.",
+        "guess.daily_in_app": "🎯 El desafío de hoy se juega solo en la mini app: toca el botón de abajo. Aquí en el chat no gasta intentos.",
         "guess.typo_note": "\n✍️ Aceptada aunque escribiste «{written}».",
 
         # --- striscia, condivisione e archivio ---
@@ -805,15 +791,15 @@ TRANSLATIONS = {
         "inline.start_button": "Abre el bot para lanzar desafíos",
         "inline.limit_button": "Hoy ya lanzaste todos los desafíos: vuelve mañana",
         "inline.gone": "Este desafío ya no está disponible. En el menú del bot tienes el entrenamiento con muchos otros recorridos.",
-        "training.opened": "🏋️ <b>Entrenamiento</b>: escribe el nombre del futbolista.\nNo da puntos y no toca el desafío de hoy. Tienes {attempts} intentos.\nSal con el botón de abajo para volver al desafío de hoy.",
+        "training.opened": "🏋️ <b>Entrenamiento</b>: escribe el nombre del futbolista.\nNo da puntos. Tienes {attempts} intentos.",
         "training.correct": "✅ ¡Acertado en {attempts} intentos!\nSin puntos: es entrenamiento.",
         "training.wrong": "❌ No. Intentos restantes: {attempts_left}.",
         "training.wrong_last": "❌ Se acabaron los intentos: era {answer}.",
         "training.revealed": "👀 Era {answer}.",
         "training.not_open": "No tienes ningún entrenamiento abierto: abre el Entrenamiento desde el menú para empezar uno.",
         "training.gone": "❗ Ese entrenamiento ya no está disponible: abre el Entrenamiento desde el menú para otro.",
-        "training.exited": "👋 Entrenamiento cerrado. Escríbeme el nombre del futbolista para el desafío de hoy.",
-        "training.button_exit": "🚪 Volver a hoy",
+        "training.exited": "👋 Entrenamiento cerrado. El desafío de hoy te espera en la mini app.",
+        "training.button_exit": "🚪 Cerrar",
 
         "group.private_hint": "👥 Esta es una modalidad de grupo: añádeme a un grupo y escribe /round. Aquí en privado está /training.",
         "group.empty": "👥 Todavía no hay desafíos pasados para un round.",
@@ -845,16 +831,16 @@ TRANSLATIONS = {
         "archive.title": "🗂 <b>Archivo</b>\nVuelve a jugar los desafíos de días pasados: no dan puntos, valen por el gusto de conseguirlo.\nElige un día:",
         "archive.empty": "🗂 Todavía no hay ningún desafío en el archivo.",
         "archive.not_registered": "❗ Regístrate con /start antes de usar el archivo.",
-        "archive.opened": "🗂 Desafío del {date}. Escribe el nombre del futbolista: este no da puntos.\nVuelve al desafío de hoy con el botón de abajo.",
+        "archive.opened": "🗂 Desafío del {date}. Escribe el nombre del futbolista: este no da puntos.\nCierra con el botón de abajo.",
         "archive.missing_day": "❗ Ese desafío ya no está disponible.",
-        "archive.correct": "✅ ¡Bien! Desafío del {date} recuperado en {attempts} intentos.\nAbre otro día desde el menú (Archivo), o escríbeme ya el nombre para el desafío de hoy.",
+        "archive.correct": "✅ ¡Bien! Desafío del {date} recuperado en {attempts} intentos.\nAbre otro día desde el menú (Archivo).",
         "archive.wrong": "❌ No. Intentos restantes en este desafío: {attempts_left}.",
-        "archive.wrong_last": "❌ Se acabaron los intentos: era {answer}.\nAbre otro día desde el menú (Archivo), o escríbeme ya el nombre para el desafío de hoy.",
-        "archive.already_solved": "✅ Este desafío ya lo habías recuperado. Abre otro día desde el menú, o vuelve a hoy con el botón de abajo.",
-        "archive.no_attempts": "❌ Se acabaron tus intentos en este desafío. Abre otro día desde el menú, o vuelve a hoy con el botón de abajo.",
-        "archive.exited": "👋 Volvemos al desafío de hoy: escríbeme el nombre del futbolista.",
+        "archive.wrong_last": "❌ Se acabaron los intentos: era {answer}.\nAbre otro día desde el menú (Archivo).",
+        "archive.already_solved": "✅ Este desafío ya lo habías recuperado. Abre otro día desde el menú, o cierra con el botón de abajo.",
+        "archive.no_attempts": "❌ Se acabaron tus intentos en este desafío. Abre otro día desde el menú, o cierra con el botón de abajo.",
+        "archive.exited": "👋 Archivo cerrado. El desafío de hoy te espera en la mini app.",
         "archive.not_in_archive": "No estás jugando ningún desafío del archivo. Abre el Archivo desde el menú.",
-        "archive.button_today": "🎯 Volver a hoy",
+        "archive.button_today": "🚪 Cerrar",
 
         # --- ligas privadas ---
         "league.intro": "👥 <b>Tus ligas</b>\nUna liga es una clasificación privada entre amigos: cuentan los puntos que haces desde que entras.\n\nCrea una o entra en una existente con los botones de abajo.",
@@ -1027,14 +1013,6 @@ TRANSLATIONS = {
         "guess.error.no_attempts": "❌ You've used up today's attempts! Try again tomorrow.",
         "guess.error.default": "❗ Couldn't register the attempt, please try again.",
 
-        "show.bonus_info": "💎 Bonus: +1 point if you're the first to answer!",
-        "show.caption": (
-            "🎯 Difficulty: {difficulty}\n"
-            "🏆 Points: {points}\n"
-            "{bonus_info}\n\n"
-            "✍️ Just type the player's name here: no command needed.\n"
-            "🔢 You have {attempts} attempts. After the first wrong one you can ask for a hint."
-        ),
 
         "stats.not_registered": "❗ You're not registered! Use /start to register.",
         "stats.message": (
@@ -1207,7 +1185,8 @@ TRANSLATIONS = {
         "cmd.help": "How to play",
 
         # --- free-text answers (no /guess) ---
-        "guess.free_text_hint": "💬 Just type the player's name to try today's challenge, or open /start to see it again from the menu.",
+        "guess.free_text_hint": "💬 Today's challenge is played in the mini app: tap the button below. Here in the chat you can train or replay the archive from the menu.",
+        "guess.daily_in_app": "🎯 Today's challenge is played only in the mini app: tap the button below. Typing here in the chat doesn't use any attempts.",
         "guess.typo_note": "\n✍️ Accepted even though you typed «{written}».",
 
         # --- striscia, condivisione e archivio ---
@@ -1245,15 +1224,15 @@ TRANSLATIONS = {
         "inline.start_button": "Open the bot to send challenges",
         "inline.limit_button": "You've sent all of today's challenges: come back tomorrow",
         "inline.gone": "This challenge is no longer available. Training in the bot's menu has plenty of other paths.",
-        "training.opened": "🏋️ <b>Training</b>: type the player's name.\nNo points, and it doesn't touch today's challenge. You have {attempts} attempts.\nExit with the button below to go back to today's challenge.",
+        "training.opened": "🏋️ <b>Training</b>: type the player's name.\nNo points. You have {attempts} attempts.",
         "training.correct": "✅ Got it in {attempts} attempts!\nNo points: this is training.",
         "training.wrong": "❌ No. Attempts left: {attempts_left}.",
         "training.wrong_last": "❌ Out of attempts: it was {answer}.",
         "training.revealed": "👀 It was {answer}.",
         "training.not_open": "You have no training challenge open: open Training from the menu to start one.",
         "training.gone": "❗ That training challenge is no longer available: open Training from the menu for another one.",
-        "training.exited": "👋 Training closed. Type the player's name for today's challenge.",
-        "training.button_exit": "🚪 Back to today",
+        "training.exited": "👋 Training closed. Today's challenge is waiting in the mini app.",
+        "training.button_exit": "🚪 Close",
 
         "group.private_hint": "👥 This is a group mode: add me to a group and type /round. Here in private there is /training.",
         "group.empty": "👥 There are no past challenges to turn into a round yet.",
@@ -1285,16 +1264,16 @@ TRANSLATIONS = {
         "archive.title": "🗂 <b>Archive</b>\nReplay past challenges: they award no points, they're just for the satisfaction.\nPick a day:",
         "archive.empty": "🗂 There's nothing in the archive yet.",
         "archive.not_registered": "❗ Sign up with /start before using the archive.",
-        "archive.opened": "🗂 Challenge from {date}. Type the player's name: this one awards no points.\nGo back to today's challenge with the button below.",
+        "archive.opened": "🗂 Challenge from {date}. Type the player's name: this one awards no points.\nClose it with the button below.",
         "archive.missing_day": "❗ That challenge isn't available any more.",
-        "archive.correct": "✅ Got it! Challenge from {date} solved in {attempts} attempts.\nOpen another day from the menu (Archive), or just type today's name here.",
+        "archive.correct": "✅ Got it! Challenge from {date} solved in {attempts} attempts.\nOpen another day from the menu (Archive).",
         "archive.wrong": "❌ Nope. Attempts left on this one: {attempts_left}.",
-        "archive.wrong_last": "❌ Out of attempts: it was {answer}.\nOpen another day from the menu (Archive), or just type today's name here.",
-        "archive.already_solved": "✅ You already solved this one. Open another day from the menu, or go back to today with the button below.",
-        "archive.no_attempts": "❌ No attempts left on this challenge. Open another day from the menu, or go back to today with the button below.",
-        "archive.exited": "👋 Back to today's challenge: type the player's name.",
+        "archive.wrong_last": "❌ Out of attempts: it was {answer}.\nOpen another day from the menu (Archive).",
+        "archive.already_solved": "✅ You already solved this one. Open another day from the menu, or close it with the button below.",
+        "archive.no_attempts": "❌ No attempts left on this challenge. Open another day from the menu, or close it with the button below.",
+        "archive.exited": "👋 Archive closed. Today's challenge is waiting in the mini app.",
         "archive.not_in_archive": "You're not playing an archive challenge. Open the Archive from the menu.",
-        "archive.button_today": "🎯 Back to today",
+        "archive.button_today": "🚪 Close",
 
         # --- private leagues ---
         "league.intro": "👥 <b>Your leagues</b>\nA league is a private leaderboard among friends: it counts the points you score from the moment you join.\n\nCreate one or join an existing one with the buttons below.",

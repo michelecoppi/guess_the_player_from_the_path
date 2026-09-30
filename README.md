@@ -92,17 +92,15 @@ documenti scaduti si può configurare il TTL Firestore sul campo `expires_at`.
 L'anteprima `python scripts/preview_webapp.py` include le nuove modalità con
 partite dimostrative in memoria. Non invia inviti reali né usa Firestore.
 
-Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. In chat
-privata **basta scrivere il nome**: non serve nessun comando (`/guess <nome>` continua a
-funzionare). Tre tentativi al giorno, i punti dipendono dalla difficolta', chi indovina per
-primo prende un punto in piu'. Dopo un tentativo sbagliato si puo' chiedere un **indizio**, che
-costa un punto. Chi non ci arriva scopre chi era a mezzanotte, o con `/solution` a giornata
-chiusa.
+Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. Tre
+tentativi al giorno, i punti dipendono dalla difficolta', chi indovina per primo prende un
+punto in piu'. Dopo un tentativo sbagliato si puo' chiedere un **indizio**, che costa un punto.
+Chi non ci arriva scopre chi era a mezzanotte, o con `/solution` a giornata chiusa.
 
-Si gioca in due posti, con le stesse identiche regole: la **chat del bot** e la **mini app**
-(`webapp/src/`, Vite + TypeScript), che aggiunge il completamento automatico sui nomi e il calendario delle
-giornate passate. Le regole stanno in un modulo solo (`services/game.py`), quindi non esistono
-due versioni del punteggio da tenere allineate.
+La sfida del giorno si gioca **solo nella mini app** (`webapp/src/`, Vite + TypeScript), con
+le regole di `services/game.py` (#243). In chat privata un nome vale per la partita aperta
+(allenamento, archivio o evento); senza una partita aperta non consuma nessun tentativo e il
+bot risponde con il bottone della mini app.
 
 | Comando | Cosa fa |
 |---|---|

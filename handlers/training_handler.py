@@ -21,6 +21,7 @@ from telegram import InlineKeyboardButton, Update
 from telegram.ext import ContextTypes
 
 from handlers.inline_handler import report_card_result
+from handlers.keyboards import app_keyboard
 from handlers.legend_handler import legend_keyboard
 from services import firebase_service, inline_challenge, practice_content
 from services import product_analytics as analytics
@@ -123,7 +124,7 @@ async def training_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == EXIT:
         (await asyncio.to_thread(firebase_service.clear_training_key, user_id))
-        await query.message.reply_text(t(lang, "training.exited"))
+        await query.message.reply_text(t(lang, "training.exited"), reply_markup=app_keyboard(lang))
         return
 
     if query.data == NEXT:
