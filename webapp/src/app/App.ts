@@ -887,20 +887,20 @@ export class App {
   }
 
   /**
-   * The running event outside its own page (#248): the Daily banner, the Arena hub card and
-   * the dot on the Arena tab. Called after every render that can replace those surfaces and
-   * whenever the events change, so a guess made on the Events page clears the dot at once.
+   * The running event outside its own page (#248): the invitation in the Daily's final
+   * report (#252), the Arena hub card and the dot on the Arena tab. Called after every render
+   * that can replace those surfaces and whenever the events change, so a guess made on the
+   * Events page clears the dot at once.
    */
   private syncEventPresence(): void {
     if (this.sessionExpired) return;
     const events = this.eventsController.getState().events;
     const event = spotlightEvent(events);
     const pending = event && isPending(event) ? event : null;
-    // The Daily only invites: once today's event is played (solved or out of attempts) the
-    // banner goes away. The Arena card stays, as a recap of today's result. A finished Daily
-    // has no top banner; its final report carries the invitation instead (#252).
+    // The Daily speaks about the event only once it is over, in its final report, and only
+    // while today's event is still to play (#266: no banner on top of a Daily still to play,
+    // it came before the game the app is opened for). The Arena card stays, as a recap.
     const slots: Array<[string, EventEntry, EventCard | null, string]> = [
-      ["#event-spotlight-slot", "daily_banner", pending, renderEventSpotlight(pending, "daily_banner")],
       ["#daily-next-event-slot", "daily_result", pending, renderEventNext(pending)],
       ["#arena-event-slot", "arena_card", event, renderEventSpotlight(event, "arena_card")],
     ];

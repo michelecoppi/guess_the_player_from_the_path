@@ -164,26 +164,27 @@ event attempts, purchases and API contracts are unchanged.
 **Current state** ([#248](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/248)).
 A running event is announced outside its own page, from `webapp/src/features/events/spotlight.ts`:
 
-- **Daily banner** at the top of the Daily (under the recap banner): event name, time left
-  (days, or hours to the Italian midnight on the last day), today's points, first-solver
-  bonus while available, podium trophies, and the player's state for today. The whole
-  banner is one button that opens that event directly.
-- **Arena hub card**, the same component on top of the Arena modes.
-- **"Up next" in the Daily's final report** (#252): once the Daily is over (won or lost),
-  the top banner is no longer rendered and the final report carries a compact invitation
-  instead (name, time left, today's points, arrow button), only while the event is still to
-  play today.
+- **Arena hub card** on top of the Arena modes: event name, time left (days, or hours to
+  the Italian midnight on the last day), today's points, first-solver bonus while available,
+  podium trophies, and the player's state for today. The whole card is one button that opens
+  that event directly.
+- **"Up next" in the Daily's final report** (#252): once the Daily is over (won or lost), the
+  final report carries a compact invitation (name, time left, today's points, arrow button),
+  only while the event is still to play today. This is the only place the Daily mentions the
+  event: a Daily still to play shows nothing about it (#266; the top banner of #248 was
+  removed so that the event never comes before the game the app opens on).
 - **Dot on the Arena tab** of the nav bar while an event is available and not yet finished
   today (`progress.finished`); its accessible name says so. It clears as soon as the guess
   response updates the events state.
 
 An event still to play is preferred. Once today's round is played (solved or out of
-attempts) the Daily banner disappears; the Arena card stays as a quiet recap
+attempts) the Daily invitation and the dot disappear; the Arena card stays as a quiet recap
 ("Solved today · +N pts" or "No attempts left"). The events are loaded once, in the
 background, after the first Daily load (`App.init` → `whenFirstLoaded`), with the existing
 `/app/api/arena` `mode: "events"` call; no new endpoint or field. No event, a loading or a
-failed request shows nothing. Opening the Events page sends `entry` (`daily_banner`,
-`daily_result`, `arena_card`, `arena_list`) so the server records `event_viewed`; the background load
+failed request shows nothing. Opening the Events page sends `entry` (`daily_result`,
+`arena_card`, `arena_list`; `daily_banner` is still accepted from clients on the old page) so
+the server records `event_viewed`; the background load
 sends none and is never counted ([product-analytics.md](product-analytics.md)).
 
 ## Monthly recap ("Wrapped")

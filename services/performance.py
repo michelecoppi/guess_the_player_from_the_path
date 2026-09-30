@@ -337,7 +337,8 @@ def startup_phases() -> Iterator[dict[str, Any]]:
     initialisation and webhook registration). The yielded dict takes extra fields.
 
     `kernel` tells which Cloud Run execution environment served the start (#264): gen1 runs
-    in gVisor, which reports `4.4.0`; gen2 reports a real Linux kernel. Without it a cold
+    in gVisor, whose release ends in `-gvisor` (`4.19.0-gvisor` in production); gen2 reports
+    a real Linux kernel. Without it a cold
     start comparison between the two could not tell which one it was measuring."""
     details: dict[str, Any] = {"before_lifespan_ms": process_age_ms(), "kernel": platform.release() or None}
     started = perf_counter()
