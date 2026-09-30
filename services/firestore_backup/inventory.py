@@ -71,6 +71,11 @@ INVENTORY: tuple[CollectionPolicy, ...] = (
         "the code, so restoring them is harmless. Missing from the pre-#50 backup.",
     ),
     CollectionPolicy(
+        "inline_cards", DURABLE, True, False, (),
+        "Tally of each inline challenge card sent into a chat (#240): counts and the inline message "
+        "id to rewrite its caption, no user ids. Losing it only resets the counters under old cards.",
+    ),
+    CollectionPolicy(
         "referrals", DURABLE, True, True, (),
         "Referral attribution and qualification ledger; the invite code is consumed at "
         "registration, so attribution cannot be recomputed. Missing from the pre-#50 backup.",

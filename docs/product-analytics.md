@@ -212,6 +212,7 @@ another. It is derived from the `/start` argument by
 | `ref_…` (a referral link, including the one at the end of every shared result, #150) | `referral` |
 | `duel_…` | `duel` |
 | `lega_…` | `league` |
+| `inl_…` (the **Guess** button of an inline challenge card, #240) or `inline` (the "open the bot" button of the inline list) | `inline` |
 | `src_<source>` with `<source>` in `CAMPAIGN_SOURCES` (`tiktok`, `instagram`, `youtube`, `reddit`, `x`, `threads`, `facebook`, `telegram_group`, `telegram_channel`, `creator`, `producthunt`, `directory`, `qr`; case-insensitive) | `<source>` |
 | anything else, including an unknown `src_` value | `other` |
 

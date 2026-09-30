@@ -145,6 +145,38 @@ Story progress in the same transaction. The cosmetics live in
 [`data/shop.json`](../data/shop.json); [`scripts/preview_webapp.py`](../scripts/preview_webapp.py)
 offers a local, Firestore-free preview of all four new items.
 
+## Inline challenge
+
+**Current state** ([#240](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/240)).
+Typing `@<bot>` in any chat lists up to three cards (`handlers/inline_handler.py::inline_query`).
+A card is a photo of a career path with a **Guess** button; the rules live in
+[`services/inline_challenge.py`](../services/inline_challenge.py).
+
+- **Material.** Only what Training may show (`practice_content.pick`): reserved
+  `practice_only` players and past Dailies. Today's and future Dailies have no code, so no link
+  or image can open them (`key_for` only tries the reserved pool and days up to yesterday).
+- **Opaque codes.** The image (`GET /inline/card/{code}.jpg`, public because Telegram downloads
+  it) and the button (`t.me/<bot>?start=inl_<code>[_<card>]`) carry a 12-character HMAC of the
+  challenge key, derived from `BOT_TOKEN`, never the player id. The code is mapped back by trying
+  the possible keys in memory.
+- **Playing.** The button opens `/start inl_…` (`start_handler`), which registers newcomers and
+  opens a chat Training session on that exact challenge
+  (`training_handler.play_inline_card`); acquisition channel `inline`.
+- **Sender register and daily cap.** `chosen_inline_result` records the sent key on the sender
+  (`inline_sent`, last 300) so the next list avoids it, and counts `inline_count` against
+  `inline_daily_limit` (`data/config.json`) for `inline_day`. When the cap is reached the list is
+  replaced by a "come back tomorrow" button. Telegram does not say which chat a card went to, so
+  there is no per-chat check.
+- **Tally.** `chosen_inline_result` also creates `inline_cards/{card}` and rewrites the button
+  with the card id. When a Training session opened from that card ends (solved, last wrong
+  attempt, or reveal) `inline_handler.report_card_result` counts it once per player
+  (`users.inline_played`) and rewrites the card caption with the tally. Cards hold no user ids.
+
+**Operator setup.** Inline mode and inline feedback must be enabled on BotFather (`/setinline`
+with a placeholder, `/setinlinefeedback` at 100%). Without feedback the cards still work, but
+without the sender register, the daily cap and the tally. `BOT_USERNAME` and `PUBLIC_BASE_URL`
+are required; without them the list is empty.
+
 ## Group rounds
 
 **Current state.** Chat only, in Telegram groups: `/round`, `/standings` and `/guess` in a

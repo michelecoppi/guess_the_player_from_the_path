@@ -9,7 +9,9 @@ from telegram import MenuButtonWebApp, WebAppInfo
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
+    ChosenInlineResultHandler,
     CommandHandler,
+    InlineQueryHandler,
     MessageHandler,
     PreCheckoutQueryHandler,
     filters,
@@ -42,6 +44,7 @@ from handlers.events_handler import handle_event_navigation
 from handlers.guess_handler import CARD_PREFIX, free_text_guess, share_card_callback
 from handlers.help_handler import help
 from handlers.hint_handler import hint_callback
+from handlers.inline_handler import chosen_inline_result, inline_query
 from handlers.keyboards import bot_commands
 from handlers.language_handler import language, language_callback
 from handlers.league_handler import league_callback
@@ -124,6 +127,9 @@ def register_handlers(application):
     # messaggio di testo, quindi non passa mai dal gestore dei tentativi qui sotto.
     application.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback))
+    # Sfida inline (#240): `@<bot>` in qualsiasi chat, e la card scelta che parte.
+    application.add_handler(InlineQueryHandler(inline_query))
+    application.add_handler(ChosenInlineResultHandler(chosen_inline_result))
     # Ultimo di proposito: in chat privata un messaggio di testo che non e' un comando vale
     # come tentativo sulla sfida del giorno (non serve piu' scrivere /guess).
     application.add_handler(

@@ -25,7 +25,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 
 | Path | Document id | Purpose |
 | --- | --- | --- |
-| `users/{telegram_id}` | Telegram user id | Profile, points (total/monthly), day counters anchored to `last_played_day`, streaks, trophies, cosmetics (`owned`, `earned`, `equipped`, looks), sessions (`archive_day`, `training_key`, `event_key`, `app_duel`), duel ledger, `shop_checkout` reservation |
+| `users/{telegram_id}` | Telegram user id | Profile, points (total/monthly), day counters anchored to `last_played_day`, streaks, trophies, cosmetics (`owned`, `earned`, `equipped`, looks), sessions (`archive_day`, `training_key` with its originating `training_card`, `event_key`, `app_duel`), inline challenge register (`inline_sent`, `inline_day`, `inline_count`, `inline_played`), duel ledger, `shop_checkout` reservation |
 | `users/{id}/history/{day}` | ISO day | One result per finished daily challenge (calendar) |
 | `users/{id}/archive/{day}` | ISO day | Archive replay results |
 | `daily_path/{day}` | ISO day | Daily challenge content, accepted answers, difficulty, `difficulty_prediction` snapshot, `planner_audit` (planned days), first-solver bonus state, `players_count`/`solved_count`/`solved_attempts_total`/`solved_hints_total` ([difficolta.md §6](difficolta.md)) |
@@ -36,6 +36,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `group_rounds/{chat_id}` and `.../players/{telegram_id}` | chat id / user id | Current group round and in-group standings |
 | `purchases/{telegram_payment_charge_id}` | Telegram charge id | Stars purchase ledger; idempotent delivery and refunds |
 | `app_duels/{code}` | random code | Arena duels (two seats, five puzzles, `expires_at`) |
+| `inline_cards/{card}` | random 10-hex id | One inline challenge card sent into a chat ([game-modes.md](game-modes.md#inline-challenge)): opaque `code`, sender's `lang`, `inline_message_id`, `solved`/`failed` counts, `expires_at`. No user ids |
 | `referrals/{key}` | SHA-256 of a user id (`domains/referrals/service.py::referral_key`) | Referral attribution (`inviter_id`) and qualification |
 | `admin_settings/dataset_overrides` | fixed | Players blocked with `/admin_block` |
 | `admin_settings/daily_planner` | fixed | Players excluded from the Daily planner: `excluded.{player_id}` = `reason`, `until` (ISO day or null), `excluded_at` ([game-modes.md](game-modes.md#daily-planner)) |
@@ -51,7 +52,7 @@ inventory in [backup-recovery.md § 3](backup-recovery.md#3-collection-inventory
 collection must be classified there (`services/firestore_backup/inventory.py`).
 
 Composite indexes are in [`firestore.indexes.json`](../firestore.indexes.json).
-Optional TTL policies (`app_duels.expires_at`, `work_receipts.delete_after`) are
+Optional TTL policies (`app_duels.expires_at`, `inline_cards.expires_at`, `work_receipts.delete_after`) are
 described as optional in the code/docs and are not managed from this repository.
 
 ## Concurrency assumptions

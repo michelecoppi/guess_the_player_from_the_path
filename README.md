@@ -327,6 +327,20 @@ meccanismo dei contatori giornalieri con `last_played_day`. Il round lo vince un
 sola anche se in due rispondono nello stesso istante: è la stessa transazione del bonus del
 primo.
 
+### Sfida inline: un percorso in qualsiasi chat
+
+In qualunque chat (un gruppo, una chat privata con un amico) si scrive `@<bot>` e compaiono
+alcune card con un percorso misterioso. Quella scelta finisce nella chat con il bottone
+**Indovina**: chi lo preme apre il bot, e se non c'era ancora viene registrato, direttamente su
+quel calciatore, con i cinque tentativi dell'allenamento. Sotto la card compare il conto di chi
+l'ha indovinato e di chi no, senza mai la risposta.
+
+Le card usano solo materiale che non spoilera niente: i giocatori riservati all'allenamento e
+le sfide già passate. La sfida di oggi non ci finisce mai. Ognuno può lanciarne un numero
+limitato al giorno (`inline_daily_limit` in `data/config.json`), e il bot evita di riproporre a
+chi le lancia i percorsi che ha già mandato. I dettagli sono in
+[docs/game-modes.md](docs/game-modes.md#inline-challenge).
+
 ### Leghe private
 
 Una classifica fra amici (`handlers/league_handler.py`): `/league_create` genera un codice di sei
