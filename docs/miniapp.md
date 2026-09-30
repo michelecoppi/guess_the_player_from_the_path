@@ -143,6 +143,35 @@ appears first. Shop keeps the Discover introduction and uses a shorter header an
 filters on mobile, especially in Catalogue. These are presentation changes; gameplay,
 event attempts, purchases and API contracts are unchanged.
 
+## Monthly recap ("Wrapped")
+
+**Current state** ([#245](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/245)).
+An animated, story-style summary of a closed month, in `webapp/src/features/recap/`:
+
+- **Where.** A banner at the top of the Daily tab from the 1st to the 7th of the month, until the
+  recap is watched on that device (`localStorage` key `gtp.recap.seen`), and a permanent
+  "Your recaps" entry in the Profile. The banner calls the API only in that week; `?recap` in
+  the URL forces it for local demos.
+- **What.** `POST /app/api/recap` (`services/monthly_recap.py`) returns, for one of the last three
+  closed months: days played on a calendar, players guessed and the attempts distribution, the
+  longest streak, the "gem" (the solved Daily with the lowest solve rate, with its career), the
+  lucky club (most frequent club among the guessed careers), a play-style title, "better than
+  X%" of the month's players and the first-to-answer count. Parts without data are omitted and
+  their slide is skipped.
+- **Threshold.** Fewer than `MIN_PLAYED` (8) days played: no recap, the entry explains why.
+- **Cost.** Computed on first open from the Daily history and the solved `daily_path` documents,
+  then cached on the user (`recaps.{month}`) once the month's closure exists.
+- **Share.** `POST /app/api/recap/share` prepares the server-drawn card
+  (`monthly_recap.recap_card_png`) for `WebApp.shareMessage`, like the Daily card; without a
+  storage chat the page falls back to the classic share link.
+- **Cosmetics.** The story wears the equipped theme: the overlay maps the same `--skin-*`
+  tokens as the app shell (`.recap-overlay` in `styles/recap.css`), with success/warning/danger
+  colours still product-owned. The final card, in the story and in the shared image
+  (`path_image.render_recap_card`), wears the equipped card cosmetic (paper, ink, glow and
+  finish), title and shirt number, like the Daily result card (`webapp_api.recap_look`).
+- **Motion.** Tap right/left or arrow keys to move, hold (or Space) to pause, Escape to close;
+  `prefers-reduced-motion` turns the animations off.
+
 ## Appearance (summary)
 
 The Mini App is structurally dark-only: product-owned tokens define structure, readability and

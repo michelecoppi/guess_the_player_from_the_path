@@ -339,6 +339,15 @@ limitato al giorno (`inline_daily_limit` in `data/config.json`), e il bot evita 
 chi le lancia i percorsi che ha già mandato. I dettagli sono in
 [docs/game-modes.md](docs/game-modes.md#inline-challenge).
 
+### Il recap del mese
+
+Nei primi sette giorni del mese la mini app propone, in cima alla Daily, il recap del mese appena
+chiuso: una storia animata con le giornate giocate, i calciatori indovinati, la striscia più
+lunga, la "perla" (la sfida più difficile risolta), la squadra portafortuna, uno stile di gioco e
+il confronto con gli altri giocatori, e alla fine una card da condividere nei gruppi. Serve aver
+giocato almeno 8 giornate; i recap degli ultimi mesi restano nel Profilo. I dettagli sono in
+[docs/miniapp.md](docs/miniapp.md#monthly-recap-wrapped).
+
 ### Leghe private
 
 Una classifica fra amici (`handlers/league_handler.py`): `/league_create` genera un codice di sei

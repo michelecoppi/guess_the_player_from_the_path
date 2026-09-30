@@ -1,6 +1,7 @@
 import { getResolvedAppearance } from "@/appearance";
 import { resultCardAttributes } from "@/appearance/surfaces";
 import { DEFAULT_SQUARE_SYMBOLS } from "@/features/daily/controller";
+import { bindRecapEntries, renderRecapBannerSlot } from "@/features/recap/entry";
 import {
   renderCareerPath,
   renderGuessInput,
@@ -176,6 +177,7 @@ export function renderDailyPage(state?: DailyState): string {
   }).join("");
   const hints = today.hints;
   return `<article class="daily-page" data-state="${state.status}">
+    ${renderRecapBannerSlot()}
     <header class="daily-heading" id="daily-challenge-card">
       <div class="edition"><span class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
       <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>
@@ -210,6 +212,7 @@ export function attachDailyEventListeners(
   controller: DailyController,
 ): void {
   answerDockObserver?.disconnect();
+  bindRecapEntries(container);
   container.querySelector<HTMLButtonElement>("#daily-intro-dismiss")?.addEventListener("click", () => {
     controller.dismissIntro();
     container.querySelector<HTMLInputElement>("#answer")?.focus();

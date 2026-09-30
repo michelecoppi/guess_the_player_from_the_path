@@ -25,8 +25,8 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 
 | Path | Document id | Purpose |
 | --- | --- | --- |
-| `users/{telegram_id}` | Telegram user id | Profile, points (total/monthly), day counters anchored to `last_played_day`, streaks, trophies, cosmetics (`owned`, `earned`, `equipped`, looks), sessions (`archive_day`, `training_key` with its originating `training_card`, `event_key`, `app_duel`), inline challenge register (`inline_sent`, `inline_day`, `inline_count`, `inline_played`), duel ledger, `shop_checkout` reservation |
-| `users/{id}/history/{day}` | ISO day | One result per finished daily challenge (calendar) |
+| `users/{telegram_id}` | Telegram user id | Profile, points (total/monthly), day counters anchored to `last_played_day`, streaks, trophies, cosmetics (`owned`, `earned`, `equipped`, looks), sessions (`archive_day`, `training_key` with its originating `training_card`, `event_key`, `app_duel`), inline challenge register (`inline_sent`, `inline_day`, `inline_count`, `inline_played`), monthly recap (`monthly_totals.{YYYY-MM}` points saved at the monthly reset, `recaps.{YYYY-MM}` cached recap), duel ledger, `shop_checkout` reservation |
+| `users/{id}/history/{day}` | ISO day | One result per finished daily challenge (calendar): `solved`, `attempts`, `hints`, `first` (first-solver bonus, from #245) |
 | `users/{id}/archive/{day}` | ISO day | Archive replay results |
 | `daily_path/{day}` | ISO day | Daily challenge content, accepted answers, difficulty, `difficulty_prediction` snapshot, `planner_audit` (planned days), first-solver bonus state, `players_count`/`solved_count`/`solved_attempts_total`/`solved_hints_total` ([difficolta.md §6](difficolta.md)) |
 | `events/{code}` | event code | Event definition copied from its template (texts, type, `rules`, `rewards`) and per-day `daily_data` ([event-templates.md](event-templates.md)) |
@@ -45,7 +45,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `work_receipts/{key}` | e.g. `telegram-{update_id}`, `notify-{day}-{user}` | Deduplication/outcome of background work (`delete_after` for optional TTL) |
 | `update_locks/{user_id}` | user id | Per-user serialization of updates across replicas |
 | `daily_jobs/{day}` | ISO day | Immutable nightly broadcast payload and `sent_total` |
-| `monthly_closures/{YYYY-MM}` | month | Frozen podium before monthly reset |
+| `monthly_closures/{YYYY-MM}` | month | Frozen podium before monthly reset, plus `points_distribution` (anonymous sorted monthly points, read by the monthly recap) |
 
 Backup coverage of each collection (durable, reconstructable or ephemeral, and why) is the
 inventory in [backup-recovery.md § 3](backup-recovery.md#3-collection-inventory); a new

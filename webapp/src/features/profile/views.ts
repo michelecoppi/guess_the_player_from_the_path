@@ -6,6 +6,7 @@ import { renderLoadingState } from "@/components/LoadingState";
 import { renderErrorState } from "@/components/ErrorState";
 import { icon } from "@/components/Icon";
 import { escapeHtml } from "@/utils/format";
+import { renderRecapProfileEntry } from "@/features/recap/entry";
 import { histogram, cabinetCounts } from "@/utils/game";
 import { identityAppearance } from "@/appearance";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
@@ -446,6 +447,8 @@ export function renderProfileView(state: ProfileState): string {
           </span>
           ${icon("arrow")}
         </button>
+
+        ${renderRecapProfileEntry()}
 
         <button type="button" class="mode-entry referral-entry mt-2" data-tab="referral">
           <span class="mode-icon">${icon("referral")}</span>

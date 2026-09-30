@@ -52,8 +52,8 @@ def firebase(monkeypatch):
     monkeypatch.setattr(fs, "register_daily_outcome", outcome)
     monkeypatch.setattr(
         fs, "record_daily_history",
-        lambda uid, day, solved, attempts, hints=0: calls["history"].append(
-            {"day": day, "solved": solved, "attempts": attempts, "hints": hints}
+        lambda uid, day, solved, attempts, hints=0, first=False: calls["history"].append(
+            {"day": day, "solved": solved, "attempts": attempts, "hints": hints, "first": first}
         ),
     )
     monkeypatch.setattr(fs, "add_points_to_leagues", lambda uid, codes, points, name=None: calls["leagues"].append(points))
@@ -176,7 +176,14 @@ def test_the_day_is_recorded_only_when_it_closes(firebase):
 
     firebase.state["attempt"] = {"ok": True, "attempts_used": 3, "attempts_left": 0, "hints_used": 1}
     play("maldini")
-    assert firebase.calls["history"] == [{"day": DAY, "solved": False, "attempts": 3, "hints": 1}]
+    assert firebase.calls["history"] == [{"day": DAY, "solved": False, "attempts": 3, "hints": 1, "first": False}]
+
+
+def test_the_first_solver_is_marked_in_the_history(firebase):
+    """Il recap mensile (#245) conta le volte in cui si e' stati i primi a rispondere."""
+    play()
+    assert firebase.calls["history"][-1]["solved"] is True
+    assert firebase.calls["history"][-1]["first"] is True
 
 
 def test_the_attempt_count_reaches_the_distribution(firebase):

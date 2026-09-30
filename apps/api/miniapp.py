@@ -5,6 +5,7 @@ live in the domains (docs/architecture.md). Moved verbatim from bot.py by #110.
 """
 import base64
 import logging
+import re
 
 from fastapi import APIRouter, Body, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
@@ -20,6 +21,7 @@ from services import (
     feature_flags,
     firebase_service,
     game,
+    monthly_recap,
     observability,
     performance,
     trophies,
@@ -560,6 +562,58 @@ def webapp_share_sent(payload: dict = Body(default={})):
     analytics.capture(analytics.Event.RESULT_SHARED, user_id=user_id,
                       properties={"surface": "miniapp", "method": "share_message"})
     return {"status": "ok"}
+
+
+MONTH = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+
+
+def _month(payload):
+    """Il mese chiesto dal recap (#245): uno degli ultimi mesi chiusi, il precedente se manca."""
+    value = _text(payload, "month", limit=7)
+    if value is None:
+        return monthly_recap.previous_month()
+    if not MONTH.fullmatch(value) or value not in monthly_recap.recent_months():
+        raise HTTPException(status_code=422, detail="month non valido")
+    return value
+
+
+@router.post("/app/api/recap")
+def webapp_recap(payload: dict = Body(default={})):
+    """Il recap mensile animato (#245). Alla prima apertura del mese costa lo storico e le
+    sfide risolte; poi e' salvato sul documento utente e costa la lettura che si fa comunque."""
+    user_id, user_data = _webapp_user(payload, cost=4)
+    month = _month(payload)
+    recap = monthly_recap.recap_for(user_id, user_data, month)
+    return {"recap": recap, "months": monthly_recap.recent_months(),
+            "name": (user_data or {}).get("first_name") or "",
+            "look": webapp_api.recap_look(user_data, _webapp_language(user_data))}
+
+
+@router.post("/app/api/recap/share")
+async def webapp_recap_share(request: Request, payload: dict = Body(default={})):
+    """La card finale del recap come messaggio per `WebApp.shareMessage`, come la figurina.
+
+    503 `share_unavailable` se manca la chat di appoggio o Telegram chiede di rallentare."""
+    user_id, user_data = await run_in_threadpool(_webapp_user, payload, 10)
+    if not config.SHARE_STORAGE_CHAT_ID:
+        raise HTTPException(status_code=503, detail="share_unavailable")
+    month = _month(payload)
+    recap = await run_in_threadpool(monthly_recap.recap_for, user_id, user_data, month)
+    if not recap or not recap.get("available"):
+        raise HTTPException(status_code=409, detail="recap_unavailable")
+    lang = _webapp_language(user_data)
+    share = await run_in_threadpool(webapp_api.recap_share, user_id, user_data, lang, recap)
+    bot = telegram(request).application.bot
+    try:
+        prepared = await share_message.prepare(bot, user_id, config.SHARE_STORAGE_CHAT_ID, share, lang)
+    except RetryAfter as e:
+        retry = int(e.retry_after.total_seconds()) if hasattr(e.retry_after, "total_seconds") else int(e.retry_after)
+        raise HTTPException(status_code=503, detail="share_unavailable",
+                            headers={"Retry-After": str(max(retry, 1))}) from None
+    except TelegramError as e:
+        observability.log_event("recap.share.failed", logging.ERROR, exc_info=e)
+        raise HTTPException(status_code=503, detail="share_unavailable") from None
+    return {"id": prepared["id"], "expires_at": prepared["expires_at"]}
 
 
 @router.post("/app/api/trophies/pin")

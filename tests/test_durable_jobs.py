@@ -48,7 +48,12 @@ class Ref:
         # salverebbe l'oggetto della trasformazione al posto del numero.
         current = self.db.data[self.path]
         for key, value in copy.deepcopy(data).items():
-            current[key] = current.get(key, 0) + value.value if isinstance(value, Increment) else value
+            # "a.b" scrive la chiave b dentro la mappa a, come fa Firestore.
+            *parents, leaf = key.split(".")
+            target = current
+            for parent in parents:
+                target = target.setdefault(parent, {})
+            target[leaf] = target.get(leaf, 0) + value.value if isinstance(value, Increment) else value
 
     def delete(self):
         self.db.data.pop(self.path, None)
@@ -116,6 +121,7 @@ def test_monthly_reset_retry_preserves_new_month_points(db):
     closure = {"closed_month": "2026-08", "new_month": "2026-09"}
     assert monthly_closure.reset_user(user, closure) == 1
     assert user.get().to_dict()["monthly_points"] == 10
+    assert user.get().to_dict()["monthly_totals"] == {"2026-08": 100}
     user.update({"monthly_points": 15, "monthly_earned": {"2026-09": 15}})
     assert monthly_closure.reset_user(user, closure) == 0
     assert user.get().to_dict()["monthly_points"] == 15
@@ -129,6 +135,7 @@ def test_monthly_podium_snapshot_survives_partial_reset(db, monkeypatch):
     now = datetime(2026, 9, 1)
     initial = monthly_closure.prepare(now)
     assert [w["username"] for w in initial["winners"]] == ["Bruno", "Anna"]
+    assert initial["points_distribution"] == [20, 21]
     monthly_closure.reset_user(db.collection("users").document("2"), initial)
     assert monthly_closure.prepare(now) == initial
 

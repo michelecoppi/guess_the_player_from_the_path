@@ -1,6 +1,7 @@
 import "./styles/foundation.css";
 import "./styles/components.css";
 import "./styles/features.css";
+import "./styles/recap.css";
 import "./styles/feature-overrides.css";
 import { bootstrap } from "./app/bootstrap";
 

@@ -136,7 +136,8 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
         user_id, (user_data or {}).get("leagues", []), awarded, name=first_name
     )
     firebase_service.record_daily_history(
-        user_id, day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used
+        user_id, day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used,
+        first=bool(bonus),
     )
 
     analytics.capture(analytics.Event.DAILY_GUESS_SUBMITTED, user_id=user_id, properties={
