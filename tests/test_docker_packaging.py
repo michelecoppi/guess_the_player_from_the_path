@@ -34,6 +34,19 @@ def test_dockerfile_multi_stage_structure():
     assert 'CMD ["python", "bot.py"]' in content
 
 
+def test_dockerfile_precompiles_bytecode_after_copying_the_code():
+    """#258: every cold start used to recompile the project, because an instance starts
+    with an empty filesystem. The bytecode must be built into the image, after the last
+    COPY of the code and before dropping root."""
+    content = (ROOT_DIR / "Dockerfile").read_text(encoding="utf-8")
+    compile_at = content.index("python -m compileall")
+    assert content.rindex("COPY ") < compile_at < content.index("USER app")
+    assert "unchecked-hash" in content
+    # Ownership is set while copying, not by a recursive chown that duplicates the layer.
+    instructions = "\n".join(line for line in content.splitlines() if not line.lstrip().startswith("#"))
+    assert "chown -R" not in instructions and "COPY --chown=app:app . ." in instructions
+
+
 def test_dockerignore_excludes_transient_artifacts():
     """Verify that .dockerignore excludes node_modules, local dist, and sensitive files."""
     dockerignore_path = ROOT_DIR / ".dockerignore"

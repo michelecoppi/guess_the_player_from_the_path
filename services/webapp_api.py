@@ -12,6 +12,9 @@ strumenti di sviluppo puo' leggere quello che gli mandiamo.
 Chi sia l'utente lo decide **solo** la firma di initData (services/webapp_auth.py), mai il
 client: nessuna di queste funzioni riceve un id da fuori.
 """
+import contextvars
+from concurrent.futures import ThreadPoolExecutor
+
 from domains.referrals import service as referrals
 from domains.shop import service as shop
 from services import daily_result, feature_flags, firebase_service, game, trophies
@@ -70,23 +73,42 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
         # prima schermata deve gia' essere quella giusta.
         "trophies": {"pinned": trophies.showcase(user, lang), "all": trophies.cabinet(user, lang),
                      "max": trophies.MAX_PINNED},
-        "today": _today_summary(user, day_iso, lang),
         "distribution": _distribution(user),
         # Feature flags (#51) risolti per chi guarda: solo booleani, mai regole, liste di
         # utenti/gruppi o percentuali. La pagina li usa per nascondere; decide il server.
         "features": features,
     }
+    # Le letture non dipendono l'una dall'altra: partono tutte insieme e la risposta aspetta
+    # la piu' lenta invece della somma (#260). Prima erano in fila - sfida, due classifiche,
+    # poi documento e classifica di ogni lega - e Firestore era oltre meta' della richiesta.
+    challenge = _read(firebase_service.get_daily_path, day_iso)
     # Wrong guesses and hints do not change standings; refresh only game state.
     if include_social:
         # Classifica spenta: lista vuota, stessa forma per i client gia' in giro. Punti e
         # posizioni non si toccano, semplicemente non si leggono.
         leaderboard_on = features[Flag.LEADERBOARD.value]
-        profile["leaderboard"] = _leaderboard(user_id) if leaderboard_on else []
+        top = _read(firebase_service.get_top_users, field="points_totali", limit=LEADERBOARD_SIZE) if leaderboard_on else None
+        monthly = _read(firebase_service.get_top_users, field="monthly_points", limit=LEADERBOARD_SIZE) if leaderboard_on else None
+        leagues = _start_league_reads(user)
+    profile["today"] = _today_summary(user, day_iso, lang, challenge=challenge.result() or {})
+    if include_social:
+        profile["leaderboard"] = _leaderboard(user_id, rows=top.result()) if top else []
         # La mensile e' la prima scheda della Mini App (#256): stessa forma della generale,
         # "points" sono i punti del mese, quelli che la chiusura mensile premia.
-        profile["monthly_leaderboard"] = _leaderboard(user_id, monthly=True) if leaderboard_on else []
-        profile["leagues"] = _leagues(user, user_id)
+        profile["monthly_leaderboard"] = _leaderboard(user_id, monthly=True, rows=monthly.result()) if monthly else []
+        profile["leagues"] = _league_cards(leagues, user_id)
     return profile
+
+
+# Letture del profilo in parallelo (#260). Ogni richiesta ne lancia al massimo 3 + 2 per lega
+# e le aspetta subito, senza lanciarne altre da dentro: il pool non si blocca su se stesso.
+_READS = ThreadPoolExecutor(max_workers=16, thread_name_prefix="profile-reads")
+
+
+def _read(fn, *args, **kwargs):
+    """Avvia una lettura in un thread con il contesto della richiesta, cosi' resta contata
+    sulla richiesta che l'ha fatta (#32)."""
+    return _READS.submit(contextvars.copy_context().run, fn, *args, **kwargs)
 
 
 def _user_summary(user):
@@ -169,7 +191,7 @@ def _distribution(user):
     return [{"attempts": n, "count": int(counters.get(str(n), 0))} for n in range(1, MAX_ATTEMPTS + 1)]
 
 
-def _today_summary(user, day_iso, lang):
+def _today_summary(user, day_iso, lang, challenge=None):
     """La sfida di oggi come la vede questo utente.
 
     `career_path` c'e' perche' la mini app disegna il percorso in HTML invece di ricevere la
@@ -178,7 +200,8 @@ def _today_summary(user, day_iso, lang):
 
     `hints` riporta **solo gli indizi gia' pagati**: quelli non ancora presi non si mandano
     al client, altrimenti basterebbe guardare la risposta di rete per averli gratis."""
-    challenge = firebase_service.get_daily_path(day_iso) or {}
+    if challenge is None:  # chi l'ha gia' letta (build_profile, in parallelo) la passa
+        challenge = firebase_service.get_daily_path(day_iso) or {}
     played_today = normalize_day(user.get("last_played_day")) == day_iso
     solved = bool(played_today and user.get("has_guessed_today"))
     attempts_used = user.get("daily_attempts", 0) if played_today else 0
@@ -209,10 +232,10 @@ def _today_summary(user, day_iso, lang):
     }
 
 
-def _leaderboard(user_id, monthly=False):
+def _leaderboard(user_id, monthly=False, rows=None):
     field = "monthly_points" if monthly else "points_totali"
     score_key = "monthly_points" if monthly else "points"
-    top = firebase_service.get_top_users(field=field, limit=LEADERBOARD_SIZE)
+    top = rows if rows is not None else firebase_service.get_top_users(field=field, limit=LEADERBOARD_SIZE)
     return [
         {
             "position": position,
@@ -226,13 +249,21 @@ def _leaderboard(user_id, monthly=False):
     ]
 
 
-def _leagues(user, user_id):
+def _start_league_reads(user):
+    """Documento e classifica di ogni lega, tutti insieme: sono letture indipendenti (#260)."""
+    return [
+        (code, _read(firebase_service.get_league, code), _read(firebase_service.get_league_leaderboard, code, limit=20))
+        for code in (user.get("leagues") or [])[:MAX_LEAGUES_SHOWN]
+    ]
+
+
+def _league_cards(reads, user_id):
     leagues = []
-    for code in (user.get("leagues") or [])[:MAX_LEAGUES_SHOWN]:
-        league = firebase_service.get_league(code)
+    for code, league_read, members_read in reads:
+        league = league_read.result()
+        members = members_read.result()
         if not league:
             continue
-        members = firebase_service.get_league_leaderboard(code, limit=20)
         position = next(
             (index for index, member in enumerate(members, start=1) if member.get("telegram_id") == user_id),
             None,
@@ -365,7 +396,19 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
     result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"),
                              surface="miniapp")
     if result.get("status") == "correct":
-        result["answer"] = firebase_service.get_display_name_for_day(today)
+        # `play_daily` lo prende dalla sfida che ha appena giocato: niente seconda lettura.
+        result["answer"] = result.get("answer") or firebase_service.get_display_name_for_day(today)
+    elif result.get("status") == "wrong":
+        # La Daily come la vede adesso chi ha sbagliato (#259): la pagina la disegna subito,
+        # invece di chiedere di nuovo il profilo solo per sapere quanti tentativi restano.
+        # Dopo un errore cambiano solo tentativi e indizi, e l'esito li ha appena scritti.
+        result["today"] = _today_summary({
+            **(user_data or {}),
+            "last_played_day": today,
+            "has_guessed_today": False,
+            "daily_attempts": result.get("attempts_used", 0),
+            "daily_hints": result.get("hints_used", 0),
+        }, today, lang)
     return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols, link=referrals.invite_link(user_id))
 
 

@@ -12,17 +12,43 @@ decide come dirlo. Il bot lo traduce in un messaggio Telegram, la mini app in JS
 L'unica cosa che questo modulo sa fare oltre alle regole e' scrivere su Firestore, perche'
 consumare un tentativo e assegnare i punti sono per definizione scritture.
 """
+import contextvars
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 from services import firebase_service
 from services import product_analytics as analytics
-from services.daily_challenge import MAX_ATTEMPTS, get_today_challenge
+from services.daily_challenge import (
+    MAX_ATTEMPTS,
+    bonus_known_taken,
+    get_today_challenge,
+    remember_bonus_taken,
+)
 from services.dates import today_iso
 from services.difficulty import points_for_difficulty
 from services.guess_feedback import build_comparison
 from services.hints import MAX_HINTS, build_hints, points_after_hints
 from services.matching import find_match
 from services.player_pool import get_player_by_id
+
+# Scritture della risposta giusta eseguite in parallelo (#259). Poche e brevi: bastano pochi
+# thread condivisi dal processo.
+_WRITES = ThreadPoolExecutor(max_workers=8, thread_name_prefix="game-writes")
+
+
+def _start(fn, *args, **kwargs):
+    """Avvia una scrittura in un thread, con il contesto della richiesta: le letture e
+    scritture Firestore restano contate sulla richiesta che le ha fatte (#32)."""
+    return _WRITES.submit(contextvars.copy_context().run, fn, *args, **kwargs)
+
+
+def _finish(*futures):
+    """Aspetta tutte le scritture, poi rilancia il primo errore: come in sequenza, nessuna
+    scrittura resta a meta' senza che chi chiama lo sappia."""
+    errors = [future.exception() for future in futures]
+    for error in errors:
+        if error is not None:
+            raise error
 
 
 def hints_available(challenge, lang):
@@ -114,30 +140,44 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
             })
         return result
 
-    firebase_service.register_daily_outcome(
-        day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used
-    )
+    # Le scritture che non dipendono l'una dall'altra partono insieme invece che in fila
+    # (#259): ogni chiamata a Firestore e' un giro di rete, e la risposta giusta ne faceva
+    # una decina in sequenza. Il contatore della giornata non aspetta niente e nessuno lo
+    # aspetta; bonus -> striscia restano in ordine perche' il bonus entra nei punti.
+    outcome = _start(firebase_service.register_daily_outcome,
+                     day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used)
 
     # Gli indizi si pagano solo se si indovina: su una sfida persa non c'era niente da
     # togliere. Il bonus del primo non viene scalato, e' un premio a parte.
     points = points_after_hints(points_for_difficulty(challenge.get("difficulty")), hints_used)
-    bonus = 1 if firebase_service.claim_daily_first_correct(day_iso) else 0
+    # Il bonus si assegna in transazione, ma solo finche' questo processo non sa gia' che e'
+    # stato preso: dopo, la transazione rispondeva sempre di no e costava tre chiamate (#259).
+    bonus = 0
+    try:
+        if not bonus_known_taken(day_iso):
+            bonus = 1 if firebase_service.claim_daily_first_correct(day_iso) else 0
+            remember_bonus_taken(day_iso)
 
-    # I punti della striscia li calcola la transazione che la aggiorna: qui non sappiamo (e
-    # non possiamo sapere senza leggere) a che giorno consecutivo siamo arrivati.
-    registered = firebase_service.register_correct_guess(
-        user_id, points + bonus, bonus, day_iso, attempts=attempt["attempts_used"]
-    ) or {}
+        # I punti della striscia li calcola la transazione che la aggiorna: qui non sappiamo
+        # (e non possiamo sapere senza leggere) a che giorno consecutivo siamo arrivati.
+        registered = firebase_service.register_correct_guess(
+            user_id, points + bonus, bonus, day_iso, attempts=attempt["attempts_used"]
+        ) or {}
+    except BaseException:
+        _finish(outcome)
+        raise
     awarded = registered.get("points_awarded", points + bonus)
 
     # Le leghe private tengono il loro punteggio: i codici sono gia' sul documento utente,
-    # quindi non serve nessuna query per sapere dove sommarli.
-    firebase_service.add_points_to_leagues(
-        user_id, (user_data or {}).get("leagues", []), awarded, name=first_name
-    )
-    firebase_service.record_daily_history(
-        user_id, day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used,
-        first=bool(bonus),
+    # quindi non serve nessuna query per sapere dove sommarli. Leghe e storico sono
+    # documenti diversi: vanno insieme.
+    _finish(
+        outcome,
+        _start(firebase_service.add_points_to_leagues,
+               user_id, (user_data or {}).get("leagues", []), awarded, name=first_name),
+        _start(firebase_service.record_daily_history,
+               user_id, day_iso, solved=True, attempts=attempt["attempts_used"], hints=hints_used,
+               first=bool(bonus)),
     )
 
     analytics.capture(analytics.Event.DAILY_GUESS_SUBMITTED, user_id=user_id, properties={
@@ -165,6 +205,9 @@ def play_daily(user_id, user_data, answer, first_name=None, day_iso=None, challe
         "bonus": bonus,
         "streak": registered.get("current_streak", 0),
         "streak_bonus": registered.get("streak_bonus", 0),
+        # Chi ha indovinato la conosce gia': la sfida e' in mano, rileggerla per il nome
+        # costava una lettura in piu' (#259).
+        "answer": firebase_service.display_name(challenge),
     }
 
 
@@ -200,7 +243,7 @@ def play_archive(user_id, day_iso, answer, max_attempts):
         "comparison": build_comparison(answer, challenge.get("player_id")),
     }
     if attempt["attempts_left"] == 0:
-        result["answer"] = firebase_service.get_display_name_for_day(day_iso) or "?"
+        result["answer"] = firebase_service.display_name(challenge) or "?"
     return result
 
 

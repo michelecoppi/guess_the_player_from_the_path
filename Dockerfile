@@ -31,15 +31,24 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-
-# Copia solo gli asset compilati del frontend dallo stage di build
-COPY --from=frontend-builder /build/webapp/dist ./webapp/dist
-
 # Il processo non ha niente da scrivere sul filesystem: il dataset si legge, le immagini
 # si generano in memoria e lo stato sta su Firestore. Girare come root non serve a niente,
 # e toglierlo limita cosa puo' fare chi riuscisse a eseguire codice qui dentro.
-RUN useradd --create-home --uid 1001 app && chown -R app:app /app
+# L'utente nasce prima della copia: `COPY --chown` assegna i file nello stesso layer,
+# mentre un `chown -R` dopo li riscriveva tutti in un layer in piu' (#258).
+RUN useradd --create-home --uid 1001 app
+
+COPY --chown=app:app . .
+
+# Copia solo gli asset compilati del frontend dallo stage di build
+COPY --from=frontend-builder --chown=app:app /build/webapp/dist ./webapp/dist
+
+# Bytecode compilato qui e non a ogni avvio (#258): il filesystem di un'istanza Cloud Run
+# nasce vuoto, quindi senza questi .pyc ogni cold start ricompilava tutto il codice del
+# progetto prima di servire la prima richiesta. `unchecked-hash`: l'immagine e' immutabile,
+# Python usa il .pyc senza controllare il sorgente. Le dipendenze li hanno gia' da pip.
+RUN python -m compileall -q -j 0 --invalidation-mode unchecked-hash \
+        -x '(^|/)(scripts|admin_pages|webapp)/' .
 USER app
 
 EXPOSE 8000

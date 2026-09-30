@@ -225,6 +225,7 @@ from services.repos.challenges import claim_daily_first_correct as claim_daily_f
 from services.repos.challenges import count_day_winners as count_day_winners
 from services.repos.challenges import daily_path_ref as daily_path_ref
 from services.repos.challenges import delete_daily_path as delete_daily_path
+from services.repos.challenges import display_name as display_name
 from services.repos.challenges import get_daily_path as get_daily_path
 from services.repos.challenges import get_daily_paths_range as get_daily_paths_range
 from services.repos.challenges import get_daily_stats as get_daily_stats

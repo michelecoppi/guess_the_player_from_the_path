@@ -98,11 +98,16 @@ def get_daily_stats(day_iso):
 
 def get_display_name_for_day(day_iso):
     from services import firebase_service as fs
-    data = fs.get_daily_path(day_iso)
-    if not data:
+    return display_name(fs.get_daily_path(day_iso))
+
+
+def display_name(challenge):
+    """Il nome da mostrare come soluzione, da una sfida gia' letta: chi ce l'ha in mano non
+    deve rileggere il documento solo per questo (#259)."""
+    if not challenge:
         return None
 
-    solutions = data.get("correct_answers", [])
+    solutions = challenge.get("correct_answers", [])
     full_names = [s for s in solutions if " " in s]
     if full_names:
         return full_names[0].title()
