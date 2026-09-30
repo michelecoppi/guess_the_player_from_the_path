@@ -132,8 +132,9 @@ export class ArenaController {
     }
   }
 
+  /** Stored without a re-render, which would move the caret to the start (#250). */
   public setDraftAnswer(value: string): void {
-    this.updateState({ draftAnswer: value });
+    this.state.draftAnswer = value;
   }
 
   public clearNotice(): void {

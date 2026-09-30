@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#250](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/250) | Event answer box shaped like the Daily; typed answers no longer reversed |
 | [#239](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/239) | Expand the Training pool to at least 450 `practice_only` players |
 | [#240](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/240) | Inline challenge: send a mystery career path into any chat |
 | [#174](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/174) | Serialize production deploys and deploy only the `main` tip |

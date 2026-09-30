@@ -602,8 +602,10 @@ test("19. Authoritative attempts: tied to canonical EVENT_MAX_ATTEMPTS = 3 and n
   controller.select("champions_cup");
 
   const html = renderEventsPage(controller);
-  // 3 - 1 = 2 attempts left
-  assert.match(html, /Tentativi rimasti:\s*2|Attempts left:\s*2/);
+  // 3 - 1 = 2 attempts left, drawn like the Daily: one missed square and two free ones (#250)
+  assert.match(html, /(Tentativi rimasti|Attempts left) <b>2<\/b>/);
+  assert.equal((html.match(/class="attempt missed"/g) || []).length, 1);
+  assert.equal((html.match(/class="attempt unused"/g) || []).length, 2);
 });
 
 test("19b. Attempts follow the event template when the backend sends max_attempts (#31)", async () => {
@@ -618,7 +620,8 @@ test("19b. Attempts follow the event template when the backend sends max_attempt
 
   const html = renderEventsPage(controller);
   // 5 - 1 = 4 attempts left, not the pre-#31 fallback of 3
-  assert.match(html, /Tentativi rimasti:\s*4|Attempts left:\s*4/);
+  assert.match(html, /(Tentativi rimasti|Attempts left) <b>4<\/b>/);
+  assert.equal((html.match(/class="attempt /g) || []).length, 5);
 });
 
 test("20. Terminal states: distinct rendering for solved vs exhausted", async () => {
@@ -1829,3 +1832,60 @@ test("44. Referral initialization in App.init() is preserved when activeTab is r
 });
 
 
+
+// ---------------------------------------------------------------------------
+// #250: TYPING KEEPS THE SAME FIELD (the letters came out reversed)
+// ---------------------------------------------------------------------------
+
+test("#250 typing letter by letter keeps the same field, so the answer is not reversed", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const { cleanup, container } = setupGlobalDom();
+  try {
+    setLanguage("it");
+    const card = createTestCard();
+    const eventsController = new EventsController(mockClient([{ events: [card] }]));
+    const app = new App(container, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, eventsController);
+    app.init();
+    app.setTab("events");
+    await new Promise((r) => setTimeout(r, 30));
+    eventsController.select(card.code);
+    await new Promise((r) => setTimeout(r, 30));
+    const input = container.querySelector<HTMLInputElement>("#events-answer");
+    assert.ok(input);
+    let notified = 0;
+    eventsController.subscribe(() => notified++);
+    for (const letter of "Pirlo") {
+      input.value += letter;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      assert.equal(container.querySelector("#events-answer"), input, "the field is never rebuilt while typing");
+    }
+    assert.equal(notified, 0);
+    assert.equal(input.value, "Pirlo");
+    assert.equal(eventsController.getState().draftAnswer, "Pirlo");
+  } finally {
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("#250 the answer box has the Daily's shape: attempt squares, shared field and bonus note", () => {
+  setLanguage("it");
+  const controller = new EventsController();
+  const card = createTestCard({ progress: { attempts: 2, finished: false, solved: false, points: 0 } });
+  Object.assign(controller.getState(), { status: "ready", events: [card], selectedCode: card.code });
+  const html = renderEventsPage(controller);
+  assert.match(html, /answer-desk event-answer-desk[\s\S]*attempts-line[\s\S]*guess-box"[\s\S]*id="events-guess-form"[\s\S]*bonus-note/);
+  assert.equal((html.match(/class="attempt missed"/g) || []).length, 2);
+  assert.match(html, /id="events-submit"/);
+});
+
+test("#250 duel answer is stored without re-rendering the duel", () => {
+  const arena = new ArenaController();
+  let notified = 0;
+  arena.subscribe(() => notified++);
+  arena.setDraftAnswer("Pir");
+  arena.setDraftAnswer("Pirlo");
+  assert.equal(notified, 0);
+  assert.equal(arena.getState().draftAnswer, "Pirlo");
+});

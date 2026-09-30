@@ -115,8 +115,13 @@ export class EventsController {
     });
   }
 
+  /**
+   * Remembers what is typed without notifying: a re-render per keystroke would rebuild the
+   * input under the user's fingers and put the caret back at the start, so the letters came
+   * out reversed (#250). The Daily, Training and Story fields work the same way.
+   */
   public setDraftAnswer(draftAnswer: string): void {
-    this.setState({ draftAnswer });
+    this.state.draftAnswer = draftAnswer;
   }
 
   public selected(): EventCard | undefined {

@@ -781,3 +781,7 @@ body { background-color: var(--skin-profile-surface); }
 }
 
 @media (prefers-reduced-motion:reduce) { .player-search-toggle .icon:last-child { transition:none; } }
+
+/* Event answer box laid out like the Daily's (#250). In the two-column Blind, Link and Order
+   layouts the whole desk takes the right column the loose controls used to take. */
+@media (min-width:700px) { .blind-event>.event-answer-desk,.link-event>.event-answer-desk,.order-event>.event-answer-desk { grid-column:2; } }
