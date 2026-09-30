@@ -130,16 +130,16 @@ def _challenge():
 
 
 LEADERBOARD = [
-    {"telegram_id": 21, "username": "Giulia", "points": 1180},
-    {"telegram_id": USER_ID, "username": "Marco", "points": 812},
-    {"telegram_id": 22, "username": "Sara", "points": 774},
-    {"telegram_id": 23, "username": "Dario", "points": 610},
-    {"telegram_id": 24, "username": "Elisa", "points": 588},
-    {"telegram_id": 25, "username": "Luca", "points": 542},
-    {"telegram_id": 26, "username": "Sofia", "points": 497},
-    {"telegram_id": 27, "username": "Matteo", "points": 463},
-    {"telegram_id": 28, "username": "Chiara", "points": 421},
-    {"telegram_id": 29, "username": "Davide", "points": 386},
+    {"telegram_id": 21, "username": "Giulia", "points": 1180, "monthly_points": 142},
+    {"telegram_id": USER_ID, "username": "Marco", "points": 812, "monthly_points": 96},
+    {"telegram_id": 22, "username": "Sara", "points": 774, "monthly_points": 88},
+    {"telegram_id": 23, "username": "Dario", "points": 610, "monthly_points": 120},
+    {"telegram_id": 24, "username": "Elisa", "points": 588, "monthly_points": 35},
+    {"telegram_id": 25, "username": "Luca", "points": 542, "monthly_points": 77},
+    {"telegram_id": 26, "username": "Sofia", "points": 497, "monthly_points": 64},
+    {"telegram_id": 27, "username": "Matteo", "points": 463, "monthly_points": 51},
+    {"telegram_id": 28, "username": "Chiara", "points": 421, "monthly_points": 40},
+    {"telegram_id": 29, "username": "Davide", "points": 386, "monthly_points": 23},
 ]
 
 
@@ -185,7 +185,10 @@ def _fake_firestore():
         "get_league": get_league,
         "get_league_leaderboard": get_league_leaderboard,
         "get_daily_path": lambda day_iso: _challenge(),
-        "get_top_users": lambda field="points_totali", limit=10: LEADERBOARD[:limit],
+        "get_top_users": lambda field="points_totali", limit=10: sorted(
+            LEADERBOARD, key=lambda row: row["monthly_points" if field == "monthly_points" else "points"],
+            reverse=True,
+        )[:limit],
         "get_user_purchases": lambda user_id, limit=None: [],
         "get_past_daily_paths": lambda *args, **kwargs: [],
         "get_daily_paths_range": lambda *args, **kwargs: [],

@@ -311,6 +311,10 @@ export function createTestFullProfile(overrides: Record<string, any> = {}) {
       { position: 3, profile_id: 103, name: "Mario", badge: "⭐", points: 450, me: true },
       { position: 4, profile_id: 104, name: "Andrea Pirlo", points: 400, me: false },
     ],
+    monthly_leaderboard: [
+      { position: 1, profile_id: 103, name: "Mario", badge: "⭐", points: 64, me: true },
+      { position: 2, profile_id: 104, name: "Andrea Pirlo", points: 51, me: false },
+    ],
     leagues: [
       {
         code: "BAR01",

@@ -80,7 +80,11 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
     if include_social:
         # Classifica spenta: lista vuota, stessa forma per i client gia' in giro. Punti e
         # posizioni non si toccano, semplicemente non si leggono.
-        profile["leaderboard"] = _leaderboard(user_id) if features[Flag.LEADERBOARD.value] else []
+        leaderboard_on = features[Flag.LEADERBOARD.value]
+        profile["leaderboard"] = _leaderboard(user_id) if leaderboard_on else []
+        # La mensile e' la prima scheda della Mini App (#256): stessa forma della generale,
+        # "points" sono i punti del mese, quelli che la chiusura mensile premia.
+        profile["monthly_leaderboard"] = _leaderboard(user_id, monthly=True) if leaderboard_on else []
         profile["leagues"] = _leagues(user, user_id)
     return profile
 
@@ -205,15 +209,17 @@ def _today_summary(user, day_iso, lang):
     }
 
 
-def _leaderboard(user_id):
-    top = firebase_service.get_top_users(limit=LEADERBOARD_SIZE)
+def _leaderboard(user_id, monthly=False):
+    field = "monthly_points" if monthly else "points_totali"
+    score_key = "monthly_points" if monthly else "points"
+    top = firebase_service.get_top_users(field=field, limit=LEADERBOARD_SIZE)
     return [
         {
             "position": position,
             "profile_id": entry.get("telegram_id"),
             "name": entry.get("username", "?"),
             "badge": shop.badge_emoji(entry) or entry.get("badge", ""),
-            "points": entry.get("points", 0),
+            "points": entry.get(score_key, 0),
             "me": entry.get("telegram_id") == user_id,
         }
         for position, entry in enumerate(top, start=1)

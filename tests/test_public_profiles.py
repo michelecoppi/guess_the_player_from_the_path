@@ -71,7 +71,7 @@ def test_refunded_cosmetics_do_not_remain_in_public_profile(monkeypatch):
 
 
 def test_leaderboard_links_use_real_user_ids_and_equipped_badges(monkeypatch):
-    monkeypatch.setattr(webapp_api.firebase_service, "get_top_users", lambda limit: [{
+    monkeypatch.setattr(webapp_api.firebase_service, "get_top_users", lambda field="points_totali", limit=10: [{
         "telegram_id": 42, "username": "Anna", "points": 3,
         "players_guessed": 10, "cosmetics": {"equipped": {"badge": "traguardo_esploratore"}},
     }])

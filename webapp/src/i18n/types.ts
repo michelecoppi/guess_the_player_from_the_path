@@ -311,7 +311,9 @@ export interface TranslationSchema {
   leaderboard: {
     title: string;
     kicker: string;
+    tabMonthly: string;
     tabGlobal: string;
+    monthlyHint: string;
     tabLeagues: string;
     colPosPlayer: string;
     colPoints: string;
@@ -319,6 +321,8 @@ export interface TranslationSchema {
     youLabel: string;
     emptyGlobalTitle: string;
     emptyGlobal: string;
+    emptyMonthlyTitle: string;
+    emptyMonthly: string;
     emptyLeaguesTitle: string;
     emptyLeagues: string;
     noMembers: string;

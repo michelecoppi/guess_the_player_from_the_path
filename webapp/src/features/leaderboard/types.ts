@@ -26,7 +26,8 @@ export interface LeaderboardRank {
   best_streak: number;
 }
 
-export type LeaderboardTab = "global" | "leagues";
+/** Tab order in the UI; "monthly" is the default one (#256). */
+export type LeaderboardTab = "monthly" | "global" | "leagues";
 
 export interface PublicProfileState {
   profileId: number;
@@ -50,6 +51,7 @@ export interface LeaderboardState {
   activeTab: LeaderboardTab;
   selectedLeagueCode: string | null;
   globalLeaderboard: LeaderboardEntry[];
+  monthlyLeaderboard: LeaderboardEntry[];
   leagues: League[];
   publicProfile: PublicProfileState | null;
 }

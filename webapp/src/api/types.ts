@@ -131,6 +131,8 @@ export interface ApiProfileResponse {
   today?: ApiTodaySummary;
   distribution?: ApiDistributionEntry[];
   leaderboard?: ApiLeaderboardEntry[];
+  /** Top 10 by points of the current month; `points` are the monthly points (#256). */
+  monthly_leaderboard?: ApiLeaderboardEntry[];
   leagues?: ApiLeague[];
   [key: string]: unknown;
 }

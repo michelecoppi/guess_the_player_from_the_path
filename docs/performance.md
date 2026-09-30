@@ -244,7 +244,7 @@ evitare due inizializzazioni alla prima coppia di richieste concorrenti.
 
 `/app/api/me` riusa il documento utente appena letto per l'autenticazione.
 Con `lightweight: true` restituisce profilo e sfida senza interrogare classifica
-e leghe (3 letture invece di fino a 118). La prima apertura della Daily ora usa
+e leghe (3 letture invece di fino a 128: dal #256 il profilo completo legge anche la top 10 mensile). La prima apertura della Daily ora usa
 questo percorso; la lista duelli Arena viene richiesta solo quando si apre Arena.
 Il client unisce la risposta al profilo precedente dopo errori e indizi; dopo una
 risposta corretta e dopo modifiche alle leghe richiede il profilo completo.

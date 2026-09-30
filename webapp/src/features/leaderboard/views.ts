@@ -126,9 +126,6 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
   `.trim();
 }
 
-/**
- * Renders the global ranking tab.
- */
 function renderPlayerSearch(state: LeaderboardState): string {
   const expanded = state.searchExpanded !== false && (!!state.searchExpanded || !!state.search?.query);
   const search = state.search;
@@ -145,23 +142,32 @@ function renderPlayerSearch(state: LeaderboardState): string {
   </section>` : ''}`;
 }
 
-function renderGlobalTab(state: LeaderboardState): string {
-
-  const rowsHtml = state.globalLeaderboard.slice(0, 10)
+/**
+ * Renders a top-10 ranking tab: the monthly one (points of the current month) or the
+ * all-time global one. Same rows, different source list and empty state.
+ */
+function renderRankingTab(state: LeaderboardState, tab: "monthly" | "global"): string {
+  const monthly = tab === "monthly";
+  const entries = monthly ? state.monthlyLeaderboard : state.globalLeaderboard;
+  const rowsHtml = entries.slice(0, 10)
     .map((entry) => renderLeaderboardRow(entry, entry.badge))
     .join("");
+  const empty = monthly
+    ? renderEmptyState({ icon: icon('ranking'), title: t('leaderboard.emptyMonthlyTitle'), description: t('leaderboard.emptyMonthly') })
+    : renderEmptyState({ icon: icon('ranking'), title: t('leaderboard.emptyGlobalTitle'), description: t('leaderboard.emptyGlobal') });
 
   return `
-    <div class="leaderboard-tab-content" id="leaderboard-panel-global" role="tabpanel" aria-labelledby="leaderboard-tab-global">
+    <div class="leaderboard-tab-content" id="leaderboard-panel-${tab}" role="tabpanel" aria-labelledby="leaderboard-tab-${tab}">
       ${renderPlayerSearch(state)}
       <div class="ranking-caption"><h3 class="section-heading">${escapeHtml(v('topTen'))}</h3></div>
+      ${monthly ? `<p class="leaderboard-hint muted text-xs">${escapeHtml(t("leaderboard.monthlyHint"))}</p>` : ""}
       <p class="leaderboard-hint muted text-xs">${escapeHtml(t("leaderboard.tapProfileHint"))}</p>
       <div class="leaderboard-columns" aria-hidden="true">
         <span>${escapeHtml(t("leaderboard.colPosPlayer"))}</span>
         <span>${escapeHtml(t("leaderboard.colPoints"))}</span>
       </div>
-      <div class="leaderboard-list" role="list" aria-label="${escapeHtml(t("leaderboard.tabGlobal"))}">
-        ${rowsHtml || renderEmptyState({ icon: icon('ranking'), title: t('leaderboard.emptyGlobalTitle'), description: t('leaderboard.emptyGlobal') })}
+      <div class="leaderboard-list" role="list" aria-label="${escapeHtml(t(monthly ? "leaderboard.tabMonthly" : "leaderboard.tabGlobal"))}">
+        ${rowsHtml || empty}
       </div>
     </div>
   `.trim();
@@ -241,6 +247,10 @@ function renderLeaguesTab(state: LeaderboardState): string {
   `.trim();
 }
 
+function hasRankings(state: LeaderboardState): boolean {
+  return state.globalLeaderboard.length > 0 || state.monthlyLeaderboard.length > 0;
+}
+
 /**
  * Main view renderer for Leaderboard & Leagues.
  */
@@ -256,7 +266,7 @@ export function renderLeaderboardView(state: LeaderboardState): string {
     </div>
   `.trim();
 
-  if (state.status === "loading" && state.globalLeaderboard.length === 0) {
+  if (state.status === "loading" && !hasRankings(state)) {
     return `
       <section class="leaderboard-section" aria-label="${escapeHtml(t("leaderboard.title"))}">
         ${headerHtml}
@@ -267,7 +277,7 @@ export function renderLeaderboardView(state: LeaderboardState): string {
     `;
   }
 
-  if (state.status === "error" && state.globalLeaderboard.length === 0) {
+  if (state.status === "error" && !hasRankings(state)) {
     return `
       <section class="leaderboard-section" aria-label="${escapeHtml(t("leaderboard.title"))}">
         ${headerHtml}
@@ -282,6 +292,7 @@ export function renderLeaderboardView(state: LeaderboardState): string {
     `;
   }
 
+  const isMonthly = state.activeTab === "monthly";
   const isGlobal = state.activeTab === "global";
   const isLeagues = state.activeTab === "leagues";
   const leaguesBadge =
@@ -291,6 +302,17 @@ export function renderLeaderboardView(state: LeaderboardState): string {
 
   const tabsNav = `
     <div class="leaderboard-tabs" role="tablist" aria-label="${escapeHtml(t("leaderboard.title"))}">
+      <button
+        type="button"
+        id="leaderboard-tab-monthly"
+        class="leaderboard-tab-btn${isMonthly ? " active" : ""}"
+        data-leaderboard-tab="monthly"
+        role="tab"
+        aria-selected="${isMonthly}"
+        aria-controls="leaderboard-panel-monthly"
+      >
+        ${escapeHtml(t("leaderboard.tabMonthly"))}
+      </button>
       <button
         type="button"
         id="leaderboard-tab-global"
@@ -316,7 +338,7 @@ export function renderLeaderboardView(state: LeaderboardState): string {
     </div>
   `.trim();
 
-  const tabContent = isGlobal ? renderGlobalTab(state) : renderLeaguesTab(state);
+  const tabContent = isLeagues ? renderLeaguesTab(state) : renderRankingTab(state, isGlobal ? "global" : "monthly");
 
   return `
     <section class="leaderboard-section" aria-label="${escapeHtml(t("leaderboard.title"))}">

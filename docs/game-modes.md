@@ -256,7 +256,8 @@ the first correct answer claims the round in a transaction, points by difficulty
 **Current state.** Global and monthly leaderboards are ordered queries with `limit`
 plus a `count()` for the caller's position (`services/repos/users.py`). Monthly seasons
 are closed in pages by `services/monthly_closure.py` (podium frozen in
-`monthly_closures/{YYYY-MM}` before counters are reset). Private leagues
+`monthly_closures/{YYYY-MM}` before counters are reset). The bot shows both rankings
+through `/top`; the Mini App shows the monthly one first (`docs/miniapp.md`). Private leagues
 (`services/leagues.py`, limits as constants there; `leagues/{code}/members`) are shared
 by `/league_*` commands and `/app/api/league`.
 

@@ -3,6 +3,7 @@ import type { LeaderboardEntry, League, PublicProfileData } from "./types";
 
 export interface SocialData {
   leaderboard: LeaderboardEntry[];
+  monthlyLeaderboard: LeaderboardEntry[];
   leagues: League[];
 }
 
@@ -16,6 +17,7 @@ export async function fetchSocialData(
   const profile = await client.getMe({ lightweight: false });
   return {
     leaderboard: profile.leaderboard || [],
+    monthlyLeaderboard: profile.monthly_leaderboard || [],
     leagues: profile.leagues || [],
   };
 }
