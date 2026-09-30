@@ -24,6 +24,7 @@ il codice sta in [`services/performance.py`](../services/performance.py).
 | Durata degli handler Telegram | worker `/internal/telegram-update` | `telegram.update.completed`: `duration_ms` del solo `process_update`, con `command`/`update_type`/`handler` già legati e l'uso di Firestore dell'update |
 | Avvio della Mini App sul telefono | `webapp/src/telemetry/startup.ts` | `POST /app/api/perf` → `miniapp.startup.measured`: `app` (sempre `v2`: l'etichetta storica della Mini App Vite; `legacy` non è più accettato, #146), `outcome`, `ttfb_ms`, `dom_ready_ms`, `first_data_ms`, `api_me_ms`, `api_me_server_ms`, `transfer_kb` |
 | Superamento dei budget | middleware | `performance.budget.exceeded` (WARNING): `route`, `metric` (`latency_ms` \| `firestore_reads`), `value`, `budget` |
+| Riscaldamento di Firestore all'avvio (#258) | lifespan FastAPI, in un thread | `firestore.warmup.completed`: `duration_ms`, `source` dei feature flag; `firestore.warmup.failed` (WARNING): `error_type` |
 
 Note sul conteggio Firestore:
 
@@ -91,10 +92,23 @@ Firestore/gRPC ~290 ms, `telegram` ~270 ms, `fastapi` ~220 ms.
 5 leghe × (lega + 20 membri)); refresh leggero = **3**. Le letture di produzione per rotta
 arriveranno con i nuovi campi `firestore_*` e aggiorneranno la baseline.
 
-Cosa ancora non c'è nella baseline, perché i record che la producono nascono con #32:
-letture Firestore di produzione, durata per comando Telegram, fasi di avvio lato
-applicazione e avvio della Mini App sul telefono. Il prossimo report dopo il deploy le
-conterrà.
+### Misura del 2026-09-30
+
+Seconda istantanea, **2026-09-16 → 2026-09-30**, con i campi nati da #32, salvata in
+[`performance-baselines/2026-09-30.json`](performance-baselines/2026-09-30.json):
+
+- **Cold start peggiorato**: avvio del container p50 6,2 s / p95 9,4 s (era 4,8 s);
+  `before_lifespan_ms` p50 5,8 s, p95 8,8 s. Il 56% delle aperture della Mini App (63 `GET /app`
+  su 113) cade su un'istanza fredda; sul telefono `first_data_ms` p50 1,3 s ma p95 10,7 s.
+- **Richieste calde nei budget**. Le rotte più lente: `/app/api/guess` p50 564 ms (417 ms su
+  Firestore, 6 letture), `/app/api/me` p50 167 ms (119 ms su Firestore, 12 letture),
+  `/internal/telegram-update` p50 466 ms con handler quasi istantanei (il resto sono le ricevute).
+- **Primo `/me` di un'apertura**: `api_me_server_ms` p50 605 ms contro i 167 ms della rotta.
+  Lo paga la creazione pigra del client Firestore (canale gRPC, token): vedi decisione 9.
+- **Import nell'immagine vera** (`docker run --cpus 1`, CPU desktop): `import bot` 410–430 ms
+  con il bytecode precompilato, 430–480 ms compilando all'avvio. Su Cloud Run lo stesso
+  tratto dura 5,8 s: quasi tutto è l'ambiente dell'istanza appena avviata (CPU, lettura dei
+  file dell'immagine), non codice Python che si potrebbe togliere. Da qui la riga 10.
 
 ## Budget
 
@@ -200,9 +214,13 @@ riaprirla. Aggiungere una riga per ogni nuova valutazione.
 | 2 | Secondo client HTTP di PTB (`get_updates_request`) | `ApplicationBuilder().build()` 298 ms → 149 ms (tre misure identiche): il bot usa il webhook e non chiama mai `getUpdates`, ma PTB costruiva comunque un secondo `httpx.AsyncClient` e ricaricava i certificati CA | **Fatto** (#32): un solo `HTTPXRequest` per entrambi. `test_telegram_client_is_shared_between_api_calls_and_get_updates` lo verifica. L'effetto in produzione si leggerà in `before_lifespan_ms` |
 | 3 | Rimandare `setWebhook`/comandi/pulsante menu dopo l'avvio | Lifespan p50 300 ms, p95 811 ms (6% del cold start) | **Non fatto**: guadagno piccolo, e rimandare la registrazione del webhook introduce una finestra in cui l'istanza risponde prima di essere configurata. Riaprire se `lifespan_ms` supera stabilmente 1 s |
 | 4 | Istanza minima sempre calda (`--min-instances 1`) | Eliminerebbe quasi tutti i 95 cold start del periodo (restano quelli oltre la prima istanza e dei deploy). Costo stimato: un'istanza inattiva da 1 vCPU/512 MiB fatturata a tariffa idle, nell'ordine di 10 $/mese in europe-west1 | **Decisione del maintainer** (è un costo ricorrente, non codice): è l'intervento con l'effetto più grande sul p95 percepito. Si applica con `gcloud run services update guess-the-player --min-instances 1` (sopravvive ai deploy, vedi [deploy.md](deploy.md)). `startup-cpu-boost` è già attivo |
-| 5 | Lazy import dei moduli pesanti (Firestore/gRPC, Pillow, handler admin) | Import locale 1,45 s; quanto pesi su Cloud Run non è ancora noto | **Rimandato**: serve `before_lifespan_ms` di produzione per sapere quanto dei 4,5 s è import Python e quanto avvio della sandbox. Cambierebbe l'ordine di import di tutto `bot.py` |
+| 5 | Lazy import dei moduli pesanti (Firestore/gRPC, Pillow, handler admin) | Riaperta con #258: `before_lifespan_ms` p50 5,8 s. In un venv con il solo `requirements.txt`, `-X importtime` dà `import bot` ~0,9 s: `fastapi` ~230 ms, Firestore/gRPC ~200 ms, `telegram` ~150 ms, tutti usati dalla prima richiesta; Pillow ~15 ms è l'unico rinviabile. Gli handler admin pesano meno di 5 ms | **Non fatto**: rimandare un import usato dalla prima richiesta sposta il costo senza toglierlo, e per Pillow il guadagno non vale 40 punti di codice toccati. Il bytecode (riga 8) e il riscaldamento (riga 9) agiscono sullo stesso tempo senza cambiare l'ordine di import |
 | 6 | Letture di `/app/api/me` (leghe lette in sequenza, 2 RPC per lega) | Caso peggiore 128 letture / 7 query (dal #256, con la top 10 mensile); p50 di produzione 288 ms, p95 763 ms, sotto budget | **Non fatto** allora: nessuna evidenza che le leghe fossero la parte lenta. Riaperta e fatta con la riga 12 |
 | 7 | Cache, snapshot della classifica, payload daily precomputato, compressione asset | Richieste calde tutte sotto 3 s; asset statici p95 ≤ 36 ms con ETag/304; broadcast e daily job sono batch fuori dal percorso utente | **Non fatto**: nessun dato li giustifica oggi |
+| 8 | Bytecode precompilato nell'immagine | Il filesystem di un'istanza nasce vuoto: ogni cold start ricompilava i ~190 moduli del progetto (le dipendenze li hanno già da pip). Nel container a 1 CPU: 20–50 ms su ~450 ms di import; su Cloud Run, dove l'avvio è ~10 volte più lento, il guadagno atteso cresce in proporzione ma resta una frazione del cold start | **Fatto** (#258): `compileall --invalidation-mode unchecked-hash` nel [`Dockerfile`](../Dockerfile), e `COPY --chown` al posto del `chown -R` che riscriveva tutti i file in un layer in più. `test_dockerfile_precompiles_bytecode_after_copying_the_code` lo verifica. Effetto da leggere in `before_lifespan_ms` confrontando con la misura del 2026-09-30 |
+| 9 | Aprire Firestore durante l'avvio | Primo `/me` di un'apertura: server p50 605 ms contro 167 ms della rotta | **Fatto** (#258): il lifespan lancia `performance.warm_up_firestore` in un thread, senza aspettarlo, mentre Telegram aspetta la rete; legge il documento dei feature flag, che `/me` avrebbe letto comunque. Solo su Cloud Run (`K_SERVICE`). Record `firestore.warmup.completed` / `firestore.warmup.failed`; effetto da leggere in `api_me_server_ms` |
+| 10 | Ambiente di esecuzione Cloud Run (`--execution-environment gen1` / `gen2`) | Import nel container ~0,45 s, su Cloud Run 5,8 s: il collo di bottiglia è l'avvio dell'istanza, non il codice. Il servizio non fissa l'ambiente (sceglie Cloud Run). La documentazione di Cloud Run indica gen1 come quello con cold start più rapido; il prezzo per vCPU/memoria è lo stesso | **Proposto, non applicato**: è una modifica di configurazione di produzione, va decisa dal maintainer. Si prova con un flag in `deploy.yml` e si confronta `before_lifespan_ms` su una settimana; si torna indietro togliendolo |
+| 11 | Round-trip di `/app/api/guess` | 2026-09-16 → 30: p50 564 ms, p95 917 ms, 417 ms su Firestore con sole 6 letture: pesa la sequenza di chiamate (una risposta giusta ne faceva una decina in fila). Dopo ogni errore il client chiedeva anche `/me` | **Fatto** (#259): contatore della giornata, punti nelle leghe e storico partono in parallelo (`game._start`/`_finish`, con il contesto della richiesta); la transazione del bonus "primo" si salta quando il processo lo sa già preso (`daily_challenge.bonus_known_taken`, ricordo di 5 minuti perché l'Admin può rimetterlo in palio); il nome della soluzione viene dalla sfida già letta; dopo un errore la risposta porta `today` e la pagina non richiede `/me`. Fuori: unire le transazioni del tentativo e della striscia, che tocca le regole |
 | 12 | Letture di `/app/api/me` in parallelo (riapre la 6) | 2026-09-16 → 30: p50 167 ms di cui 119 ms su Firestore, cioè oltre metà: la condizione della riga 6 | **Fatto** (#260): sfida del giorno, classifica generale e mensile, documento e classifica di ogni lega partono insieme (`webapp_api._read`, pool di 16 thread, con il contesto della richiesta) e la risposta aspetta la più lenta invece della somma. Le letture restano le stesse (budget invariato); una lega cancellata ma ancora nell'elenco dell'utente ora costa la sua query vuota. Non fatta la cache della sfida di oggi: `bonus_available` è mutabile e la lettura ora è in parallelo |
 
 ## Scelte di progetto già in essere
@@ -247,8 +265,10 @@ evitare due inizializzazioni alla prima coppia di richieste concorrenti.
 Con `lightweight: true` restituisce profilo e sfida senza interrogare classifica
 e leghe (3 letture invece di fino a 128: dal #256 il profilo completo legge anche la top 10 mensile). La prima apertura della Daily ora usa
 questo percorso; la lista duelli Arena viene richiesta solo quando si apre Arena.
-Il client unisce la risposta al profilo precedente dopo errori e indizi; dopo una
-risposta corretta e dopo modifiche alle leghe richiede il profilo completo.
+Dopo una risposta sbagliata `/app/api/guess` porta già la Daily aggiornata (`today`, #259)
+e il client la usa senza altre richieste; dopo un indizio unisce al profilo precedente un
+refresh leggero; dopo una risposta corretta e dopo modifiche alle leghe richiede il profilo
+completo.
 Non viene introdotta una cache dei tentativi.
 Gli altri utenti possono comunque modificare le classifiche nel frattempo:
 il refresh leggero conserva quelle dell'ultimo caricamento completo.
@@ -264,7 +284,10 @@ start qui sopra.
   finto e SDK vero sull'emulatore, thread, idempotenza), query lente senza id, budget (caldo,
   cold start, rotte non misurate), fasi di avvio, beacon Mini App (firma, nessuna lettura,
   campi ammessi), campi e `Server-Timing` sulle richieste, `telegram.update.completed`,
-  client HTTP condiviso, costo in letture di `/app/api/me` nel caso peggiore.
+  client HTTP condiviso, costo in letture di `/app/api/me` nel caso peggiore, riscaldamento di
+  Firestore (solo su Cloud Run, mai un errore, non ritarda l'avvio).
+- [`tests/test_docker_packaging.py`](../tests/test_docker_packaging.py): bytecode precompilato
+  dopo l'ultima copia del codice e prima di togliere root.
 - [`tests/test_perf_report.py`](../tests/test_perf_report.py): percentili, separazione dei
   cold start, fasi del container, budget e confronto fra istantanee.
 - [`tests/test_webapp_performance.py`](../tests/test_webapp_performance.py): una lettura

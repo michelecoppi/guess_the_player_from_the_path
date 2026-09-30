@@ -32,6 +32,11 @@ name resolved on the server after a confirmed correct result (#126). It is not
 included in the active challenge or unsuccessful in-progress guesses. Shared text
 and cards remain spoiler-free. Points continue to come from `points_awarded`.
 
+A wrong Daily `guess` response also carries `today` (#259): the same projection as the `today`
+block of `/app/api/me`, with the attempts and hints just recorded. The client draws it
+directly instead of requesting `/app/api/me` again; without the field (older servers) it
+falls back to a lightweight refresh.
+
 **Native share (#185).** On Bot API 8.0+ clients the Daily "Share" button uses
 `WebApp.shareMessage`, which only takes the id of a message the bot prepared:
 

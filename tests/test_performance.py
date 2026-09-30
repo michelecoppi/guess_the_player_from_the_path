@@ -165,6 +165,72 @@ def test_startup_phases_emit_one_record(records):  # noqa: F811
     assert before is None or before > 0
 
 
+class _FlagService:
+    def __init__(self, error=None):
+        self.calls = 0
+        self.error = error
+
+    def snapshot(self):
+        self.calls += 1
+        if self.error:
+            raise self.error
+        return SimpleNamespace(source="firestore")
+
+
+def test_firestore_warmup_only_runs_on_cloud_run(monkeypatch, records):  # noqa: F811
+    from services import feature_flags
+    service = _FlagService()
+    monkeypatch.setattr(feature_flags, "get_service", lambda: service)
+    assert performance.warm_up_firestore(environ={}) is None
+    assert service.calls == 0 and by_event(records(), "firestore.warmup.completed") == []
+
+
+def test_firestore_warmup_fills_the_flag_cache_and_reports_its_duration(monkeypatch, records):  # noqa: F811
+    from services import feature_flags
+    service = _FlagService()
+    monkeypatch.setattr(feature_flags, "get_service", lambda: service)
+    assert performance.warm_up_firestore(environ={"K_SERVICE": "bot"}) >= 0
+    [line] = by_event(records(), "firestore.warmup.completed")
+    assert service.calls == 1 and line["source"] == "firestore" and line["duration_ms"] >= 0
+
+
+def test_firestore_warmup_never_raises(monkeypatch, records):  # noqa: F811
+    from services import feature_flags
+    monkeypatch.setattr(feature_flags, "get_service", lambda: _FlagService(RuntimeError("down")))
+    assert performance.warm_up_firestore(environ={"K_SERVICE": "bot"}) is None
+    [line] = by_event(records(), "firestore.warmup.failed")
+    assert line["error_type"] == "RuntimeError" and line["severity"] == "WARNING"
+
+
+def test_lifespan_starts_the_warmup_without_waiting_for_it(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from apps.api.app import create_app
+    from apps.api.bridge import TelegramBridge
+
+    release = threading.Event()
+    started = threading.Event()
+
+    def slow_warmup():
+        started.set()
+        release.wait(5)
+
+    from services import task_queue
+
+    monkeypatch.setattr(performance, "warm_up_firestore", slow_warmup)
+    monkeypatch.setattr(task_queue, "validate_configuration", lambda: None)
+    monkeypatch.setattr(config, "WEBHOOK_SECRET", "s" * 32)
+    bridge = TelegramBridge(application=None, start=AsyncMock(), stop=AsyncMock(),
+                            run_daily_job=None, broadcast_batch=None)
+    try:
+        with TestClient(create_app(bridge)):
+            # Startup completed while the warm-up is still blocked: it never delays serving.
+            assert started.wait(5)
+            bridge.start.assert_awaited_once()
+    finally:
+        release.set()
+
+
 # ---------------------------------------------------------------------------
 # Mini App startup beacon
 # ---------------------------------------------------------------------------

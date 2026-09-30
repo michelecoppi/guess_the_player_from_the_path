@@ -396,7 +396,19 @@ def play(user_id, user_data, answer, day=None, lang=DEFAULT_LANGUAGE, today=None
     result = game.play_daily(user_id, user_data, answer, first_name=(user_data or {}).get("first_name"),
                              surface="miniapp")
     if result.get("status") == "correct":
-        result["answer"] = firebase_service.get_display_name_for_day(today)
+        # `play_daily` lo prende dalla sfida che ha appena giocato: niente seconda lettura.
+        result["answer"] = result.get("answer") or firebase_service.get_display_name_for_day(today)
+    elif result.get("status") == "wrong":
+        # La Daily come la vede adesso chi ha sbagliato (#259): la pagina la disegna subito,
+        # invece di chiedere di nuovo il profilo solo per sapere quanti tentativi restano.
+        # Dopo un errore cambiano solo tentativi e indizi, e l'esito li ha appena scritti.
+        result["today"] = _today_summary({
+            **(user_data or {}),
+            "last_played_day": today,
+            "has_guessed_today": False,
+            "daily_attempts": result.get("attempts_used", 0),
+            "daily_hints": result.get("hints_used", 0),
+        }, today, lang)
     return with_share_card(result, lang, MAX_ATTEMPTS, symbols=symbols, link=referrals.invite_link(user_id))
 
 
