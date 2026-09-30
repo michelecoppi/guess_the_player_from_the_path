@@ -96,6 +96,11 @@ function renderPaths(d: DuelData): string {
   `.trim();
 }
 
+/** One-tap rematch button: the outcome and score pick the line of the invite. */
+function rematchButton(name: string, outcome: string, score: string, label: string, extra = ""): string {
+  return `<button type="button" class="btn arena-rematch ${extra}" data-arena-rematch data-name="${escapeHtml(name)}" data-outcome="${escapeHtml(outcome)}" data-score="${escapeHtml(score)}">🔁 ${escapeHtml(label)}</button>`;
+}
+
 function renderHistory(ledger?: DuelLedger): string {
   if (!ledger) return "";
   const record = ledger.record;
@@ -139,6 +144,7 @@ function renderHistory(ledger?: DuelLedger): string {
             `,
               )
               .join("")}
+            ${match.name ? rematchButton(match.name, match.outcome, `${match.you.solved}–${match.them.solved}`, t("arena.rematchShort"), "ghost btn-sm") : ""}
           </details>
         `,
           )
@@ -260,6 +266,17 @@ export function renderDuelsHub(state: ArenaState): string {
 
     </div>
   `.trim();
+}
+
+/** The rematch block at the end of a duel, with a nudge when the head to head is behind. */
+function renderRematch(d: DuelData): string {
+  const name = d.opponent?.name || t("arena.someone");
+  const record = d.ledger?.record;
+  const tease = record && record.lost > record.won
+    ? `<p class="arena-rematch-tease">${escapeHtml(t("arena.rematchTease", { name, won: record.won, lost: record.lost }))}</p>`
+    : "";
+  const score = `${d.session?.solved ?? 0}–${d.opponent?.solved ?? 0}`;
+  return `${tease}${rematchButton(name, d.outcome || "draw", score, t("arena.rematch", { name }))}`;
 }
 
 export function renderChallengeView(state: ArenaState): string {
@@ -428,7 +445,8 @@ export function renderDuelView(state: ArenaState): string {
               ? `<p class="opponent-final-score">${escapeHtml(d.opponent.name)} · ${d.opponent.solved}/${s.total} · ${d.opponent.spent} ${escapeHtml(t("arena.spent"))}</p>`
               : ""
           }
-          ${d.complete ? `<button class="btn" id="arena-new-duel">${escapeHtml(t("arena.newDuel"))}</button>` : ""}
+          ${d.complete && d.opponent ? renderRematch(d) : ""}
+          ${d.complete ? `<button class="btn${d.opponent ? " ghost" : ""}" id="arena-new-duel">${escapeHtml(t("arena.newDuel"))}</button>` : ""}
         </div>
         ${renderPaths(d)}
         ${renderHistory(d.ledger)}

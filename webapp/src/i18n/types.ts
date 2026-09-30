@@ -144,6 +144,13 @@ export interface TranslationSchema {
     resume: string;
     progress: string;
     newDuel: string;
+    rematch: string;
+    rematchShort: string;
+    rematchTextLoss: string;
+    rematchTextWin: string;
+    rematchTextDraw: string;
+    rematchTease: string;
+    rematchReady: string;
     codeLabel: string;
     duelListTitle: string;
     duelListEmpty: string;
