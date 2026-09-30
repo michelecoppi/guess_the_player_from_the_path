@@ -220,6 +220,7 @@ riaprirla. Aggiungere una riga per ogni nuova valutazione.
 | 8 | Bytecode precompilato nell'immagine | Il filesystem di un'istanza nasce vuoto: ogni cold start ricompilava i ~190 moduli del progetto (le dipendenze li hanno già da pip). Nel container a 1 CPU: 20–50 ms su ~450 ms di import; su Cloud Run, dove l'avvio è ~10 volte più lento, il guadagno atteso cresce in proporzione ma resta una frazione del cold start | **Fatto** (#258): `compileall --invalidation-mode unchecked-hash` nel [`Dockerfile`](../Dockerfile), e `COPY --chown` al posto del `chown -R` che riscriveva tutti i file in un layer in più. `test_dockerfile_precompiles_bytecode_after_copying_the_code` lo verifica. Effetto da leggere in `before_lifespan_ms` confrontando con la misura del 2026-09-30 |
 | 9 | Aprire Firestore durante l'avvio | Primo `/me` di un'apertura: server p50 605 ms contro 167 ms della rotta | **Fatto** (#258): il lifespan lancia `performance.warm_up_firestore` in un thread, senza aspettarlo, mentre Telegram aspetta la rete; legge il documento dei feature flag, che `/me` avrebbe letto comunque. Solo su Cloud Run (`K_SERVICE`). Record `firestore.warmup.completed` / `firestore.warmup.failed`; effetto da leggere in `api_me_server_ms` |
 | 10 | Ambiente di esecuzione Cloud Run (`--execution-environment gen1` / `gen2`) | Import nel container ~0,45 s, su Cloud Run 5,8 s: il collo di bottiglia è l'avvio dell'istanza, non il codice. Il servizio non fissa l'ambiente (sceglie Cloud Run). La documentazione di Cloud Run indica gen1 come quello con cold start più rapido; il prezzo per vCPU/memoria è lo stesso | **Proposto, non applicato**: è una modifica di configurazione di produzione, va decisa dal maintainer. Si prova con un flag in `deploy.yml` e si confronta `before_lifespan_ms` su una settimana; si torna indietro togliendolo |
+| 11 | Round-trip di `/app/api/guess` | 2026-09-16 → 30: p50 564 ms, p95 917 ms, 417 ms su Firestore con sole 6 letture: pesa la sequenza di chiamate (una risposta giusta ne faceva una decina in fila). Dopo ogni errore il client chiedeva anche `/me` | **Fatto** (#259): contatore della giornata, punti nelle leghe e storico partono in parallelo (`game._start`/`_finish`, con il contesto della richiesta); la transazione del bonus "primo" si salta quando il processo lo sa già preso (`daily_challenge.bonus_known_taken`, ricordo di 5 minuti perché l'Admin può rimetterlo in palio); il nome della soluzione viene dalla sfida già letta; dopo un errore la risposta porta `today` e la pagina non richiede `/me`. Fuori: unire le transazioni del tentativo e della striscia, che tocca le regole |
 
 ## Scelte di progetto già in essere
 
@@ -263,8 +264,10 @@ evitare due inizializzazioni alla prima coppia di richieste concorrenti.
 Con `lightweight: true` restituisce profilo e sfida senza interrogare classifica
 e leghe (3 letture invece di fino a 128: dal #256 il profilo completo legge anche la top 10 mensile). La prima apertura della Daily ora usa
 questo percorso; la lista duelli Arena viene richiesta solo quando si apre Arena.
-Il client unisce la risposta al profilo precedente dopo errori e indizi; dopo una
-risposta corretta e dopo modifiche alle leghe richiede il profilo completo.
+Dopo una risposta sbagliata `/app/api/guess` porta già la Daily aggiornata (`today`, #259)
+e il client la usa senza altre richieste; dopo un indizio unisce al profilo precedente un
+refresh leggero; dopo una risposta corretta e dopo modifiche alle leghe richiede il profilo
+completo.
 Non viene introdotta una cache dei tentativi.
 Gli altri utenti possono comunque modificare le classifiche nel frattempo:
 il refresh leggero conserva quelle dell'ultimo caricamento completo.

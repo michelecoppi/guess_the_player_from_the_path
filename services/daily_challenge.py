@@ -5,15 +5,21 @@ difficolta' di un giorno **non cambiano piu** una volta generati, quindi tenerli
 fa risparmiare letture. Il flag "il bonus del primo e' ancora libero" invece cambia durante
 la giornata: quello si legge sempre da Firestore, e si assegna in transazione
 (`claim_daily_first_correct`), altrimenti due istanze del bot - o due utenti simultanei -
-lo assegnerebbero due volte.
+lo assegnerebbero due volte. Il processo ricorda solo il fatto opposto e sicuro, "e' gia'
+preso" (`bonus_known_taken`), per non ripetere una transazione dall'esito scontato.
 """
 import logging
+import time
 
 from services import firebase_service
 from services.dates import parse_iso, today_iso
 from services.player_pool import load_config
 
 _cache = {"day": None, "data": None}
+
+# Giorno -> istante (monotonic) in cui questo processo ha visto il bonus del primo preso.
+_bonus_taken: dict[str, float] = {}
+BONUS_MEMORY_SECONDS = 300
 
 # Usata se manca `game_epoch` in data/config.json: e' il giorno da cui si contano le sfide.
 GAME_EPOCH_FALLBACK = "2025-06-08"
@@ -55,10 +61,28 @@ def bonus_available(day_iso=None):
     return not data.get("first_correct_user", False)
 
 
+def bonus_known_taken(day_iso):
+    """True se questo processo ha visto, da poco, il bonus del primo gia' assegnato (#259).
+
+    Il campo passa da falso a vero una volta sola, quindi saperlo evita una transazione che
+    risponderebbe comunque di no. Solo l'Admin puo' rimetterlo a falso (a mano, da un altro
+    processo): per questo il ricordo scade dopo `BONUS_MEMORY_SECONDS` e non a fine giornata.
+    Non vale mai il contrario: "non so" porta sempre alla transazione."""
+    seen = _bonus_taken.get(day_iso)
+    return seen is not None and time.monotonic() - seen < BONUS_MEMORY_SECONDS
+
+
+def remember_bonus_taken(day_iso):
+    """Da chiamare dopo `claim_daily_first_correct`: vinto o perso, adesso il bonus e' preso."""
+    _bonus_taken.clear()  # un giorno alla volta: il dizionario non cresce
+    _bonus_taken[day_iso] = time.monotonic()
+
+
 def invalidate():
     """Usata al cambio di giornata e dai test."""
     _cache["day"] = None
     _cache["data"] = None
+    _bonus_taken.clear()
 
 
 def challenge_number(day_iso=None):

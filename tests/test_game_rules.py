@@ -9,7 +9,7 @@ di mezzo, cosi' che un domani una terza faccia del gioco parta gia' con le regol
 """
 import pytest
 
-from services import game
+from services import daily_challenge, game
 from services.daily_challenge import MAX_ATTEMPTS
 
 DAY = "2026-09-08"
@@ -42,6 +42,8 @@ def firebase(monkeypatch):
         return state["hint"] or {"ok": True, "index": 1, "hints_used": 1}
 
     fs = game.firebase_service
+    # Il ricordo "bonus gia' preso" e' di processo (#259): ogni test parte senza.
+    monkeypatch.setattr(daily_challenge, "_bonus_taken", {})
     monkeypatch.setattr(fs, "begin_guess_attempt", lambda uid, day, mx: state["attempt"])
     monkeypatch.setattr(fs, "claim_daily_first_correct", claim)
     monkeypatch.setattr(fs, "register_correct_guess", register)
@@ -84,6 +86,50 @@ def test_a_correct_answer_pays_the_difficulty_plus_the_first_bonus(firebase):
 def test_the_first_bonus_goes_to_one_person_only(firebase):
     assert play()["bonus"] == 1
     assert play()["bonus"] == 0
+
+
+def test_once_the_bonus_is_known_taken_no_transaction_asks_again(firebase, monkeypatch):
+    """#259: il bonus passa da libero a preso una volta sola. Dopo la prima risposta giusta
+    il processo lo sa, e le successive non pagano una transazione dall'esito scontato."""
+    claims = []
+    original = game.firebase_service.claim_daily_first_correct
+    monkeypatch.setattr(game.firebase_service, "claim_daily_first_correct",
+                        lambda day: claims.append(day) or original(day))
+    assert [play()["bonus"] for _ in range(3)] == [1, 0, 0]
+    assert claims == [DAY]
+
+
+def test_the_memory_of_a_taken_bonus_expires(firebase, monkeypatch):
+    """Solo l'Admin rimette il bonus in palio, da un altro processo: il ricordo scade."""
+    play()
+    firebase.state["first_free"] = True  # rimesso in palio dall'Admin
+    monkeypatch.setattr(daily_challenge, "BONUS_MEMORY_SECONDS", 0)
+    assert play()["bonus"] == 1
+
+
+def test_a_correct_answer_names_the_player_without_reading_the_challenge_again(firebase, monkeypatch):
+    monkeypatch.setattr(game.firebase_service, "get_display_name_for_day",
+                        lambda day: pytest.fail("la sfida e' gia' in mano"))
+    assert play()["answer"] == "Lionel Messi"
+
+
+def test_correct_answer_writes_run_together_and_all_complete(firebase):
+    """#259: contatore, leghe e storico partono in parallelo, ma la risposta torna solo
+    quando sono tutti scritti."""
+    result = play(user={"leagues": ["ABC123"]})
+    assert result["status"] == "correct"
+    assert firebase.calls["outcomes"] == [(DAY, False), (DAY, True)]  # giocatore, poi risolta
+    assert firebase.calls["leagues"] == [4]
+    assert firebase.calls["history"] == [{"day": DAY, "solved": True, "attempts": 1, "hints": 0, "first": True}]
+
+
+def test_a_failed_parallel_write_still_reaches_the_caller(firebase, monkeypatch):
+    def broken(*args, **kwargs):
+        raise RuntimeError("history down")
+
+    monkeypatch.setattr(game.firebase_service, "record_daily_history", broken)
+    with pytest.raises(RuntimeError, match="history down"):
+        play()
 
 
 def test_the_hints_are_taken_off_the_points_but_not_off_the_bonus(firebase):

@@ -184,8 +184,14 @@ export class DailyController {
         if (effect) celebrate(effect);
       }
 
-      // Reload fresh profile data
-      await this.loadDailyData({ lightweight: result.status === "wrong" });
+      if (result.status === "wrong" && result.today && result.today.day === this.state.challenge?.day) {
+        // After a wrong answer only attempts and hints change, and the server already sent
+        // them (#259): no second round trip for the same Daily.
+        this.updateState({ challenge: result.today });
+      } else {
+        // Reload fresh profile data
+        await this.loadDailyData({ lightweight: result.status === "wrong" });
+      }
       if (currentSeq !== this.requestSeq) return null;
 
       let nextStatus = this.state.status;
