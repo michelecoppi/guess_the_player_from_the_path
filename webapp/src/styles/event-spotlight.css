@@ -1,6 +1,7 @@
-/* The running event outside its own page (#248): the Daily banner, the Arena hub card and
-   the dot on the Arena tab. Colours come from the equipped theme (--accent, --card, --edge),
-   so the banner stays readable under every cosmetic shell. */
+/* The running event outside its own page (#248): the Arena hub card, the dot on the Arena
+   tab and the invitation in the Daily's final report (#252; the Daily's top banner is gone,
+   #266). Colours come from the equipped theme (--accent, --card, --edge), so the card stays
+   readable under every cosmetic shell. */
 .event-spotlight {
   display: flex;
   align-items: center;

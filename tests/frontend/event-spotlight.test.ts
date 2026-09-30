@@ -59,12 +59,12 @@ test("time left counts today and shows hours to the Italian midnight on the last
   assert.equal(timeLeftLabel(card({ day: "2026-10-02" }), EVENING), "Ultimo giorno · Finisce tra 5 h");
 });
 
-test("banner invites to play, lists the prizes and becomes a quiet recap once played", () => {
+test("the spotlight card invites to play, lists the prizes and becomes a quiet recap once played", () => {
   setLanguage("it");
-  const pending = renderEventSpotlight(card(), "daily_banner", EVENING);
+  const pending = renderEventSpotlight(card(), "arena_card", EVENING);
   assert.match(pending, /class="event-spotlight is-pending"/);
   assert.match(pending, /data-event-open="carriera_al_buio"/);
-  assert.match(pending, /data-event-entry="daily_banner"/);
+  assert.match(pending, /data-event-entry="arena_card"/);
   assert.match(pending, /Carriera al buio/);
   assert.match(pending, /5 pt oggi/);
   assert.match(pending, /\+1 al primo/);
@@ -79,16 +79,16 @@ test("banner invites to play, lists the prizes and becomes a quiet recap once pl
   assert.doesNotMatch(done, /live-dot/);
   assert.match(done, />Vedi</);
 
-  const out = renderEventSpotlight(card({ progress: { attempts: 3, finished: true, solved: false, points: 0 } }), "daily_banner", EVENING);
+  const out = renderEventSpotlight(card({ progress: { attempts: 3, finished: true, solved: false, points: 0 } }), "arena_card", EVENING);
   assert.match(out, /Tentativi finiti per oggi/);
-  assert.equal(renderEventSpotlight(null, "daily_banner"), "");
+  assert.equal(renderEventSpotlight(null, "arena_card"), "");
 });
 
-test("banner text is translated", () => {
+test("spotlight text is translated", () => {
   setLanguage("en");
-  assert.match(renderEventSpotlight(card(), "daily_banner", EVENING), /Live event[\s\S]*3 days left[\s\S]*Play/);
+  assert.match(renderEventSpotlight(card(), "arena_card", EVENING), /Live event[\s\S]*3 days left[\s\S]*Play/);
   setLanguage("es");
-  assert.match(renderEventSpotlight(card(), "daily_banner", EVENING), /Evento en curso[\s\S]*Quedan 3 días[\s\S]*Jugar/);
+  assert.match(renderEventSpotlight(card(), "arena_card", EVENING), /Evento en curso[\s\S]*Quedan 3 días[\s\S]*Jugar/);
   setLanguage("it");
 });
 
@@ -111,7 +111,7 @@ function fakeServer(events: EventCard[], today = createTestDailyChallenge()) {
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-test("app: the Daily banner and the Arena dot appear after the Daily and open the event", async () => {
+test("app #266: a Daily still to play shows no event; the Arena dot and card do", async () => {
   setLanguage("it");
   const { container, cleanup } = setupGlobalDom();
   const { restore: restoreTg } = setupTestTelegram();
@@ -122,34 +122,27 @@ test("app: the Daily banner and the Arena dot appear after the Daily and open th
     await app.whenFirstLoaded();
     await settle();
 
-    const banner = container.querySelector<HTMLButtonElement>("#event-spotlight-slot [data-event-open]");
-    assert.ok(banner, "the Daily shows the running event");
+    // The screen the app opens on is the Daily, and before it is played nothing about the
+    // event comes ahead of it: no banner, no invitation, no event markup at all.
+    assert.equal(app.getActiveTab(), "play");
+    assert.equal(container.querySelector(".daily-page .event-spotlight, .daily-page .event-next"), null);
+    assert.equal(container.querySelector("#event-spotlight-slot"), null);
     const arenaTab = container.querySelector<HTMLElement>("#nav-tab-arena");
     assert.ok(arenaTab?.classList.contains("has-alert"));
     assert.match(arenaTab?.getAttribute("aria-label") || "", /evento da giocare/);
     assert.equal(server.arena[0].entry, undefined, "the background load is not a visit");
 
-    banner.click();
-    await settle();
-    assert.equal(app.getActiveTab(), "events");
-    assert.equal(app.getEventsController().getState().selectedCode, "carriera_al_buio");
-    assert.equal(server.arena.at(-1).entry, "daily_banner");
-
-    // Played: the dot and the Daily banner go away; the Arena keeps the card as a recap.
+    // Played: the dot goes away; the Arena keeps the card as a recap.
     server.state.events = [card({ progress: solved })];
     await app.getEventsController().load();
     assert.equal(container.querySelector("#nav-tab-arena")?.classList.contains("has-alert"), false);
-    app.setTab("play");
-    await settle();
-    assert.equal(container.querySelector("#event-spotlight-slot")?.innerHTML, "");
     app.setTab("arena");
     assert.ok(container.querySelector("#arena-event-slot .event-spotlight.is-done"));
 
     // Out of attempts counts as played too.
     server.state.events = [card({ progress: { attempts: 3, finished: true, solved: false, points: 0 } })];
     await app.getEventsController().load();
-    app.setTab("play");
-    assert.equal(container.querySelector("#event-spotlight-slot")?.innerHTML, "");
+    assert.equal(container.querySelector("#nav-tab-arena")?.classList.contains("has-alert"), false);
   } finally {
     server.restore();
     restoreTg();
@@ -183,7 +176,7 @@ test("app: the Arena hub highlights the event; the plain Events row is tracked a
   }
 });
 
-test("app: no running event means no banner, no card and no dot", async () => {
+test("app: no running event means no card and no dot", async () => {
   const { container, cleanup } = setupGlobalDom();
   const { restore: restoreTg } = setupTestTelegram();
   const server = fakeServer([]);
@@ -192,7 +185,6 @@ test("app: no running event means no banner, no card and no dot", async () => {
     app.init();
     await app.whenFirstLoaded();
     await settle();
-    assert.equal(container.querySelector("#event-spotlight-slot")?.innerHTML, "");
     assert.equal(container.querySelector("#nav-tab-arena")?.classList.contains("has-alert"), false);
     app.setTab("arena");
     assert.equal(container.querySelector("#arena-event-slot")?.innerHTML, "");
@@ -225,7 +217,7 @@ test("#252 the report invitation names the event, time left and prizes, only whi
 
 const finishedDaily = createTestDailyChallenge({ solved: true, attempts_used: 2, attempts_left: 3 });
 
-test("app #252: a finished Daily moves the invitation from the top banner into the report", async () => {
+test("app #252: a finished Daily invites to the event in its final report", async () => {
   setLanguage("it");
   const { container, cleanup } = setupGlobalDom();
   const { restore: restoreTg } = setupTestTelegram();

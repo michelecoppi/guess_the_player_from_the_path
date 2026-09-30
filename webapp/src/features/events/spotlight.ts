@@ -6,10 +6,13 @@ import type { EventCard } from "./types";
 /**
  * Where a running event shows up outside the Events page (#248):
  *
- * - a banner at the top of the Daily, the screen the app opens on;
  * - a highlighted card at the top of the Arena hub;
  * - a dot on the Arena tab of the nav bar while today's event is still to be played;
  * - an "up next" invitation in the Daily's final report, once the Daily is over (#252).
+ *
+ * The Daily has no banner on top any more (#266): before the Daily is played the event would
+ * come ahead of the game the app is opened for. `daily_banner` stays a valid `EventEntry` so
+ * that visits recorded by clients still on the old page keep validating.
  *
  * Everything is derived from the `EventCard`s of `/app/api/arena` (`mode: "events"`): no
  * extra endpoint, no extra field. Nothing is shown while the events are loading or when the
