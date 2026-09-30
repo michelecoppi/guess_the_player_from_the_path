@@ -1,6 +1,8 @@
 /** One outline family. All icons are decorative; the control supplies its label. */
 const paths = {
   share: '<path d="M12 16V3m-5 5 5-5 5 5M5 13v8h14v-8"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 17-5-5-10 8"/>',
   career:
     '<path d="M5 3h14v18H5zM5 12h14M9 3v4h6V3M9 21v-4h6v4"/><circle cx="12" cy="12" r="3"/>',
   arena:
