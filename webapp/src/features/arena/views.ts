@@ -200,6 +200,7 @@ export function renderHubView(state: ArenaState): string {
   return `<div class="arena-view arena-hub">
     <header class="page-heading"><div><p class="eyebrow">${v("matchDay")}</p><h2 class="page-title">${escapeHtml(t("nav.arena"))}</h2></div><span class="arena-heading-mark" aria-hidden="true">VS</span></header>
     ${active ? `<button type="button" class="active-duel" data-arena-duel="${escapeHtml(active.code)}"><span class="duel-indicator">${icon("arena")}</span><span><b>${escapeHtml(t("arena.activeDuelWith", { name: active.opponent || "" }))}</b><small>${escapeHtml(t("arena.progress", { n: active.round, total: active.total }))}</small></span>${icon("arrow")}</button>` : ""}
+    <div id="arena-event-slot"></div>
     <nav class="arena-modes" aria-label="${escapeHtml(t("nav.arena"))}">
       <button class="mode-entry" data-arena-nav="duels" type="button">${icon("arena")}<span><b>${escapeHtml(t("pages.arenaTitle"))}</b><small>${escapeHtml(t("arena.featureDesc"))}</small></span>${icon("arrow")}</button>
       <button class="mode-entry" data-tab="events" type="button">${icon("events")}<span><b>${escapeHtml(t("arena.eventsTitle"))}</b><small>${escapeHtml(t("arena.eventsDesc"))}</small></span>${icon("arrow")}</button>

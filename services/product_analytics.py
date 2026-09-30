@@ -201,6 +201,9 @@ ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", "inline", *CAMPA
 # `/start src_<channel>-<campaign>` (#218): the campaign names one piece of content inside a
 # channel. It is a short slug, never free text, so a malformed one is simply dropped.
 CAMPAIGN_ID = re.compile(r"^[a-z0-9-]{1,24}$")
+# Where the Mini App's Events page was opened from (#248): the Daily banner, the Arena hub
+# card announcing the running event, or the plain Events row of the Arena hub.
+EVENT_ENTRIES = ("daily_banner", "arena_card", "arena_list")
 
 
 # One validator per property NAME (the same name means the same shape everywhere it is
@@ -231,7 +234,9 @@ PROPERTY_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "streak": _int(0, 100_000),
     "bonus_awarded": _bool,
     "typo": _bool,
-    "event_type": _enum("path", "career", "father_son", "transfer_guess"),
+    "event_type": _enum("path", "blind_path", "link_club", "order_career", "career", "father_son",
+                        "transfer_guess"),
+    "entry": _enum(*EVENT_ENTRIES),
     "event_code": _pattern(_EVENT_CODE),
     "duel_code": _pattern(_DUEL_CODE),
     "qualified_days": _int(1, 3650),
@@ -276,7 +281,7 @@ EVENT_PROPERTIES: dict[Event, frozenset[str]] = {
     Event.DUEL_CREATED: frozenset({"surface"}),
     Event.DUEL_JOINED: frozenset({"surface"}),
     Event.DUEL_COMPLETED: frozenset({"surface"}),
-    Event.EVENT_VIEWED: frozenset({"surface", "event_code", "event_type"}),
+    Event.EVENT_VIEWED: frozenset({"surface", "event_code", "event_type", "entry"}),
     Event.EVENT_STARTED: frozenset({"surface", "event_code", "event_type"}),
     Event.EVENT_COMPLETED: frozenset({"surface", "event_code", "event_type", "attempts_used", "bonus_awarded"}),
     Event.LEADERBOARD_VIEWED: frozenset({"surface", "scope"}),

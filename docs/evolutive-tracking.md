@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#248](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/248) | Running event visible on opening: Daily banner, Arena card and nav dot |
 | [#239](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/239) | Expand the Training pool to at least 450 `practice_only` players |
 | [#240](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/240) | Inline challenge: send a mystery career path into any chat |
 | [#174](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/174) | Serialize production deploys and deploy only the `main` tip |
@@ -147,6 +148,10 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-30: the owner noticed that opening the Mini App did not make a running event
+  visible, so few players joined it. #248 announces it on the Daily, the Arena hub and the
+  nav bar; bot notifications and post-Daily prompts are left for separate issues.
 
 - 2026-09-30: the owner asked for an inline challenge that can be sent into any chat (#240).
   Each card publicly spends one Training player, so #239 first grows the reserved pool;

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Body, HTTPException
 
 from services import arena, practice_content
-from services.dates import today_iso
+from services.dates import shift_iso, today_iso
 from services.event_rules import evaluate_event_guess
 from services.i18n import t
 from services.player_pool import get_practice_players
@@ -71,7 +71,8 @@ def create_handler(lang):
                                 "es": "Una semana tras los pasos de los jugadores que recorrieron el mundo."}
                 return {"feedback": feedback, "events": [{"code": "preview", "day": today_iso(),
                         "type": "path", "name": titles[lang()], "description": descriptions[lang()],
-                        "rules": t(lang(), "app.event.path"), "dates": [today_iso()], "available": True, "points": 2,
+                        "rules": t(lang(), "app.event.path"), "dates": [shift_iso(today_iso(), d) for d in range(-2, 3)],
+                        "available": True, "points": 2,
                         "bonus_available": not event_progress["solved"], "player_name": "", "min_correct": 1,
                         "progress": event_progress, "leaderboard": [{"name": "Giulia", "points": 12}, {"name": "Marco", "points": event_progress["points"]}],
                         **arena._puzzle(puzzles[0], lang())}]}

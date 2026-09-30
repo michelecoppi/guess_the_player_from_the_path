@@ -1,5 +1,6 @@
 import { api, type ApiClient } from "@/api/client";
+import type { EventEntry } from "./spotlight";
 import type { EventsResponse } from "./types";
-export const fetchEvents = (client:ApiClient=api):Promise<EventsResponse> => client.post("/arena", {mode:"events",action:"get"});
+export const fetchEvents = (client:ApiClient=api, entry?:EventEntry):Promise<EventsResponse> => client.post("/arena", entry ? {mode:"events",action:"get",entry} : {mode:"events",action:"get"});
 export const guessEvent = (code:string,day:string,answer:string,revision:number,client:ApiClient=api):Promise<EventsResponse> => client.post("/arena", {mode:"events",action:"guess",code,day,answer:answer.trim(),revision});
 export const revealEvent = (code:string,day:string,revision:number,client:ApiClient=api):Promise<EventsResponse> => client.post("/arena", {mode:"events",action:"reveal",code,day,revision});
