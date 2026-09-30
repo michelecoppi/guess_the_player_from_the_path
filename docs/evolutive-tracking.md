@@ -11,6 +11,9 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#258](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/258) | Shorter cold start: precompiled bytecode, Firestore warmed during startup |
+| [#259](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/259) | `/app/api/guess` with fewer sequential Firestore round trips and no follow-up `/me` |
+| [#260](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/260) | `/app/api/me` reads in parallel |
 | [#250](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/250) | Event answer box shaped like the Daily; typed answers no longer reversed |
 | [#252](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/252) | After the Daily, invite to the day's event from the final report |
 | [#248](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/248) | Running event visible on opening: Daily banner, Arena card and nav dot |
@@ -150,6 +153,12 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-30: the owner asked to optimise database calls and performance. A new production
+  measurement (2026-09-16..30) split the work into #258 (cold start, now p50 6.2 s and 56%
+  of Mini App openings), #259 (`/app/api/guess`, the slowest warm route) and #260
+  (`/app/api/me`, Firestore over half of its time). No dependency between them; the WIP
+  exception is recorded on each issue. `--min-instances` stays out (recurring cost).
 
 - 2026-09-30: the owner noticed that opening the Mini App did not make a running event
   visible, so few players joined it. #248 announces it on the Daily, the Arena hub and the
