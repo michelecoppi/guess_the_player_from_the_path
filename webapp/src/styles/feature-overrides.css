@@ -785,3 +785,36 @@ body { background-color: var(--skin-profile-surface); }
 /* Event answer box laid out like the Daily's (#250). In the two-column Blind, Link and Order
    layouts the whole desk takes the right column the loose controls used to take. */
 @media (min-width:700px) { .blind-event>.event-answer-desk,.link-event>.event-answer-desk,.order-event>.event-answer-desk { grid-column:2; } }
+
+/* Compact end of the Daily (#254): one row of actions, the card as a small preview that
+   enlarges in place, and the career folded under the result. */
+.report-actions { display:flex; gap:8px; align-items:stretch; }
+.report-actions #share { flex:1; min-width:0; }
+.report-actions .icon-btn { flex:none; width:48px; padding:0; display:grid; place-items:center; }
+.report-actions .icon-btn .icon { width:20px; height:20px; }
+.match-report .share-copy-notice { margin-top:8px; }
+.report-card { margin-top:12px; }
+.report-card-preview { display:flex; align-items:center; gap:12px; width:100%; padding:8px; border:1px solid color-mix(in srgb,var(--text) 16%,transparent); border-radius:10px; background:color-mix(in srgb,var(--text) 5%,transparent); color:var(--text); text-align:left; font:inherit; cursor:zoom-in; }
+.report-card-preview img { width:56px; max-width:none; height:auto; margin:0; flex:none; border-radius:6px; box-shadow:0 4px 14px #0005; transition:width .2s ease; }
+.report-card-caption { display:flex; flex-direction:column; gap:2px; }
+.report-card-caption b { font-size:14px; }
+.report-card-caption small { font-size:12px; color:var(--muted); }
+.report-card-hint { display:none; margin-top:8px; font-size:12px; text-align:center; color:var(--muted); }
+.report-card.is-open .report-card-preview { flex-direction:column; cursor:zoom-out; }
+.report-card.is-open .report-card-preview img { width:100%; max-width:320px; margin:0 auto; }
+.report-card.is-open .report-card-caption { display:none; }
+.report-card.is-open .report-card-hint { display:block; }
+.report-card.is-loading span { display:block; height:98px; border-radius:10px; background:linear-gradient(90deg,color-mix(in srgb,var(--text) 5%,transparent),color-mix(in srgb,var(--text) 12%,transparent),color-mix(in srgb,var(--text) 5%,transparent)); background-size:200% 100%; animation:card-shimmer 1.2s linear infinite; }
+@keyframes card-shimmer { to { background-position:-200% 0; } }
+.career-fold { margin-top:14px; border:1px solid var(--edge); border-radius:10px; background:var(--card); }
+.career-fold > summary { display:flex; align-items:center; gap:10px; padding:14px; cursor:pointer; list-style:none; }
+.career-fold > summary::-webkit-details-marker { display:none; }
+.career-fold > summary::after { content:""; margin-left:auto; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); transition:transform .2s; }
+.career-fold[open] > summary::after { transform:rotate(-135deg); }
+.career-fold > summary .icon { width:20px; height:20px; color:var(--accent); }
+.career-fold > summary span { display:flex; flex-direction:column; gap:2px; }
+.career-fold > summary b { font-size:14px; }
+.career-fold > summary small { font-size:12px; color:var(--muted); }
+.career-fold .career-sheet { border:0; margin:0; }
+.daily-layout.is-done { display:block; }
+@media (prefers-reduced-motion: reduce) { .report-card.is-loading span { animation:none; } .report-card-preview img { transition:none; } }

@@ -206,7 +206,12 @@ export class DailyController {
       });
       // A new result: whatever was prepared before shows something else.
       this.preparedShare = null;
-      if (result.share) void this.prepareNativeShare();
+      if (result.share) {
+        void this.prepareNativeShare();
+        // The final report previews the card (#254): only right after the game, so reopening
+        // the app later does not render a PNG every time.
+        void this.loadResultCard();
+      }
 
       return result;
     } catch (err: any) {
