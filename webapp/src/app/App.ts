@@ -50,6 +50,7 @@ import {
   es as eventString,
   hasPendingEvent,
   isPending,
+  renderEventNext,
   renderEventSpotlight,
   spotlightEvent,
   type EventEntry,
@@ -894,16 +895,19 @@ export class App {
     if (this.sessionExpired) return;
     const events = this.eventsController.getState().events;
     const event = spotlightEvent(events);
+    const pending = event && isPending(event) ? event : null;
     // The Daily only invites: once today's event is played (solved or out of attempts) the
-    // banner goes away. The Arena card stays, as a recap of today's result.
-    const slots: Array<[string, EventEntry, EventCard | null]> = [
-      ["#event-spotlight-slot", "daily_banner", event && isPending(event) ? event : null],
-      ["#arena-event-slot", "arena_card", event],
+    // banner goes away. The Arena card stays, as a recap of today's result. A finished Daily
+    // has no top banner; its final report carries the invitation instead (#252).
+    const slots: Array<[string, EventEntry, EventCard | null, string]> = [
+      ["#event-spotlight-slot", "daily_banner", pending, renderEventSpotlight(pending, "daily_banner")],
+      ["#daily-next-event-slot", "daily_result", pending, renderEventNext(pending)],
+      ["#arena-event-slot", "arena_card", event, renderEventSpotlight(event, "arena_card")],
     ];
-    for (const [selector, entry, shown] of slots) {
+    for (const [selector, entry, shown, html] of slots) {
       const slot = this.rootElement.querySelector<HTMLElement>(selector);
       if (!slot) continue;
-      slot.innerHTML = renderEventSpotlight(shown, entry);
+      slot.innerHTML = html;
       const button = slot.querySelector<HTMLButtonElement>("[data-event-open]");
       if (button && shown) {
         button.onclick = (e) => {
@@ -914,9 +918,9 @@ export class App {
     }
     const arenaTab = this.rootElement.querySelector<HTMLElement>("#nav-tab-arena");
     if (arenaTab) {
-      const pending = hasPendingEvent(events);
-      arenaTab.classList.toggle("has-alert", pending);
-      arenaTab.setAttribute("aria-label", pending ? `${t("nav.arena")}, ${eventString("navDot")}` : t("nav.arena"));
+      const toPlay = hasPendingEvent(events);
+      arenaTab.classList.toggle("has-alert", toPlay);
+      arenaTab.setAttribute("aria-label", toPlay ? `${t("nav.arena")}, ${eventString("navDot")}` : t("nav.arena"));
     }
   }
 

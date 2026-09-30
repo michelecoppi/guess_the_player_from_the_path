@@ -82,6 +82,7 @@ function renderMatchReport(state: DailyState, feedback?: DailyGuessResult): stri
     </div>
     <p class="report-note">${escapeHtml(won ? v("next") : t("daily.outOfAttempts"))}</p>
     ${feedback?.share ? `<button class="btn" id="share">${icon("share")}${escapeHtml(t("daily.share"))}</button>${renderCopy(state)}` : ""}
+    <div id="daily-next-event-slot"></div>
     ${renderResultCard(state)}
   </section>`;
 }
@@ -139,7 +140,10 @@ function renderFeedback(
   return "";
 }
 
-/** The running event's banner (#248); App fills it from the events state after each render. */
+/**
+ * The running event's banner (#248); App fills it from the events state after each render.
+ * Once the Daily is over the invitation moves into the final report instead (#252).
+ */
 const EVENT_SLOT = `<div id="event-spotlight-slot"></div>`;
 
 export function renderDailyPage(state?: DailyState): string {
@@ -181,7 +185,7 @@ export function renderDailyPage(state?: DailyState): string {
   const hints = today.hints;
   return `<article class="daily-page" data-state="${state.status}">
     ${renderRecapBannerSlot()}
-    ${EVENT_SLOT}
+    ${done ? "" : EVENT_SLOT}
     <header class="daily-heading" id="daily-challenge-card">
       <div class="edition"><span class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
       <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>

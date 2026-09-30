@@ -8,7 +8,8 @@ import type { EventCard } from "./types";
  *
  * - a banner at the top of the Daily, the screen the app opens on;
  * - a highlighted card at the top of the Arena hub;
- * - a dot on the Arena tab of the nav bar while today's event is still to be played.
+ * - a dot on the Arena tab of the nav bar while today's event is still to be played;
+ * - an "up next" invitation in the Daily's final report, once the Daily is over (#252).
  *
  * Everything is derived from the `EventCard`s of `/app/api/arena` (`mode: "events"`): no
  * extra endpoint, no extra field. Nothing is shown while the events are loading or when the
@@ -16,7 +17,7 @@ import type { EventCard } from "./types";
  */
 
 /** Where the user opened the Events page from; sent with the load for `event_viewed`. */
-export type EventEntry = "daily_banner" | "arena_card" | "arena_list";
+export type EventEntry = "daily_banner" | "daily_result" | "arena_card" | "arena_list";
 
 const STRINGS: Record<SupportedLanguage, Record<string, string>> = {
   it: {
@@ -33,6 +34,8 @@ const STRINGS: Record<SupportedLanguage, Record<string, string>> = {
     play: "Gioca",
     view: "Vedi",
     navDot: "evento da giocare",
+    nextKicker: "Non è finita qui",
+    nextTitle: "Gioca l'evento {name}",
   },
   en: {
     kicker: "Live event",
@@ -48,6 +51,8 @@ const STRINGS: Record<SupportedLanguage, Record<string, string>> = {
     play: "Play",
     view: "View",
     navDot: "event to play",
+    nextKicker: "Not done yet",
+    nextTitle: "Play the {name} event",
   },
   es: {
     kicker: "Evento en curso",
@@ -63,6 +68,8 @@ const STRINGS: Record<SupportedLanguage, Record<string, string>> = {
     play: "Jugar",
     view: "Ver",
     navDot: "evento por jugar",
+    nextKicker: "Aún no has terminado",
+    nextTitle: "Juega el evento {name}",
   },
 };
 
@@ -138,5 +145,25 @@ export function renderEventSpotlight(
       <span class="event-spotlight-status">${pending ? "" : icon(event.progress.solved ? "check" : "close")}${escapeHtml(statusLabel(event))}</span>
     </span>
     <span class="event-spotlight-cta" aria-hidden="true">${escapeHtml(pending ? es("play") : es("view"))}${icon("arrow")}</span>
+  </button>`;
+}
+
+/**
+ * The invitation in the Daily's final report (#252): the moment the Daily ends is when a
+ * player is most likely to keep going. Only for an event still to play today.
+ */
+export function renderEventNext(event: EventCard | null, now: Date = new Date()): string {
+  if (!event || !isPending(event)) return "";
+  // Kept to two short facts: the report is narrow and the result stays the star.
+  const details = [timeLeftLabel(event, now), es("points", { n: event.points })];
+  const title = es("nextTitle", { name: event.name });
+  return `<button type="button" class="event-next" data-event-open="${escapeHtml(event.code)}" data-event-entry="daily_result" aria-label="${escapeHtml(`${title}. ${details.join(", ")}.`)}">
+    <span class="event-next-icon" aria-hidden="true">${icon("events")}</span>
+    <span class="event-next-body">
+      <small>${escapeHtml(es("nextKicker"))}</small>
+      <b>${escapeHtml(title)}</b>
+      <span class="event-next-details">${details.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</span>
+    </span>
+    <span class="event-next-cta" aria-hidden="true">${icon("arrow")}</span>
   </button>`;
 }

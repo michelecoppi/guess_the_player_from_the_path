@@ -4,6 +4,7 @@ import { App } from "../../webapp/src/app/App";
 import {
   hasPendingEvent,
   hoursLeftToday,
+  renderEventNext,
   renderEventSpotlight,
   spotlightEvent,
   timeLeftLabel,
@@ -92,8 +93,8 @@ test("banner text is translated", () => {
 });
 
 /** A server with a Daily and a mutable list of events; records every /arena request. */
-function fakeServer(events: EventCard[]) {
-  const state = { events };
+function fakeServer(events: EventCard[], today = createTestDailyChallenge()) {
+  const state = { events, today };
   const arena: any[] = [];
   const original = globalThis.fetch;
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -103,7 +104,7 @@ function fakeServer(events: EventCard[]) {
       arena.push(body);
       return new Response(JSON.stringify({ events: state.events, feedback: null }), { status: 200 });
     }
-    return new Response(JSON.stringify({ user: { name: "Marco" }, today: createTestDailyChallenge() }), { status: 200 });
+    return new Response(JSON.stringify({ user: { name: "Marco" }, today: state.today }), { status: 200 });
   }) as typeof fetch;
   return { state, arena, restore: () => { globalThis.fetch = original; } };
 }
@@ -195,6 +196,71 @@ test("app: no running event means no banner, no card and no dot", async () => {
     assert.equal(container.querySelector("#nav-tab-arena")?.classList.contains("has-alert"), false);
     app.setTab("arena");
     assert.equal(container.querySelector("#arena-event-slot")?.innerHTML, "");
+  } finally {
+    server.restore();
+    restoreTg();
+    cleanup();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// #252: "up next" in the Daily's final report
+// ---------------------------------------------------------------------------
+
+test("#252 the report invitation names the event, time left and prizes, only while it is to play", () => {
+  setLanguage("it");
+  const html = renderEventNext(card(), EVENING);
+  assert.match(html, /class="event-next"/);
+  assert.match(html, /data-event-entry="daily_result"/);
+  assert.match(html, /Non è finita qui/);
+  assert.match(html, /Gioca l&#39;evento Carriera al buio/);
+  assert.match(html, /Ancora 3 giorni[\s\S]*5 pt oggi/);
+  assert.equal(renderEventNext(card({ progress: solved })), "");
+  assert.equal(renderEventNext(card({ available: false })), "");
+  assert.equal(renderEventNext(null), "");
+  setLanguage("en");
+  assert.match(renderEventNext(card(), EVENING), /Not done yet[\s\S]*Play the Carriera al buio event/);
+  setLanguage("it");
+});
+
+const finishedDaily = createTestDailyChallenge({ solved: true, attempts_used: 2, attempts_left: 3 });
+
+test("app #252: a finished Daily moves the invitation from the top banner into the report", async () => {
+  setLanguage("it");
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const server = fakeServer([card()], finishedDaily);
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    await settle();
+    assert.equal(container.querySelector("#event-spotlight-slot"), null, "no top banner once the Daily is over");
+    const invite = container.querySelector<HTMLButtonElement>(".match-report #daily-next-event-slot .event-next");
+    assert.ok(invite, "the final report invites to the event");
+    invite.click();
+    await settle();
+    assert.equal(app.getActiveTab(), "events");
+    assert.equal(app.getEventsController().getState().selectedCode, "carriera_al_buio");
+    assert.equal(server.arena.at(-1).entry, "daily_result");
+  } finally {
+    server.restore();
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("app #252: no invitation in the report when today's event is already played", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const server = fakeServer([card({ progress: solved })], finishedDaily);
+  try {
+    const app = new App(container);
+    app.init();
+    await app.whenFirstLoaded();
+    await settle();
+    assert.ok(container.querySelector(".match-report"));
+    assert.equal(container.querySelector("#daily-next-event-slot")?.innerHTML, "");
   } finally {
     server.restore();
     restoreTg();
