@@ -67,9 +67,10 @@ DEFAULT_API_LATENCY_BUDGET_MS = 1000.0
 # noise. Only *measured* worst cases are listed - a guessed budget would either cry wolf or
 # hide a regression. Measure a route before adding it (tests/test_performance.py shows how).
 READ_BUDGETS: dict[str, int] = {
-    # user + feature flags + daily path + top 10 + 5 leagues x (league + 20 members) = 118,
+    # user + feature flags + daily path + top 10 + monthly top 10 (#256)
+    # + 5 leagues x (league + 20 members) = 128,
     # measured on the emulator by test_profile_read_cost_stays_within_its_budget.
-    "/app/api/me": 120,
+    "/app/api/me": 130,
     # Signature only: a metric must never cost a read.
     "/app/api/perf": 0,
     "/app/api/client-error": 0,

@@ -87,7 +87,7 @@ che crea due client HTTP e carica due volte il bundle dei certificati CA (~150 m
 Firestore/gRPC ~290 ms, `telegram` ~270 ms, `fastapi` ~220 ms.
 
 **Letture Firestore misurate** (emulatore, caso peggiore consentito dal prodotto):
-`/app/api/me` completo = **118** letture (utente, feature flags, sfida del giorno, top 10,
+`/app/api/me` completo = **128** letture (utente, feature flags, sfida del giorno, top 10 generale e mensile,
 5 leghe × (lega + 20 membri)); refresh leggero = **3**. Le letture di produzione per rotta
 arriveranno con i nuovi campi `firestore_*` e aggiorneranno la baseline.
 
@@ -107,7 +107,7 @@ parte.
 | --- | --- | --- |
 | `/webhook` | 1000 | – |
 | `/internal/telegram-update` | 2500 | – |
-| `/app/api/me` | 1200 | 120 |
+| `/app/api/me` | 1200 | 130 |
 | `/app/api/guess` | 1500 | – |
 | `/app/api/hint` | 1000 | – |
 | `/app/api/card` | 2000 | – |
@@ -201,7 +201,7 @@ riaprirla. Aggiungere una riga per ogni nuova valutazione.
 | 3 | Rimandare `setWebhook`/comandi/pulsante menu dopo l'avvio | Lifespan p50 300 ms, p95 811 ms (6% del cold start) | **Non fatto**: guadagno piccolo, e rimandare la registrazione del webhook introduce una finestra in cui l'istanza risponde prima di essere configurata. Riaprire se `lifespan_ms` supera stabilmente 1 s |
 | 4 | Istanza minima sempre calda (`--min-instances 1`) | Eliminerebbe quasi tutti i 95 cold start del periodo (restano quelli oltre la prima istanza e dei deploy). Costo stimato: un'istanza inattiva da 1 vCPU/512 MiB fatturata a tariffa idle, nell'ordine di 10 $/mese in europe-west1 | **Decisione del maintainer** (è un costo ricorrente, non codice): è l'intervento con l'effetto più grande sul p95 percepito. Si applica con `gcloud run services update guess-the-player --min-instances 1` (sopravvive ai deploy, vedi [deploy.md](deploy.md)). `startup-cpu-boost` è già attivo |
 | 5 | Lazy import dei moduli pesanti (Firestore/gRPC, Pillow, handler admin) | Import locale 1,45 s; quanto pesi su Cloud Run non è ancora noto | **Rimandato**: serve `before_lifespan_ms` di produzione per sapere quanto dei 4,5 s è import Python e quanto avvio della sandbox. Cambierebbe l'ordine di import di tutto `bot.py` |
-| 6 | Letture di `/app/api/me` (leghe lette in sequenza, 2 RPC per lega) | Caso peggiore 118 letture / 6 query; p50 di produzione 288 ms, p95 763 ms, sotto budget | **Non fatto**: nessuna evidenza che le leghe siano la parte lenta. Riaprire se `firestore_ms` di `/app/api/me` supera metà di `duration_ms` al p95 |
+| 6 | Letture di `/app/api/me` (leghe lette in sequenza, 2 RPC per lega) | Caso peggiore 128 letture / 7 query (dal #256, con la top 10 mensile); p50 di produzione 288 ms, p95 763 ms, sotto budget | **Non fatto**: nessuna evidenza che le leghe siano la parte lenta. Riaprire se `firestore_ms` di `/app/api/me` supera metà di `duration_ms` al p95 |
 | 7 | Cache, snapshot della classifica, payload daily precomputato, compressione asset | Richieste calde tutte sotto 3 s; asset statici p95 ≤ 36 ms con ETag/304; broadcast e daily job sono batch fuori dal percorso utente | **Non fatto**: nessun dato li giustifica oggi |
 
 ## Scelte di progetto già in essere
@@ -244,7 +244,7 @@ evitare due inizializzazioni alla prima coppia di richieste concorrenti.
 
 `/app/api/me` riusa il documento utente appena letto per l'autenticazione.
 Con `lightweight: true` restituisce profilo e sfida senza interrogare classifica
-e leghe (3 letture invece di fino a 118). La prima apertura della Daily ora usa
+e leghe (3 letture invece di fino a 128: dal #256 il profilo completo legge anche la top 10 mensile). La prima apertura della Daily ora usa
 questo percorso; la lista duelli Arena viene richiesta solo quando si apre Arena.
 Il client unisce la risposta al profilo precedente dopo errori e indizi; dopo una
 risposta corretta e dopo modifiche alle leghe richiede il profilo completo.

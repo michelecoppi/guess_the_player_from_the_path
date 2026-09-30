@@ -31,8 +31,9 @@ export function profileFixture(): ProfileState {
       cosmetics:appearanceFixtures.identity,trophies:{pinned:[trophy],all:[trophy],max:3},distribution:[5,18,32,24,13].map((count,i)=>({attempts:i+1,count}))}};
 }
 export function leaderboardFixture(): LeaderboardState {
-  return {status:'ready',error:null,activeTab:'global',selectedLeagueCode:null,leagues:['Amici del calcetto','Curva Nord'].map((name,i)=>({code:`DEMO${i+1}`,name,members:3,position:2,points:1284,standings:[{position:1,profile_id:i+1,name:i?'Luca':'Giulia',points:1450,me:false},{position:2,profile_id:3,name:'Marco',points:1284,me:true},{position:3,profile_id:4,name:'Andrea',points:1201,me:false}]})),publicProfile:null,
-    globalLeaderboard:['Giulia','Luca','Marco','Andrea','Sara','Alessandro','Francesca','Davide','Elena','Matteo'].map((name,i)=>({position:i+1,profile_id:i+1,name,points:1450-i*83,me:i===2}))};
+  return {status:'ready',error:null,activeTab:'monthly',selectedLeagueCode:null,leagues:['Amici del calcetto','Curva Nord'].map((name,i)=>({code:`DEMO${i+1}`,name,members:3,position:2,points:1284,standings:[{position:1,profile_id:i+1,name:i?'Luca':'Giulia',points:1450,me:false},{position:2,profile_id:3,name:'Marco',points:1284,me:true},{position:3,profile_id:4,name:'Andrea',points:1201,me:false}]})),publicProfile:null,
+    globalLeaderboard:['Giulia','Luca','Marco','Andrea','Sara','Alessandro','Francesca','Davide','Elena','Matteo'].map((name,i)=>({position:i+1,profile_id:i+1,name,points:1450-i*83,me:i===2})),
+    monthlyLeaderboard:['Sara','Marco','Giulia','Davide','Luca','Elena','Andrea','Matteo','Francesca','Alessandro'].map((name,i)=>({position:i+1,profile_id:i+1,name,points:164-i*14,me:name==='Marco'}))};
 }
 export function archiveFixture(): ArchiveState {
   return {view:'calendar',status:'ready',error:null,selectedDay:null,feedback:null,draftAnswer:'',challengeFinished:false,

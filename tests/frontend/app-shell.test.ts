@@ -277,7 +277,9 @@ test("App navigates to leaderboard tab, loads real leaderboard data, and connect
     assert.ok(container.querySelector(".leaderboard-section"));
     assert.ok(container.querySelector(".leaderboard-tabs"));
     assert.equal(app.getLeaderboardController().getState().status, "ready");
-    assert.ok(container.textContent?.includes("Alessandro Del Piero"));
+    // The monthly ranking opens first (#256).
+    assert.ok(container.textContent?.includes("Andrea Pirlo"));
+    assert.ok(!container.textContent?.includes("Alessandro Del Piero"));
   } finally {
     restoreFetch();
     cleanupDom();

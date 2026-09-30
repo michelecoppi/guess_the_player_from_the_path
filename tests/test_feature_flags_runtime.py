@@ -171,7 +171,7 @@ def profile_backend(monkeypatch):
     monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", lambda uid: user)
     monkeypatch.setattr(webapp_api.firebase_service, "get_daily_path", lambda day: None)
     monkeypatch.setattr(webapp_api.firebase_service, "get_top_users",
-                        lambda limit=10: [{"telegram_id": 7, "username": "Bea", "points": 30}])
+                        lambda field="points_totali", limit=10: [{"telegram_id": 7, "username": "Bea", "points": 30}])
     return user
 
 
@@ -191,6 +191,7 @@ def test_a_disabled_leaderboard_is_an_empty_list_and_is_never_read(profile_backe
     monkeypatch.setattr(webapp_api.firebase_service, "get_top_users", fail("get_top_users"))
     profile = webapp_api.build_profile(42)
     assert profile["leaderboard"] == [] and profile["features"]["leaderboard"] is False
+    assert profile["monthly_leaderboard"] == []
 
 
 def test_the_me_route_returns_the_features_block(api, monkeypatch, profile_backend):

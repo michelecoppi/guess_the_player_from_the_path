@@ -39,11 +39,53 @@ test("1 & 2. full /me request includes social data without lightweight: true", a
     const state = controller.getState();
     assert.equal(state.status, "ready");
     assert.equal(state.globalLeaderboard.length, 4);
+    assert.equal(state.monthlyLeaderboard.length, 2);
     assert.equal(state.leagues.length, 1);
   } finally {
     restoreFetch();
     restoreTg();
   }
+});
+
+test("monthly ranking is the first tab and the one open by default (#256)", async () => {
+  setLanguage("it");
+  const { restore: restoreTg } = setupTestTelegram();
+  const restoreFetch = mockFetchResponse(createTestFullProfile());
+
+  try {
+    const controller = new LeaderboardController();
+    assert.equal(controller.getState().activeTab, "monthly");
+    await controller.init();
+
+    const html = renderLeaderboardView(controller.getState());
+    const tabs = [...html.matchAll(/data-leaderboard-tab="(\w+)"/g)].map((m) => m[1]);
+    assert.deepEqual(tabs, ["monthly", "global", "leagues"]);
+    assert.match(html, /id="leaderboard-tab-monthly"[^>]*aria-selected="true"/);
+    assert.ok(html.includes('id="leaderboard-panel-monthly"'));
+    assert.ok(html.includes("Del mese"));
+    // Monthly points, not the all-time ones.
+    assert.match(html, /aria-label="[^"]*64[^"]*">64</);
+    assert.ok(!html.includes("Alessandro Del Piero"));
+  } finally {
+    restoreFetch();
+    restoreTg();
+  }
+});
+
+test("an empty monthly ranking explains the reset instead of looking broken", () => {
+  setLanguage("it");
+  const html = renderLeaderboardView({
+    status: "ready",
+    error: null,
+    activeTab: "monthly",
+    selectedLeagueCode: null,
+    globalLeaderboard: [{ position: 1, profile_id: 1, name: "Bea", points: 300, me: false }],
+    monthlyLeaderboard: [],
+    leagues: [],
+    publicProfile: null,
+  });
+  assert.ok(html.includes("Il mese è appena iniziato"));
+  assert.ok(!html.includes("Bea"));
 });
 
 test("3, 4, 5, 6. real global rows render preserving positions, points and backend badge", () => {
@@ -60,6 +102,7 @@ test("3, 4, 5, 6. real global rows render preserving positions, points and backe
     activeTab: "global",
     selectedLeagueCode: null,
     globalLeaderboard: entries,
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: null,
   });
@@ -98,6 +141,7 @@ test("7. current user is highlighted by me === true and includes accessible non-
     activeTab: "global",
     selectedLeagueCode: null,
     globalLeaderboard: entries,
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: null,
   });
@@ -123,6 +167,7 @@ test("8. current user absent from top 10 is handled honestly without inventing p
     activeTab: "global",
     selectedLeagueCode: null,
     globalLeaderboard: entries,
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: null,
   });
@@ -191,6 +236,7 @@ test("12. empty global leaderboard renders proper empty state", () => {
     activeTab: "global",
     selectedLeagueCode: null,
     globalLeaderboard: [],
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: null,
   });
@@ -207,6 +253,7 @@ test("13. zero private leagues renders proper empty state", () => {
     activeTab: "leagues",
     selectedLeagueCode: null,
     globalLeaderboard: [],
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: null,
   });
@@ -247,6 +294,7 @@ test("14 & 15. single and multiple private leagues render accurately with select
     activeTab: "leagues",
     selectedLeagueCode: "BAR01",
     globalLeaderboard: [],
+    monthlyLeaderboard: [],
     leagues,
     publicProfile: null,
   });
@@ -285,6 +333,7 @@ test("16 & 17. league standings preserve backend ordering and current user row",
     activeTab: "leagues",
     selectedLeagueCode: "LEAGUE1",
     globalLeaderboard: [],
+    monthlyLeaderboard: [],
     leagues: [league],
     publicProfile: null,
   });
@@ -318,6 +367,7 @@ test("19. loading state renders accessible spinner and placeholder", () => {
     activeTab: "global",
     selectedLeagueCode: null,
     globalLeaderboard: [],
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: null,
   });
@@ -424,10 +474,11 @@ test("24, 25, 26. complete localization across Italian, English, and Spanish", (
     activeTab: "global",
     selectedLeagueCode: "L1",
     globalLeaderboard: entries,
+    monthlyLeaderboard: [],
     leagues,
     publicProfile: null,
   });
-  assert.ok(itHtml.includes("Classifica Generale"));
+  assert.ok(itHtml.includes("Classifica"));
   assert.ok(itHtml.includes("PUNTI"));
   assert.ok(itHtml.includes("(Tu)"));
 
@@ -439,10 +490,11 @@ test("24, 25, 26. complete localization across Italian, English, and Spanish", (
     activeTab: "global",
     selectedLeagueCode: "L1",
     globalLeaderboard: entries,
+    monthlyLeaderboard: [],
     leagues,
     publicProfile: null,
   });
-  assert.ok(enHtml.includes("Global Leaderboard"));
+  assert.ok(enHtml.includes("Leaderboard"));
   assert.ok(enHtml.includes("POINTS"));
   assert.ok(enHtml.includes("(You)"));
 
@@ -454,10 +506,11 @@ test("24, 25, 26. complete localization across Italian, English, and Spanish", (
     activeTab: "global",
     selectedLeagueCode: "L1",
     globalLeaderboard: entries,
+    monthlyLeaderboard: [],
     leagues,
     publicProfile: null,
   });
-  assert.ok(esHtml.includes("Clasificación General"));
+  assert.ok(esHtml.includes("Clasificación"));
   assert.ok(esHtml.includes("PUNTOS"));
   assert.ok(esHtml.includes("(Tú)"));
 
@@ -476,6 +529,7 @@ test("27. prototype data and notice are absent from runtime", () => {
     activeTab: "global",
     selectedLeagueCode: null,
     globalLeaderboard: entries,
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: null,
   });
@@ -525,7 +579,7 @@ test("29. public profile flow: click row opens public profile with back button r
     controller.closePublicProfile();
     assert.equal(controller.getState().publicProfile, null);
     const restoredHtml = renderLeaderboardPage(controller.getState());
-    assert.ok(restoredHtml.includes("Classifica Generale"));
+    assert.ok(restoredHtml.includes("Classifica"));
     assert.ok(!restoredHtml.includes("Torna alla classifica"));
   } finally {
     restoreFetch();
@@ -558,11 +612,11 @@ test("30. DOM event wiring triggers tab switches, league selection, profile open
     globalTabBtn.click();
     assert.equal(controller.getState().activeTab, "global");
 
-    // Click profile link
-    const profileBtn = container.querySelector<HTMLButtonElement>("button[data-profile-id='101']");
+    // Click profile link (the DOM still shows the default monthly tab)
+    const profileBtn = container.querySelector<HTMLButtonElement>("button[data-profile-id='104']");
     assert.ok(profileBtn);
     profileBtn.click();
-    assert.equal(controller.getState().publicProfile?.profileId, 101);
+    assert.equal(controller.getState().publicProfile?.profileId, 104);
   } finally {
     cleanup();
     restoreFetch();
@@ -586,6 +640,7 @@ test("31. public profile renders resolved cosmetic presentation values and never
     activeTab: "global",
     selectedLeagueCode: null,
     globalLeaderboard: [],
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: {
       profileId: 101,
@@ -624,6 +679,7 @@ test("public profile trophy count uses the singular form for exactly 1 trophy (#
     activeTab: "global" as const,
     selectedLeagueCode: null,
     globalLeaderboard: [],
+    monthlyLeaderboard: [],
     leagues: [],
     publicProfile: {
       profileId: 101,

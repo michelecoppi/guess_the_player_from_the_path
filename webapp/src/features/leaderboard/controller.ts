@@ -51,9 +51,10 @@ export class LeaderboardController {
     this.state = {
       status: "idle",
       error: null,
-      activeTab: "global",
+      activeTab: "monthly",
       selectedLeagueCode: null,
       globalLeaderboard: [],
+      monthlyLeaderboard: [],
       leagues: [],
       publicProfile: null,
     };
@@ -113,6 +114,7 @@ export class LeaderboardController {
           status: "ready",
           error: null,
           globalLeaderboard: social.leaderboard,
+          monthlyLeaderboard: social.monthlyLeaderboard,
           leagues: social.leagues,
           selectedLeagueCode,
         });

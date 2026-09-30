@@ -62,10 +62,14 @@ def firebase(monkeypatch):
 
     monkeypatch.setattr(webapp_api.firebase_service, "get_user_data", lambda uid: state["user"])
     monkeypatch.setattr(webapp_api.firebase_service, "get_daily_path", lambda day: state["challenge"])
-    monkeypatch.setattr(webapp_api.firebase_service, "get_top_users", lambda limit=10: [
-        {"telegram_id": 7, "username": "Bea", "points": 300},
-        {"telegram_id": 42, "username": "Anna", "points": 120},
-    ])
+    def top_users(field="points_totali", limit=10):
+        rows = [
+            {"telegram_id": 7, "username": "Bea", "points": 300, "monthly_points": 20},
+            {"telegram_id": 42, "username": "Anna", "points": 120, "monthly_points": 45},
+        ]
+        return sorted(rows, key=lambda row: row[{"points_totali": "points"}.get(field, field)], reverse=True)
+
+    monkeypatch.setattr(webapp_api.firebase_service, "get_top_users", top_users)
     monkeypatch.setattr(webapp_api.firebase_service, "get_league", lambda code: {"code": code, "name": "Amici del bar", "members_count": 4})
     monkeypatch.setattr(webapp_api.firebase_service, "get_league_leaderboard", lambda code, limit=20: [
         {"telegram_id": 7, "name": "Bea", "points": 60},
@@ -104,6 +108,7 @@ def test_lightweight_profile_skips_social_queries_but_refreshes_game(firebase, m
     firebase["user"]["daily_attempts"] = 3
     fresh = webapp_api.build_profile(42, day_iso=DAY, include_social=False)
     assert "leaderboard" not in fresh
+    assert "monthly_leaderboard" not in fresh
     assert "leagues" not in fresh
     assert fresh["today"]["attempts_left"] == 0
     assert full["today"]["attempts_left"] == 1
@@ -126,6 +131,12 @@ def test_the_reader_is_marked_in_the_leaderboard(firebase):
     rows = webapp_api.build_profile(42, day_iso=DAY)["leaderboard"]
     assert [row["me"] for row in rows] == [False, True]
     assert rows[0]["position"] == 1
+
+
+def test_the_monthly_leaderboard_ranks_by_points_of_the_month(firebase):
+    rows = webapp_api.build_profile(42, day_iso=DAY)["monthly_leaderboard"]
+    assert [(row["name"], row["points"], row["me"]) for row in rows] == [("Anna", 45, True), ("Bea", 20, False)]
+    assert [row["position"] for row in rows] == [1, 2]
 
 
 def test_leagues_carry_the_personal_position(firebase):

@@ -123,6 +123,12 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 Navigation: Daily, Arena (hub for duels, events, archive and training), Classifica,
 Shop, Profilo; referral lives under Profile.
 
+Classifica has three tabs, in this order: **Del mese** (top 10 by `monthly_points`,
+open by default because everyone restarts from zero on the 1st), **Generale** (top 10
+by all-time points) and **Le tue leghe**. Both rankings come from the full `me` payload
+(`monthly_leaderboard` and `leaderboard`, same row shape; `points` is the monthly score
+in the first) and are empty lists when the `leaderboard` flag is off (#256).
+
 On Telegram clients with Bot API 6.2+, the close confirmation is enabled while an
 unfinished Arena duel or playable event detail is visible. It is disabled when the
 match finishes, the user leaves that view, or the session expires. Daily and other
