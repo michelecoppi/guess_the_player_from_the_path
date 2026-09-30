@@ -92,6 +92,10 @@ new dated section below.
 
 ### Changed
 
+- Daily hints: at most one per wrong guess, and none on easy challenges, one on medium,
+  two on hard and impossible, so a hint always costs a real point
+  ([#277](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/277)).
+
 - Removed the leftovers of the old Mini App: the `/app/v2` path (the Vite Mini App has been
   `/app` since #115), the `window.PlayerClient` legacy bridge, the `test-node` command for the
   deleted `tests/client.test.cjs`, and the `legacy` label of the startup beacon. The
@@ -131,6 +135,10 @@ new dated section below.
 
 ### Fixed
 
+- Mini App Daily: the hint button stays disabled until a hint is allowed and explains
+  why; a refused hint now shows a message instead of doing nothing, and hint texts no
+  longer show raw `<b>` tags
+  ([#277](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/277)).
 - Bulk career refresh no longer stops updating after Wikipedia timeouts: timeouts are retried,
   slow chunks are split, each chunk is saved once (one backup per run instead of one per
   player) and an unreachable source stops the run cleanly.

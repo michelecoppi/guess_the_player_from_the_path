@@ -6,15 +6,17 @@ ha idee. L'indizio invece e' **assoluto** - dice la nazionalita' e basta - ed e'
 che costa un punto: e' la differenza fra un aiuto e la risposta regalata.
 
 Tre regole tengono in piedi l'equilibrio, e sono tutte qui o in
-`firebase_service.take_daily_hint`:
+`services/repos/users.py` (`hint_refusal`):
 
-1. si sbloccano **dopo un tentativo sbagliato**. Senza questa condizione l'indizio sarebbe
-   il modo piu' comodo per farsi dire nazionalita' e ruolo di ogni sfida senza mai giocare,
-   e in piu' toglierebbe valore a chi la prende al primo colpo;
+1. si sbloccano **uno per ogni tentativo sbagliato** (#277): il primo dopo il primo errore,
+   il secondo dopo il secondo. Senza questa condizione l'indizio sarebbe il modo piu'
+   comodo per farsi dire nazionalita' e ruolo di ogni sfida senza mai giocare, e un solo
+   nome buttato li' li sbloccherebbe tutti;
 2. costano **1 punto l'uno**, con un pavimento a 1: chi indovina dopo due indizi su una
    sfida "facile" (che ne vale 1) prende comunque il suo punto, ma nessun bonus striscia in
    piu' di quanto avrebbe preso senza. Non si va mai sotto zero;
-3. sono **due al massimo**, e sono quelli della scala qui sotto. Non e' un numero magico: e'
+3. sono **due al massimo**, e quanti dipende dalla difficolta' (`HINTS_BY_DIFFICULTY`:
+   nessuno sulle facili, uno sulle medie). Sono quelli della scala qui sotto. Non e' un numero magico: e'
    quanto si puo' dire senza che la sfida si risolva da sola. La scala e' un dato, quindi
    allungarla (decennio di nascita, iniziale del cognome) e' una riga - ma allungarla vuol
    dire anche rendere piu' facile ogni sfida difficile, che e' una scelta di gioco, non un
@@ -32,6 +34,12 @@ from services.i18n import t
 # restringe di piu' senza risolvere: i ruoli sono quattro, le nazionalita' cinquanta.
 HINT_LADDER = ("nationality", "position")
 MAX_HINTS = len(HINT_LADDER)
+
+# Quanti indizi concede ogni difficolta' (#277). Un indizio costa un punto e una sfida "easy"
+# ne vale uno solo: col pavimento a 1 sarebbe gratis, quindi li' non ce ne sono. Una "medium"
+# (2 punti) ne regge uno, le due piu' dure tutta la scala. Difficolta' sconosciuta: niente,
+# come i punti (services/difficulty.py::points_for_difficulty).
+HINTS_BY_DIFFICULTY = {"easy": 0, "medium": 1, "hard": MAX_HINTS, "impossible": MAX_HINTS}
 
 # Quanto costa un indizio e sotto quanto non si scende comunque. Il pavimento a 1 serve alle
 # sfide "easy", che valgono 1 punto: due indizi le porterebbero a -1.
@@ -63,6 +71,11 @@ def build_hints(player, lang):
         return []
     rendered = [_render(kind, player, lang) for kind in HINT_LADDER]
     return [hint for hint in rendered if hint]
+
+
+def hint_limit(difficulty):
+    """Quanti indizi si possono chiedere su una sfida di questa difficolta'."""
+    return HINTS_BY_DIFFICULTY.get(difficulty, 0)
 
 
 def points_after_hints(base_points, hints_used):

@@ -288,16 +288,36 @@ def begin_guess_attempt(user_id, day_iso, max_attempts):
     return _attempt(fs.db.transaction())
 
 
+def hint_refusal(attempts, hints, has_guessed, max_hints, max_attempts):
+    """Perche' oggi non spetta un indizio, o None se spetta.
+
+    Al massimo **un indizio per tentativo sbagliato** (#277): il primo dopo il primo errore,
+    il secondo dopo il secondo. Senza questa regola si potrebbero prendere tutti gli indizi
+    dopo un solo nome buttato li', e la sfida diventerebbe troppo facile; senza nessun
+    tentativo, poi, sarebbero il modo piu' comodo per farsi dire nazionalita' e ruolo di
+    ogni sfida senza mai giocarla. Dato che chi indovina non chiede piu' indizi, a sfida
+    aperta i tentativi fatti sono tutti sbagliati."""
+    if has_guessed:
+        return "already_guessed"
+    if attempts >= max_attempts:
+        # Bottone vecchio premuto a tentativi finiti: l'indizio non servirebbe a niente
+        # e costerebbe comunque un punto.
+        return "no_attempts"
+    if hints >= max_hints:
+        return "no_more"
+    if hints >= attempts:
+        return "needs_attempt"
+    return None
+
+
 def take_daily_hint(user_id, day_iso, max_hints, max_attempts):
     """Consuma un indizio sulla sfida di oggi e dice quale spetta.
 
     Transazione per lo stesso motivo del tentativo: due tocchi rapidi sul bottone non devono
     valere un indizio solo (l'utente pagherebbe due punti per uno) ne' due volte lo stesso.
 
-    Gli indizi si sbloccano **dopo** un tentativo sbagliato: senza questa condizione
-    diventerebbero il modo piu' comodo per farsi dire nazionalita' e ruolo di ogni sfida
-    senza mai giocarla. Come per i tentativi, il contatore si azzera da solo al cambio di
-    giorno (`last_played_day`): non c'e' niente da ripulire a mezzanotte.
+    Le regole di sblocco sono in `hint_refusal`. Come per i tentativi, il contatore si azzera
+    da solo al cambio di giorno (`last_played_day`): non c'e' niente da ripulire a mezzanotte.
 
     Ritorna {'ok': True, 'index', 'hints_used'} oppure {'ok': False, 'reason'} con
     'not_registered' | 'needs_attempt' | 'already_guessed' | 'no_attempts' | 'no_more'.
@@ -317,16 +337,9 @@ def take_daily_hint(user_id, day_iso, max_hints, max_attempts):
         has_guessed = data.get("has_guessed_today", False) if same_day else False
         hints = data.get("daily_hints", 0) if same_day else 0
 
-        if has_guessed:
-            return {"ok": False, "reason": "already_guessed"}
-        if attempts <= 0:
-            return {"ok": False, "reason": "needs_attempt"}
-        if attempts >= max_attempts:
-            # Bottone vecchio premuto a tentativi finiti: l'indizio non servirebbe a niente
-            # e costerebbe comunque un punto.
-            return {"ok": False, "reason": "no_attempts"}
-        if hints >= max_hints:
-            return {"ok": False, "reason": "no_more"}
+        reason = hint_refusal(attempts, hints, has_guessed, max_hints, max_attempts)
+        if reason:
+            return {"ok": False, "reason": reason}
 
         transaction.update(ref, {"daily_hints": hints + 1, "last_played_day": day_iso})
         return {"ok": True, "index": hints + 1, "hints_used": hints + 1}

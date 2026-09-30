@@ -239,8 +239,9 @@ export class DailyController {
   }
 
   public async takeHint(): Promise<void> {
-    if (this.state.status === "submitting") return;
+    if (this.state.status === "submitting" || this.state.hintLoading) return;
     const generation = appearanceGeneration();
+    this.updateState({ hintLoading: true, errorMessage: undefined });
 
     try {
       const result = await requestDailyHint(this.state.challenge?.day, this.apiClient);
@@ -253,7 +254,12 @@ export class DailyController {
           // Ignore
         }
         await this.loadDailyData({ lightweight: true });
+        return;
       }
+      // A refusal means the page was out of step with the server (#277): resync, then say
+      // why instead of leaving the tap without an answer.
+      await this.loadDailyData({ lightweight: true });
+      this.updateState({ errorMessage: hintRefusalMessage(result, this.state.challenge?.attempts_used ?? 0) });
     } catch (err: any) {
       if (err instanceof ApiError && err.status === 409 && err.detail === "daily_changed") {
         await this.loadDailyData({ lightweight: true });
@@ -265,6 +271,9 @@ export class DailyController {
         return;
       }
       console.warn("Hint error:", err);
+      this.updateState({ errorMessage: t("daily.hintUnavailable") });
+    } finally {
+      if (this.state.hintLoading) this.updateState({ hintLoading: false });
     }
   }
 
@@ -431,4 +440,13 @@ export class DailyController {
 function supportsShareMessage(tg: TelegramWebApp | null): tg is TelegramWebApp {
   if (!tg || typeof tg.shareMessage !== "function") return false;
   return typeof tg.isVersionAtLeast !== "function" || tg.isVersionAtLeast("8.0");
+}
+
+/** What to tell the player when `/app/api/hint` does not give a hint (services/game.py `take_hint`). */
+function hintRefusalMessage(result: { status: string; reason?: string }, attemptsUsed: number): string {
+  if (result.status === "unavailable") return t("daily.noHints");
+  // One hint per wrong guess: the first waits for a miss, the next for another one.
+  if (result.reason === "needs_attempt") return t(attemptsUsed === 0 ? "daily.hintLocked" : "daily.hintLockedNext");
+  if (result.reason === "no_more") return t("daily.hintNoMore");
+  return t("daily.hintUnavailable");
 }

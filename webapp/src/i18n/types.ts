@@ -53,6 +53,11 @@ export interface TranslationSchema {
     hintBtn: string;
     hintsLeft: string;
     noHints: string;
+    hintLocked: string;
+    hintLockedNext: string;
+    noHintsEasy: string;
+    hintNoMore: string;
+    hintUnavailable: string;
     correct: string;
     wrong: string;
     gotPoints: string;

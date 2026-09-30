@@ -107,12 +107,16 @@ export function dailyFixture(view: ReviewState): DailyState {
       },
     };
   }
-  if (view === "hint")
+  if (view === "hint") {
+    // A hint only exists after a wrong guess (#277).
+    state.challenge!.attempts_used = 1;
+    state.challenge!.attempts_left = 4;
     state.challenge!.hints = {
       total: 3,
       used: 1,
       taken: ["Ha vinto il Mondiale nel 2006."],
     };
+  }
   if (view === "correct" || view === "completed") {
     state.status = view;
     state.challenge!.solved = true;
