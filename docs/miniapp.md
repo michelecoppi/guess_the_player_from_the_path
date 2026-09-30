@@ -146,6 +146,14 @@ Daily refreshes its state. New players see a dismissible three-step guide before
 first attempt. Its seen marker is stored locally under a key scoped to the Telegram user;
 no guide state is sent to the server.
 
+Once the Daily is over (#254) the result comes first: the answer desk with the final report
+moves above the career, which folds into a "Show the career" row (`<details>`). The report
+keeps its share actions in one row (Telegram share, then copy and card as icon buttons with
+accessible names) and previews the result card as a small thumbnail that enlarges in place
+on tap. The card is fetched automatically only right after a game (`submitGuess` →
+`loadResultCard`); reopening a finished Daily asks for it on demand, so no PNG is rendered
+on every app open.
+
 On narrow screens, an active Daily keeps a small answer shortcut above the fixed
 navigation while the career path is in view. It focuses the existing guess field and
 disappears when that field is visible or the challenge is complete. Standard path
