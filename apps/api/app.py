@@ -3,6 +3,7 @@
 `create_app(bridge)` is called once by `bot.py`, the composition root. Routes live in
 `apps/api/{static,miniapp,internal}.py`; this module only assembles them.
 """
+import asyncio
 import re
 from contextlib import asynccontextmanager
 
@@ -34,6 +35,11 @@ def create_app(bridge: TelegramBridge) -> FastAPI:
         if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", config.WEBHOOK_SECRET):
             raise RuntimeError("WEBHOOK_SECRET must contain 32-256 URL-safe characters")
         task_queue.validate_configuration()
+        # La connessione a Firestore si apre in un thread mentre Telegram aspetta la rete
+        # (#258): la prima richiesta dell'istanza non paga piu' canale, token e handshake.
+        # Non si attende: se Firestore e' lento, l'avvio non lo e'.
+        app.state.firestore_warmup = asyncio.get_running_loop().run_in_executor(
+            None, performance.warm_up_firestore)
         # Quanto costa un cold start e dove (#32): prima del lifespan (interprete e import) e
         # durante (inizializzazione Telegram e registrazione del webhook).
         with performance.startup_phases():

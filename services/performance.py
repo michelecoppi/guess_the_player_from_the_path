@@ -358,6 +358,34 @@ def claim_first_request() -> bool:
         return True
 
 
+def warm_up_firestore(environ: Optional[dict[str, str]] = None) -> Optional[float]:
+    """Open the Firestore connection before a user needs it (#258).
+
+    The client is created lazily, so the first request of an instance used to pay for the
+    gRPC channel, the access token and the TLS handshake on top of its own reads: in
+    production the first `/app/api/me` of an opening took p50 605 ms on the server against
+    167 ms for the route as a whole. The lifespan runs this in a worker thread while the
+    Telegram setup waits on the network, so the cost overlaps instead of adding up.
+
+    The one read it makes is the feature flag document, which `/app/api/me` needs anyway:
+    the cache it fills is the one the first request would have filled. Only on Cloud Run
+    (`K_SERVICE`): tests and local runs never open a connection they did not ask for.
+    Never raises; returns the duration in ms, or None when skipped or failed."""
+    env = os.environ if environ is None else environ
+    if not env.get("K_SERVICE"):
+        return None
+    started = perf_counter()
+    try:
+        from services import feature_flags
+        source = feature_flags.get_service().snapshot().source
+    except Exception as exc:  # noqa: BLE001 - a warm-up must never break startup
+        observability.log_event("firestore.warmup.failed", logging.WARNING, error_type=type(exc).__name__)
+        return None
+    duration_ms = round((perf_counter() - started) * 1000, 1)
+    observability.log_event("firestore.warmup.completed", duration_ms=duration_ms, source=source)
+    return duration_ms
+
+
 # ---------------------------------------------------------------------------
 # Mini App startup beacon
 # ---------------------------------------------------------------------------
