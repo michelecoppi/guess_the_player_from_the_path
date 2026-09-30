@@ -612,6 +612,12 @@ test("30. DOM event wiring triggers tab switches, league selection, profile open
     globalTabBtn.click();
     assert.equal(controller.getState().activeTab, "global");
 
+    // Back to the monthly tab after leaving it (#268)
+    const monthlyTabBtn = container.querySelector<HTMLButtonElement>("button[data-leaderboard-tab='monthly']");
+    assert.ok(monthlyTabBtn);
+    monthlyTabBtn.click();
+    assert.equal(controller.getState().activeTab, "monthly");
+
     // Click profile link (the DOM still shows the default monthly tab)
     const profileBtn = container.querySelector<HTMLButtonElement>("button[data-profile-id='104']");
     assert.ok(profileBtn);

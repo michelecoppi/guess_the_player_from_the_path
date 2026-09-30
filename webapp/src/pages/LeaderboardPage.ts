@@ -26,13 +26,13 @@ export function attachLeaderboardEventListeners(
   if (search) search.oninput = () => controller.setSearchQuery(search.value);
   const retrySearch = root.querySelector<HTMLButtonElement>('#leaderboard-search-retry');
   if (retrySearch) retrySearch.onclick = () => controller.setSearchQuery(controller.getState().search?.query || '');
-  // Leaderboard sub-tabs: Global vs Leagues
+  // Leaderboard sub-tabs: Monthly, Global, Leagues
   const tabButtons = root.querySelectorAll<HTMLButtonElement>("button[data-leaderboard-tab]");
   tabButtons.forEach((btn) => {
     btn.onclick = (e) => {
       e.preventDefault();
       const tab = btn.dataset.leaderboardTab as LeaderboardTab;
-      if (tab === "global" || tab === "leagues") {
+      if (tab === "monthly" || tab === "global" || tab === "leagues") {
         controller.setTab(tab);
       }
     };
