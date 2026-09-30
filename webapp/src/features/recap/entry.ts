@@ -112,7 +112,10 @@ export function bindRecapEntries(root: ParentNode): void {
 }
 
 export async function openRecap(month?: string): Promise<void> {
-  const response = month && loaded?.recap?.month === month ? loaded : await load(month);
+  // Always asked again on open: the recap itself is cached by the server, but the look is the
+  // one equipped *now* - a card bought in the Shop a minute ago must show up here.
+  const response = await fetchRecap(month).catch(() => null);
+  if (response && (!month || response.recap?.month === loaded?.recap?.month)) loaded = response;
   const recap = response?.recap;
   if (!recap) return;
   if (!recap.available) {
