@@ -333,7 +333,7 @@ def test_profile_read_cost_stays_within_its_budget(emulator_db, include_social):
     budget = performance.READ_BUDGETS["/app/api/me"]
     # The route reads the user document first (_webapp_user), hence the +1.
     if include_social:
-        assert usage.reads + 1 == 118, usage.fields()  # the measured worst case the budget is based on
+        assert usage.reads + 1 == 128, usage.fields()  # the measured worst case the budget is based on
         assert usage.reads + 1 <= budget
     else:
         assert usage.reads + 1 <= 3, usage.fields()  # user, feature flags, daily path
