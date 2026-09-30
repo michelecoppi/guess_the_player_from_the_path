@@ -128,7 +128,8 @@ unfinished Arena duel or playable event detail is visible. It is disabled when t
 match finishes, the user leaves that view, or the session expires. Daily and other
 screens do not request confirmation.
 
-The initial Daily uses `me` with `lightweight: true`; Arena's duel list loads only
+The initial Daily uses `me` with `lightweight: true`; once it is on screen the running
+events are loaded for the announcement below. Arena's duel list loads only
 when Arena is opened (unless a duel invite deep link is present). Returning to a visible
 Daily refreshes its state. New players see a dismissible three-step guide before their
 first attempt. Its seen marker is stored locally under a key scoped to the Telegram user;
@@ -146,6 +147,29 @@ entries are compact on mobile; leaderboard search expands on request so the Top 
 appears first. Shop keeps the Discover introduction and uses a shorter header and
 filters on mobile, especially in Catalogue. These are presentation changes; gameplay,
 event attempts, purchases and API contracts are unchanged.
+
+## Running event announcement
+
+**Current state** ([#248](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/248)).
+A running event is announced outside its own page, from `webapp/src/features/events/spotlight.ts`:
+
+- **Daily banner** at the top of the Daily (under the recap banner): event name, time left
+  (days, or hours to the Italian midnight on the last day), today's points, first-solver
+  bonus while available, podium trophies, and the player's state for today. The whole
+  banner is one button that opens that event directly.
+- **Arena hub card**, the same component on top of the Arena modes.
+- **Dot on the Arena tab** of the nav bar while an event is available and not yet finished
+  today (`progress.finished`); its accessible name says so. It clears as soon as the guess
+  response updates the events state.
+
+An event still to play is preferred. Once today's round is played (solved or out of
+attempts) the Daily banner disappears; the Arena card stays as a quiet recap
+("Solved today · +N pts" or "No attempts left"). The events are loaded once, in the
+background, after the first Daily load (`App.init` → `whenFirstLoaded`), with the existing
+`/app/api/arena` `mode: "events"` call; no new endpoint or field. No event, a loading or a
+failed request shows nothing. Opening the Events page sends `entry` (`daily_banner`,
+`arena_card`, `arena_list`) so the server records `event_viewed`; the background load
+sends none and is never counted ([product-analytics.md](product-analytics.md)).
 
 ## Monthly recap ("Wrapped")
 

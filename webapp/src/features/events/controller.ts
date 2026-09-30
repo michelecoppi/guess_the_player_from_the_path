@@ -1,5 +1,6 @@
 import { api, type ApiClient } from "@/api/client";
 import { fetchEvents, guessEvent, revealEvent } from "./api";
+import type { EventEntry } from "./spotlight";
 import type { EventCard, EventsState } from "./types";
 
 /**
@@ -44,9 +45,10 @@ export class EventsController {
   /**
    * Load active events from the server.
    * If an event is currently selected, preserves selection if it remains in the updated list,
-   * otherwise clears the selection.
+   * otherwise clears the selection. `entry` says where the user opened the Events page from
+   * (#248); background loads leave it out, so only real visits count as `event_viewed`.
    */
-  public async load(): Promise<void> {
+  public async load(entry?: EventEntry): Promise<void> {
     if (this.state.status === "submitting") {
       return;
     }
@@ -56,7 +58,7 @@ export class EventsController {
     this.setState({ status: "loading", error: null });
 
     try {
-      const response = await fetchEvents(this.client);
+      const response = await fetchEvents(this.client, entry);
       if (currentSeq !== this.loadSeq) {
         return;
       }

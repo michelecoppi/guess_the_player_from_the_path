@@ -11,7 +11,7 @@ import {
   createTestDuelData,
 } from "./helpers";
 
-test("startup loads only lightweight Daily; Arena loads when opened", async () => {
+test("startup loads only lightweight Daily, then the running events; Arena loads when opened", async () => {
   const { container, cleanup } = setupGlobalDom();
   const { restore: restoreTg } = setupTestTelegram();
   const { requests, restore: restoreFetch } = captureFetchRequests({
@@ -22,8 +22,13 @@ test("startup loads only lightweight Daily; Arena loads when opened", async () =
     const app = new App(container);
     app.init();
     await app.whenFirstLoaded();
-    assert.deepEqual(requests.map((r) => r.url), ["/app/api/me"]);
+    // The Daily comes first and alone; the running events (#248) are asked only after it,
+    // as a background load that is not an Events page visit (no `entry`).
+    assert.equal(requests[0].url, "/app/api/me");
     assert.equal(requests[0].body.lightweight, true);
+    assert.deepEqual(requests.slice(1).map((r) => [r.url, r.body.mode, r.body.entry]), [
+      ["/app/api/arena", "events", undefined],
+    ]);
     app.setTab("arena");
     assert.ok(requests.some((r) => r.url === "/app/api/arena"));
   } finally {
