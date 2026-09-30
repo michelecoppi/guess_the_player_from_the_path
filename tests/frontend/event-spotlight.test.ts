@@ -134,13 +134,21 @@ test("app: the Daily banner and the Arena dot appear after the Daily and open th
     assert.equal(app.getEventsController().getState().selectedCode, "carriera_al_buio");
     assert.equal(server.arena.at(-1).entry, "daily_banner");
 
-    // Played: the dot goes away, the banner stays as a quiet recap.
+    // Played: the dot and the Daily banner go away; the Arena keeps the card as a recap.
     server.state.events = [card({ progress: solved })];
     await app.getEventsController().load();
     assert.equal(container.querySelector("#nav-tab-arena")?.classList.contains("has-alert"), false);
     app.setTab("play");
     await settle();
-    assert.ok(container.querySelector("#event-spotlight-slot .event-spotlight.is-done"));
+    assert.equal(container.querySelector("#event-spotlight-slot")?.innerHTML, "");
+    app.setTab("arena");
+    assert.ok(container.querySelector("#arena-event-slot .event-spotlight.is-done"));
+
+    // Out of attempts counts as played too.
+    server.state.events = [card({ progress: { attempts: 3, finished: true, solved: false, points: 0 } })];
+    await app.getEventsController().load();
+    app.setTab("play");
+    assert.equal(container.querySelector("#event-spotlight-slot")?.innerHTML, "");
   } finally {
     server.restore();
     restoreTg();

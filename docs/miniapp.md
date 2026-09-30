@@ -158,7 +158,8 @@ A running event is announced outside its own page, from `webapp/src/features/eve
   today (`progress.finished`); its accessible name says so. It clears as soon as the guess
   response updates the events state.
 
-An event still to play is preferred; once played the banner stays as a quiet recap
+An event still to play is preferred. Once today's round is played (solved or out of
+attempts) the Daily banner disappears; the Arena card stays as a quiet recap
 ("Solved today · +N pts" or "No attempts left"). The events are loaded once, in the
 background, after the first Daily load (`App.init` → `whenFirstLoaded`), with the existing
 `/app/api/arena` `mode: "events"` call; no new endpoint or field. No event, a loading or a

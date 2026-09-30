@@ -49,10 +49,12 @@ import { EventsController } from "@/features/events/controller";
 import {
   es as eventString,
   hasPendingEvent,
+  isPending,
   renderEventSpotlight,
   spotlightEvent,
   type EventEntry,
 } from "@/features/events/spotlight";
+import type { EventCard } from "@/features/events/types";
 import { renderLoadingState } from "@/components/LoadingState";
 import { lazyModule, type LazyModule } from "./lazy";
 import { Router } from "./Router";
@@ -892,19 +894,21 @@ export class App {
     if (this.sessionExpired) return;
     const events = this.eventsController.getState().events;
     const event = spotlightEvent(events);
-    const slots: Array<[string, EventEntry]> = [
-      ["#event-spotlight-slot", "daily_banner"],
-      ["#arena-event-slot", "arena_card"],
+    // The Daily only invites: once today's event is played (solved or out of attempts) the
+    // banner goes away. The Arena card stays, as a recap of today's result.
+    const slots: Array<[string, EventEntry, EventCard | null]> = [
+      ["#event-spotlight-slot", "daily_banner", event && isPending(event) ? event : null],
+      ["#arena-event-slot", "arena_card", event],
     ];
-    for (const [selector, entry] of slots) {
+    for (const [selector, entry, shown] of slots) {
       const slot = this.rootElement.querySelector<HTMLElement>(selector);
       if (!slot) continue;
-      slot.innerHTML = renderEventSpotlight(event, entry);
+      slot.innerHTML = renderEventSpotlight(shown, entry);
       const button = slot.querySelector<HTMLButtonElement>("[data-event-open]");
-      if (button && event) {
+      if (button && shown) {
         button.onclick = (e) => {
           e.preventDefault();
-          this.openEvent(event.code, entry);
+          this.openEvent(shown.code, entry);
         };
       }
     }
