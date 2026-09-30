@@ -27,7 +27,7 @@ from services.daily_challenge import (
 from services.dates import today_iso
 from services.difficulty import points_for_difficulty
 from services.guess_feedback import build_comparison
-from services.hints import MAX_HINTS, build_hints, points_after_hints
+from services.hints import MAX_HINTS, build_hints, hint_limit, points_after_hints
 from services.matching import find_match
 from services.player_pool import get_player_by_id
 
@@ -54,10 +54,12 @@ def _finish(*futures):
 def hints_available(challenge, lang):
     """Gli indizi che questa sfida puo' davvero dare, gia' resi nella lingua richiesta.
 
-    Il numero dipende dalla scheda del calciatore e non dal massimo teorico: senza `position`
-    ce n'e' uno solo. Serve sia al bot (per decidere se mostrare il bottone) sia alla mini
-    app (per disegnare le caselle vuote degli indizi)."""
-    return build_hints(get_player_by_id((challenge or {}).get("player_id")), lang)
+    Il numero dipende dalla difficolta' (`hint_limit`) e dalla scheda del calciatore, non dal
+    massimo teorico: senza `position` ce n'e' uno solo. Serve sia al bot (per decidere se
+    mostrare il bottone) sia alla mini app (per disegnare le caselle vuote degli indizi)."""
+    challenge = challenge or {}
+    hints = build_hints(get_player_by_id(challenge.get("player_id")), lang)
+    return hints[:hint_limit(challenge.get("difficulty"))]
 
 
 def max_hints_for(challenge, lang):

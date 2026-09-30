@@ -7,7 +7,7 @@ const copy = {
   introTitle: ["La tua prima partita", "Your first match", "Tu primer partido"],
   introPath: ["Segui i club e gli anni per riconoscere la carriera.", "Follow the clubs and years to recognise the career.", "Sigue los clubes y los años para reconocer la carrera."],
   introAttempts: ["Hai un numero limitato di tentativi: ogni risposta sbagliata ti dà un confronto.", "You have limited attempts: each wrong answer gives you a comparison.", "Tienes intentos limitados: cada respuesta incorrecta te da una comparación."],
-  introHints: ["Puoi chiedere indizi; se indovini, riducono i punti ottenuti.", "You can ask for hints; they reduce your points if you solve it.", "Puedes pedir pistas; reducen tus puntos si aciertas."],
+  introHints: ["Dopo ogni errore puoi chiedere un indizio (non nelle sfide facili); se indovini, costa 1 punto.", "After each wrong guess you can ask for one hint (not on easy challenges); it costs 1 point if you solve it.", "Tras cada fallo puedes pedir una pista (no en los desafíos fáciles); si aciertas, cuesta 1 punto."],
   introDismiss: ["Ho capito, gioco", "Got it, let's play", "Entendido, a jugar"],
   matchReport: ["Il tuo risultato", "Your match report", "Tu resultado"],
   shareShort: ["Condividi", "Share", "Compartir"],

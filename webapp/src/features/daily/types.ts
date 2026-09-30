@@ -69,6 +69,8 @@ export interface DailyState {
   squaresSymbols: SquareSymbols;
   inputValue: string;
   introVisible?: boolean;
+  /** A hint request is in flight: the button shows a spinner and ignores taps. */
+  hintLoading?: boolean;
 }
 
 export const DAILY_FEATURE_METADATA = {

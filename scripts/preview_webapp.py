@@ -460,9 +460,9 @@ async def preview_guess(payload: dict = Body(default={})):
     if not answer:
         return {"status": "error", "reason": "empty_guess"}
 
+    from services.dates import today_iso
     aliases = _challenge()["correct_answers"]
     if answer.lower() in {str(name).lower() for name in aliases} | {"correct", "solve"}:
-        from services.dates import today_iso
         STATE["user"]["last_played_day"] = today_iso()
         STATE["user"]["has_guessed_today"] = True
         STATE["user"]["daily_attempts"] = 2
@@ -481,6 +481,8 @@ async def preview_guess(payload: dict = Body(default={})):
                                        PREVIEW_INVITE)},
         }
 
+    # Senza il giorno il tentativo non conta per /me e l'indizio resta bloccato (#277).
+    STATE["user"]["last_played_day"] = today_iso()
     STATE["user"]["daily_attempts"] = 1
     return {
         "status": "wrong",

@@ -94,7 +94,8 @@ partite dimostrative in memoria. Non invia inviti reali né usa Firestore.
 
 Ogni giorno il bot pubblica il percorso di carriera di un calciatore, senza il nome. Tre
 tentativi al giorno, i punti dipendono dalla difficolta', chi indovina per primo prende un
-punto in piu'. Dopo un tentativo sbagliato si puo' chiedere un **indizio**, che costa un punto.
+punto in piu'. Dopo ogni tentativo sbagliato si puo' chiedere un **indizio**, che costa un punto
+(nessuno sulle sfide facili, uno sulle medie, due sulle difficili e impossibili).
 Chi non ci arriva scopre chi era a mezzanotte, o con `/solution` a giornata chiusa.
 
 La sfida del giorno si gioca **solo nella mini app** (`webapp/src/`, Vite + TypeScript), con
@@ -199,12 +200,14 @@ quindi non serve a chi non ha idee. L'indizio (`services/hints.py`) e' **assolut
 nazionalita' e basta — ed e' per questo che costa un punto. Tre regole tengono in piedi
 l'equilibrio:
 
-1. si sbloccano **dopo un tentativo sbagliato**. Senza, sarebbero il modo piu' comodo per farsi
-   dire nazionalita' e ruolo di ogni sfida senza mai giocarla, e toglierebbero valore a chi la
-   prende al primo colpo;
-2. costano **1 punto l'uno con il pavimento a 1**: chi indovina dopo due indizi su una sfida
-   "easy" (che ne vale 1) prende comunque il suo punto. Non si va mai sotto;
-3. sono **due**, e sono nazionalita' e ruolo. La scala e' un dato (`HINT_LADDER`), quindi
+1. se ne sblocca **uno per ogni tentativo sbagliato** (#277): il primo dopo il primo errore, il
+   secondo dopo il secondo. Senza, sarebbero il modo piu' comodo per farsi dire nazionalita' e
+   ruolo di ogni sfida senza mai giocarla, e un solo nome buttato li' li aprirebbe tutti;
+2. costano **1 punto l'uno con il pavimento a 1**, e per questo quanti se ne possono chiedere
+   dipende dalla difficolta' (`HINTS_BY_DIFFICULTY`): **nessuno** sulle "easy", che valgono 1
+   punto e li avrebbero gratis; **uno** sulle "medium" (2 → 1); **due** sulle "hard" (3 → 2 → 1)
+   e sulle "impossible" (4 → 3 → 2). Non si va mai sotto 1;
+3. sono al massimo **due**, e sono nazionalita' e ruolo. La scala e' un dato (`HINT_LADDER`), quindi
    allungarla e' una riga — ma vuol dire anche rendere piu' facile ogni sfida difficile, che e'
    una scelta di gioco e non un dettaglio tecnico.
 

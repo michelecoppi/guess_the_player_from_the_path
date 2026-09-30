@@ -67,6 +67,10 @@ test("review navigation and fixture interactions never call an API", () => {
   }) as typeof fetch;
   try {
     startReview(container);
+    // Locked until a wrong guess (#277).
+    assert.equal(container.querySelector<HTMLButtonElement>("#hint")!.disabled, true);
+    container.querySelector<HTMLInputElement>("#answer")!.value = "Totti";
+    container.querySelector<HTMLButtonElement>("#submit")!.click();
     container.querySelector<HTMLButtonElement>("#hint")!.click();
     assert.ok(container.querySelector(".hint-taken-item"));
     const go = (tab: string) =>

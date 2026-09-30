@@ -8,6 +8,9 @@ export interface HintPanelProps {
   hintsUsed?: number;
   disabled?: boolean;
   loading?: boolean;
+  /** Hints exist but the rules do not allow one yet (#277): the button stays visible, disabled, with `lockedLabel` saying why. */
+  locked?: boolean;
+  lockedLabel?: string;
   unlockButtonId?: string;
   unlockButtonLabel?: string;
   hintsLeftLabel?: string;
@@ -44,11 +47,13 @@ export function renderHintPanel(props: HintPanelProps): string {
       id: unlockButtonId,
       label: unlockLabel,
       variant: "ghost",
-      disabled: props.disabled,
+      disabled: props.disabled || props.locked,
       loading: props.loading,
       fullWidth: true,
     });
-    remainingHtml = `<p class="hints-remaining">${left} ${escapeHtml(hintsLeftLabel)}</p>`;
+    remainingHtml = props.locked && props.lockedLabel
+      ? `<p class="hints-remaining hints-locked">${escapeHtml(props.lockedLabel)}</p>`
+      : `<p class="hints-remaining">${left} ${escapeHtml(hintsLeftLabel)}</p>`;
   }
 
   const idAttr = props.id ? ` id="${escapeHtml(props.id)}"` : "";

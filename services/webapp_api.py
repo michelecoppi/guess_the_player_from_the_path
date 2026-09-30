@@ -26,7 +26,7 @@ from services.daily_result import ResultUnavailable as ResultUnavailable  # re-e
 from services.dates import normalize_day, to_display, today_iso
 from services.difficulty import points_for_difficulty
 from services.feature_flags import Flag
-from services.hints import MAX_HINTS, build_hints
+from services.hints import MAX_HINTS, build_hints, hint_limit
 from services.i18n import DEFAULT_LANGUAGE, difficulty_label, t
 from services.player_pool import get_player_by_id
 from services.share import card_image, share_text, share_url
@@ -208,6 +208,7 @@ def _today_summary(user, day_iso, lang, challenge=None):
     hints_used = user.get("daily_hints", 0) if played_today else 0
 
     available = build_hints(get_player_by_id(challenge.get("player_id")), lang) if challenge else []
+    available = available[:hint_limit(challenge.get("difficulty"))]
     max_hints = min(len(available), MAX_HINTS)
 
     return {
