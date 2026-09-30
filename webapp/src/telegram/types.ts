@@ -99,6 +99,8 @@ export interface TelegramWebApp {
   switchInlineQuery(query: string, choose_chat_types?: string[]): void;
   /** Bot API 8.0+: shares a message the bot prepared (savePreparedInlineMessage). */
   shareMessage?(msgId: string, callback?: (sent: boolean) => void): void;
+  /** Native alert popup (Bot API 6.2+). */
+  showAlert?(message: string, callback?: () => void): void;
 }
 
 declare global {

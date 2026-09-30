@@ -24,7 +24,7 @@ from services.dates import normalize_day, to_display, today_iso
 from services.difficulty import points_for_difficulty
 from services.feature_flags import Flag
 from services.hints import MAX_HINTS, build_hints
-from services.i18n import DEFAULT_LANGUAGE, difficulty_label
+from services.i18n import DEFAULT_LANGUAGE, difficulty_label, t
 from services.player_pool import get_player_by_id
 from services.share import card_image, share_text, share_url
 
@@ -440,3 +440,16 @@ def result_share(user_id, user_data, lang, result):
         link=link,
     )
     return {"text": text, "image": result_card_png(user_data, lang, result), "link": link}
+
+
+def recap_share(user_id, user_data, lang, recap):
+    """The monthly recap card (#245) with its text and the sharer's invite link."""
+    from services import monthly_recap
+
+    link = referrals.invite_link(user_id)
+    month = t(lang, f"recap.month.{int(recap['month'][5:])}")
+    text = t(lang, "recap.share_text", month=month, solved=recap["solved"], played=recap["played"])
+    if link:
+        text += "\n" + link
+    name = (user_data or {}).get("first_name") or ""
+    return {"text": text, "image": monthly_recap.recap_card_png(recap, name, lang), "link": link}

@@ -35,6 +35,11 @@ const paths = {
     '<path d="M12 7c-2-1.4-5-1.8-8-1v13c3-.8 6-.4 8 1 2-1.4 5-1.8 8-1V6c-3-.8-6-.4-8 1Zm0 0v13"/>',
   star: '<path d="M12 3.5 14.6 9l6.1.8-4.4 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.4-4.2L9.4 9 12 3.5Z"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  flame: '<path d="M12 21c-4 0-7-2.7-7-6.6 0-3.3 2.3-5.4 3.5-7.9.4 2 1.6 3.2 2.7 3.8C11 6.8 12.6 4.4 15 3c-.4 3 1.2 5 2.6 6.9A7 7 0 0 1 19 14.4C19 18.3 16 21 12 21Z"/><path d="M12 21c-1.8 0-3-1.2-3-2.9 0-1.6 1.2-2.6 1.9-3.8.5 1 1.3 1.5 2 1.6.3-1 .9-1.9 1.6-2.4.1 1.3.5 2.3.5 3.6C15 19.8 13.8 21 12 21Z"/>',
+  bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
+  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12h.01M12 1v4m0 14v4M1 12h4m14 0h4"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="1.5"/><path d="M3.5 10h17M8 3v4m8-4v4"/>',
 } as const;
 export type IconName = keyof typeof paths;
 export function icon(name: IconName): string {

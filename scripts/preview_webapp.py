@@ -583,5 +583,57 @@ def main():
     uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")
 
 
+# ---------------------------------------------------------------------------
+# Recap mensile (#245): un mese inventato, calcolato dalla stessa funzione del server
+# ---------------------------------------------------------------------------
+
+def _demo_recap():
+    """Un mese passato giocato bene, con calciatori veri del dataset. `summarize` e' quella
+    di produzione: qui cambia solo da dove arrivano storia e sfide."""
+    from services import monthly_recap
+    from services.player_pool import get_all_players, get_player_by_id
+
+    month = monthly_recap.previous_month()
+    days = monthly_recap._days_in(month)
+    pattern = "WWWLWWSWWWWWWWLSWWWWWLWWWSSWWLW"
+    attempts = [1, 2, 1, 3, 1, 1, 2, 1, 2, 1, 1, 3, 1, 2, 1, 1, 2, 1, 1, 2, 3, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1]
+    juve = [p for p in get_all_players() if any(stop.get("team") == "Juventus" for stop in p.get("career", []))]
+    others = [p for p in get_all_players() if p not in juve]
+    gem = get_player_by_id("jari_litmanen") or others[0]
+    history, challenges, cursor = [], {}, 0
+    for day in range(1, days + 1):
+        status = pattern[(day - 1) % len(pattern)]
+        if status == "S":
+            continue
+        iso = f"{month}-{day:02d}"
+        solved = status == "W"
+        history.append({"day": iso, "solved": solved, "attempts": attempts[day - 1] if solved else 3,
+                        "hints": 1 if day % 9 == 0 else 0, "first": day in (3, 12, 20)})
+        if solved:
+            player = gem if day == 14 else (juve[cursor % len(juve)] if cursor % 3 == 0 else others[cursor * 7 % len(others)])
+            cursor += 1
+            challenges[iso] = {
+                "player_id": player["id"], "career_path": player.get("career", []),
+                "correct_answers": [player["full_name"].lower()],
+                "players_count": 50 if day == 14 else 40, "solved_count": 3 if day == 14 else 22,
+            }
+    closure = {"points_distribution": sorted([4, 7, 9, 12, 15, 18, 21, 25, 28, 30, 33, 36, 40, 44, 47, 52, 58, 60, 66, 71, 80, 95])}
+    return monthly_recap.summarize(month, history, challenges, monthly_points=64, closure=closure)
+
+
+@app.post("/app/api/recap")
+async def recap(payload: dict = Body(default={})):
+    from services import monthly_recap
+
+    return {"recap": _demo_recap(), "months": monthly_recap.recent_months(),
+            "name": STATE["user"].get("first_name", "Anna")}
+
+
+@app.post("/app/api/recap/share")
+async def recap_share(payload: dict = Body(default={})):
+    # Nessuna chat d'appoggio in anteprima: la pagina ripiega sul link di condivisione.
+    raise HTTPException(status_code=503, detail="share_unavailable")
+
+
 if __name__ == "__main__":
     main()

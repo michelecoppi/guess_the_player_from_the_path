@@ -141,6 +141,8 @@ COMPONENTS: dict[str, str] = {
     "services.repos.inline_cards": "game",
     "services.path_image": "game",
     "services.share": "game",
+    # Monthly recap ("Wrapped", #245): the month of one player, from Daily history and closures.
+    "services.monthly_recap": "game",
     "services.daily_result": "game",
     # --- events ------------------------------------------------------------------------------
     "services.event_config": "events",

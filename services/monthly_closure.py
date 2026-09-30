@@ -18,10 +18,15 @@ def reset_user(ref, closure):
         if data.get("last_monthly_reset", "") >= closure["closed_month"]:
             return 0
         earned = data.get("monthly_earned", {})
+        kept = {key: value for key, value in earned.items() if key >= closure["new_month"]}
+        closed_points = int(data.get("monthly_points", 0) or 0) - sum(kept.values())
         tx.update(ref, {
             "monthly_points": sum(value for key, value in earned.items() if key >= closure["new_month"]),
             "monthly_earned": {key: value for key, value in earned.items() if key >= closure["new_month"]},
             "last_monthly_reset": closure["closed_month"],
+            # I punti del mese chiuso, prima che spariscano: il recap mensile (#245) li
+            # confronta con la distribuzione salvata nella chiusura.
+            f"monthly_totals.{closure['closed_month']}": max(closed_points, 0),
         })
         return 1
     return reset(fs.db.transaction())
@@ -74,11 +79,13 @@ def prepare(now):
             candidates.append({"telegram_id": user.get("telegram_id", int(doc.id)),
                                "username": user.get("first_name", "?"), "monthly_points": points})
     top = sorted(candidates, key=lambda row: (-row["monthly_points"], row["telegram_id"]))[:3]
+    # Solo numeri, nessun nome: bastano al recap mensile (#245) per dire "meglio del X%".
+    distribution = sorted(row["monthly_points"] for row in candidates)
     result = {"month_name": month, "year": year, "winners": [
         {**user, "position": position,
          "trophy_code": f"MON_{month}_{season['season_number']}_{year}_{position}"}
         for position, user in enumerate(top, 1)
-    ], "closed_month": key, "new_month": now.strftime("%Y-%m")}
+    ], "closed_month": key, "new_month": now.strftime("%Y-%m"), "points_distribution": distribution}
     try:
         ref.create(result)
         return result

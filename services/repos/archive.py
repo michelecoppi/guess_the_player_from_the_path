@@ -73,7 +73,7 @@ def history_ref(user_id, day_iso):
     return fs.user_ref(user_id).collection(fs.HISTORY_SUBCOLLECTION).document(day_iso)
 
 
-def record_daily_history(user_id, day_iso, solved, attempts, hints=0):
+def record_daily_history(user_id, day_iso, solved, attempts, hints=0, first=False):
     """Com'e' andata **quella** giornata a **quell'** utente: un documento per giorno.
 
     Serve al calendario della mini app, che deve poter dire "questa l'hai presa al secondo,
@@ -89,6 +89,8 @@ def record_daily_history(user_id, day_iso, solved, attempts, hints=0):
         "solved": bool(solved),
         "attempts": attempts,
         "hints": hints,
+        # Il bonus del primo che risponde (#245): lo legge il recap mensile.
+        "first": bool(first),
     })
     from domains.referrals import service as referrals
     referrals.record_completion(user_id, day_iso)

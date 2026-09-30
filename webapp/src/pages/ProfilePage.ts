@@ -1,6 +1,7 @@
 import type { ProfileController } from "@/features/profile/controller";
 import type { CabinetFilter, ProfileState } from "@/features/profile/types";
 import { renderProfileView } from "@/features/profile/views";
+import { bindRecapEntries } from "@/features/recap/entry";
 
 export function renderProfilePage(state: ProfileState): string {
   return renderProfileView(state);
@@ -10,6 +11,8 @@ export function attachProfileEventListeners(
   root: HTMLElement,
   controller: ProfileController,
 ): void {
+  bindRecapEntries(root);
+
   // Open cabinet button
   const openCabinetBtn = root.querySelector<HTMLButtonElement>("#open-cabinet");
   openCabinetBtn?.addEventListener("click", (e) => {
