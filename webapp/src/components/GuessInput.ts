@@ -7,6 +7,8 @@ export interface GuessInputProps {
   inputId?: string;
   submitButtonId?: string;
   placeholder?: string;
+  /** Visible label; the placeholder when omitted. */
+  label?: string;
   buttonLabel?: string;
   disabled?: boolean;
   loading?: boolean;
@@ -42,7 +44,7 @@ export function renderGuessInput(props: GuessInputProps): string {
 
   return `
     <form class="${classAttr}"${idAttr} onsubmit="return false;" role="search" aria-label="${v("guessPlayerForm")}">
-      <label for="${escapeHtml(inputId)}" class="guess-label">${escapeHtml(placeholder)}</label>
+      <label for="${escapeHtml(inputId)}" class="guess-label">${escapeHtml(props.label || placeholder)}</label>
       <input
         id="${escapeHtml(inputId)}"
         type="text"

@@ -2,6 +2,7 @@ import { escapeHtml } from "@/utils/format";
 import {
   renderCareerPath,
   renderErrorState,
+  renderGuessInput,
   renderLoadingState,
 } from "@/components";
 import { formatExpiryDate } from "@/features/arena/views";
@@ -35,6 +36,17 @@ const ERROR_KEYS: Record<string, string> = {
 function getErrorMessage(code: string | null): string {
   const key = (code && ERROR_KEYS[code]) || "genericError";
   return t(`events.${key}`);
+}
+
+/** The Daily's attempt squares (#250): ✓ for the solving try, ✗ for a miss, the number otherwise. */
+function renderAttemptsLine(used: number, max: number, solved: boolean, finished: boolean): string {
+  const left = Math.max(0, max - used);
+  const squares = Array.from({ length: max }, (_, i) => {
+    const status = i < used ? (solved && i === used - 1 ? "scored" : "missed") : "unused";
+    return `<span class="attempt ${status}" aria-hidden="true">${status === "scored" ? icon("check") : status === "missed" ? icon("close") : i + 1}</span>`;
+  }).join("");
+  const label = finished ? escapeHtml(v("final")) : `${escapeHtml(t("events.attempts"))} <b>${left}</b>`;
+  return `<div class="attempts-line" aria-live="polite"><span>${label}</span><div class="attempts" role="img" aria-label="${used}/${max}">${squares}</div></div>`;
 }
 
 function renderEventEndDate(dates?: string[]): string {
@@ -209,7 +221,8 @@ export function renderEventsPage(controller: EventsController): string {
     ? `<img class="event-image" src="${escapeHtml(event.image_url)}" alt="${escapeHtml(t("events.imageAlt", { name: event.name }))}" referrerpolicy="no-referrer">`
     : "";
 
-  const remaining = Math.max(0, (event.max_attempts ?? EVENT_MAX_ATTEMPTS) - event.progress.attempts);
+  const maxAttempts = event.max_attempts ?? EVENT_MAX_ATTEMPTS;
+  const busy = state.status === "submitting" || state.status === "loading";
 
   // Type-specific hint / guidance
   let hintHtml = "";
@@ -301,22 +314,19 @@ export function renderEventsPage(controller: EventsController): string {
   } else {
     interactiveHtml = event.type === "order_career"
       ? `<form id="events-guess-form" class="events-guess-form order-submit"><button class="btn" type="submit" ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}>${t("events.orderSubmit")}</button></form>`
-      : `
-      <form id="events-guess-form" class="events-guess-form">
-        <label for="events-answer">${event.type === "link_club" ? t("events.linkFormLabel") : t("events.formLabel")}</label>
-        <input
-          id="events-answer"
-          value="${escapeHtml(state.draftAnswer)}"
-          autocomplete="off"
-          maxlength="220"
-          placeholder="${event.type === "link_club" ? t("events.linkPlaceholder") : t("events.guess")}"
-          ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}
-        >
-        <button class="btn" type="submit" ${state.status === "submitting" || state.status === "loading" ? "disabled" : ""}>
-          ${t("events.submit")}
-        </button>
-      </form>
-    `.trim();
+      // The same field and button as the Daily (#250).
+      : renderGuessInput({
+        id: "events-guess-form",
+        inputId: "events-answer",
+        submitButtonId: "events-submit",
+        // One player to name: the Daily's own words. Clubs or pairs keep their event wording.
+        placeholder: event.type === "link_club" ? t("events.linkPlaceholder")
+          : ["path", "transfer_guess", "blind_path"].includes(event.type) ? t("daily.placeholder") : t("events.guess"),
+        label: event.type === "link_club" ? t("events.linkFormLabel") : undefined,
+        buttonLabel: state.status === "submitting" ? t("daily.loading") : t("daily.guessBtn"),
+        loading: busy,
+        value: state.draftAnswer,
+      });
   }
 
   // Leaderboard presentation
@@ -332,11 +342,21 @@ export function renderEventsPage(controller: EventsController): string {
   const endDateHtml = renderEventEndDate(event.dates);
   const isCareerPathEvent = !["order_career", "link_club", "blind_path"].includes(event.type)
     && !!event.career_path?.length;
-  const playControls = `${hintHtml}
-      ${!event.progress.finished && event.available ? `<p class="event-attempts" aria-live="polite">${t("events.attempts")}: ${remaining}</p>` : ""}
-      ${feedbackHtml}
+  // Laid out like the Daily's answer desk: attempts, hint, answer, outcome, bonus.
+  const attemptsHtml = event.available
+    ? renderAttemptsLine(event.progress.attempts, maxAttempts, event.progress.solved, event.progress.finished)
+    : "";
+  const bonusHtml = event.bonus_available && event.available && !event.progress.finished
+    ? `<p class="bonus-note">${escapeHtml(t("events.bonus"))}</p>`
+    : "";
+  const playControls = `<section class="answer-desk event-answer-desk" aria-label="${escapeHtml(t("events.formLabel"))}">
+      ${attemptsHtml}
+      ${hintHtml}
+      ${interactiveHtml}
       ${errorHtml}
-      ${interactiveHtml}`;
+      ${feedbackHtml}
+      ${bonusHtml}
+    </section>`;
 
   return `
     <div class="event-header-actions">
@@ -350,11 +370,10 @@ export function renderEventsPage(controller: EventsController): string {
       ${endDateHtml}
       <p class="event-meta">
         ${event.type === "blind_path" ? "" : `<span class="pill">${event.points} ${t("events.points")}</span>`}
-        ${event.bonus_available ? `<span class="event-bonus">${t("events.bonus")}</span>` : ""}
         <span>${t("events.score")}: ${event.progress.points}</span>
       </p>
       ${playerNameHtml}
-      ${isCareerPathEvent ? `<div class="event-play-layout">${contentHtml}<section class="answer-desk event-answer-desk" aria-label="${escapeHtml(t("events.formLabel"))}">${playControls}</section></div>` : `${contentHtml}${playControls}`}
+      ${isCareerPathEvent ? `<div class="event-play-layout">${contentHtml}${playControls}</div>` : `${contentHtml}${playControls}`}
       <section class="event-leaderboard-section">
         <h3>${t("events.leaderboard")}</h3>
         <ol class="event-leaderboard" aria-label="${t("events.leaderboard")}">

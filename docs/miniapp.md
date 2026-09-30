@@ -138,7 +138,11 @@ no guide state is sent to the server.
 On narrow screens, an active Daily keeps a small answer shortcut above the fixed
 navigation while the career path is in view. It focuses the existing guess field and
 disappears when that field is visible or the challenge is complete. Standard path
-events use the same career-sheet and answer-desk presentation as Daily. Arena mode
+events use the same career-sheet and answer-desk presentation as Daily; every event's
+answer box has the Daily's shape (attempt squares, the shared `renderGuessInput` field and
+button, bonus note) (#250). Answer fields keep what is typed in the controller without
+re-rendering the page: a re-render per keystroke rebuilt the input and moved the caret to
+the start, reversing the text (Events and duels, #250). Arena mode
 entries are compact on mobile; leaderboard search expands on request so the Top 10
 appears first. Shop keeps the Discover introduction and uses a shorter header and
 filters on mobile, especially in Catalogue. These are presentation changes; gameplay,
