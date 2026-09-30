@@ -124,7 +124,10 @@ Resta comunque possibile lanciarlo a mano, ad es. per un rollback rapido o per t
 build locale. Il rollback è sempre manuale (revisione precedente o deploy di un commit
 precedente): procedura completa in
 [release-checklist.md § Rollback](release-checklist.md#10-rollback). Il deploy
-automatico usa anche `--max-instances 10` (vedi [`deploy.yml`](../.github/workflows/deploy.yml)):
+automatico usa anche `--max-instances 10` e `--execution-environment gen1` (vedi
+[`deploy.yml`](../.github/workflows/deploy.yml); gen1 per il cold start più breve, #264). Le
+impostazioni restano sul servizio fra un deploy e l'altro: per tornare a gen2 bisogna
+passare `--execution-environment gen2`, non basta togliere il flag.
 
 ```bash
 gcloud run deploy guess-the-player \

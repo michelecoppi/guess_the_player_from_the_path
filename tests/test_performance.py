@@ -4,6 +4,7 @@ The Firestore counters are tested twice: against a fake GAPIC client (every bran
 services) and against the emulator (the real SDK really goes through the wrapped methods,
 so a library upgrade that bypasses them fails here instead of silently reporting zero).
 """
+import platform
 import threading
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -160,6 +161,8 @@ def test_startup_phases_emit_one_record(records):  # noqa: F811
         details["webhook"] = True
     [line] = by_event(records(), "app.startup.completed")
     assert line["lifespan_ms"] >= 0 and line["webhook"] is True
+    # #264: which execution environment served the start (gVisor/gen1 reports 4.4.0).
+    assert line["kernel"] == platform.release()
     # /proc exists only on Linux: elsewhere the phase is unknown, never invented.
     before = line.get("before_lifespan_ms")
     assert before is None or before > 0
