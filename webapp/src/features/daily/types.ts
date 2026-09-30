@@ -41,6 +41,8 @@ export interface DailyGuessResult {
     text: string;
     url: string;
   };
+  /** Today's Daily after a wrong answer (#259): spares a follow-up `/app/api/me`. */
+  today?: ApiTodaySummary;
 }
 
 export interface DailyCardResponse {

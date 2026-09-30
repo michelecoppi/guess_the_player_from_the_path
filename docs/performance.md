@@ -203,6 +203,7 @@ riaprirla. Aggiungere una riga per ogni nuova valutazione.
 | 5 | Lazy import dei moduli pesanti (Firestore/gRPC, Pillow, handler admin) | Import locale 1,45 s; quanto pesi su Cloud Run non è ancora noto | **Rimandato**: serve `before_lifespan_ms` di produzione per sapere quanto dei 4,5 s è import Python e quanto avvio della sandbox. Cambierebbe l'ordine di import di tutto `bot.py` |
 | 6 | Letture di `/app/api/me` (leghe lette in sequenza, 2 RPC per lega) | Caso peggiore 128 letture / 7 query (dal #256, con la top 10 mensile); p50 di produzione 288 ms, p95 763 ms, sotto budget | **Non fatto**: nessuna evidenza che le leghe siano la parte lenta. Riaprire se `firestore_ms` di `/app/api/me` supera metà di `duration_ms` al p95 |
 | 7 | Cache, snapshot della classifica, payload daily precomputato, compressione asset | Richieste calde tutte sotto 3 s; asset statici p95 ≤ 36 ms con ETag/304; broadcast e daily job sono batch fuori dal percorso utente | **Non fatto**: nessun dato li giustifica oggi |
+| 11 | Round-trip di `/app/api/guess` | 2026-09-16 → 30: p50 564 ms, p95 917 ms, 417 ms su Firestore con sole 6 letture: pesa la sequenza di chiamate (una risposta giusta ne faceva una decina in fila). Dopo ogni errore il client chiedeva anche `/me` | **Fatto** (#259): contatore della giornata, punti nelle leghe e storico partono in parallelo (`game._start`/`_finish`, con il contesto della richiesta); la transazione del bonus "primo" si salta quando il processo lo sa già preso (`daily_challenge.bonus_known_taken`, ricordo di 5 minuti perché l'Admin può rimetterlo in palio); il nome della soluzione viene dalla sfida già letta; dopo un errore la risposta porta `today` e la pagina non richiede `/me`. Fuori: unire le transazioni del tentativo e della striscia, che tocca le regole |
 
 ## Scelte di progetto già in essere
 
@@ -246,8 +247,10 @@ evitare due inizializzazioni alla prima coppia di richieste concorrenti.
 Con `lightweight: true` restituisce profilo e sfida senza interrogare classifica
 e leghe (3 letture invece di fino a 128: dal #256 il profilo completo legge anche la top 10 mensile). La prima apertura della Daily ora usa
 questo percorso; la lista duelli Arena viene richiesta solo quando si apre Arena.
-Il client unisce la risposta al profilo precedente dopo errori e indizi; dopo una
-risposta corretta e dopo modifiche alle leghe richiede il profilo completo.
+Dopo una risposta sbagliata `/app/api/guess` porta già la Daily aggiornata (`today`, #259)
+e il client la usa senza altre richieste; dopo un indizio unisce al profilo precedente un
+refresh leggero; dopo una risposta corretta e dopo modifiche alle leghe richiede il profilo
+completo.
 Non viene introdotta una cache dei tentativi.
 Gli altri utenti possono comunque modificare le classifiche nel frattempo:
 il refresh leggero conserva quelle dell'ultimo caricamento completo.

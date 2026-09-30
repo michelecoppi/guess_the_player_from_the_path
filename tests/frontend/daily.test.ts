@@ -107,6 +107,41 @@ test("Daily 409 reloads the new day and reports that no attempt was spent", asyn
   }
 });
 
+test("a wrong answer that carries today's Daily needs no second /me (#259)", async () => {
+  const { cleanup } = setupGlobalDom();
+  const { restore: restoreTg } = setupTestTelegram();
+  const originalFetch = globalThis.fetch;
+  const urls: string[] = [];
+  const day = "2026-09-26";
+  globalThis.fetch = (async (url: string) => {
+    urls.push(String(url));
+    if (String(url).endsWith("/guess")) {
+      return new Response(JSON.stringify({
+        status: "wrong", attempts_used: 1, attempts_left: 2, hints_used: 0,
+        today: createTestDailyChallenge({ day, attempts_used: 1, attempts_left: 2 }),
+      }), { status: 200 });
+    }
+    return new Response(JSON.stringify({
+      user: { name: "Marco", players_guessed: 2 },
+      today: createTestDailyChallenge({ day, attempts_used: 0, attempts_left: 3 }),
+    }), { status: 200 });
+  }) as typeof fetch;
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    const result = await controller.submitGuess("Buffon");
+    assert.equal(result?.status, "wrong");
+    assert.deepEqual(urls.map((u) => u.split("/").pop()), ["me", "guess"]);
+    assert.equal(controller.getState().challenge?.attempts_left, 2);
+    assert.equal(controller.getState().status, "incorrect");
+    assert.equal(controller.getState().user?.name, "Marco");
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+    cleanup();
+  }
+});
+
 test("DailyController: API contract sends initData in JSON body for me, guess, hint, card", async () => {
   const { restore: restoreTg } = setupTestTelegram();
   const { requests, restore: restoreFetch } = captureFetchRequests({
