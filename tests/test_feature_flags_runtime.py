@@ -15,7 +15,7 @@ from starlette.testclient import TestClient
 import bot
 from apps.api import miniapp
 from domains.shop import service as shop
-from handlers import hint_handler, menu_handler, shop_handler, top_users_handler
+from handlers import menu_handler, shop_handler, top_users_handler
 from services import feature_flags as ff
 from services import firebase_service, game, webapp_api
 from services.feature_flags import Flag
@@ -269,17 +269,6 @@ def test_a_shop_button_gets_an_alert_and_no_invoice(telegram, monkeypatch):
     assert query.answers == [("⏸️ This feature is temporarily unavailable. Please try again later.", True)]
 
 
-def test_the_hint_button_takes_no_hint_when_disabled(telegram, monkeypatch):
-    install({"hints": {"enabled": False}})
-    monkeypatch.setattr(hint_handler.game, "take_hint", fail("take_hint"))
-    monkeypatch.setattr(hint_handler, "get_today_challenge", fail("get_today_challenge"))
-    query = FakeQuery(hint_handler.CALLBACK_DATA)
-    update = SimpleNamespace(callback_query=query, effective_user=query.from_user,
-                             effective_chat=SimpleNamespace(id=42, type="private"),
-                             effective_message=query.message)
-    asyncio.run(hint_handler.hint_callback(update, None))
-    assert query.answers and query.answers[0][1] is True
-
 
 def test_the_leaderboard_can_be_disabled_for_one_group_only(telegram, monkeypatch):
     install({"leaderboard": {"deny_groups": ["-100123"]}})
@@ -297,7 +286,6 @@ def test_gated_handlers_keep_their_identity_for_registration():
     assert top_users_handler.top.__name__ == "top"
     assert top_users_handler.top.feature_flag is Flag.LEADERBOARD
     assert shop_handler.shop_callback.feature_flag is Flag.SHOP
-    assert hint_handler.hint_callback.feature_flag is Flag.HINTS
 
 
 # ---------------------------------------------------------------------------

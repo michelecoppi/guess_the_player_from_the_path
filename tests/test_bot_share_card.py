@@ -134,7 +134,6 @@ def test_a_lost_day_has_no_streak(world):
 
 
 def test_the_button_carries_only_the_day():
-    markup = guess_handler._share_keyboard("it", 2, 5, hints=1, day=TODAY)
-    datas = [button.callback_data for row in markup.inline_keyboard for button in row if button.callback_data]
-    assert datas == [f"sharecard:{TODAY}"]
-    assert len(datas[0].encode()) <= 64
+    data = guess_handler._card_payload(TODAY)
+    assert data == f"sharecard:{TODAY}"
+    assert len(data.encode()) <= 64

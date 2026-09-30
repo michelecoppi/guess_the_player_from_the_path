@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from handlers import help_handler, keyboards, legend_handler, show_daily_path_handler
+from handlers import help_handler, keyboards, legend_handler
 from services.i18n import t
 
 CHALLENGE = {
@@ -55,11 +55,6 @@ def saved_language(monkeypatch):
     return box
 
 
-@pytest.fixture
-def no_firestore(monkeypatch):
-    monkeypatch.setattr(show_daily_path_handler, "get_today_challenge", lambda: CHALLENGE)
-    monkeypatch.setattr(show_daily_path_handler, "bonus_available", lambda: False)
-    monkeypatch.setattr(show_daily_path_handler, "challenge_number", lambda *a: 12)
 
 
 def test_help_uses_the_saved_language_over_the_client_one(saved_language):
@@ -93,13 +88,3 @@ def test_the_legend_button_uses_the_saved_language(saved_language):
 
     asyncio.run(legend_handler.legend_callback(update, None))
     assert message.replies == [t("es", "legend.text")]
-
-
-def test_show_uses_the_saved_language(saved_language, no_firestore):
-    update, message = make_update(language_code="en")
-    asyncio.run(show_daily_path_handler.show(update, None))
-
-    _, caption = message.photos[0]
-    assert caption == t(
-        "es", "show.caption", difficulty="Media", points=2, bonus_info="", attempts=3,
-    )

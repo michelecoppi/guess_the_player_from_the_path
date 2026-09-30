@@ -13,12 +13,11 @@ from telegram.ext import ContextTypes
 from handlers.archive_handler import archive
 from handlers.events_handler import events
 from handlers.help_handler import help
-from handlers.keyboards import CALLBACK_PREFIX, app_invitation, language_for, menu_keyboard
+from handlers.keyboards import CALLBACK_PREFIX, app_invitation, app_keyboard, language_for, menu_keyboard
 from handlers.language_handler import language
 from handlers.league_handler import leagues
 from handlers.notify_handler import notify
 from handlers.shop_handler import shop_command
-from handlers.show_daily_path_handler import show
 from handlers.show_stats_handler import stats
 from handlers.solution_handler import solution
 from handlers.top_users_handler import top
@@ -35,8 +34,14 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def play_in_app(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """"Sfida di oggi" dei menu rimasti in chat: la sfida si gioca solo nella mini app (#243)."""
+    lang = (await asyncio.to_thread(language_for, update))
+    await update.effective_message.reply_text(t(lang, "guess.daily_in_app"), reply_markup=app_keyboard(lang))
+
+
 ACTIONS = {
-    "play": show,
+    "play": play_in_app,
     "solution": solution,
     "events": events,
     "archive": archive,

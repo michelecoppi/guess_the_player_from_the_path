@@ -245,11 +245,10 @@ and the campaign is not stored on the user profile.
 | `daily_abandoned` | **Not implemented.** There is no reliable signal in the current code for "opened the Daily and never attempted it" versus "never opened it" — adding one would mean inventing a new tracked action, which the issue explicitly says not to do. | — | — | — | — |
 
 `daily_guess_submitted`/`daily_guess_correct`/`daily_completed` are emitted from
-`services/game.py` itself (not from `handlers/guess_handler.py` or
-`services/webapp_api.py`) specifically so chat and Mini App — which both call
-`game.play_daily` — cannot diverge or double-count; a `surface` property
-(`"telegram_chat"` | `"miniapp"`) distinguishes them without a second implementation of
-"when is the Daily finished."
+`services/game.py` itself (not from `services/webapp_api.py`), so there is one
+implementation of "when is the Daily finished." Since #243 today's challenge is played only in
+the Mini App, so new events carry `surface: "miniapp"`; `"telegram_chat"` remains in the
+allow-list for historical data.
 
 ### Hints
 

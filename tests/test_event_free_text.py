@@ -160,15 +160,14 @@ def test_the_answer_flow_routes_to_the_open_event(monkeypatch):
         guess_handler.firebase_service, "get_user_data",
         lambda uid: {"event_key": "giramondo:2026-09-08", "language": "it"},
     )
-    called = []
-    monkeypatch.setattr(guess_handler, "get_today_challenge", lambda: called.append(1))
+    from services import game
+
+    monkeypatch.setattr(game, "play_daily", lambda *a, **k: pytest.fail("la sfida del giorno non va toccata"))
 
     update, _ = make_update("messi")
     asyncio.run(guess_handler.process_answer(update, None, "messi"))
 
     assert routed == ["messi"]
-    # La sfida del giorno non viene nemmeno letta: la risposta era per l'evento.
-    assert called == []
 
 
 # ---------------------------------------------------------------------------

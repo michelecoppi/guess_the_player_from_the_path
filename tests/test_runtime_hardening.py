@@ -167,7 +167,6 @@ def test_actual_guess_handler_keeps_event_loop_responsive(monkeypatch):
         return None
 
     monkeypatch.setattr(guess_handler.firebase_service, "get_user_data", read_user)
-    monkeypatch.setattr(guess_handler, "get_today_challenge", lambda: None)
     update = SimpleNamespace(effective_user=SimpleNamespace(id=42, language_code="it"),
                              effective_chat=SimpleNamespace(type="private"),
                              effective_message=SimpleNamespace(text="Messi", chat=SimpleNamespace(type="private"),

@@ -38,9 +38,12 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
 3. **Serving.** `services/daily_challenge.py` caches only the immutable part of today's
    challenge per process; mutable state (first-solver bonus) is always read from
    Firestore.
-4. **Playing.** [`services/game.py`](../services/game.py) owns the rules for chat
-   (`handlers/guess_handler.py`, free text in private chat) and Mini App
-   (`/app/api/guess`, `/app/api/hint`): `MAX_ATTEMPTS = 3`, points from difficulty,
+4. **Playing.** Today's challenge is played **only in the Mini App**
+   (`/app/api/guess`, `/app/api/hint`; [#243](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/243)).
+   In private chat `handlers/guess_handler.py` routes a name to the open Archive, Training or
+   event session; with none open it consumes nothing and replies with the Mini App button,
+   and the old chat hint button (`hint_daily`) does the same.
+   [`services/game.py`](../services/game.py) owns the rules: `MAX_ATTEMPTS = 3`, points from difficulty,
    first-correct bonus claimed in a transaction, hints (`services/hints.py`) reduce
    points, streaks (`services/streak.py`). The answer (`correct_answers`, `player_id`) is
    never serialized to the Mini App.
