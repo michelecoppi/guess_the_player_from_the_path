@@ -11,6 +11,9 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#271](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/271) | The Daily solution turns over like a football sticker |
+| [#272](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/272) | One-tap duel rematch with an outcome-aware invite line |
+| [#273](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/273) | Recent-days calendar in the profile, readable on every cosmetic theme |
 | [#258](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/258) | Shorter cold start: precompiled bytecode, Firestore warmed during startup |
 | [#259](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/259) | `/app/api/guess` with fewer sequential Firestore round trips and no follow-up `/me` |
 | [#260](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/260) | `/app/api/me` reads in parallel |
@@ -154,6 +157,12 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-09-30: the owner asked for small features that make the experience nicer and approved
+  three of them after a live demo: #271 (the Daily solution revealed as a sticker; a lost
+  Daily keeps it face down, so the midnight reveal rule is unchanged), #272 (one-tap duel
+  rematch; still an ordinary invite link) and #273 (recent-days calendar in the profile,
+  checked on all 28 cosmetic themes). Frontend only, no dependency between them.
 
 - 2026-09-30: the owner asked to optimise database calls and performance. A new production
   measurement (2026-09-16..30) split the work into #258 (cold start, now p50 6.2 s and 56%

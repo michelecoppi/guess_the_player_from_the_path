@@ -57,6 +57,9 @@ export interface TranslationSchema {
     wrong: string;
     gotPoints: string;
     outOfAttempts: string;
+    revealWon: string;
+    revealLost: string;
+    revealMidnight: string;
     compared: string;
     sameNat: string;
     diffNat: string;

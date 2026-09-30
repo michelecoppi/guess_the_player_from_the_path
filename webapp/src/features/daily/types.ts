@@ -69,6 +69,8 @@ export interface DailyState {
   squaresSymbols: SquareSymbols;
   inputValue: string;
   introVisible?: boolean;
+  /** True from the final answer until the reveal animation has been drawn once. */
+  revealPending?: boolean;
 }
 
 export const DAILY_FEATURE_METADATA = {
