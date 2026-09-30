@@ -128,6 +128,19 @@ with #40–#48 and #68, visual work #64/#66 and redesign
 Navigation: Daily, Arena (hub for duels, events, archive and training), Classifica,
 Shop, Profilo; referral lives under Profile.
 
+The Profile shows "Your recent days" (#273), the last 30 Daily challenges as a calendar,
+Monday first. The data is the existing `calendar` endpoint (the archive's list: `solved`,
+`lost`, `recovered`, `missed` and the attempts), fetched in parallel with `me`; a failed
+calendar leaves the card out and never blocks the Profile. The card is a `<details>` closed
+by default, with the played/solved summary visible; its open state is kept across re-renders
+(recorded on the summary click, because the async `toggle` event is lost when a refresh
+replaces the element). Every state has a shape as well as a colour (dot = first attempt,
+full = solved, ring = recovered, slash = lost, dashed = skipped) and "lost" is neutral grey,
+so the calendar stays readable on every cosmetic theme, red and pink accents included.
+Tapping a day shows its detail, with a link to the archive while it can still be played.
+The layout follows the card width (container query): full width on phones, calendar on the
+left and detail and legend beside it on wider cards.
+
 Classifica has three tabs, in this order: **Del mese** (top 10 by `monthly_points`,
 open by default because everyone restarts from zero on the 1st), **Generale** (top 10
 by all-time points) and **Le tue leghe**. Both rankings come from the full `me` payload
