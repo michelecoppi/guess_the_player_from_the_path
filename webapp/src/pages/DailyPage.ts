@@ -46,16 +46,24 @@ function renderComparison(data?: DailyComparison): string {
   return `<div>${escapeHtml(t("daily.compared"))} <b>${escapeHtml(data.name)}</b>:<ul>${items}</ul></div>`;
 }
 
+/**
+ * The card as a small preview in the final report (#254): a tap enlarges it in place, where
+ * it can be pressed and held to save or forward, as before.
+ */
 function renderResultCard(state: DailyState): string {
   if (state.cardImage) {
     return `
-      <div class="result-card" ${resultCardAttributes(getResolvedAppearance())}>
-        <img src="${escapeHtml(state.cardImage)}" alt="${escapeHtml(t("daily.share"))}">
-        <p class="muted center" style="text-align: center; margin-top: 8px; font-size: 12px;">
-          ${escapeHtml(t("daily.cardHint"))}
-        </p>
+      <div class="result-card report-card" ${resultCardAttributes(getResolvedAppearance())}>
+        <button type="button" class="report-card-preview" id="card-preview" aria-expanded="false">
+          <img src="${escapeHtml(state.cardImage)}" alt="${escapeHtml(v("cardShort"))}">
+          <span class="report-card-caption"><b>${escapeHtml(v("cardShort"))}</b><small>${escapeHtml(v("cardEnlarge"))}</small></span>
+        </button>
+        <p class="report-card-hint">${escapeHtml(t("daily.cardHint"))}</p>
       </div>
     `.trim();
+  }
+  if (state.cardLoading && state.feedback?.share) {
+    return `<div class="report-card is-loading" aria-hidden="true"><span></span></div>`;
   }
 
   const disabledAttr = state.cardLoading ? " disabled" : "";
@@ -81,10 +89,26 @@ function renderMatchReport(state: DailyState, feedback?: DailyGuessResult): stri
       <div><strong>${attempts}<small> / ${state.challenge?.max_attempts ?? 5}</small></strong><span>${v("attemptsUsed")}</span></div>
     </div>
     <p class="report-note">${escapeHtml(won ? v("next") : t("daily.outOfAttempts"))}</p>
-    ${feedback?.share ? `<button class="btn" id="share">${icon("share")}${escapeHtml(t("daily.share"))}</button>${renderCopy(state)}` : ""}
+    ${feedback?.share ? renderShareRow(state) : ""}
+    ${feedback?.share && !state.cardImage && !state.cardLoading ? "" : renderResultCard(state)}
     <div id="daily-next-event-slot"></div>
-    ${renderResultCard(state)}
   </section>`;
+}
+
+/**
+ * Share, copy and card in a single row (#254): the Telegram share stays the main action,
+ * copy (#150) and the card become icon buttons with their own accessible names.
+ */
+function renderShareRow(state: DailyState): string {
+  const notice = state.copyNotice
+    ? `<p class="share-copy-notice" role="status">${escapeHtml(state.copyNotice)}</p>`
+    : "";
+  const cardBusy = state.cardLoading ? " disabled" : "";
+  return `<div class="report-actions">
+      <button class="btn" id="share">${icon("share")}${escapeHtml(v("shareShort"))}</button>
+      <button type="button" class="btn ghost icon-btn" id="share-copy" aria-label="${escapeHtml(v("copyShort"))}" title="${escapeHtml(v("copyShort"))}">${icon("copy")}</button>
+      <button type="button" class="btn ghost icon-btn" id="show-card" aria-label="${escapeHtml(v("cardShort"))}" title="${escapeHtml(v("cardShort"))}"${cardBusy}>${icon("image")}</button>
+    </div>${notice}`;
 }
 
 /** "Copy the result" and its outcome, next to the Telegram share button (#150). */
@@ -183,6 +207,12 @@ export function renderDailyPage(state?: DailyState): string {
     return `<span class="attempt ${status}" aria-hidden="true">${custom ? escapeHtml(custom) : status === "scored" ? icon("check") : status === "missed" ? icon("close") : i + 1}</span>`;
   }).join("");
   const hints = today.hints;
+  // Once the Daily is over the result comes first and the career folds away (#254).
+  const careerSheet = `<section class="career-sheet" id="daily-career-card" aria-label="${v("career")}">
+        <div class="sheet-heading"><div><h3>${v("career")}</h3><p class="career-caption">${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</p></div>${icon("career")}</div>
+        <div class="career-columns" aria-hidden="true"><span>${v("season")}</span><span>${v("club")}</span><span>${v("apps")}</span></div>
+        ${renderCareerPath({ stops: today.career_path || [], emptyText: v("missing") })}
+      </section>`;
   return `<article class="daily-page" data-state="${state.status}">
     ${renderRecapBannerSlot()}
     ${done ? "" : EVENT_SLOT}
@@ -197,12 +227,8 @@ export function renderDailyPage(state?: DailyState): string {
       <button type="button" class="btn ghost" id="daily-intro-dismiss">${v("introDismiss")}</button>
     </section>` : ""}
     ${done ? "" : `<button type="button" class="daily-answer-dock" id="daily-answer-dock" aria-controls="daily-interaction-card"><span>${v("answer")}</span><strong>${escapeHtml(t("daily.left"))} ${left}</strong>${icon("arrow")}</button>`}
-    <div class="daily-layout">
-      <section class="career-sheet" id="daily-career-card" aria-label="${v("career")}">
-        <div class="sheet-heading"><div><h3>${v("career")}</h3><p class="career-caption">${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</p></div>${icon("career")}</div>
-        <div class="career-columns" aria-hidden="true"><span>${v("season")}</span><span>${v("club")}</span><span>${v("apps")}</span></div>
-        ${renderCareerPath({ stops: today.career_path || [], emptyText: v("missing") })}
-      </section>
+    <div class="daily-layout${done ? " is-done" : ""}">
+      ${done ? "" : careerSheet}
       <section class="answer-desk" id="daily-interaction-card" aria-label="${v("answer")}">
         <div class="attempts-line"><span>${escapeHtml(done ? v("final") : t("daily.left"))}${done ? "" : ` <b>${left}</b>`}</span><div class="attempts" role="img" aria-label="${used}/${max}">${attempts}</div></div>
         ${done ? (!state.feedback ? renderMatchReport(state) : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
@@ -211,6 +237,7 @@ export function renderDailyPage(state?: DailyState): string {
         ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: t("daily.hintsLeft"), noHintsLabel: t("daily.noHints") })}
         ${today.bonus_available && !done ? `<p class="bonus-note">${escapeHtml(t("daily.bonus"))}</p>` : ""}
       </section>
+      ${done ? `<details class="career-fold"><summary>${icon("career")}<span><b>${v("showCareer")}</b><small>${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</small></span></summary>${careerSheet}</details>` : ""}
     </div>
   </article>`;
 }
@@ -267,11 +294,23 @@ export function attachDailyEventListeners(
     };
   }
 
+  const preview = container.querySelector<HTMLButtonElement>("#card-preview");
+  const toggleCard = () => {
+    const card = preview?.closest<HTMLElement>(".report-card");
+    if (!preview || !card) return;
+    const open = !card.classList.contains("is-open");
+    card.classList.toggle("is-open", open);
+    preview.setAttribute("aria-expanded", String(open));
+  };
+  if (preview) preview.onclick = (event: MouseEvent) => { event.preventDefault(); toggleCard(); };
+
   const showCard = container.querySelector<HTMLButtonElement>("#show-card");
   if (showCard) {
     showCard.onclick = (event: MouseEvent) => {
       event.preventDefault();
-      controller.loadResultCard();
+      // The icon in the share row enlarges a card already there, or asks for it.
+      if (preview) toggleCard();
+      else controller.loadResultCard();
     };
   }
 

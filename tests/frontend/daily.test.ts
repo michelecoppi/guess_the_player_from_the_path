@@ -645,7 +645,8 @@ test("DailyPage: the copy button sits next to share and shows its outcome (#150)
     const copy = container.querySelector<HTMLButtonElement>("#share-copy");
     assert.ok(container.querySelector("#share"));
     assert.ok(copy);
-    assert.match(copy.textContent ?? "", /Copia il risultato/);
+    // An icon button since #254: its name is the accessible label.
+    assert.equal(copy.getAttribute("aria-label"), "Copia il risultato");
     assert.match(container.querySelector(".share-copy-notice")?.textContent ?? "", /Risultato copiato/);
 
     copy.click();
@@ -653,4 +654,80 @@ test("DailyPage: the copy button sits next to share and shows its outcome (#150)
   } finally {
     cleanup();
   }
+});
+
+// ---------------------------------------------------------------------------
+// #254: compact end of the Daily
+// ---------------------------------------------------------------------------
+
+function finishedState(overrides: Record<string, unknown> = {}) {
+  return {
+    status: "correct" as const,
+    challenge: createTestDailyChallenge({ solved: true, attempts_used: 2, attempts_left: 3 }),
+    squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
+    inputValue: "",
+    feedback: { status: "correct" as const, attempts_used: 2, points_awarded: 4, answer: "Shinji Kagawa",
+      share: { text: "t", url: "https://t.me/share" } },
+    ...overrides,
+  };
+}
+
+test("#254 a finished Daily shows the result first and folds the career", () => {
+  setLanguage("it");
+  const html = renderDailyPage(finishedState() as any);
+  const report = html.indexOf("match-report");
+  const fold = html.indexOf('class="career-fold"');
+  assert.ok(report > 0 && fold > report, "the report comes before the folded career");
+  assert.match(html, /<details class="career-fold"><summary>[\s\S]*Mostra la carriera/);
+  assert.match(html, /<details class="career-fold">[\s\S]*id="daily-career-card"/);
+  assert.doesNotMatch(html, /<details class="career-fold" open/);
+  // Still playing: the career stays open, first.
+  const playing = renderDailyPage({ ...finishedState(), status: "idle", feedback: null,
+    challenge: createTestDailyChallenge() } as any);
+  assert.doesNotMatch(playing, /career-fold/);
+  assert.ok(playing.indexOf('id="daily-career-card"') < playing.indexOf('id="daily-interaction-card"'));
+});
+
+test("#254 share, copy and card sit in one row; the card previews and enlarges in place", () => {
+  setLanguage("it");
+  const { container, cleanup } = setupGlobalDom();
+  let cardLoads = 0;
+  const controller = { loadResultCard: () => { cardLoads++; } } as unknown as DailyController;
+  try {
+    const row = renderDailyPage(finishedState() as any);
+    assert.match(row, /class="report-actions">[\s\S]*id="share"[\s\S]*id="share-copy"[\s\S]*id="show-card"/);
+    assert.doesNotMatch(row, /Vedi la figurina/, "no separate card button after a game");
+
+    // Loading: a placeholder where the preview will be.
+    assert.match(renderDailyPage(finishedState({ cardLoading: true }) as any), /report-card is-loading/);
+
+    // Ready: a small preview; tapping it (or the card icon) enlarges it.
+    container.innerHTML = renderDailyPage(finishedState({ cardImage: "data:image/png;base64,AAAA" }) as any);
+    attachDailyEventListeners(container, controller);
+    const card = container.querySelector<HTMLElement>(".report-card");
+    const preview = container.querySelector<HTMLButtonElement>("#card-preview");
+    assert.ok(card && preview);
+    assert.equal(card.classList.contains("is-open"), false);
+    preview.click();
+    assert.equal(card.classList.contains("is-open"), true);
+    assert.equal(preview.getAttribute("aria-expanded"), "true");
+    container.querySelector<HTMLButtonElement>("#show-card")!.click();
+    assert.equal(card.classList.contains("is-open"), false);
+    assert.equal(cardLoads, 0);
+
+    // Card not there (failed load): the icon asks for it.
+    container.innerHTML = renderDailyPage(finishedState() as any);
+    attachDailyEventListeners(container, controller);
+    container.querySelector<HTMLButtonElement>("#show-card")!.click();
+    assert.equal(cardLoads, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("#254 reopening a finished Daily keeps the card on request, no automatic render", () => {
+  setLanguage("it");
+  const html = renderDailyPage(finishedState({ feedback: null }) as any);
+  assert.match(html, /id="show-card"[\s\S]*Vedi la figurina/);
+  assert.doesNotMatch(html, /report-actions/);
 });
