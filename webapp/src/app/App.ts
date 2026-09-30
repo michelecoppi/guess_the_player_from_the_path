@@ -46,6 +46,15 @@ import { ProfileController } from "@/features/profile/controller";
 import { ShopController } from "@/features/shop/controller";
 import { ReferralController } from "@/features/referral/controller";
 import { EventsController } from "@/features/events/controller";
+import {
+  es as eventString,
+  hasPendingEvent,
+  isPending,
+  renderEventSpotlight,
+  spotlightEvent,
+  type EventEntry,
+} from "@/features/events/spotlight";
+import type { EventCard } from "@/features/events/types";
 import { renderLoadingState } from "@/components/LoadingState";
 import { lazyModule, type LazyModule } from "./lazy";
 import { Router } from "./Router";
@@ -84,6 +93,8 @@ export class App {
   private lastArenaSubview: ArenaSubview;
   private firstLoad: Promise<void> = Promise.resolve();
   private resumeListenerAttached = false;
+  /** Where the Events page is being opened from, for `event_viewed` (#248). */
+  private pendingEventEntry: EventEntry | null = null;
   private sessionExpired = false;
   private stopSessionExpiredListener: (() => void) | null = null;
   private backButton: TelegramBackButton | null = null;
@@ -224,6 +235,7 @@ export class App {
 
     this.eventsController.subscribe(() => {
       this.syncClosingConfirmation();
+      this.syncEventPresence();
       if (this.activeTab === "events") {
         this.renderEventsContent();
       }
@@ -314,6 +326,13 @@ export class App {
       this.resumeListenerAttached = true;
     }
     this.firstLoad = Promise.resolve(this.dailyController.init());
+    // The running event is announced on the Daily and the Arena tab (#248). Asked once the
+    // Daily is on screen, so it never competes with the first load.
+    void this.firstLoad.finally(() => {
+      if (!this.sessionExpired && this.eventsController.getState().status === "idle") {
+        void this.eventsController.load();
+      }
+    });
     if (inviteCode) void this.arenaController.init();
     if (this.activeTab === "leaderboard") {
       void this.leaderboardController.init();
@@ -347,6 +366,7 @@ export class App {
       }
       if (this.activeTab === "leaderboard") this.leaderboardController.cancelSearch();
       if (this.activeTab === "reports") this.supportController.reset();
+      const fromArena = this.isArenaTab(this.activeTab);
       this.router.navigate(tab);
 
       if (tab === "arena") {
@@ -366,7 +386,7 @@ export class App {
       } else if (tab === "referral") {
         void this.referralController.init();
       } else if (tab === "events") {
-        void this.eventsController.load();
+        void this.eventsController.load(this.pendingEventEntry ?? (fromArena ? "arena_list" : undefined));
       }
 
       this.render();
@@ -396,6 +416,7 @@ export class App {
         typeof document !== "undefined" && document.activeElement?.id === "answer";
       mainEl.innerHTML = renderDailyPage(state);
       attachDailyEventListeners(this.rootElement, this.dailyController);
+      this.syncEventPresence();
       if (hadInputFocus && state.status !== "submitting")
         mainEl
           .querySelector<HTMLInputElement>("#answer")
@@ -412,6 +433,11 @@ export class App {
   }
 
   private renderArenaContent(): void {
+    this.renderArenaPageContent();
+    this.syncEventPresence();
+  }
+
+  private renderArenaPageContent(): void {
     const mainEl = this.rootElement.querySelector("#app-content");
     if (mainEl && this.isArenaTab(this.activeTab)) {
       const arenaState = this.arenaController.getState();
@@ -843,7 +869,55 @@ export class App {
     renderScreen(this.rootElement, this.activeTab, user, mockBannerHtml, pageHtml);
 
     this.attachEventListeners();
+    this.syncEventPresence();
     this.syncBackButton();
+  }
+
+  /** Opens one event from its banner or card, recording where it was opened from. */
+  public openEvent(code: string, entry: EventEntry): void {
+    if (this.sessionExpired) return;
+    this.eventsController.select(code);
+    this.pendingEventEntry = entry;
+    try {
+      this.setTab("events");
+    } finally {
+      this.pendingEventEntry = null;
+    }
+  }
+
+  /**
+   * The running event outside its own page (#248): the Daily banner, the Arena hub card and
+   * the dot on the Arena tab. Called after every render that can replace those surfaces and
+   * whenever the events change, so a guess made on the Events page clears the dot at once.
+   */
+  private syncEventPresence(): void {
+    if (this.sessionExpired) return;
+    const events = this.eventsController.getState().events;
+    const event = spotlightEvent(events);
+    // The Daily only invites: once today's event is played (solved or out of attempts) the
+    // banner goes away. The Arena card stays, as a recap of today's result.
+    const slots: Array<[string, EventEntry, EventCard | null]> = [
+      ["#event-spotlight-slot", "daily_banner", event && isPending(event) ? event : null],
+      ["#arena-event-slot", "arena_card", event],
+    ];
+    for (const [selector, entry, shown] of slots) {
+      const slot = this.rootElement.querySelector<HTMLElement>(selector);
+      if (!slot) continue;
+      slot.innerHTML = renderEventSpotlight(shown, entry);
+      const button = slot.querySelector<HTMLButtonElement>("[data-event-open]");
+      if (button && shown) {
+        button.onclick = (e) => {
+          e.preventDefault();
+          this.openEvent(shown.code, entry);
+        };
+      }
+    }
+    const arenaTab = this.rootElement.querySelector<HTMLElement>("#nav-tab-arena");
+    if (arenaTab) {
+      const pending = hasPendingEvent(events);
+      arenaTab.classList.toggle("has-alert", pending);
+      arenaTab.setAttribute("aria-label", pending ? `${t("nav.arena")}, ${eventString("navDot")}` : t("nav.arena"));
+    }
   }
 
   /**

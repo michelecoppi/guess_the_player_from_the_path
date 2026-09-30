@@ -139,6 +139,9 @@ function renderFeedback(
   return "";
 }
 
+/** The running event's banner (#248); App fills it from the events state after each render. */
+const EVENT_SLOT = `<div id="event-spotlight-slot"></div>`;
+
 export function renderDailyPage(state?: DailyState): string {
   const title = `<header class="daily-heading"><p class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</p><h2>${v("who")}</h2><p class="muted">${v("follow")}</p></header>`;
   if (!state || (state.status === "loading" && !state.challenge)) {
@@ -149,7 +152,7 @@ export function renderDailyPage(state?: DailyState): string {
   }
   const today = state.challenge;
   if (!today || !today.available) {
-    return `${title}${renderEmptyState({ title: v("wait"), description: t("daily.none") })}`;
+    return `${title}${EVENT_SLOT}${renderEmptyState({ title: v("wait"), description: t("daily.none") })}`;
   }
   const done = !!today.solved || (today.attempts_left ?? 0) === 0;
   const used = today.attempts_used ?? 0;
@@ -178,6 +181,7 @@ export function renderDailyPage(state?: DailyState): string {
   const hints = today.hints;
   return `<article class="daily-page" data-state="${state.status}">
     ${renderRecapBannerSlot()}
+    ${EVENT_SLOT}
     <header class="daily-heading" id="daily-challenge-card">
       <div class="edition"><span class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
       <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>

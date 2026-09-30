@@ -293,7 +293,17 @@ def webapp_arena(payload: dict = Body(default={})):
                 app_events.reveal(user_id, code, day, revision)
             elif action != "get":
                 raise arena.ArenaError("invalid")
-            return {**app_events.list_events(user_id, lang), "feedback": feedback}
+            listed = app_events.list_events(user_id, lang)
+            entry = _text(payload, "entry", limit=20)
+            if action == "get" and entry in analytics.EVENT_ENTRIES:
+                # Only a visit to the Events page carries `entry`; the background load behind
+                # the Daily banner and the Arena dot (#248) does not, so it is never a view.
+                properties = {"surface": "miniapp", "entry": entry}
+                shown = next((card for card in listed["events"] if card.get("available")), None)
+                if shown:
+                    properties.update(event_code=shown["code"], event_type=shown["type"])
+                analytics.capture(analytics.Event.EVENT_VIEWED, user_id=user_id, properties=properties)
+            return {**listed, "feedback": feedback}
         if mode == "story":
             if action == "list":
                 return story.list_chapters(user_id, lang)
