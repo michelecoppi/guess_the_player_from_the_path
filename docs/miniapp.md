@@ -158,6 +158,10 @@ A running event is announced outside its own page, from `webapp/src/features/eve
   bonus while available, podium trophies, and the player's state for today. The whole
   banner is one button that opens that event directly.
 - **Arena hub card**, the same component on top of the Arena modes.
+- **"Up next" in the Daily's final report** (#252): once the Daily is over (won or lost),
+  the top banner is no longer rendered and the final report carries a compact invitation
+  instead (name, time left, today's points, arrow button), only while the event is still to
+  play today.
 - **Dot on the Arena tab** of the nav bar while an event is available and not yet finished
   today (`progress.finished`); its accessible name says so. It clears as soon as the guess
   response updates the events state.
@@ -168,7 +172,7 @@ attempts) the Daily banner disappears; the Arena card stays as a quiet recap
 background, after the first Daily load (`App.init` → `whenFirstLoaded`), with the existing
 `/app/api/arena` `mode: "events"` call; no new endpoint or field. No event, a loading or a
 failed request shows nothing. Opening the Events page sends `entry` (`daily_banner`,
-`arena_card`, `arena_list`) so the server records `event_viewed`; the background load
+`daily_result`, `arena_card`, `arena_list`) so the server records `event_viewed`; the background load
 sends none and is never counted ([product-analytics.md](product-analytics.md)).
 
 ## Monthly recap ("Wrapped")

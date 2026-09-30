@@ -35,7 +35,7 @@ def _events(monkeypatch, cards):
     monkeypatch.setattr(app_events, "list_events", lambda user_id, lang: {"events": cards})
 
 
-@pytest.mark.parametrize("entry", ["daily_banner", "arena_card", "arena_list"])
+@pytest.mark.parametrize("entry", ["daily_banner", "daily_result", "arena_card", "arena_list"])
 def test_a_visit_is_an_event_view_with_its_entry(api, monkeypatch, captured, entry):
     _events(monkeypatch, [dict(CARD, available=False, code="spento"), CARD])
     response = api.post("/app/api/arena", json={"mode": "events", "action": "get", "entry": entry})

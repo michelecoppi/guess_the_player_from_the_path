@@ -201,9 +201,10 @@ ACQUISITION_CHANNELS = ("direct", "referral", "duel", "league", "inline", *CAMPA
 # `/start src_<channel>-<campaign>` (#218): the campaign names one piece of content inside a
 # channel. It is a short slug, never free text, so a malformed one is simply dropped.
 CAMPAIGN_ID = re.compile(r"^[a-z0-9-]{1,24}$")
-# Where the Mini App's Events page was opened from (#248): the Daily banner, the Arena hub
-# card announcing the running event, or the plain Events row of the Arena hub.
-EVENT_ENTRIES = ("daily_banner", "arena_card", "arena_list")
+# Where the Mini App's Events page was opened from (#248): the Daily banner, the invitation in
+# the Daily's final report (#252), the Arena hub card announcing the running event, or the
+# plain Events row of the Arena hub.
+EVENT_ENTRIES = ("daily_banner", "daily_result", "arena_card", "arena_list")
 
 
 # One validator per property NAME (the same name means the same shape everywhere it is

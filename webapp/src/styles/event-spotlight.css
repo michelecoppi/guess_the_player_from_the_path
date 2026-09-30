@@ -110,3 +110,50 @@ nav.app-nav button.has-alert::after {
 @media (prefers-reduced-motion: reduce) {
   .live-dot { animation: none; }
 }
+
+/* "Up next" in the Daily's final report (#252): lighter than the banner, it sits among the
+   report's own buttons and must not outshine the result. */
+.event-next {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 10px 10px 12px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--edge));
+  border-radius: var(--radius-md, 10px);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.event-next:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.event-next-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.event-next-icon .icon { width: 19px; height: 19px; }
+.event-next-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.event-next-body small { font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.event-next-body b { font-size: 14px; line-height: 1.25; }
+.event-next-details { display: flex; flex-wrap: wrap; column-gap: 4px; font-size: 12px; color: var(--muted); }
+.event-next-details span { white-space: nowrap; }
+.event-next-details span:not(:last-child)::after { content: "·"; margin-left: 4px; }
+.event-next-cta {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.event-next-cta .icon { width: 18px; height: 18px; }
