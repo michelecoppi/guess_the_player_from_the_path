@@ -502,6 +502,16 @@ async def preview_guess(payload: dict = Body(default={})):
                                        PREVIEW_INVITE)},
         }
 
+    if answer.lower() in {"lose", "perdo", "pierdo"}:
+        # Per vedere la sconfitta senza sbagliare cinque volte: come in produzione, il nome
+        # di oggi non si rivela (arriva a mezzanotte).
+        STATE["user"]["last_played_day"] = today_iso()
+        STATE["user"]["daily_attempts"] = MAX_ATTEMPTS
+        return {"status": "wrong", "attempts_used": MAX_ATTEMPTS, "attempts_left": 0,
+                "share": {"text": share_text(_lang(), 462, MAX_ATTEMPTS, MAX_ATTEMPTS, solved=False, link=PREVIEW_INVITE),
+                          "url": share_url(share_text(_lang(), 462, MAX_ATTEMPTS, MAX_ATTEMPTS, solved=False, link=PREVIEW_INVITE),
+                                           PREVIEW_INVITE)}}
+
     # Senza il giorno il tentativo non conta per /me e l'indizio resta bloccato (#277).
     STATE["user"]["last_played_day"] = today_iso()
     STATE["user"]["daily_attempts"] = 1

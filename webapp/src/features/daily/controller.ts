@@ -15,6 +15,9 @@ import type { TelegramWebApp } from "@/telegram/types";
 import { applyResolvedAppearance, clearResolvedAppearance, getResolvedAppearance, appearanceSquares, appearanceGeneration, resultAppearance, DEFAULT_SQUARE_SYMBOLS, type ResolvedAppearance } from "@/appearance";
 export { DEFAULT_SQUARE_SYMBOLS } from "@/appearance";
 
+/** Length of the sticker flip that reveals the name (keep in sync with `.reveal-card`). */
+export const REVEAL_FLIP_MS = 900;
+
 export class DailyController {
   private state: DailyState;
   private subscribers: Array<(state: DailyState) => void> = [];
@@ -179,9 +182,12 @@ export class DailyController {
         // Haptic feedback is non-critical
       }
 
+      const revealing = Boolean(result.answer) &&
+        (result.status === "correct" || (result.status === "wrong" && (result.attempts_left ?? 0) <= 0));
       if (result.status === "correct") {
         const effect = resultAppearance(getResolvedAppearance()).celebration;
-        if (effect) celebrate(effect);
+        // With the sticker flip the celebration waits for the name to be on show.
+        if (effect) setTimeout(() => celebrate(effect), revealing ? REVEAL_FLIP_MS : 0);
       }
 
       if (result.status === "wrong" && result.today && result.today.day === this.state.challenge?.day) {
@@ -209,6 +215,7 @@ export class DailyController {
         copyNotice: null,
         inputValue: "",
         status: nextStatus,
+        revealPending: revealing,
       });
       // A new result: whatever was prepared before shows something else.
       this.preparedShare = null;
@@ -374,6 +381,22 @@ export class DailyController {
       this.updateState({ copyNotice: t("daily.copyError") });
       return false;
     }
+  }
+
+  /**
+   * The page drew the reveal: later renders (card, copy notice) show the name already
+   * turned instead of flipping it again. Haptics land when the sticker shows its face.
+   */
+  public consumeReveal(): void {
+    if (!this.state.revealPending) return;
+    this.state.revealPending = false;
+    setTimeout(() => {
+      try {
+        getTelegramWebApp()?.HapticFeedback?.impactOccurred("heavy");
+      } catch {
+        // Haptic feedback is non-critical
+      }
+    }, REVEAL_FLIP_MS / 2);
   }
 
   public setInputValue(val: string): void {

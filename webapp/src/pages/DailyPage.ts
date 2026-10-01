@@ -83,7 +83,7 @@ function renderMatchReport(state: DailyState, feedback?: DailyGuessResult): stri
   return `<section class="feedback match-report ${won ? "ok" : "no"}" role="status" aria-live="polite">
     <div class="report-top"><span class="eyebrow">${v("matchReport")}</span><span class="report-emblem" aria-hidden="true">${icon(won ? "ranking" : "career")}</span></div>
     <h3>${escapeHtml(won ? t("daily.correct") : v("final"))}</h3>
-    ${answer ? `<p class="report-player">${escapeHtml(answer)}</p>` : ""}
+    ${answer ? renderReveal(answer, won, !!state.revealPending, editionLabel(state)) : won ? "" : renderSealed(editionLabel(state))}
     <div class="report-stats">
       ${feedback?.points_awarded != null ? `<div><strong>${feedback.points_awarded}</strong><span>${escapeHtml(t("daily.gotPoints"))}</span></div>` : ""}
       <div><strong>${attempts}<small> / ${state.challenge?.max_attempts ?? 5}</small></strong><span>${v("attemptsUsed")}</span></div>
@@ -109,6 +109,36 @@ function renderShareRow(state: DailyState): string {
       <button type="button" class="btn ghost icon-btn" id="share-copy" aria-label="${escapeHtml(v("copyShort"))}" title="${escapeHtml(v("copyShort"))}">${icon("copy")}</button>
       <button type="button" class="btn ghost icon-btn" id="show-card" aria-label="${escapeHtml(v("cardShort"))}" title="${escapeHtml(v("cardShort"))}"${cardBusy}>${icon("image")}</button>
     </div>${notice}`;
+}
+
+function editionLabel(state: DailyState): string {
+  return state.challenge?.number != null ? `Nº ${state.challenge.number}` : "";
+}
+
+/**
+ * The name as a football sticker turning over: back of the card first, then the player.
+ * It flips once, right after the final answer; any later render shows it already turned.
+ */
+function renderReveal(answer: string, won: boolean, animate: boolean, edition: string): string {
+  return `<div class="reveal-card ${won ? "won" : "lost"}${animate ? " flipping" : ""}" data-reveal>
+    <div class="reveal-inner">
+      <div class="reveal-face reveal-back" aria-hidden="true"><span>?</span></div>
+      <div class="reveal-face reveal-front">
+        <span class="reveal-edition">${escapeHtml(edition)}</span>
+        <span class="reveal-label">${escapeHtml(t(won ? "daily.revealWon" : "daily.revealLost"))}</span>
+        <p class="report-player">${escapeHtml(answer)}</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+/** A lost Daily keeps its sticker face down: the name is only turned at midnight. */
+function renderSealed(edition: string): string {
+  return `<div class="reveal-card sealed">
+    <div class="reveal-inner">
+      <div class="reveal-face reveal-back"><span>?</span><small>${escapeHtml(edition)} · ${escapeHtml(t("daily.revealMidnight"))}</small></div>
+    </div>
+  </div>`;
 }
 
 /** "Copy the result" and its outcome, next to the Telegram share button (#150). */
@@ -241,6 +271,7 @@ export function attachDailyEventListeners(
 ): void {
   answerDockObserver?.disconnect();
   bindRecapEntries(container);
+  if (container.querySelector(".reveal-card.flipping")) controller.consumeReveal();
   container.querySelector<HTMLButtonElement>("#daily-intro-dismiss")?.addEventListener("click", () => {
     controller.dismissIntro();
     container.querySelector<HTMLInputElement>("#answer")?.focus();

@@ -176,6 +176,15 @@ on tap. The card is fetched automatically only right after a game (`submitGuess`
 `loadResultCard`); reopening a finished Daily asks for it on demand, so no PNG is rendered
 on every app open.
 
+The name in the final report is shown as a football sticker (#271). Right after a winning
+answer that names the player, the sticker turns from its back ("?") to the player, with the
+challenge number; the haptic tap lands when the name shows and the equipped celebration
+waits for the flip (`REVEAL_FLIP_MS`). `revealPending` in the Daily state marks the flip as
+still to draw and the page consumes it once (`consumeReveal`), so later renders (card,
+copy notice) show the sticker already turned. After a loss the server does not send today's
+name, so the sticker stays face down with "turns over at midnight"; no rule about when the
+name is revealed changes. Both motions are off under `prefers-reduced-motion`.
+
 On narrow screens, an active Daily keeps a small answer shortcut above the fixed
 navigation while the career path is in view. It focuses the existing guess field and
 disappears when that field is visible or the challenge is complete. Standard path

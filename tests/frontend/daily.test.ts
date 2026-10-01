@@ -848,3 +848,94 @@ test("#254 reopening a finished Daily keeps the card on request, no automatic re
   assert.match(html, /id="show-card"[\s\S]*Vedi la figurina/);
   assert.doesNotMatch(html, /report-actions/);
 });
+
+// ---------------------------------------------------------------------------
+// #271: the solution turns over like a football sticker
+// ---------------------------------------------------------------------------
+
+test("#271 a won Daily flips the sticker once, then shows it already turned", () => {
+  setLanguage("it");
+  const flipping = renderDailyPage(finishedState({ revealPending: true }) as any);
+  assert.match(flipping, /class="reveal-card won flipping"/);
+  assert.match(flipping, /reveal-back[\s\S]*\?[\s\S]*reveal-front[\s\S]*Nº 42[\s\S]*Era proprio lui[\s\S]*Shinji Kagawa/);
+
+  const turned = renderDailyPage(finishedState({ revealPending: false }) as any);
+  assert.match(turned, /class="reveal-card won"/);
+  assert.match(turned, /class="report-player">Shinji Kagawa</);
+});
+
+test("#271 a lost Daily keeps the sticker face down until midnight", () => {
+  setLanguage("it");
+  const lost = finishedState({
+    status: "completed",
+    challenge: createTestDailyChallenge({ solved: false, attempts_used: 3, attempts_left: 0 }),
+    feedback: { status: "wrong" as const, attempts_used: 3, attempts_left: 0, share: { text: "t", url: "https://t.me/share" } },
+  });
+  const html = renderDailyPage(lost as any);
+  assert.match(html, /class="reveal-card sealed"[\s\S]*Nº 42 · si gira a mezzanotte/);
+  assert.doesNotMatch(html, /reveal-front|report-player/, "today's name is never shown after a loss");
+
+  setLanguage("en");
+  assert.match(renderDailyPage(lost as any), /turns over at midnight/);
+  setLanguage("it");
+});
+
+test("#271 drawing the flip consumes it and buzzes when the name shows", async (t) => {
+  setLanguage("it");
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { container, cleanup } = setupGlobalDom();
+  const impacts: string[] = [];
+  const { restore: restoreTg } = setupTestTelegram({
+    HapticFeedback: {
+      impactOccurred: (style: string) => { impacts.push(style); return undefined as any; },
+      notificationOccurred: () => undefined as any,
+      selectionChanged: () => undefined as any,
+    },
+  } as any);
+  try {
+    const controller = new DailyController();
+    (controller as any).state = { ...controller.getState(), ...finishedState({ revealPending: true }) };
+    container.innerHTML = renderDailyPage(controller.getState());
+    attachDailyEventListeners(container, controller);
+    assert.equal(controller.getState().revealPending, false);
+    assert.deepEqual(impacts, []);
+    t.mock.timers.tick(1000);
+    assert.deepEqual(impacts, ["heavy"]);
+
+    // A later render (card, copy notice) does not flip or buzz again.
+    container.innerHTML = renderDailyPage(controller.getState());
+    attachDailyEventListeners(container, controller);
+    t.mock.timers.tick(1000);
+    assert.doesNotMatch(container.innerHTML, /flipping/);
+    assert.deepEqual(impacts, ["heavy"]);
+  } finally {
+    restoreTg();
+    cleanup();
+  }
+});
+
+test("#271 only a final answer that names the player starts the reveal", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const replies = [
+    { status: "wrong", attempts_used: 1, attempts_left: 2 },
+    { status: "correct", attempts_used: 2, attempts_left: 1, points_awarded: 4, answer: "Shinji Kagawa" },
+  ];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (url: string) => {
+    const body = String(url).endsWith("/guess")
+      ? replies.shift()
+      : { user: { name: "Marco" }, today: createTestDailyChallenge({ attempts_used: 0, attempts_left: 3 }) };
+    return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+  }) as any;
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    await controller.submitGuess("Nakata");
+    assert.equal(controller.getState().revealPending, false);
+    await controller.submitGuess("Kagawa");
+    assert.equal(controller.getState().revealPending, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+  }
+});
