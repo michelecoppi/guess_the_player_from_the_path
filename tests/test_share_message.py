@@ -1,11 +1,12 @@
 """Native share of the Daily result card with shareMessage (#185)."""
+import logging
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from telegram.error import BadRequest, RetryAfter
+from telegram.error import BadRequest, NetworkError, RetryAfter, TimedOut
 
 import config
 from apps.api import miniapp, share_message
@@ -101,6 +102,7 @@ def test_prepare_refuses_an_unfinished_or_stale_day(api, monkeypatch):
 @pytest.mark.parametrize("error, retry_after", [
     (RetryAfter(timedelta(seconds=17)), "17"),
     (BadRequest("chat not found"), None),
+    (TimedOut(), None),
 ])
 def test_telegram_failures_fall_back_to_the_classic_share(api, error, retry_after):
     client, bot = api
@@ -138,3 +140,19 @@ def test_result_shared_properties_are_validated():
     assert analytics._clean_properties(
         analytics.Event.RESULT_SHARED, {"surface": "miniapp", "method": "share_message", "user_id": 1},
     ) == {"surface": "miniapp", "method": "share_message"}
+
+
+@pytest.mark.parametrize("error, event, level", [
+    (TimedOut(), "share.prepare.unavailable", logging.WARNING),
+    (NetworkError("connection reset"), "share.prepare.unavailable", logging.WARNING),
+    (BadRequest("chat not found"), "share.prepare.failed", logging.ERROR),
+])
+def test_only_actionable_telegram_failures_are_reported_as_errors(api, monkeypatch, error, event, level):
+    client, bot = api
+    bot.fail_with = error
+    events = []
+    monkeypatch.setattr(miniapp.observability, "log_event",
+                        lambda name, lvl=logging.INFO, **fields: events.append((name, lvl)))
+    response = client.post("/app/api/share/prepare", json={})
+    assert response.status_code == 503 and response.json()["detail"] == "share_unavailable"
+    assert (event, level) in events

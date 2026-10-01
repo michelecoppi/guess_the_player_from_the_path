@@ -10,7 +10,7 @@ import re
 from fastapi import APIRouter, Body, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 from telegram import LabeledPrice
-from telegram.error import RetryAfter, TelegramError
+from telegram.error import BadRequest, NetworkError, RetryAfter, TelegramError
 
 import config
 from apps.api import share_message
@@ -553,7 +553,13 @@ async def webapp_prepare_share(request: Request, payload: dict = Body(default={}
         raise HTTPException(status_code=503, detail="share_unavailable",
                             headers={"Retry-After": str(max(retry, 1))}) from None
     except TelegramError as e:
-        observability.log_event("share.prepare.failed", logging.ERROR, exc_info=e)
+        if isinstance(e, NetworkError) and not isinstance(e, BadRequest):
+            # Telegram lento o irraggiungibile (TimedOut compreso): transitorio, la pagina ripiega
+            # sulla condivisione classica. Resta nei log ma non va su Sentry (#279). BadRequest
+            # eredita da NetworkError ma vuol dire configurazione sbagliata: resta un errore.
+            observability.log_event("share.prepare.unavailable", logging.WARNING, error=type(e).__name__)
+        else:
+            observability.log_event("share.prepare.failed", logging.ERROR, exc_info=e)
         raise HTTPException(status_code=503, detail="share_unavailable") from None
     observability.log_event("share.prepared", cached=prepared["cached"])
     return {"id": prepared["id"], "expires_at": prepared["expires_at"]}
