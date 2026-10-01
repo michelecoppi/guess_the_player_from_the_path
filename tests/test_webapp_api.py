@@ -214,6 +214,13 @@ def test_only_the_hints_already_paid_for_are_sent(firebase, monkeypatch):
     assert hints["taken"] == ["🌍 Nazionalità: Argentina"]   # il secondo non si manda
 
 
+@pytest.mark.parametrize("difficulty,total", [("easy", 0), ("medium", 1), ("hard", 2)])
+def test_the_hint_total_follows_the_difficulty(firebase, monkeypatch, difficulty, total):
+    monkeypatch.setattr(webapp_api, "build_hints", lambda player, lang: ["a", "b"])
+    firebase["challenge"]["difficulty"] = difficulty
+    assert webapp_api.build_profile(42, day_iso=DAY)["today"]["hints"]["total"] == total
+
+
 def test_yesterdays_hints_do_not_count_today(firebase, monkeypatch):
     monkeypatch.setattr(webapp_api, "build_hints", lambda player, lang: ["a", "b"])
     firebase["user"]["daily_hints"] = 2

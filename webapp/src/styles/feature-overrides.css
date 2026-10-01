@@ -846,3 +846,48 @@ body { background-color: var(--skin-profile-surface); }
 .career-fold .career-sheet { border:0; margin:0; }
 .daily-layout.is-done { display:block; }
 @media (prefers-reduced-motion: reduce) { .report-card.is-loading span { animation:none; } .report-card-preview img { transition:none; } }
+
+/* Recent-days calendar in the profile (#273), collapsed by default. */
+/* Phone: the calendar fills the card. Wider cards (tablet, desktop) put it on the left and
+   the day detail and legend beside it, instead of a small grid stranded on the left. */
+.heatmap-card { container-type:inline-size; }
+.heatmap-body { margin-top:12px; }
+.heatmap { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; width:100%; max-width:420px; margin-inline:auto; }
+@container (min-width:470px) {
+  .heatmap-body { display:grid; grid-template-columns:minmax(220px,1.4fr) minmax(150px,1fr); gap:22px; align-items:center; }
+  .heatmap { max-width:none; margin:0; }
+  .heatmap-side .heat-detail { margin-top:0; font-size:14px; }
+  .heatmap-side .heat-legend { flex-direction:column; gap:8px; font-size:12px; }
+}
+.heat-weekday { text-align:center; font-size:10px; color:var(--muted); text-transform:uppercase; }
+.heat-cell { position:relative; display:block; aspect-ratio:1; min-width:0; padding:0; border:0; border-radius:4px; background:var(--track); cursor:pointer;
+  /* A faint edge keeps every square readable on themes with a dim accent. */
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--text) 22%,transparent); }
+.heat-cell.pad { background:transparent; box-shadow:none; cursor:default; }
+/* Every state also has a shape, so the calendar never relies on red vs green alone:
+   dot = first attempt, full = solved, ring = recovered, slash = lost, empty = skipped. */
+.heat-cell.first { background:var(--accent); }
+.heat-cell.first::after { content:""; position:absolute; inset:34%; border-radius:50%; background:var(--accent-text); }
+.heat-cell.solved { background:color-mix(in srgb,var(--accent) 72%,transparent); }
+/* Mixed with the text colour so the ring stays visible on themes with a dim accent. */
+.heat-cell.recovered { background:transparent; box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--accent) 55%,var(--text)); }
+.heat-cell.lost { background:linear-gradient(to top right,transparent calc(50% - 1.5px),var(--text) calc(50% - 1.5px) calc(50% + 1.5px),transparent calc(50% + 1.5px)),color-mix(in srgb,var(--text) 20%,transparent); }
+/* Lost is neutral grey, not red: several themes (coreografia, hanami, terra rossa) have a red
+   or pink accent, and a red loss would read as a solved day there. */
+.heat-cell.missed { background:transparent; box-shadow:none; border:1px dashed color-mix(in srgb,var(--text) 38%,transparent); }
+.heat-cell.selected { outline:2px solid var(--text); outline-offset:2px; }
+.heatmap .heat-cell:not(.pad):focus-visible { outline:2px solid var(--focus); outline-offset:2px; }
+.heatmap.intro .heat-cell:not(.pad) { animation:heat-pop .35s calc(var(--i) * 18ms) both cubic-bezier(.3,1.5,.5,1); }
+@keyframes heat-pop { from { transform:scale(0); opacity:0; } to { transform:scale(1); opacity:1; } }
+.heat-detail { margin-top:12px; font-size:13px; line-height:1.5; min-height:20px; }
+.heat-detail .link-btn { background:none; border:0; padding:0; color:var(--text); font:inherit; font-weight:600; text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:2px; text-underline-offset:3px; cursor:pointer; }
+.heat-legend { display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:12px; font-size:11px; color:var(--muted); }
+.heat-legend span { display:inline-flex; align-items:center; gap:5px; }
+.heat-legend i.heat-cell { width:11px; height:11px; border-radius:3px; cursor:default; }
+@media(prefers-reduced-motion:reduce) { .heatmap.intro .heat-cell:not(.pad) { animation:none; } }
+.heatmap-card > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; list-style:none; cursor:pointer; min-height:var(--min-touch-target); }
+.heatmap-card > summary::-webkit-details-marker { display:none; }
+.heatmap-card > summary > span:first-child { display:flex; flex-direction:column; gap:4px; }
+.heatmap-chevron { display:grid; place-items:center; color:var(--muted); transform:rotate(90deg); transition:transform var(--transition-normal); }
+.heatmap-card[open] .heatmap-chevron { transform:rotate(-90deg); }
+@media(prefers-reduced-motion:reduce) { .heatmap-chevron { transition:none; } }

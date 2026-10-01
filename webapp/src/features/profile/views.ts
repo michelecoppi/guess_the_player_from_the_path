@@ -10,7 +10,8 @@ import { renderRecapProfileEntry } from "@/features/recap/entry";
 import { histogram, cabinetCounts } from "@/utils/game";
 import { identityAppearance } from "@/appearance";
 import { profileSurfaceAttributes } from "@/appearance/surfaces";
-import { t, tCount } from "@/i18n";
+import { t, tCount, getLanguage } from "@/i18n";
+import type { ArchiveCalendarDay } from "@/features/archive/types";
 import { v } from "@/i18n/visual";
 import type {
   CabinetFilter,
@@ -277,6 +278,88 @@ export function renderCabinetView(state: ProfileState): string {
 /**
  * Main own-profile view renderer.
  */
+/** The squares pop in once per session, not on every tap. */
+let heatmapIntroPlayed = false;
+/** Collapsed by default; stays open across re-renders (tapping a day re-renders). */
+let heatmapOpen = false;
+
+/** Back to a fresh session: dropdown closed, pop-in still to play. */
+export function resetHeatmapView(): void {
+  heatmapOpen = false;
+  heatmapIntroPlayed = false;
+}
+
+/** Records the dropdown state; true when this opening should play the pop-in. */
+export function setHeatmapOpen(open: boolean): boolean {
+  heatmapOpen = open;
+  const intro = open && !heatmapIntroPlayed;
+  if (open) heatmapIntroPlayed = true;
+  return intro;
+}
+
+/** Heat level of one day: what colour it gets and what its caption says. */
+function heatLevel(day: ArchiveCalendarDay): { level: string; text: string } {
+  if (day.status === "solved") {
+    return day.attempts === 1
+      ? { level: "first", text: t("profile.heatFirst") }
+      : { level: "solved", text: t("profile.heatSolved", { n: day.attempts ?? 0 }) };
+  }
+  if (day.status === "recovered") return { level: "recovered", text: t("profile.heatRecovered") };
+  if (day.status === "lost") return { level: "lost", text: t("profile.heatLost") };
+  return { level: "missed", text: t("profile.heatMissed") };
+}
+
+/**
+ * The last weeks of Daily as a calendar of squares, Monday first, like GitHub
+ * contributions. Built from /calendar, the same days the archive lists.
+ */
+export function renderHeatmap(calendar: ArchiveCalendarDay[] | null, selected: string | null): string {
+  if (!calendar || !calendar.length) return "";
+  const days = [...calendar].sort((a, b) => a.day.localeCompare(b.day));
+  const weekday = (iso: string) => (new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const lead = weekday(days[0].day);
+  const played = days.filter((d) => d.status !== "missed").length;
+  const solved = days.filter((d) => d.status === "solved").length;
+  const names = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(getLanguage(), { weekday: "narrow", timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, 1 + i))));
+  const cells = [
+    ...Array.from({ length: lead }, () => `<span class="heat-cell pad" aria-hidden="true"></span>`),
+    ...days.map((day, i) => {
+      const { level, text } = heatLevel(day);
+      return `<button type="button" class="heat-cell ${level}${day.day === selected ? " selected" : ""}" style="--i:${i}" data-heat-day="${escapeHtml(day.day)}" aria-label="${escapeHtml(`${day.label} · ${text}`)}"></button>`;
+    }),
+  ].join("");
+  const pick = days.find((d) => d.day === selected);
+  const detail = pick
+    ? `<p class="heat-detail"><b>${escapeHtml(pick.label)} · Nº ${pick.number}</b> ${escapeHtml(heatLevel(pick).text)}${
+        pick.playable ? ` <button type="button" class="link-btn" data-tab="archive">${escapeHtml(t("profile.heatReplay"))} →</button>` : ""}</p>`
+    : `<p class="heat-detail muted">${escapeHtml(t("profile.heatmapHint"))}</p>`;
+  const legend = (["first", "solved", "recovered", "lost", "missed"] as const)
+    .map((level) => `<span><i class="heat-cell ${level}"></i>${escapeHtml(t(`profile.legend${level[0].toUpperCase()}${level.slice(1)}`))}</span>`)
+    .join("");
+  // The pop-in plays the first time the squares are actually on show.
+  const intro = heatmapOpen && !heatmapIntroPlayed ? " intro" : "";
+  if (heatmapOpen) heatmapIntroPlayed = true;
+  return `
+    <details class="card mt-3 heatmap-card"${heatmapOpen ? " open" : ""}>
+      <summary>
+        <span><h3 class="section-heading">${escapeHtml(t("profile.heatmapTitle"))}</h3>
+        <span class="muted text-xs">${escapeHtml(t("profile.heatmapSummary", { played, total: days.length, solved }))}</span></span>
+        <span class="heatmap-chevron" aria-hidden="true">${icon("arrow")}</span>
+      </summary>
+      <div class="heatmap-body">
+      <div class="heatmap${intro}">
+        ${names.map((n) => `<span class="heat-weekday" aria-hidden="true">${escapeHtml(n)}</span>`).join("")}
+        ${cells}
+      </div>
+      <div class="heatmap-side">
+        ${detail}
+        <div class="heat-legend">${legend}</div>
+      </div>
+      </div>
+    </details>`;
+}
+
 export function renderProfileView(state: ProfileState): string {
   if (state.view === "cabinet") {
     return renderCabinetView(state);
@@ -418,6 +501,8 @@ export function renderProfileView(state: ProfileState): string {
         </div>
         </details>
       </div>
+
+      ${renderHeatmap(state.calendar, state.heatmapDay)}
 
       <!-- Attempt Distribution Card -->
       <div class="card mt-3">

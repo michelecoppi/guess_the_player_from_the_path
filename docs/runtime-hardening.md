@@ -92,9 +92,9 @@ una lettura a Firestore dentro il gestore che gira dopo un guasto sarebbe un sec
 di fallire proprio dove non si puo'.
 Le eccezioni note al gestore non vengono riprodotte automaticamente.
 
-Le ricevute hanno `delete_after` a 30 giorni: abilitare opzionalmente una policy TTL
-Firestore su questo campo della collection group `work_receipts`. Senza TTL restano
-valide ma crescono nel tempo. Payload giornalieri e chiusure sono documenti di audit.
+Le ricevute hanno `delete_after` a 30 giorni e in produzione la policy TTL Firestore su
+questo campo della collection group `work_receipts` è attiva dal 2026-10-01
+([firestore.md](firestore.md)): le ricevute scadute vengono cancellate da Firestore. Payload giornalieri e chiusure sono documenti di audit.
 
 Per ruotare i segreti, sospendere le code e drenare le richieste; aggiornare tutte le
 revisioni serventi e la registrazione Telegram. I task già accodati contengono il

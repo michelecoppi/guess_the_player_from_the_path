@@ -221,6 +221,22 @@ test("renderHintPanel hides unlock button when all hints are exhausted", () => {
   cleanup();
 });
 
+test("renderHintPanel locked: button disabled and the reason shown instead of the counter (#277)", () => {
+  const { element, cleanup } = renderToDom<HTMLElement>(
+    renderHintPanel({
+      hintsTotal: 2,
+      hintsUsed: 0,
+      locked: true,
+      lockedLabel: "Si sblocca dopo il primo errore",
+    })
+  );
+  const button = element.querySelector<HTMLButtonElement>("#hint");
+  assert.ok(button);
+  assert.equal(button.disabled, true);
+  assert.equal(element.querySelector(".hints-remaining")?.textContent, "Si sblocca dopo il primo errore");
+  cleanup();
+});
+
 test("renderFeedbackBox renders correct and wrong states with comparison clues", () => {
   const { element: correctBox, cleanup: c1 } = renderToDom<HTMLElement>(
     renderFeedbackBox({

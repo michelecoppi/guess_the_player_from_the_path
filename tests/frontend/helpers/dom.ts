@@ -1,4 +1,16 @@
 import { Window } from "happy-dom";
+import { recapCalendar } from "../../../webapp/src/features/recap/entry";
+
+/** Mid-month: outside the recap banner week (#245), which would add a background request. */
+export const TEST_TODAY = new Date(2026, 8, 15, 12);
+
+function pinRecapCalendar(): () => void {
+  const original = recapCalendar.today;
+  recapCalendar.today = () => new Date(TEST_TODAY);
+  return () => {
+    recapCalendar.today = original;
+  };
+}
 
 export interface TestDomContext {
   window: Window;
@@ -14,6 +26,7 @@ export interface TestDomContext {
 export function createTestDom(initialHtml = ""): TestDomContext {
   const window = new Window();
   const document = window.document;
+  const restoreCalendar = pinRecapCalendar();
 
   const container = document.createElement("div");
   container.id = "test-root";
@@ -29,6 +42,7 @@ export function createTestDom(initialHtml = ""): TestDomContext {
     cleanup: () => {
       container.remove();
       window.close();
+      restoreCalendar();
     },
   };
 }
@@ -64,6 +78,7 @@ export function setupGlobalDom(initialHtml = ""): { cleanup: () => void; contain
   (globalThis as any).HTMLElement = (window as any).HTMLElement;
   (globalThis as any).CustomEvent = (window as any).CustomEvent;
   (globalThis as any).Event = (window as any).Event;
+  const restoreCalendar = pinRecapCalendar();
 
   const container = document.createElement("div");
   container.id = "app-root";
@@ -77,6 +92,7 @@ export function setupGlobalDom(initialHtml = ""): { cleanup: () => void; contain
     cleanup: () => {
       container.remove();
       window.close();
+      restoreCalendar();
       if (originalWindow !== undefined) (globalThis as any).window = originalWindow;
       else delete (globalThis as any).window;
 

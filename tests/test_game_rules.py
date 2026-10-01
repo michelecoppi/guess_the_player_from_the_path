@@ -260,6 +260,19 @@ def test_a_challenge_without_a_player_gives_no_hints_and_costs_nothing(firebase)
     assert firebase.calls["hints"] == []
 
 
+def test_an_easy_challenge_gives_no_hints_and_costs_nothing(firebase):
+    """Vale 1 punto: col pavimento a 1 l'indizio sarebbe gratis (#277)."""
+    firebase.state["challenge"] = dict(CHALLENGE, difficulty="easy")
+    assert game.take_hint(42, "it", day_iso=DAY) == {"status": "unavailable"}
+    assert firebase.calls["hints"] == []
+
+
+def test_a_medium_challenge_allows_one_hint(firebase):
+    firebase.state["challenge"] = dict(CHALLENGE, difficulty="medium")
+    assert game.take_hint(42, "it", day_iso=DAY)["total"] == 1
+    assert firebase.calls["hints"][-1]["max_hints"] == 1
+
+
 def test_a_refused_hint_carries_its_reason(firebase):
     firebase.state["hint"] = {"ok": False, "reason": "needs_attempt"}
     assert game.take_hint(42, "it", day_iso=DAY)["reason"] == "needs_attempt"

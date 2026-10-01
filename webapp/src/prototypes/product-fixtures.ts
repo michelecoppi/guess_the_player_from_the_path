@@ -26,7 +26,7 @@ export function trainingFixture(): TrainingState {
 }
 export function profileFixture(): ProfileState {
   const trophy={code:'review-monthly',kind:'monthly',position:1,medal:'',color:'#d8ba78',label:'Agosto',detail:'Classifica mensile · 2026',year:'2026'};
-  return {view:'profile',status:'ready',error:null,cabinetFilter:'all',pendingPinCodes:null,isPinning:false,pinError:null,pinSuccess:false,
+  return {view:'profile',status:'ready',error:null,cabinetFilter:'all',pendingPinCodes:null,isPinning:false,pinError:null,pinSuccess:false,calendar:null,heatmapDay:null,
     profile:{language:'it',user:{name:'Marco',points:1284,monthly_points:146,players_guessed:92,bonus_first_guessed:8,streak:12,best_streak:21,archive_solved:18,trophies:1},
       cosmetics:appearanceFixtures.identity,trophies:{pinned:[trophy],all:[trophy],max:3},distribution:[5,18,32,24,13].map((count,i)=>({attempts:i+1,count}))}};
 }

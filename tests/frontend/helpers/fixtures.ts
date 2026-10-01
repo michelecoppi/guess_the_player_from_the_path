@@ -51,6 +51,7 @@ export interface TestDailyChallengeState {
   day: string;
   available: boolean;
   number: number;
+  difficulty?: string;
   difficulty_label: string;
   points: number;
   attempts_used: number;

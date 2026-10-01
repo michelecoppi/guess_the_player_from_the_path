@@ -1,7 +1,7 @@
 import { renderArenaPage as renderArenaView } from "@/features/arena/views";
 import { renderTrainingView } from "@/features/training/views";
 import { renderLoadingState } from "@/components/LoadingState";
-import type { ArenaState, ArenaSubview } from "@/features/arena/types";
+import type { ArenaState, ArenaSubview, DuelOutcome } from "@/features/arena/types";
 import type { ArenaController } from "@/features/arena/controller";
 import type { TrainingState } from "@/features/training/types";
 import type { TrainingController } from "@/features/training/controller";
@@ -342,6 +342,14 @@ export function attachArenaEventListeners(
       arenaController.createNewDuel();
     };
   }
+
+  container.querySelectorAll<HTMLButtonElement>("[data-arena-rematch]").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      const { name = "", outcome = "draw", score = "" } = btn.dataset;
+      void arenaController?.rematch(name, outcome as DuelOutcome, score);
+    };
+  });
 
   // New duel finished state button
   const newDuelBtn =

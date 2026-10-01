@@ -257,7 +257,7 @@ export function renderDailyPage(state?: DailyState): string {
         ${done ? (!state.feedback ? renderMatchReport(state) : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
         ${state.errorMessage ? `<div class="feedback no" role="alert">${escapeHtml(state.errorMessage)}</div>` : ""}
         ${renderFeedback(state.feedback, state)}
-        ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: t("daily.hintsLeft"), noHintsLabel: t("daily.noHints") })}
+        ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, loading: state.hintLoading, locked: (hints?.used ?? 0) >= (today.attempts_used ?? 0), lockedLabel: t((today.attempts_used ?? 0) === 0 ? "daily.hintLocked" : "daily.hintLockedNext"), unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: t("daily.hintsLeft"), noHintsLabel: t(today.difficulty === "easy" ? "daily.noHintsEasy" : "daily.noHints") })}
         ${today.bonus_available && !done ? `<p class="bonus-note">${escapeHtml(t("daily.bonus"))}</p>` : ""}
       </section>
       ${done ? `<details class="career-fold"><summary>${icon("career")}<span><b>${v("showCareer")}</b><small>${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</small></span></summary>${careerSheet}</details>` : ""}

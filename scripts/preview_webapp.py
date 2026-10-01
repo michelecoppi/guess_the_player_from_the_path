@@ -34,7 +34,7 @@ from fastapi.responses import HTMLResponse, Response  # noqa: E402
 from domains.shop import service as shop  # noqa: E402
 from services import firebase_service, trophies
 from services.daily_challenge import MAX_ATTEMPTS, challenge_number  # noqa: E402
-from services.dates import today_iso  # noqa: E402
+from services.dates import shift_iso, today_iso  # noqa: E402
 from services.share import card_image, share_text, share_url  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -151,6 +151,27 @@ LEADERBOARD = [
 # che si vede qui e' quello che vedra' un utente.
 # ---------------------------------------------------------------------------
 
+# Un mese di Daily giocato "da persona vera" per la heatmap del profilo e per l'archivio:
+# qualche colpo al primo tentativo, qualche buco, due giornate recuperate dopo.
+_DEMO_PATTERN = "1231x2m1r21l12m3121xm2r112l1231"
+
+
+def _demo_days():
+    challenges, history, recovered = [], [], set()
+    for back, mark in enumerate(_DEMO_PATTERN, start=1):
+        day = shift_iso(today_iso(), -back)
+        challenges.append({"day": day, "difficulty": ("easy", "medium", "hard")[back % 3]})
+        if mark in "123":
+            history.append({"day": day, "solved": True, "attempts": int(mark), "hints": 0})
+        elif mark in "xr":
+            history.append({"day": day, "solved": False, "attempts": 5, "hints": 1})
+            if mark == "r":
+                recovered.add(day)
+        elif mark == "l":
+            history.append({"day": day, "solved": False, "attempts": 5, "hints": 0})
+    return challenges, history, recovered
+
+
 def _fake_firestore():
     def get_user_data(user_id):
         return STATE["user"] if int(user_id) == USER_ID else None
@@ -190,10 +211,10 @@ def _fake_firestore():
             reverse=True,
         )[:limit],
         "get_user_purchases": lambda user_id, limit=None: [],
-        "get_past_daily_paths": lambda *args, **kwargs: [],
+        "get_past_daily_paths": lambda limit=10, before_day_iso=None: _demo_days()[0][:limit],
         "get_daily_paths_range": lambda *args, **kwargs: [],
-        "get_daily_history": lambda *args, **kwargs: {},
-        "get_solved_archive_days": lambda *args, **kwargs: set(),
+        "get_daily_history": lambda user_id, limit=60: _demo_days()[1][:limit],
+        "get_solved_archive_days": lambda *args, **kwargs: _demo_days()[2],
         "get_archive_result": lambda *args, **kwargs: None,
         "save_user": lambda *args, **kwargs: None,
         "reserve_checkout": lambda *args, **kwargs: "ok",
@@ -371,7 +392,7 @@ async def public_profile(payload: dict = Body(default={})):
 
 @app.post("/app/api/calendar")
 async def calendar(payload: dict = Body(default={})):
-    return build_calendar(USER_ID, lang=_lang())
+    return {"days": build_calendar(USER_ID, lang=_lang())}
 
 
 @app.post("/app/api/players")
@@ -460,9 +481,9 @@ async def preview_guess(payload: dict = Body(default={})):
     if not answer:
         return {"status": "error", "reason": "empty_guess"}
 
+    from services.dates import today_iso
     aliases = _challenge()["correct_answers"]
     if answer.lower() in {str(name).lower() for name in aliases} | {"correct", "solve"}:
-        from services.dates import today_iso
         STATE["user"]["last_played_day"] = today_iso()
         STATE["user"]["has_guessed_today"] = True
         STATE["user"]["daily_attempts"] = 2
@@ -484,7 +505,6 @@ async def preview_guess(payload: dict = Body(default={})):
     if answer.lower() in {"lose", "perdo", "pierdo"}:
         # Per vedere la sconfitta senza sbagliare cinque volte: come in produzione, il nome
         # di oggi non si rivela (arriva a mezzanotte).
-        from services.dates import today_iso
         STATE["user"]["last_played_day"] = today_iso()
         STATE["user"]["daily_attempts"] = MAX_ATTEMPTS
         return {"status": "wrong", "attempts_used": MAX_ATTEMPTS, "attempts_left": 0,
@@ -492,6 +512,8 @@ async def preview_guess(payload: dict = Body(default={})):
                           "url": share_url(share_text(_lang(), 462, MAX_ATTEMPTS, MAX_ATTEMPTS, solved=False, link=PREVIEW_INVITE),
                                            PREVIEW_INVITE)}}
 
+    # Senza il giorno il tentativo non conta per /me e l'indizio resta bloccato (#277).
+    STATE["user"]["last_played_day"] = today_iso()
     STATE["user"]["daily_attempts"] = 1
     return {
         "status": "wrong",

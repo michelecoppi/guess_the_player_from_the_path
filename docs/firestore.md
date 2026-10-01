@@ -42,7 +42,7 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `admin_settings/daily_planner` | fixed | Players excluded from the Daily planner: `excluded.{player_id}` = `reason`, `until` (ISO day or null), `excluded_at` ([game-modes.md](game-modes.md#daily-planner)) |
 | `admin_settings/feature_flags` | fixed | Operational feature flags: schema version, revision, per-flag master switch, rollout and user/group targeting ([feature-flags.md](feature-flags.md)) |
 | `father_son_pairs/{auto}` | auto | Manual father/son event content (Telegram `file_id`) |
-| `work_receipts/{key}` | e.g. `telegram-{update_id}`, `notify-{day}-{user}` | Deduplication/outcome of background work (`delete_after` for optional TTL) |
+| `work_receipts/{key}` | e.g. `telegram-{update_id}`, `notify-{day}-{user}` | Deduplication/outcome of background work (`delete_after`, TTL enabled: 30 days) |
 | `update_locks/{user_id}` | user id | Per-user serialization of updates across replicas |
 | `daily_jobs/{day}` | ISO day | Immutable nightly broadcast payload and `sent_total` |
 | `monthly_closures/{YYYY-MM}` | month | Frozen podium before monthly reset, plus `points_distribution` (anonymous sorted monthly points, read by the monthly recap) |
@@ -52,8 +52,17 @@ inventory in [backup-recovery.md § 3](backup-recovery.md#3-collection-inventory
 collection must be classified there (`services/firestore_backup/inventory.py`).
 
 Composite indexes are in [`firestore.indexes.json`](../firestore.indexes.json).
-Optional TTL policies (`app_duels.expires_at`, `inline_cards.expires_at`, `work_receipts.delete_after`) are
-described as optional in the code/docs and are not managed from this repository.
+TTL policies are cloud configuration, not managed by a deploy from this repository.
+`work_receipts.delete_after` (30 days) is **enabled** in production since 2026-10-01:
+expired receipts are deleted by Firestore in the background, usually within 24 hours of
+expiry. `app_duels.expires_at` and `inline_cards.expires_at` remain optional and not
+enabled. Check with `gcloud firestore fields ttls list`; enable with
+`gcloud firestore fields ttls update <field> --collection-group=<group> --enable-ttl`.
+
+Storage stays small: on 2026-10-01 data plus indexes measured 2.5 MB
+(Cloud Monitoring `firestore.googleapis.com/storage/data_and_index_storage_bytes`), against
+the 1 GiB free quota shown in the console. Growth is linear in active users × days
+(mainly `users/{id}/history` and receipts, a few KB per active user per day).
 
 ## Concurrency assumptions
 

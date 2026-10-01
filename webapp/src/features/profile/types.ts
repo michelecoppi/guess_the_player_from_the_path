@@ -68,6 +68,10 @@ export interface ProfileState {
   isPinning: boolean;
   pinError: string | null;
   pinSuccess: boolean;
+  /** Recent Daily results for the activity heatmap; null while unknown or unavailable. */
+  calendar: import("@/features/archive/types").ArchiveCalendarDay[] | null;
+  /** The day tapped in the heatmap, shown in the caption below it. */
+  heatmapDay: string | null;
 }
 
 export const PROFILE_FEATURE_METADATA = {

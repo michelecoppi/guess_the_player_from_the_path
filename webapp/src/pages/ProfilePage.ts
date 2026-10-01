@@ -1,6 +1,6 @@
 import type { ProfileController } from "@/features/profile/controller";
 import type { CabinetFilter, ProfileState } from "@/features/profile/types";
-import { renderProfileView } from "@/features/profile/views";
+import { renderProfileView, setHeatmapOpen } from "@/features/profile/views";
 import { bindRecapEntries } from "@/features/recap/entry";
 
 export function renderProfilePage(state: ProfileState): string {
@@ -50,6 +50,22 @@ export function attachProfileEventListeners(
       if (code) {
         void controller.togglePin(code);
       }
+    });
+  });
+
+  const heatmap = root.querySelector<HTMLDetailsElement>("details.heatmap-card");
+  // Recorded on the click itself, not on "toggle": that event is async and is lost when a
+  // re-render (a profile refresh) replaces the element right after the tap.
+  heatmap?.querySelector("summary")?.addEventListener("click", () => {
+    const opening = !heatmap.open;
+    // The first opening shows the squares for the first time: let them pop in.
+    if (setHeatmapOpen(opening) && opening) heatmap.querySelector(".heatmap")?.classList.add("intro");
+  });
+
+  root.querySelectorAll<HTMLButtonElement>("button[data-heat-day]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      if (btn.dataset.heatDay) controller.selectHeatmapDay(btn.dataset.heatDay);
     });
   });
 

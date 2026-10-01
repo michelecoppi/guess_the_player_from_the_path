@@ -29,8 +29,8 @@ export async function submitDailyGuess(
 export async function requestDailyHint(
   expectedDay: string | undefined,
   client: ApiClient = api
-): Promise<{ status: string }> {
-  return client.post<{ status: string }>("/hint", { expected_day: expectedDay });
+): Promise<{ status: string; reason?: string }> {
+  return client.post<{ status: string; reason?: string }>("/hint", { expected_day: expectedDay });
 }
 
 /**

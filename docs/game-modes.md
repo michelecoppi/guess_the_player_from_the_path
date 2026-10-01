@@ -45,7 +45,12 @@ updates are deduplicated by work receipts ([runtime-hardening.md](runtime-harden
    and the old chat hint button (`hint_daily`) does the same.
    [`services/game.py`](../services/game.py) owns the rules: `MAX_ATTEMPTS = 3`, points from difficulty,
    first-correct bonus claimed in a transaction, hints (`services/hints.py`) reduce
-   points, streaks (`services/streak.py`). The answer (`correct_answers`, `player_id`) is
+   points, streaks (`services/streak.py`). At most one hint per wrong guess, and at most
+   0/1/2/2 hints for easy/medium/hard/impossible (`HINTS_BY_DIFFICULTY`): an easy Daily is
+   worth 1 point, so with the floor of 1 a hint there would be free. The Mini App keeps the
+   hint button disabled until the next hint is allowed and shows the reason for any
+   refusal ([#277](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/277)).
+   Hint texts are plain text. The answer (`correct_answers`, `player_id`) is
    never serialized to the Mini App.
 5. **Per-user state.** Counters on `users/{id}` are anchored to `last_played_day`, so
    there is no nightly reset; the result of a finished day is written once to

@@ -507,7 +507,8 @@ test("DailyPage: DOM event wiring triggers controller guess, enter key, hint, an
   const mockController = {
     getState: () => ({
       status: "ready" as const,
-      challenge: createTestDailyChallenge(),
+      // Two misses, one hint used: the second hint is available.
+      challenge: createTestDailyChallenge({ attempts_used: 2, attempts_left: 3 }),
       squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" },
       inputValue: "",
       feedback: {
@@ -597,6 +598,87 @@ test("DailyController: a FEATURE_DISABLED refusal shows a localized notice inste
     restoreFetch();
     restoreTg();
     setLanguage("it");
+  }
+});
+
+test("DailyPage: the hint stays locked until the first wrong guess (#277)", () => {
+  setLanguage("it");
+  const base = { status: "ready" as const, squaresSymbols: { correct: "🟩", wrong: "🟥", unused: "⬜" }, inputValue: "" };
+  const fresh = renderDailyPage({ ...base, challenge: createTestDailyChallenge({ attempts_used: 0, attempts_left: 3, hints: { total: 2, used: 0, taken: [] } }) } as any);
+  assert.match(fresh, /<button[^>]*id="hint"[^>]* disabled/);
+  assert.ok(fresh.includes("Gli indizi si sbloccano dopo il primo tentativo sbagliato"));
+
+  const afterMiss = renderDailyPage({ ...base, challenge: createTestDailyChallenge({ attempts_used: 1, attempts_left: 2, hints: { total: 2, used: 0, taken: [] } }) } as any);
+  assert.doesNotMatch(afterMiss, /<button[^>]*id="hint"[^>]* disabled/);
+  assert.ok(afterMiss.includes("2 indizi rimasti"));
+
+  // One hint per wrong guess: after one miss and one hint, the next waits for another miss.
+  const oneEach = renderDailyPage({ ...base, challenge: createTestDailyChallenge({ attempts_used: 1, attempts_left: 2, hints: { total: 2, used: 1, taken: ["Nazionalità: Italia"] } }) } as any);
+  assert.match(oneEach, /<button[^>]*id="hint"[^>]* disabled/);
+  assert.ok(oneEach.includes("Il prossimo indizio si sblocca dopo un altro tentativo sbagliato"));
+
+  const easy = renderDailyPage({ ...base, challenge: createTestDailyChallenge({ difficulty: "easy", attempts_used: 1, attempts_left: 2, hints: { total: 0, used: 0, taken: [] } }) } as any);
+  assert.ok(!easy.includes('id="hint"'));
+  assert.ok(easy.includes("Le sfide facili non hanno indizi"));
+});
+
+test("DailyController: a refused hint resyncs and tells the player why (#277)", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  setLanguage("it");
+  const today = createTestDailyChallenge({ attempts_used: 0, attempts_left: 3, hints: { total: 2, used: 0, taken: [] } });
+  const calls: string[] = [];
+  const restoreFetch = mockFetchResponse((input: RequestInfo | URL) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.endsWith("/hint")) return { status: "refused", reason: "needs_attempt", total: 2 };
+    return { language: "it", user: { name: "Marco" }, today };
+  });
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    await controller.takeHint();
+    const state = controller.getState();
+    assert.equal(state.errorMessage, "Gli indizi si sbloccano dopo il primo tentativo sbagliato");
+    assert.equal(state.hintLoading, false);
+    assert.equal(calls.filter((u) => u.endsWith("/me")).length, 2, "refusal reloads today's state");
+  } finally {
+    restoreFetch();
+    restoreTg();
+  }
+});
+
+test("DailyController: a revealed hint shows up after reloading today (#277)", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  setLanguage("it");
+  let hintTaken = false;
+  const restoreFetch = mockFetchResponse((input: RequestInfo | URL) => {
+    if (String(input).endsWith("/hint")) {
+      hintTaken = true;
+      return { status: "ok", index: 1, total: 2, text: "Nazionalità: Italia" };
+    }
+    return {
+      language: "it",
+      user: { name: "Marco" },
+      today: createTestDailyChallenge({
+        attempts_used: 1, attempts_left: 2,
+        hints: hintTaken ? { total: 2, used: 1, taken: ["Nazionalità: Italia"] } : { total: 2, used: 0, taken: [] },
+      }),
+    };
+  });
+
+  try {
+    const controller = new DailyController();
+    await controller.init();
+    await controller.takeHint();
+    const state = controller.getState();
+    assert.equal(state.errorMessage, undefined);
+    assert.ok(renderDailyPage(state).includes("Nazionalità: Italia"));
+    // One miss, one hint: the second waits for another wrong guess.
+    assert.ok(renderDailyPage(state).includes("Il prossimo indizio si sblocca dopo un altro tentativo sbagliato"));
+  } finally {
+    restoreFetch();
+    restoreTg();
   }
 });
 

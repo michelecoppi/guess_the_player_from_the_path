@@ -8,8 +8,9 @@ vuoto.
 
 import pytest
 
-from services.hints import HINT_LADDER, MAX_HINTS, build_hints, points_after_hints
+from services.hints import HINT_LADDER, MAX_HINTS, build_hints, hint_limit, points_after_hints
 from services.i18n import SUPPORTED_LANGUAGES
+from services.repos.users import hint_refusal
 
 PLAYER = {
     "id": "messi",
@@ -36,6 +37,12 @@ def test_the_ladder_is_as_long_as_the_maximum():
 def test_a_complete_player_offers_every_hint(lang):
     hints = build_hints(PLAYER, lang)
     assert len(hints) == MAX_HINTS
+
+
+@pytest.mark.parametrize("lang", SUPPORTED_LANGUAGES)
+def test_hints_are_plain_text(lang):
+    """La mini app li mostra come testo (escapeHtml): un <b> arriverebbe letterale (#277)."""
+    assert not any("<" in hint for hint in build_hints(PLAYER, lang))
 
 
 def test_the_hint_is_translated():
@@ -75,3 +82,34 @@ def test_the_nationality_comes_before_the_position():
 ])
 def test_points_after_hints(base, hints, expected):
     assert points_after_hints(base, hints) == expected
+
+
+# ---------------------------------------------------------------------------
+# Quanti e quando (#277)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("difficulty,expected", [
+    ("easy", 0),        # vale 1 punto: col pavimento l'indizio sarebbe gratis
+    ("medium", 1),
+    ("hard", 2),
+    ("impossible", 2),
+    (None, 0),
+])
+def test_how_many_hints_each_difficulty_allows(difficulty, expected):
+    assert hint_limit(difficulty) == expected
+
+
+@pytest.mark.parametrize("attempts,hints,expected", [
+    (0, 0, "needs_attempt"),   # prima si gioca
+    (1, 0, None),
+    (1, 1, "needs_attempt"),   # un errore, un indizio: il secondo aspetta il secondo errore
+    (2, 1, None),
+    (2, 2, "no_more"),
+    (3, 0, "no_attempts"),
+])
+def test_one_hint_per_wrong_attempt(attempts, hints, expected):
+    assert hint_refusal(attempts, hints, False, max_hints=2, max_attempts=3) == expected
+
+
+def test_no_hint_after_solving():
+    assert hint_refusal(1, 0, True, max_hints=2, max_attempts=3) == "already_guessed"
