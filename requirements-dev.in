@@ -1,0 +1,11 @@
+# Dipendenze dirette di sviluppo, piu' quelle runtime. Il lock completo e' requirements-dev.txt,
+# generato con `python -m tools.dev deps-lock` (#214); requirements.txt ne e' il sottoinsieme runtime.
+-r requirements.in
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.16.6
+mypy==2.3.1
+streamlit==1.63.0
+pip-audit==2.10.1
+detect-secrets==1.5.0
+pip-tools==7.6.1

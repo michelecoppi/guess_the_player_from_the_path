@@ -1,5 +1,7 @@
 version: 2
 updates:
+  # requirements*.in sono le dipendenze dirette, requirements*.txt i lock di pip-compile (#214):
+  # Dependabot aggiorna entrambi. Lock da rigenerare a mano: python -m tools.dev deps-lock.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:

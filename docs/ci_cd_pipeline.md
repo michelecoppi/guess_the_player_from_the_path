@@ -37,6 +37,8 @@ fallisce); il file del workflow resta la fonte esatta:
 
 | Step | Cosa controlla | Comando |
 |---|---|---|
+| Dipendenze Python | installa il lock completo e verifica che il grafo sia coerente | `pip install -r requirements-dev.txt`, `pip check` |
+| Lock delle dipendenze | `requirements*.txt` corrispondono ai file `requirements*.in` (vedi [§ 3](#3-dependabot--githubdependabotyml)) | `python -m tools.deps_lock check` |
 | Frontend: dipendenze e type check | la Mini App compila senza errori di tipo | `npm ci`, `npm run typecheck` |
 | Frontend: build | il bundle Vite di `/app` si costruisce | `npm run build` |
 | Test frontend | test unitari TypeScript, compreso l'allineamento delle stringhe IT/EN/ES | `npm run test:frontend` |
@@ -152,8 +154,34 @@ quindi rifarli qui duplicherebbe la CI senza aggiungere informazione. Dettagli c
 ## 3. Dependabot — [`.github/dependabot.yml`](../.github/dependabot.yml)
 
 Apre PR automatiche settimanali per aggiornamenti di:
-- dipendenze pip (`requirements.txt` e `requirements-dev.txt`, root `/`)
+- dipendenze pip (file `requirements*.in` e relativi lock, root `/`)
 - GitHub Actions usate nei workflow (`actions/checkout`, `google-github-actions/*`, ecc.)
+
+### Lock delle dipendenze Python (#214)
+
+Le dipendenze dirette si dichiarano in `requirements.in` (runtime) e `requirements-dev.in`
+(sviluppo, che include il runtime). `requirements-dev.txt` e `requirements.txt` sono i **lock**
+generati con `pip-compile` e contengono tutte le versioni, transitive comprese. La CI installa
+`requirements-dev.txt`, il Dockerfile `requirements.txt`. Il lock runtime si ricava **dopo**
+quello di sviluppo e vincolato a quello, quindi le versioni runtime in produzione sono
+esattamente quelle testate in CI. Prima non era così: il Dockerfile risolveva il runtime da
+solo e prendeva `websockets` 17, mentre la CI ne installava la 16 perché `streamlit` chiede
+`<17`. I lock si risolvono sempre per Linux con Python 3.11, la piattaforma dell'immagine:
+fuori da quell'ambiente lo strumento usa un container `python:3.11-slim`, quindi serve Docker.
+
+- **Cambiare una dipendenza**: modifica il file `.in`, poi `python -m tools.dev deps-lock` e
+  committa `.in` e lock insieme. `pip-compile` conserva le versioni già nel lock e cambia solo
+  ciò che serve.
+- **Aggiornare le transitive**: `pip-compile` non lo fa da solo. Si rigenera con
+  `--upgrade-package <nome>` (o cancellando la riga dal lock) e si apre una PR come per
+  qualsiasi altro aggiornamento.
+- **Controllo in CI**: `python -m tools.deps_lock check` ricompila una copia dei lock e fallisce
+  se una versione cambierebbe, cioè se un `.in` è stato modificato senza rigenerare.
+- **Dependabot** riconosce i file generati da `pip-compile` (l'intestazione dei lock riporta il
+  comando) e aggiorna `.in` e lock nella stessa PR. Se una sua PR fallisce il controllo del
+  lock, si rigenera sul suo branch con `python -m tools.dev deps-lock`.
+- `pip-audit` (in `python -m tools.security`) legge `requirements.txt`, quindi ora controlla
+  anche le dipendenze transitive del runtime.
 
 Ogni PR passa dalla stessa CI descritta sopra prima di poter essere mergiata: un aggiornamento
 che rompe qualcosa (com'è successo manualmente con Pillow/streamlit qui sopra) si vede subito

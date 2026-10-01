@@ -100,6 +100,8 @@ Per garantire massima comodità su ogni sistema operativo sono disponibili tre p
 | — | `python -m tools.dev dataset-baseline-update` | Aggiorna la baseline: modifica da committare esplicitamente e motivare nella PR |
 | — | `python -m tools.dev architecture` | Mappa dei domini e confini di dipendenza (#28): componenti, debito registrato, violazioni; `--graph`, `--module <modulo>` (vedi [architecture.md § 3](architecture.md#3-composition-root-and-domain-boundaries)) |
 | — | `python -m tools.dev perf-report --fetch --days 7` | Report di baseline/trend delle prestazioni dai log Cloud Logging (sola lettura; `--input`, `--save`, `--compare`, vedi [performance.md](performance.md)) |
+| — | `python -m tools.dev deps-lock` | Rigenera i lock `requirements*.txt` dopo aver cambiato un `requirements*.in` (Linux/Python 3.11, altrimenti in Docker; vedi [ci_cd_pipeline.md § Lock](ci_cd_pipeline.md#lock-delle-dipendenze-python-214)) |
+| — | `python -m tools.dev deps-lock-check` | Verifica che i lock corrispondano ai file `.in`, come in CI |
 | — | `python -m tools.dev security-check` | Audit di sicurezza come in CI: pip-audit, detect-secrets, npm audit (vedi [security.md](security.md)) |
 | `make check` | `python -m tools.dev check`<br>`.\dev.ps1 check` | Esegue la **suite standard di validazione locale**: ambiente, sintassi, ruff, mypy, typecheck/build/test frontend, integrità e regressione dataset, pytest |
 | `make emulator` | `python -m tools.dev emulator`<br>`.\dev.ps1 emulator` | Avvia l'emulatore Firestore locale su porta 8571 |
@@ -227,7 +229,7 @@ Il server risponde su `http://localhost:8000`:
 
 ### 2. `ModuleNotFoundError: No module named 'google.cloud.tasks_v2'`
 - **Causa**: Dipendenze mancanti nell'ambiente Python locale.
-- **Risoluzione**: Esegui `pip install -r requirements-dev.txt` per installare tutte le dipendenze dichiarate in `requirements.txt` e `requirements-dev.txt`.
+- **Risoluzione**: Esegui `pip install -r requirements-dev.txt`: è il lock completo, con le dipendenze runtime e quelle di sviluppo.
 
 ### 3. `[ERRORE AVVIO API] Requisiti del runtime bot.py non soddisfatti`
 - **Causa**: `bot.py` richiede `WEBHOOK_SECRET`, `TASK_SECRET`, `TASKS_QUEUE`, `BROADCAST_QUEUE` e `PUBLIC_BASE_URL` (`https://`).

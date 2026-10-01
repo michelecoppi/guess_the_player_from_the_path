@@ -127,6 +127,18 @@ def cmd_security_check(extra_args: list[str]) -> int:
     return _run_cmd(cmd)
 
 
+def cmd_deps_lock(extra_args: list[str]) -> int:
+    """Rigenera requirements.txt e requirements-dev.txt dai file .in (Linux, Python 3.11)."""
+    cmd = [sys.executable, "-m", "tools.deps_lock", "lock"] + extra_args
+    return _run_cmd(cmd)
+
+
+def cmd_deps_lock_check(extra_args: list[str]) -> int:
+    """Verifica che i lock delle dipendenze Python corrispondano ai file .in."""
+    cmd = [sys.executable, "-m", "tools.deps_lock", "check"] + extra_args
+    return _run_cmd(cmd)
+
+
 def cmd_release_version(extra_args: list[str]) -> int:
     """Stampa la versione corrente (file VERSION)."""
     cmd = [sys.executable, "-m", "tools.release", "version"] + extra_args
@@ -319,6 +331,8 @@ COMMANDS: dict[str, tuple[Callable[[list[str]], int], str]] = {
     "dataset-regression-check": (cmd_dataset_regression_check, "Verifica regressioni del dataset rispetto alla baseline"),
     "dataset-baseline-update": (cmd_dataset_baseline_update, "Aggiorna data/dataset_baseline.json con le metriche attuali"),
     "security-check": (cmd_security_check, "Esegue audit di sicurezza (pip-audit, detect-secrets, npm-audit)"),
+    "deps-lock": (cmd_deps_lock, "Rigenera i lock delle dipendenze Python dai file .in (pip-compile, Linux/Python 3.11)"),
+    "deps-lock-check": (cmd_deps_lock_check, "Verifica che requirements*.txt corrispondano ai file requirements*.in"),
     "release-version": (cmd_release_version, "Stampa la versione corrente dell'applicazione (file VERSION)"),
     "release-check": (cmd_release_check, "Verifica coerenza VERSION/CHANGELOG.md prima di un rilascio (sola lettura)"),
     "release-notes": (cmd_release_notes, "Stampa le note di release da CHANGELOG.md (default: Unreleased)"),

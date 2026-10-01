@@ -27,6 +27,8 @@ def test_commands_table_has_all_required_tasks():
         "release-notes",
         "perf-report",
         "architecture",
+        "deps-lock",
+        "deps-lock-check",
     }
     assert expected.issubset(COMMANDS.keys())
 
