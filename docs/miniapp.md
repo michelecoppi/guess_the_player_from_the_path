@@ -134,6 +134,15 @@ by all-time points) and **Le tue leghe**. Both rankings come from the full `me` 
 (`monthly_leaderboard` and `leaderboard`, same row shape; `points` is the monthly score
 in the first) and are empty lists when the `leaderboard` flag is off (#256).
 
+A finished duel offers a one-tap rematch (#272): "Rematch <name>" is its main action (the
+generic "Create another duel" stays below it) and every finished match in the history has
+its own "Rematch" button. `ArenaController.rematch` creates a duel with the usual
+`action: "create"` and opens Telegram's share sheet with the invite link and a line picked
+by how that match ended (loss, win or draw, with its score); when the head to head is
+behind, the report adds a nudge ("1–2 down against <name>"). It stays an ordinary invite
+link: nothing reaches the opponent unless the player chooses the chat, and no duel API or
+field changes.
+
 On Telegram clients with Bot API 6.2+, the close confirmation is enabled while an
 unfinished Arena duel or playable event detail is visible. It is disabled when the
 match finishes, the user leaves that view, or the session expires. Daily and other

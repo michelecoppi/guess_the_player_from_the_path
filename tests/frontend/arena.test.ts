@@ -1288,3 +1288,126 @@ test("Arena + Training coexistence: 14. no duplicate event submission after navi
 });
 
 
+
+// ---------------------------------------------------------------------------
+// #272: one-tap rematch
+// ---------------------------------------------------------------------------
+
+function finishedDuelState(overrides: Record<string, any> = {}) {
+  const controller = new ArenaController();
+  return {
+    ...controller.getState(),
+    subview: "duel" as const,
+    activeDuelCode: TEST_DUEL_CODE,
+    data: createTestDuelData({
+      complete: true,
+      outcome: "loss",
+      session: createTestDuelSession({ round: 5, solved: 2, spent: 12, finished: true }),
+      opponent: { name: "Giulia", round: 5, finished: true, solved: 3, spent: 11 },
+      ledger: {
+        record: { name: "Giulia", won: 1, lost: 2, drawn: 1 },
+        matches: [{ code: CODE_B, outcome: "win", ended_at: "2026-09-20T12:00:00Z", name: "Luca",
+          you: { solved: 4, spent: 9 }, them: { solved: 2, spent: 13 }, rounds: [] }],
+      },
+      ...overrides,
+    }),
+  };
+}
+
+test("#272 a finished duel offers the rematch first, with a nudge when behind", () => {
+  setLanguage("it");
+  const html = renderArenaPage(finishedDuelState() as any);
+  assert.match(html, /Sotto 1–2 contro Giulia/);
+  assert.match(html, /data-arena-rematch data-name="Giulia" data-outcome="loss" data-score="2–3">🔁 Rivincita con Giulia/);
+  assert.ok(html.indexOf("data-arena-rematch") < html.indexOf('id="arena-new-duel"'), "rematch comes before a new duel");
+  assert.match(html, /class="btn ghost" id="arena-new-duel"/);
+  // Every past match has its own rematch, with that match's outcome and score.
+  assert.match(html, /data-name="Luca" data-outcome="win" data-score="4–2">🔁 Rivincita/);
+
+  // Ahead in the head to head: no nudge.
+  const ahead = finishedDuelState({ ledger: { record: { name: "Giulia", won: 3, lost: 1, drawn: 0 }, matches: [] } });
+  assert.doesNotMatch(renderArenaPage(ahead as any), /arena-rematch-tease/);
+  // Waiting for the opponent: no rematch yet.
+  const waiting = finishedDuelState({ complete: false, outcome: undefined });
+  assert.doesNotMatch(renderArenaPage(waiting as any), /Rivincita con/);
+});
+
+test("#272 the rematch creates a duel and opens the share sheet with an outcome line", async () => {
+  setLanguage("it");
+  const opened: string[] = [];
+  const impacts: string[] = [];
+  const { restore: restoreTg } = setupTestTelegram({
+    openTelegramLink: (url: string) => { opened.push(url); },
+    HapticFeedback: {
+      impactOccurred: (style: string) => { impacts.push(style); return undefined as any; },
+      notificationOccurred: () => undefined as any,
+      selectionChanged: () => undefined as any,
+    },
+  } as any);
+  const invite = `https://t.me/TestBot?start=duel_${CODE_C}`;
+  const { requests, restore: restoreFetch } = captureFetchRequests(createTestDuelData({ code: CODE_C, opponent: null, invite_url: invite }));
+  try {
+    const controller = new ArenaController();
+    await controller.rematch("Giulia", "loss", "2–3");
+    const create = requests.find((r) => r.url.includes("/app/api/arena"));
+    assert.equal(create?.body.action, "create");
+    assert.equal(opened.length, 1);
+    const text = new URL(opened[0]).searchParams.get("text");
+    assert.equal(text, "Giulia, mi hai battuto 2–3, ma non finisce qui. Rivincita? Stessi 5 percorsi per tutti e due 🔁");
+    assert.equal(new URL(opened[0]).searchParams.get("url"), invite);
+    assert.equal(controller.getState().notice, "Invito alla rivincita pronto: mandalo a Giulia.");
+    assert.deepEqual(impacts, ["medium"]);
+
+    await controller.rematch("Luca", "win", "4–2");
+    assert.match(new URL(opened[1]).searchParams.get("text")!, /ti concedo la rivincita: l'ultima è finita 4–2 per me/);
+    await controller.rematch("Sara", "draw", "3–3");
+    assert.match(new URL(opened[2]).searchParams.get("text")!, /3–3 non decide niente\. Spareggio\?/);
+  } finally {
+    restoreFetch();
+    restoreTg();
+  }
+});
+
+test("#272 a failed duel creation opens no share sheet", async () => {
+  let opened = 0;
+  const { restore: restoreTg } = setupTestTelegram({ openTelegramLink: () => { opened++; } } as any);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ detail: "loadError" }), { status: 500 })) as any;
+  try {
+    const controller = new ArenaController();
+    await controller.rematch("Giulia", "loss", "2–3");
+    assert.equal(opened, 0);
+    assert.equal(controller.getState().status, "error");
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+  }
+});
+
+test("#272 tapping a rematch button calls the controller with its name, outcome and score", () => {
+  setLanguage("it");
+  const { container, cleanup } = setupGlobalDom();
+  const calls: unknown[][] = [];
+  const controller = new ArenaController();
+  (controller as any).state = finishedDuelState();
+  controller.rematch = (async (...args: unknown[]) => { calls.push(args); }) as any;
+  try {
+    container.innerHTML = renderArenaPage(controller.getState() as any);
+    attachArenaEventListeners(container, controller);
+    container.querySelectorAll<HTMLButtonElement>("[data-arena-rematch]")[0].click();
+    container.querySelectorAll<HTMLButtonElement>("[data-arena-rematch]")[1].click();
+    assert.deepEqual(calls, [["Giulia", "loss", "2–3"], ["Luca", "win", "4–2"]]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("#272 rematch lines exist in IT, EN and ES", () => {
+  for (const lang of ["it", "en", "es"] as const) {
+    const arena = (TRANSLATIONS[lang] as any).arena;
+    for (const key of ["rematch", "rematchShort", "rematchTextLoss", "rematchTextWin", "rematchTextDraw", "rematchTease", "rematchReady"]) {
+      assert.equal(typeof arena[key], "string", `${lang}.arena.${key}`);
+    }
+    assert.match(arena.rematchTextLoss, /\{name\}[\s\S]*\{score\}/);
+  }
+});

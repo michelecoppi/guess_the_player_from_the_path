@@ -1702,6 +1702,31 @@ nav.app-nav button[aria-current="page"] > .icon {
   font-size: 13px;
   margin: 10px 0 16px;
 }
+/* One-tap rematch (#272): the main action of a finished duel, and a small button on every
+   past match. */
+.arena-result .arena-rematch {
+  width: 100%;
+  margin-top: 14px;
+  font-size: 16px;
+}
+.arena-result .arena-rematch + #arena-new-duel {
+  margin-top: 8px;
+}
+.arena-rematch-tease {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--warn);
+}
+.arena-past .arena-rematch {
+  margin: 10px 12px 12px;
+  width: calc(100% - 24px);
+}
+.arena-rematch:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .arena-rematch:active { transform: none; }
+}
 .profile-search-results {
   margin-top: 14px;
   display: grid;

@@ -15,6 +15,7 @@ import type {
   ArenaState,
   ArenaSubview,
   DuelData,
+  DuelOutcome,
   OpponentProfile,
 } from "./types";
 
@@ -451,11 +452,11 @@ export class ArenaController {
   /**
    * Shares the duel invite link via Telegram WebApp share URL.
    */
-  public shareInvite(url?: string): void {
+  public shareInvite(url?: string, message?: string): void {
     const inviteUrl = url || this.state.data?.invite_url;
     if (!inviteUrl) return;
 
-    const text = t("arena.inviteText");
+    const text = message || t("arena.inviteText");
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent(text)}`;
 
     const tg = getTelegramWebApp();
@@ -464,6 +465,24 @@ export class ArenaController {
     } else if (typeof window !== "undefined" && typeof window.open === "function") {
       window.open(shareUrl, "_blank", "noopener");
     }
+  }
+
+  /**
+   * Rematch in one tap: a fresh duel and the Telegram share sheet already open, with a
+   * line that answers how the last match went. The invite stays an ordinary link: nothing
+   * is sent to the opponent unless the player picks the chat.
+   */
+  public async rematch(name: string, outcome: DuelOutcome, score: string): Promise<void> {
+    try {
+      getTelegramWebApp()?.HapticFeedback?.impactOccurred("medium");
+    } catch {
+      // Ignored outside native Telegram
+    }
+    const duel = await this.createNewDuel();
+    if (!duel?.invite_url) return;
+    const key = outcome === "win" ? "rematchTextWin" : outcome === "loss" ? "rematchTextLoss" : "rematchTextDraw";
+    this.updateState({ notice: t("arena.rematchReady", { name }) });
+    this.shareInvite(duel.invite_url, t(`arena.${key}`, { name, score }));
   }
 
   /**

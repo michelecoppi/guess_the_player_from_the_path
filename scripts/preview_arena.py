@@ -9,6 +9,9 @@ from services.event_rules import evaluate_event_guess
 from services.i18n import t
 from services.player_pool import get_practice_players
 
+# Codice del duello gia' chiuso dell'anteprima (#272): si apre dall'elenco dei duelli.
+FINISHED = "c" * 24
+
 
 def create_handler(lang):
     puzzles = [practice_content.from_player(p) for p in get_practice_players()[:5]]
@@ -27,9 +30,29 @@ def create_handler(lang):
                                                  "them": {"solved": i < 3, "attempts": [2, 1, 2, 3, 3][i]}}
                                                 for i, puzzle in enumerate(puzzles)]}]}
 
+    def finished_duel():
+        """Un duello gia' chiuso e perso 2-3 con Giulia: la schermata della rivincita si vede
+        aprendo /app?duel=ccc... senza giocare cinque percorsi."""
+        me, them = arena._seat("Marco"), arena._seat("Giulia")
+        me.update(round=5, solved=2, spent=12, finished=True,
+                  history=[{"solved": i < 2, "attempts": n} for i, n in enumerate([1, 2, 3, 3, 3])])
+        them.update(round=5, solved=3, spent=11, finished=True,
+                    history=[{"solved": i < 3, "attempts": n} for i, n in enumerate([2, 1, 2, 3, 3])])
+        doc = {"code": FINISHED, "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+               "challenges": puzzles, "seats": {"1": me, "2": them}}
+        result = arena._duel_view(doc, "1", lang())
+        result["ledger"] = arena.ledger(profile, "2")
+        return result
+
     def preview(payload: dict = Body(default={})):
         mode, action = payload.get("mode"), payload.get("action", "get")
         try:
+            if mode == "duel" and action == "get" and payload.get("code") == FINISHED:
+                return finished_duel()
+            if mode == "duel" and action == "list":
+                closed = {"code": FINISHED, "opponent": "Giulia", "complete": True, "round": 5, "total": 5,
+                          "expires_at": (datetime.now(timezone.utc) + timedelta(days=6)).isoformat()}
+                return {"session": None, "ledger": arena.ledger(profile), "open": [closed]}
             if mode in ("training", "duel"):
                 if action in ("next", "create", "join"):
                     sessions[mode] = {"challenges": puzzles[:1] if mode == "training" else puzzles,
