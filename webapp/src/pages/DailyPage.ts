@@ -13,7 +13,7 @@ import {
 import { escapeHtml } from "@/utils/format";
 import { v } from "@/i18n/visual";
 import { icon } from "@/components/Icon";
-import { t } from "@/i18n";
+import { t, tCount } from "@/i18n";
 import type {
   DailyState,
   DailyGuessResult,
@@ -242,7 +242,7 @@ export function renderDailyPage(state?: DailyState): string {
     <header class="daily-heading" id="daily-challenge-card">
       <div class="edition"><span class="eyebrow">${escapeHtml(t("pages.dailyKicker"))}</span><span class="edition-number">Nº ${escapeHtml(today.number ?? 1)}</span></div>
       <h2>${v("who")}</h2><p class="muted">${v("follow")}</p>
-      <div class="match-meta"><span>${escapeHtml(today.difficulty_label || t("daily.difficulty"))}</span><span><b>${today.points ?? 0}</b> ${escapeHtml(t("daily.points"))}</span><span>${escapeHtml(today.solved ? t("daily.solved") : done ? v("final") : t("daily.todayTitle"))}</span></div>
+      <div class="match-meta"><span>${escapeHtml(today.difficulty_label || t("daily.difficulty"))}</span><span><b>${today.points ?? 0}</b> ${escapeHtml(t("daily.points"))}</span>${done ? `<span class="match-status">${escapeHtml(today.solved ? t("daily.solved") : v("final"))}</span>` : ""}</div>
     </header>
     ${state.introVisible && !done ? `<section class="daily-intro" aria-labelledby="daily-intro-title">
       <h3 id="daily-intro-title">${v("introTitle")}</h3>
@@ -254,10 +254,10 @@ export function renderDailyPage(state?: DailyState): string {
       ${done ? "" : careerSheet}
       <section class="answer-desk" id="daily-interaction-card" aria-label="${v("answer")}">
         <div class="attempts-line"><span>${escapeHtml(done ? v("final") : t("daily.left"))}${done ? "" : ` <b>${left}</b>`}</span><div class="attempts" role="img" aria-label="${used}/${max}">${attempts}</div></div>
-        ${done ? (!state.feedback ? renderMatchReport(state) : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", placeholder: t("daily.placeholder"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
+        ${done ? (!state.feedback ? renderMatchReport(state) : "") : renderGuessInput({ id: "daily-guess-form", inputId: "answer", submitButtonId: "submit", label: t("daily.placeholder"), placeholder: t("daily.placeholderShort"), buttonLabel: submitting ? t("daily.loading") : t("daily.guessBtn"), loading: submitting, value: state.inputValue })}
         ${state.errorMessage ? `<div class="feedback no" role="alert">${escapeHtml(state.errorMessage)}</div>` : ""}
         ${renderFeedback(state.feedback, state)}
-        ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, loading: state.hintLoading, locked: (hints?.used ?? 0) >= (today.attempts_used ?? 0), lockedLabel: t((today.attempts_used ?? 0) === 0 ? "daily.hintLocked" : "daily.hintLockedNext"), unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: t("daily.hintsLeft"), noHintsLabel: t(today.difficulty === "easy" ? "daily.noHintsEasy" : "daily.noHints") })}
+        ${done ? "" : renderHintPanel({ hintsTaken: hints?.taken, hintsTotal: hints?.total, hintsUsed: hints?.used, disabled: submitting, loading: state.hintLoading, locked: (hints?.used ?? 0) >= (today.attempts_used ?? 0), lockedLabel: t((today.attempts_used ?? 0) === 0 ? "daily.hintLocked" : "daily.hintLockedNext"), unlockButtonLabel: t("daily.hintBtn"), hintsLeftLabel: (n) => tCount("daily.hintsLeft", n), noHintsLabel: t(today.difficulty === "easy" ? "daily.noHintsEasy" : "daily.noHints") })}
         ${today.bonus_available && !done ? `<p class="bonus-note">${escapeHtml(t("daily.bonus"))}</p>` : ""}
       </section>
       ${done ? `<details class="career-fold"><summary>${icon("career")}<span><b>${v("showCareer")}</b><small>${v("clubCount").replace("{n}", String(today.career_path?.length ?? 0))}</small></span></summary>${careerSheet}</details>` : ""}

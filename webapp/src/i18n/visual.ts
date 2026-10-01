@@ -36,6 +36,10 @@ const copy = {
   season: ["Stagioni", "Seasons", "Temporadas"],
   club: ["Club / campionato", "Club / competition", "Club / competición"],
   apps: ["Pres. (gol)", "Apps (goals)", "Part. (goles)"],
+  tagline: ["Indovina dalla carriera", "From the path", "Adivina por la carrera"],
+  openDuels: ["{n} in corso", "{n} in progress", "{n} en curso"],
+  styleCta: ["Dai stile alla tua tessera", "Style your player pass", "Dale estilo a tu carné"],
+  styleCtaHint: ["Cornici, titoli e temi: si vedono anche in classifica.", "Frames, titles and themes: they show on the leaderboard too.", "Marcos, títulos y temas: también se ven en la clasificación."],
   loan: ["Prestito", "Loan", "Cesión"],
   who: [
     "Chi è il calciatore?",

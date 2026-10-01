@@ -129,11 +129,16 @@ def _challenge():
     }
 
 
+def _wearing(frame):
+    """Cosmetici di un giocatore finto: possiede e indossa una cornice, per vederla in classifica."""
+    return {"cosmetics": {"owned": [frame], "equipped": {"frame": frame}}}
+
+
 LEADERBOARD = [
-    {"telegram_id": 21, "username": "Giulia", "points": 1180, "monthly_points": 142},
+    {"telegram_id": 21, "username": "Giulia", "points": 1180, "monthly_points": 142, **_wearing("anello_oro")},
     {"telegram_id": USER_ID, "username": "Marco", "points": 812, "monthly_points": 96},
-    {"telegram_id": 22, "username": "Sara", "points": 774, "monthly_points": 88},
-    {"telegram_id": 23, "username": "Dario", "points": 610, "monthly_points": 120},
+    {"telegram_id": 22, "username": "Sara", "points": 774, "monthly_points": 88, **_wearing("arcobaleno")},
+    {"telegram_id": 23, "username": "Dario", "points": 610, "monthly_points": 120, **_wearing("fascia_capitano")},
     {"telegram_id": 24, "username": "Elisa", "points": 588, "monthly_points": 35},
     {"telegram_id": 25, "username": "Luca", "points": 542, "monthly_points": 77},
     {"telegram_id": 26, "username": "Sofia", "points": 497, "monthly_points": 64},

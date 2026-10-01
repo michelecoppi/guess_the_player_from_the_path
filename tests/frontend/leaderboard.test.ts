@@ -147,7 +147,7 @@ test("7. current user is highlighted by me === true and includes accessible non-
   });
 
   // Current user row has .row.me and aria-current="true"
-  assert.ok(html.includes('class="row me"'));
+  assert.ok(/class="row me[ "]/.test(html));
   assert.ok(html.includes('aria-current="true"'));
   // Has non-color accessible tag (Tu)
   assert.ok(html.includes("me-tag"));
@@ -173,7 +173,7 @@ test("8. current user absent from top 10 is handled honestly without inventing p
   });
 
   // No row is highlighted as me
-  assert.ok(!html.includes('class="row me"'));
+  assert.ok(!/class="row me[ "]/.test(html));
   assert.ok(!html.includes("(Tu)"));
   // Does not invent a row with fake rank
   assert.ok(!html.includes("Top Player 3"));
@@ -341,7 +341,7 @@ test("16 & 17. league standings preserve backend ordering and current user row",
   assert.ok(html.includes("Primo"));
   assert.ok(html.includes("Io"));
   assert.ok(html.includes("Terzo"));
-  assert.ok(html.includes('class="row me"'));
+  assert.ok(/class="row me[ "]/.test(html));
   assert.ok(html.includes("(Tu)"));
 });
 

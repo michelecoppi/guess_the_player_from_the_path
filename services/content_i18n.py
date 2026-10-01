@@ -134,6 +134,35 @@ COUNTRY_NAMES = {
     "Vietnam": {"es": "Vietnam", "en": "Vietnam"},
 }
 
+# Codice ISO 3166 di ogni paese della carriera, per la bandiera accanto al campionato nella
+# Mini App. Inghilterra, Scozia e Galles hanno le loro bandiere (GB-ENG, GB-SCT, GB-WLS);
+# l'Irlanda del Nord non ne ha una propria e prende quella del Regno Unito. La Jugoslavia non
+# esiste piu' e resta senza: niente bandiera e' meglio di una sbagliata.
+COUNTRY_CODES = {
+    "Albania": "AL", "Algeria": "DZ", "Angola": "AO", "Arabia Saudita": "SA", "Argentina": "AR",
+    "Armenia": "AM", "Australia": "AU", "Austria": "AT", "Azerbaigian": "AZ", "Belgio": "BE",
+    "Bhutan": "BT", "Bielorussia": "BY", "Bolivia": "BO", "Bosnia": "BA", "Brasile": "BR",
+    "Bulgaria": "BG", "Camerun": "CM", "Canada": "CA", "Cile": "CL", "Cina": "CN", "Cipro": "CY",
+    "Colombia": "CO", "Corea del Sud": "KR", "Costa d'Avorio": "CI", "Croazia": "HR",
+    "Danimarca": "DK", "Ecuador": "EC", "Egitto": "EG", "El Salvador": "SV",
+    "Emirati Arabi Uniti": "AE", "Estonia": "EE", "Finlandia": "FI", "Francia": "FR",
+    "Galles": "GB-WLS", "Gambia": "GM", "Georgia": "GE", "Germania": "DE", "Ghana": "GH",
+    "Giamaica": "JM", "Giappone": "JP", "Gibuti": "DJ", "Giordania": "JO", "Grecia": "GR",
+    "Guinea": "GN", "Honduras": "HN", "Hong Kong": "HK", "India": "IN", "Indonesia": "ID",
+    "Inghilterra": "GB-ENG", "Iran": "IR", "Iraq": "IQ", "Irlanda": "IE", "Irlanda del Nord": "GB",
+    "Islanda": "IS", "Israele": "IL", "Italia": "IT", "Kazakistan": "KZ", "Lettonia": "LV",
+    "Liberia": "LR", "Lituania": "LT", "Lussemburgo": "LU", "Macedonia del Nord": "MK",
+    "Malesia": "MY", "Mali": "ML", "Malta": "MT", "Marocco": "MA", "Mauritania": "MR",
+    "Messico": "MX", "Moldova": "MD", "Montenegro": "ME", "Nigeria": "NG", "Norvegia": "NO",
+    "Olanda": "NL", "Paraguay": "PY", "Perù": "PE", "Polonia": "PL", "Portogallo": "PT",
+    "Qatar": "QA", "RD Congo": "CD", "Repubblica Ceca": "CZ", "Romania": "RO", "Russia": "RU",
+    "San Marino": "SM", "Scozia": "GB-SCT", "Senegal": "SN", "Serbia": "RS", "Singapore": "SG",
+    "Slovacchia": "SK", "Slovenia": "SI", "Spagna": "ES", "Sudafrica": "ZA", "Svezia": "SE",
+    "Svizzera": "CH", "Thailandia": "TH", "Togo": "TG", "Tunisia": "TN", "Turchia": "TR",
+    "USA": "US", "Ucraina": "UA", "Ungheria": "HU", "Uruguay": "UY", "Uzbekistan": "UZ",
+    "Venezuela": "VE", "Vietnam": "VN",
+}
+
 # Ruoli come sono scritti nel dataset. Sono quattro: il dataset non distingue fra terzino e
 # centrale, ed e' voluto - come indizio "Difensore" e' gia' abbastanza generoso.
 POSITION_NAMES = {
@@ -172,10 +201,17 @@ def localize_career(career, lang):
     cache (services/player_pool.py) o dal documento Firestore della sfida, e modificarla sul
     posto vorrebbe dire tradurre il dataset di tutti nella lingua del primo che gioca.
 
-    Il campionato resta com'e': e' un nome proprio."""
-    if lang == DEFAULT_LANGUAGE or lang not in SUPPORTED_LANGUAGES:
-        return list(career or [])
-    return [dict(stop, country=country_name(stop.get("country"), lang)) for stop in (career or [])]
+    Il campionato resta com'e': e' un nome proprio. `country_code` (ISO, vedi COUNTRY_CODES)
+    viaggia accanto al nome tradotto per disegnare la bandiera; manca se il paese non ne ha."""
+    return [_localized_stop(stop, lang) for stop in (career or [])]
+
+
+def _localized_stop(stop, lang):
+    country = stop.get("country")
+    localized = dict(stop, country=country_name(country, lang))
+    if country in COUNTRY_CODES:
+        localized["country_code"] = COUNTRY_CODES[country]
+    return localized
 
 
 def untranslated_values(players):
