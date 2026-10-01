@@ -207,7 +207,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-posthog==7.54.0
+posthog==7.60.1
     # via -r requirements.in
 proto-plus==1.29.0
     # via

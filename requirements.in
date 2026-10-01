@@ -10,5 +10,5 @@ Pillow==12.3.0
 tzdata==2026.4
 google-cloud-tasks==2.25.0
 sentry-sdk==2.69.1
-posthog==7.54.0
+posthog==7.60.1
 requests==2.34.2
