@@ -89,7 +89,8 @@ until the inventory classifies it.
   which Git protects; local gitignored files (`data/candidates/`, `data/incoming/`,
   `backup/`).
 - Cloud configuration: Cloud Run service settings and secrets, Cloud Tasks queues, Cloud
-  Scheduler, IAM, WIF, optional TTL policies. `firestore.rules` and
+  Scheduler, IAM, WIF, TTL policies, Artifact Registry/bucket cleanup rules (versioned in
+  `infra/`, see [deploy.md](deploy.md)). `firestore.rules` and
   `firestore.indexes.json` are in the repository and must be redeployed separately.
 - State held by Telegram (payments, sent messages, webhook registration).
 - The artifacts themselves: they live in this repository's GitHub Actions storage. Deleting
