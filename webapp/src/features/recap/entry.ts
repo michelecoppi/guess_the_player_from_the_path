@@ -24,7 +24,10 @@ const SLOT_ID = "recap-banner-slot";
 let loaded: RecapResponse | null = null;
 let loading: Promise<RecapResponse | null> | null = null;
 
-function lastMonth(now = new Date()): string {
+/** Today's date for the banner week. Tests pin it, so they do not change with the calendar. */
+export const recapCalendar = { today: (): Date => new Date() };
+
+function lastMonth(now = recapCalendar.today()): string {
   const date = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -101,7 +104,7 @@ export function bindRecapEntries(root: ParentNode): void {
     };
   });
   const slot = root.querySelector<HTMLElement>(`#${SLOT_ID}`);
-  const offer = forced() || new Date().getDate() <= BANNER_DAYS;
+  const offer = forced() || recapCalendar.today().getDate() <= BANNER_DAYS;
   if (!slot || !offer || loaded || (seen(lastMonth()) && !forced())) return;
   void load().then(() => {
     const target = document.getElementById(SLOT_ID);

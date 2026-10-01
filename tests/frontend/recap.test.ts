@@ -1,9 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { setLanguage } from "../../webapp/src/i18n";
+import { bindRecapEntries, recapCalendar, renderRecapBannerSlot } from "../../webapp/src/features/recap/entry";
 import { buildSlides } from "../../webapp/src/features/recap/story";
 import { monthName, rs } from "../../webapp/src/features/recap/strings";
 import type { MonthlyRecap } from "../../webapp/src/features/recap/types";
+import { captureFetchRequests, setupGlobalDom } from "./helpers";
 
 const FULL: MonthlyRecap = {
   month: "2026-09",
@@ -83,4 +85,22 @@ test("invalid cosmetic colours never reach the style attribute", () => {
   setLanguage("it");
   const final = buildSlides(FULL, "Anna", { card: { paper: "red;background:url(x)" } }).at(-1)!.html;
   assert.doesNotMatch(final, /url\(x\)/);
+});
+
+test("the Daily asks for the recap only in the banner week, whatever today is (#281)", async () => {
+  const { container, cleanup } = setupGlobalDom();
+  const { requests, restore } = captureFetchRequests({ recap: { ...FULL, available: false } });
+  try {
+    container.innerHTML = renderRecapBannerSlot();
+    bindRecapEntries(container);
+    assert.equal(requests.length, 0, "setupGlobalDom pins a mid-month day");
+
+    recapCalendar.today = () => new Date(2026, 9, 3, 12);
+    bindRecapEntries(container);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepEqual(requests.map((r) => r.url), ["/app/api/recap"]);
+  } finally {
+    restore();
+    cleanup();
+  }
 });
