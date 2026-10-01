@@ -134,10 +134,11 @@ COUNTRY_NAMES = {
     "Vietnam": {"es": "Vietnam", "en": "Vietnam"},
 }
 
-# Codice ISO 3166 di ogni paese della carriera, per la bandiera accanto al campionato nella
-# Mini App. Inghilterra, Scozia e Galles hanno le loro bandiere (GB-ENG, GB-SCT, GB-WLS);
-# l'Irlanda del Nord non ne ha una propria e prende quella del Regno Unito. La Jugoslavia non
-# esiste piu' e resta senza: niente bandiera e' meglio di una sbagliata.
+# Codice di ogni paese della carriera, per la bandiera accanto al campionato nella Mini App
+# (immagini in webapp/src/assets/flags/, una per codice). ISO 3166, con tre eccezioni volute:
+# Inghilterra, Scozia e Galles hanno le loro bandiere (GB-ENG, GB-SCT, GB-WLS); l'Irlanda del
+# Nord prende quella del Regno Unito, l'unica ufficiale (lo stendardo dell'Ulster non lo e');
+# la Jugoslavia ha YU, il codice ritirato, con la bandiera storica della RSFJ.
 COUNTRY_CODES = {
     "Albania": "AL", "Algeria": "DZ", "Angola": "AO", "Arabia Saudita": "SA", "Argentina": "AR",
     "Armenia": "AM", "Australia": "AU", "Austria": "AT", "Azerbaigian": "AZ", "Belgio": "BE",
@@ -150,7 +151,7 @@ COUNTRY_CODES = {
     "Giamaica": "JM", "Giappone": "JP", "Gibuti": "DJ", "Giordania": "JO", "Grecia": "GR",
     "Guinea": "GN", "Honduras": "HN", "Hong Kong": "HK", "India": "IN", "Indonesia": "ID",
     "Inghilterra": "GB-ENG", "Iran": "IR", "Iraq": "IQ", "Irlanda": "IE", "Irlanda del Nord": "GB",
-    "Islanda": "IS", "Israele": "IL", "Italia": "IT", "Kazakistan": "KZ", "Lettonia": "LV",
+    "Islanda": "IS", "Israele": "IL", "Italia": "IT", "Jugoslavia": "YU", "Kazakistan": "KZ", "Lettonia": "LV",
     "Liberia": "LR", "Lituania": "LT", "Lussemburgo": "LU", "Macedonia del Nord": "MK",
     "Malesia": "MY", "Mali": "ML", "Malta": "MT", "Marocco": "MA", "Mauritania": "MR",
     "Messico": "MX", "Moldova": "MD", "Montenegro": "ME", "Nigeria": "NG", "Norvegia": "NO",
@@ -202,7 +203,8 @@ def localize_career(career, lang):
     posto vorrebbe dire tradurre il dataset di tutti nella lingua del primo che gioca.
 
     Il campionato resta com'e': e' un nome proprio. `country_code` (ISO, vedi COUNTRY_CODES)
-    viaggia accanto al nome tradotto per disegnare la bandiera; manca se il paese non ne ha."""
+    viaggia accanto al nome tradotto per disegnare la bandiera; manca per un paese che non e' in
+    tabella, e allora la Mini App non disegna niente."""
     return [_localized_stop(stop, lang) for stop in (career or [])]
 
 

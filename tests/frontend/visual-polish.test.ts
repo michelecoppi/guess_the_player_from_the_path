@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { flagEmoji, renderCareerPath } from "../../webapp/src/components/CareerPath";
+import { flagUrl, renderCareerPath } from "../../webapp/src/components/CareerPath";
 import { renderHintPanel } from "../../webapp/src/components/HintPanel";
 import { renderLeaderboardRow } from "../../webapp/src/features/leaderboard/views";
 import { renderHubView } from "../../webapp/src/features/arena/views";
@@ -15,20 +15,28 @@ import {
   createTestFullProfile,
 } from "./helpers";
 
-test("flags: ISO codes become emoji flags, the UK nations their own, anything else nothing", () => {
-  assert.equal(flagEmoji("JP"), "🇯🇵");
-  assert.equal(flagEmoji("GB-ENG"), "🏴󠁧󠁢󠁥󠁮󠁧󠁿");
-  assert.equal(flagEmoji("GB-SCT"), "🏴󠁧󠁢󠁳󠁣󠁴󠁿");
-  for (const bad of [undefined, null, "", "jp", "JPN", "<b>", "GB-NIR"]) assert.equal(flagEmoji(bad), "");
+test("flags: a country code becomes the URL of its bundled image, anything else nothing", () => {
+  assert.ok(flagUrl("JP").endsWith("/assets/flags/jp.webp"));
+  assert.ok(flagUrl("GB-ENG").endsWith("/assets/flags/gb-eng.webp"));
+  assert.ok(flagUrl("YU").endsWith("/assets/flags/yu.webp"));
+  for (const bad of [undefined, null, "", "jp", "JPN", "<b>", "../x", "GB-ENGLAND"]) assert.equal(flagUrl(bad), "");
 });
 
-test("flags: the career shows the flag before league and country, hidden from screen readers", () => {
+test("flags: every image the server can name exists in the bundle folder", async () => {
+  const { readdirSync } = await import("node:fs");
+  const files = new Set(readdirSync(new URL("../../webapp/src/assets/flags/", import.meta.url)));
+  for (const code of ["JP", "DE", "GB-ENG", "GB-SCT", "GB-WLS", "GB", "YU", "US"]) {
+    assert.ok(files.has(`${code.toLowerCase()}.webp`), code);
+  }
+});
+
+test("flags: the career shows a decorative flag image before league and country", () => {
   const html = renderCareerPath({ stops: [
     { team: "Cerezo Osaka", league: "J1 League", country: "Giappone", country_code: "JP", start_year: 2006 },
-    { team: "Stella Rossa", league: "Prva Liga", country: "Jugoslavia", start_year: 1990 },
+    { team: "Atlantide FC", league: "Lega", country: "Atlantide", start_year: 1990 },
   ] });
-  assert.ok(html.includes('<span class="flag" aria-hidden="true">🇯🇵</span>J1 League · Giappone'));
-  assert.ok(html.includes('<div class="meta">Prva Liga · Jugoslavia</div>'));
+  assert.match(html, /<img class="flag" src="[^"]*\/assets\/flags\/jp\.webp" alt="" width="18" height="14" loading="lazy" decoding="async">J1 League · Giappone/);
+  assert.ok(html.includes('<div class="meta">Lega · Atlantide</div>'));
 });
 
 test("hints left: singular for one hint, plural otherwise, in every language", () => {
@@ -107,12 +115,12 @@ async function renderProfileWith(cosmetics: unknown): Promise<string> {
   }
 }
 
-test("profile: a player pass with nothing worn invites to the Shop; a styled one does not", async () => {
+test("profile: a player pass with nothing worn has a quiet link to the Shop; a styled one does not", async () => {
   setLanguage("it");
   const bare = await renderProfileWith({ frame: { ring: "" }, title: { label: "", color: "" } });
-  assert.ok(bare.includes('class="style-cta" data-tab="shop"'));
-  assert.ok(bare.includes("Dai stile alla tua tessera"));
+  assert.ok(bare.includes('class="style-link" data-tab="shop"'));
+  assert.ok(bare.includes("Personalizza la tessera"));
 
   const styled = await renderProfileWith(createTestFullProfile().cosmetics);
-  assert.ok(!styled.includes("style-cta"));
+  assert.ok(!styled.includes("style-link"));
 });

@@ -98,17 +98,26 @@ def test_localize_career_adds_the_country_code_for_the_flag_in_every_language():
         assert [stop.get("country_code") for stop in localize_career(CAREER, lang)] == ["ES", "US"]
 
 
-def test_a_country_without_a_flag_has_no_code():
-    stop = {"team": "Stella Rossa", "country": "Jugoslavia", "start_year": 1990}
+def test_a_country_missing_from_the_table_has_no_code():
+    stop = {"team": "Atlantide FC", "country": "Atlantide", "start_year": 1990}
     assert "country_code" not in localize_career([stop], "it")[0]
 
 
-def test_every_known_country_has_a_flag_code_except_yugoslavia():
+def test_yugoslavia_keeps_its_historical_flag():
+    stop = {"team": "Stella Rossa", "country": "Jugoslavia", "start_year": 1990}
+    assert localize_career([stop], "en")[0]["country_code"] == "YU"
+
+
+def test_every_known_country_has_a_flag_code_and_an_image():
+    """Una bandiera senza immagine sarebbe un'icona rotta nella carriera della Mini App."""
+    from pathlib import Path
+
     from services.content_i18n import COUNTRY_CODES, COUNTRY_NAMES
 
-    missing = sorted(set(COUNTRY_NAMES) - set(COUNTRY_CODES))
-    assert missing == ["Jugoslavia"]
-    assert all(code == code.upper() and 2 <= len(code) <= 6 for code in COUNTRY_CODES.values())
+    assert sorted(set(COUNTRY_NAMES) - set(COUNTRY_CODES)) == []
+    flags = Path(__file__).resolve().parents[1] / "webapp" / "src" / "assets" / "flags"
+    missing = sorted(code for code in set(COUNTRY_CODES.values()) if not (flags / f"{code.lower()}.webp").is_file())
+    assert missing == []
 
 
 def test_localize_career_accepts_an_empty_or_missing_career():

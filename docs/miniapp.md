@@ -150,15 +150,18 @@ Each row also carries `frame`, the equipped frame style (`domains/shop/service.p
 read from the same user document, no extra read): the row shows a small avatar with that
 ring, validated on the client by `parseResolvedAppearance` (only reviewed `FRAME_PAINTS`
 pass). The first three positions are a podium (gold, silver, bronze numbers; a soft gold
-band on the first). A Profile whose pass wears neither a frame nor a title shows an
-invitation to the Shop ("Style your player pass").
+band on the first). A Profile whose pass wears neither a frame nor a title shows a one-line
+link to the Shop under the points ("Customise your pass").
 
-Every career stop (`career_path` in Daily, events, duels and story) carries `country_code`,
-the ISO 3166 code from `services/content_i18n.py::COUNTRY_CODES` (England, Scotland and
-Wales as `GB-ENG`, `GB-SCT`, `GB-WLS`; none for Yugoslavia). The career shows it as an
-emoji flag before league and country, hidden from screen readers; Windows has no emoji flags
-and would print two letters, so there `main.ts` marks the page `no-emoji-flags` and the flags
-are hidden.
+Every career stop (`career_path` in Daily, events, duels and story) carries `country_code`
+from `services/content_i18n.py::COUNTRY_CODES`: ISO 3166, plus `GB-ENG`, `GB-SCT`, `GB-WLS`
+for England, Scotland and Wales and `YU` for Yugoslavia (Northern Ireland uses the Union flag,
+the only official one). The career shows a decorative flag image before league and country.
+The images are in `webapp/src/assets/flags/` (one 72×54 WebP per code, ~600 bytes, from
+flag-icons 7.5.0 under MIT, see NOTICE; Yugoslavia drawn for this project). They are images,
+not emoji, because Windows has no emoji flags. `vite.config.ts` keeps them out of the inline
+limit, so each is a separate file loaded only when a career shows it.
+`tests/test_content_i18n.py` fails if a code has no image.
 
 A finished duel offers a one-tap rematch (#272): "Rematch <name>" is its main action (the
 generic "Create another duel" stays below it) and every finished match in the history has
