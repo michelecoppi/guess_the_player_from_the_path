@@ -1134,3 +1134,114 @@ test("68. Safe degradation for unknown/future numeric positions and preservation
   }
 });
 
+
+// ---------------------------------------------------------------------------
+// #273: recent-days calendar
+// ---------------------------------------------------------------------------
+
+import { renderHeatmap, resetHeatmapView, setHeatmapOpen } from "../../webapp/src/features/profile/views";
+import { TRANSLATIONS } from "../../webapp/src/i18n";
+import { createTestCalendar, createTestArchiveDay } from "./helpers";
+
+function calendarWithFirst() {
+  return [...createTestCalendar(), createTestArchiveDay({ day: "2026-09-05", number: 44, label: "05/09/26", status: "solved", attempts: 1 })];
+}
+
+test("#273 the profile loads the calendar with /me; a failed calendar never blocks the profile", async () => {
+  const { restore: restoreTg } = setupTestTelegram();
+  const originalFetch = globalThis.fetch;
+  const urls: string[] = [];
+  let calendarFails = false;
+  globalThis.fetch = (async (url: string) => {
+    urls.push(String(url));
+    if (String(url).endsWith("/calendar")) {
+      if (calendarFails) return new Response("{}", { status: 500 });
+      return new Response(JSON.stringify({ days: createTestCalendar() }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify(createTestFullProfile()), { status: 200, headers: { "Content-Type": "application/json" } });
+  }) as any;
+  try {
+    const controller = new ProfileController();
+    await controller.init();
+    assert.ok(urls.some((u) => u.endsWith("/calendar")) && urls.some((u) => u.endsWith("/me")));
+    assert.equal(controller.getState().calendar?.length, 4);
+
+    calendarFails = true;
+    await controller.refresh();
+    assert.equal(controller.getState().status, "ready");
+    assert.equal(controller.getState().calendar, null);
+    assert.equal(controller.getState().profile?.user.name, "Mario");
+  } finally {
+    globalThis.fetch = originalFetch;
+    restoreTg();
+  }
+});
+
+test("#273 the calendar is a closed dropdown with a summary; every state has its own shape", () => {
+  setLanguage("it");
+  setHeatmapOpen(false);
+  const html = renderHeatmap(calendarWithFirst(), null);
+  assert.match(html, /<details class="card mt-3 heatmap-card">/, "closed by default");
+  assert.match(html, /Le tue ultime giornate[\s\S]*4 giocate su 5 · 2 prese/);
+  // 2026-09-01 is a Tuesday: one empty square before it, Monday first.
+  assert.equal((html.match(/heat-cell pad/g) || []).length, 1);
+  const cells = [...html.matchAll(/class="heat-cell (\w+)[^"]*" style="--i:\d+" data-heat-day="([\d-]+)"/g)].map((m) => `${m[2]}:${m[1]}`);
+  assert.deepEqual(cells, ["2026-09-01:solved", "2026-09-02:lost", "2026-09-03:recovered", "2026-09-04:missed", "2026-09-05:first"]);
+  assert.match(html, /aria-label="05\/09\/26 · Presa al 1° tentativo"/);
+  assert.match(html, /heat-legend[\s\S]*al 1°[\s\S]*presa[\s\S]*recuperata[\s\S]*persa[\s\S]*saltata/);
+  assert.equal(renderHeatmap([], null), "");
+  assert.equal(renderHeatmap(null, null), "");
+});
+
+test("#273 tapping a day shows it, with a way back to the archive when it can still be played", () => {
+  setLanguage("it");
+  setHeatmapOpen(true);
+  const lost = renderHeatmap(calendarWithFirst(), "2026-09-02");
+  assert.match(lost, /<details class="card mt-3 heatmap-card" open>/);
+  assert.match(lost, /class="heat-cell lost selected"/);
+  assert.match(lost, /heat-detail"><b>01\/09\/26 · Nº 41<\/b> Giocata, non presa <button type="button" class="link-btn" data-tab="archive">Recuperala in archivio/);
+  const solved = renderHeatmap(calendarWithFirst(), "2026-09-01");
+  assert.match(solved, /Presa in 2 tentativi/);
+  assert.doesNotMatch(solved, /data-tab="archive"/);
+  setHeatmapOpen(false);
+});
+
+test("#273 the dropdown stays open across re-renders and the squares pop in only once", () => {
+  setLanguage("it");
+  resetHeatmapView();
+  const { container, cleanup } = setupGlobalDom();
+  const controller = new ProfileController();
+  (controller as any).state = { ...controller.getState(), status: "ready", profile: createTestFullProfile(), calendar: calendarWithFirst() };
+  const draw = () => {
+    container.innerHTML = renderProfilePage(controller.getState());
+    attachProfileEventListeners(container, controller);
+  };
+  controller.subscribe(draw);
+  try {
+    draw();
+    const details = container.querySelector<HTMLDetailsElement>("details.heatmap-card")!;
+    assert.equal(details.open, false);
+    details.querySelector("summary")!.click();
+    assert.ok(container.querySelector(".heatmap.intro"), "first opening pops the squares in");
+
+    container.querySelector<HTMLButtonElement>('[data-heat-day="2026-09-02"]')!.click();
+    assert.equal(controller.getState().heatmapDay, "2026-09-02");
+    assert.equal(container.querySelector<HTMLDetailsElement>("details.heatmap-card")!.open, true, "still open after the re-render");
+    assert.equal(container.querySelector(".heatmap.intro"), null, "no second pop-in");
+
+    container.querySelector<HTMLButtonElement>('[data-heat-day="2026-09-02"]')!.click();
+    assert.equal(controller.getState().heatmapDay, null, "a second tap hides the detail");
+  } finally {
+    resetHeatmapView();
+    cleanup();
+  }
+});
+
+test("#273 calendar texts exist in IT, EN and ES", () => {
+  const keys = ["heatmapTitle", "heatmapSummary", "heatmapHint", "heatFirst", "heatSolved", "heatRecovered", "heatLost",
+    "heatMissed", "heatReplay", "legendFirst", "legendSolved", "legendRecovered", "legendLost", "legendMissed"];
+  for (const lang of ["it", "en", "es"] as const) {
+    const profile = (TRANSLATIONS[lang] as any).profile;
+    for (const key of keys) assert.equal(typeof profile[key], "string", `${lang}.profile.${key}`);
+  }
+});

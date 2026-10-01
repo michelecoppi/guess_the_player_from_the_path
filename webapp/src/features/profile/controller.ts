@@ -3,6 +3,7 @@ import { getTelegramWebApp } from "@/telegram/webapp";
 import { applyResolvedAppearance, type ResolvedAppearance } from "@/appearance";
 import { t } from "@/i18n";
 import { fetchOwnProfile, pinTrophies } from "./api";
+import { fetchCalendar } from "@/features/archive/api";
 import type {
   CabinetFilter,
   ProfileState,
@@ -40,6 +41,8 @@ export class ProfileController {
       isPinning: false,
       pinError: null,
       pinSuccess: false,
+      calendar: null,
+      heatmapDay: null,
     };
   }
 
@@ -113,7 +116,10 @@ export class ProfileController {
     let loadPromise: Promise<void> | null = null;
     loadPromise = (async () => {
       try {
+        // The heatmap is a bonus: a failed calendar never blocks the profile.
+        const calendarPending = fetchCalendar(this.client).catch(() => null);
         const data = await fetchOwnProfile(this.client);
+        const calendar = await calendarPending;
 
         if (currentSeq !== this.loadSeq) {
           return;
@@ -132,6 +138,7 @@ export class ProfileController {
           status: "ready",
           error: null,
           profile: data,
+          calendar,
         });
       } catch (err) {
         if (currentSeq !== this.loadSeq) {
@@ -156,6 +163,11 @@ export class ProfileController {
   // ---------------------------------------------------------------------------
   // Cabinet view navigation
   // ---------------------------------------------------------------------------
+
+  /** Shows (or hides, on a second tap) the detail of one heatmap day. */
+  public selectHeatmapDay(day: string): void {
+    this.updateState({ heatmapDay: this.state.heatmapDay === day ? null : day });
+  }
 
   public openCabinet(): void {
     this.updateState({
