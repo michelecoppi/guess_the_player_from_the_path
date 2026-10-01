@@ -15,8 +15,15 @@ jobs:
         with:
           python-version: "3.11"
 
+      # requirements-dev.txt e' il lock completo (#214): le stesse versioni runtime che il
+      # Dockerfile installa da requirements.txt, transitive comprese.
       - name: Installa le dipendenze
-        run: pip install -r requirements-dev.txt
+        run: |
+          pip install -r requirements-dev.txt
+          pip check
+
+      - name: Lock delle dipendenze allineato ai file .in
+        run: python -m tools.deps_lock check
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:

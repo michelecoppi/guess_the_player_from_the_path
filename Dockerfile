@@ -28,8 +28,10 @@ RUN apt-get update \
 
 WORKDIR /app
 
+# requirements.txt e' il lock completo, transitive comprese (#214): la stessa risoluzione che
+# ha passato la CI, non una nuova a ogni build. `pip check` ferma la build se il grafo e' rotto.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && pip check
 
 # Il processo non ha niente da scrivere sul filesystem: il dataset si legge, le immagini
 # si generano in memoria e lo stato sta su Firestore. Girare come root non serve a niente,

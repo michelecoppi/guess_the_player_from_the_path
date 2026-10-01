@@ -1,0 +1,14 @@
+# Dipendenze dirette del runtime. Il lock completo (anche le transitive) e' requirements.txt,
+# generato con `python -m tools.dev deps-lock` (#214), con le stesse versioni del lock di sviluppo
+# requirements-dev.txt che installa la CI. Il Dockerfile installa requirements.txt.
+python-telegram-bot==22.8
+firebase-admin==7.7.0
+python-dotenv==1.2.3
+fastapi==0.115.12
+uvicorn[standard]==0.53.0
+Pillow==12.3.0
+tzdata==2026.4
+google-cloud-tasks==2.25.0
+sentry-sdk==2.69.1
+posthog==7.54.0
+requests==2.34.2
