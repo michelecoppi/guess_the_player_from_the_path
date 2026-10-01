@@ -107,6 +107,15 @@ this documentation — may already be outdated. **Before modifying or reviewing 
   pretending they are independent: finish, review and merge one, then rebase the other.
   Record the ordering on the issues if it is not already a Project dependency.
 
+## Claude Code skills
+
+[`.claude/skills/`](../.claude/skills/) holds Claude Code skills that script the
+recurring steps of this protocol: `inizia-issue` (steps 2–7), `apri-pr` (steps 9–15),
+`demo` (Mini App preview from a worktree) and `pulisci-worktree` (removing merged
+worktrees). They only add concrete commands; this document and
+[github-workflow.md](github-workflow.md) stay authoritative, and a skill that disagrees
+with them is the one to fix.
+
 ## Documentation update policy
 
 Update documentation in the same PR when the change alters:
