@@ -436,6 +436,10 @@ gcloud run services update-traffic guess-the-player \
   --region europe-west1 --to-revisions <previous-revision>=100
 ```
 
+Only revisions whose image is among the 10 most recent in Artifact Registry can still be
+routed to (cleanup policy in [deploy.md](deploy.md#pulizia-di-immagini-e-sorgenti-dei-deploy));
+for anything older, redeploy the exact SHA.
+
 **Release with a Firestore migration.** Routing traffic back is not sufficient — old code
 may not understand data the migration already changed, and deploying an old revision never
 restores Firestore. Recovery follows the migration-specific plan written down in §8.1/§8.2:

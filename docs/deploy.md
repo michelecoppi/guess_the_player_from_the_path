@@ -136,6 +136,30 @@ gcloud run deploy guess-the-player \
   --allow-unauthenticated
 ```
 
+### Pulizia di immagini e sorgenti dei deploy
+
+Ogni `gcloud run deploy --source .` carica un archivio dei sorgenti nel bucket
+`run-sources-guess-the-player-from-path-bot-europe-west1` e un'immagine (~70 MB) nel
+repository Artifact Registry `cloud-run-source-deploy`. Senza regole crescono per sempre:
+al 2026-10-01 erano 12,3 GB di immagini (172) e 1,6 GB di sorgenti, oltre i 0,5 GB gratuiti
+di Artifact Registry. Le regole attive sono versionate in [`infra/`](../infra/):
+
+| Risorsa | Regola | File |
+|---|---|---|
+| Artifact Registry `cloud-run-source-deploy` | Cancella le immagini più vecchie di 7 giorni, ma tiene sempre le 10 più recenti di ogni servizio | [`artifact-registry-cleanup.json`](../infra/artifact-registry-cleanup.json) |
+| Bucket `run-sources-…-europe-west1` | Cancella gli oggetti più vecchi di 30 giorni (servono solo alla build) | [`run-sources-lifecycle.json`](../infra/run-sources-lifecycle.json) |
+
+Conseguenza per il rollback: si può spostare il traffico solo sulle revisioni le cui
+immagini sono fra le ultime 10; per versioni più vecchie si rifà il deploy dello SHA
+([release-checklist.md § Rollback](release-checklist.md#10-rollback)). La pulizia gira in
+background circa una volta al giorno. Per riapplicare o verificare:
+
+```bash
+gcloud artifacts repositories set-cleanup-policies cloud-run-source-deploy   --location=europe-west1 --policy=infra/artifact-registry-cleanup.json --no-dry-run
+gcloud storage buckets update gs://run-sources-guess-the-player-from-path-bot-europe-west1   --lifecycle-file=infra/run-sources-lifecycle.json
+gcloud artifacts repositories describe cloud-run-source-deploy --location=europe-west1
+```
+
 ### Variabili d'ambiente / secret sul servizio
 
 | Nome | Cosa |
