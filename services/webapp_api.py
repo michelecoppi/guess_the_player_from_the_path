@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from domains.referrals import service as referrals
 from domains.shop import service as shop
-from services import daily_result, feature_flags, firebase_service, game, trophies
+from services import avatars, daily_result, feature_flags, firebase_service, game, trophies
 from services import product_analytics as analytics
 from services.career_order import order_career
 from services.content_i18n import localize_career
@@ -62,7 +62,7 @@ def build_profile(user_id, day_iso=None, lang=None, *, user=None, include_social
 
     profile = {
         "language": lang,
-        "user": _user_summary(user),
+        "user": _user_summary(user, user_id),
         # I cosmetici comprati in negozio: colori del tema, cornice, titolo, distintivo.
         # Stanno nel profilo e non dietro la scheda del negozio perche' la pagina si deve
         # disegnare gia' giusta alla prima apertura (domains/shop/service.py, `appearance`).
@@ -111,9 +111,11 @@ def _read(fn, *args, **kwargs):
     return _READS.submit(contextvars.copy_context().run, fn, *args, **kwargs)
 
 
-def _user_summary(user):
+def _user_summary(user, user_id):
     return {
         "name": user.get("first_name", "?"),
+        # La foto profilo Telegram, da un indirizzo firmato (#296): None se l'id non e' valido.
+        "avatar": avatars.avatar_url(user_id),
         "points": user.get("points_totali", 0),
         "monthly_points": user.get("monthly_points", 0),
         "players_guessed": user.get("players_guessed", 0),
@@ -144,7 +146,7 @@ def build_public_profile(target_id, lang=DEFAULT_LANGUAGE):
         return None
     appearance = shop.appearance(user, lang)
     return {
-        "user": _user_summary(user),
+        "user": _user_summary(user, target_id),
         "cosmetics": appearance,
         "wardrobe": _public_wardrobe(user, lang),
         # Solo quelli appesi: la bacheca intera e' roba di chi la possiede, il profilo
@@ -246,6 +248,7 @@ def _leaderboard(user_id, monthly=False, rows=None):
             # La cornice indossata, per l'avatar accanto al nome: la classifica e' dove gli
             # altri la vedono. Viene dallo stesso documento gia' letto, nessuna lettura in piu'.
             "frame": shop.style_of(entry, "frame"),
+            "avatar": avatars.avatar_url(entry.get("telegram_id")),
             "points": entry.get(score_key, 0),
             "me": entry.get("telegram_id") == user_id,
         }
@@ -287,6 +290,7 @@ def _league_cards(reads, user_id):
                     "position": index,
                     "profile_id": member.get("telegram_id"),
                     "name": member.get("name", "?"),
+                    "avatar": avatars.avatar_url(member.get("telegram_id")),
                     "points": member.get("points", 0),
                     "me": member.get("telegram_id") == user_id,
                 }

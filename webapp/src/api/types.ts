@@ -6,6 +6,8 @@ import type { ResolvedAppearance } from "@/appearance/types";
 
 export interface ApiUserSummary {
   name: string;
+  /** Signed URL of the Telegram profile photo (services/avatars.py, #296); 404 when there is none. */
+  avatar?: string | null;
   points: number;
   monthly_points?: number;
   players_guessed?: number;
@@ -55,6 +57,7 @@ export interface ApiLeaderboardEntry {
   badge?: string;
   /** Equipped frame style (domains/shop/service.py style_of), validated by parseResolvedAppearance. */
   frame?: unknown;
+  avatar?: string | null;
   points: number;
   me?: boolean;
 }
@@ -77,6 +80,7 @@ export interface ApiLeagueStanding {
   position: number;
   profile_id?: number;
   name: string;
+  avatar?: string | null;
   points: number;
   me?: boolean;
 }

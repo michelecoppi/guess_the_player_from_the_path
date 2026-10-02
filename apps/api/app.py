@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 import config
-from apps.api import internal, miniapp, static
+from apps.api import avatars, internal, miniapp, static
 from apps.api.bridge import TelegramBridge
 from apps.api.observe import observe_request
 from services import performance, task_queue
@@ -57,4 +57,5 @@ def create_app(bridge: TelegramBridge) -> FastAPI:
     app.include_router(static.router)
     app.include_router(internal.router)
     app.include_router(miniapp.router)
+    app.include_router(avatars.router)
     return app

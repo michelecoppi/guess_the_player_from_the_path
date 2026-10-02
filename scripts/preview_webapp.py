@@ -370,6 +370,30 @@ async def webapp_assets(file_path: str):
     return Response(content, media_type=media_type)
 
 
+# Foto profilo finte (#296): qui non c'e' Telegram. Alcuni giocatori hanno una "foto" (una
+# sagoma su fondo colorato), gli altri no, cosi' si vedono entrambi i casi: foto dentro la
+# cornice e iniziali quando la foto manca. La firma non si controlla: qui non c'e' niente da
+# proteggere, e controllarla legherebbe lo script al livello api (tools/architecture.py).
+PREVIEW_PHOTOS = {USER_ID: "#3d6fb6", 21: "#b8516b", 22: "#7a5bb5", 23: "#2f8f6b", 25: "#c07a2c", 27: "#4d7f9e"}
+
+
+@app.get("/app/api/avatar/{user_id}")
+async def preview_avatar(user_id: int):
+    from io import BytesIO
+
+    from PIL import Image, ImageDraw
+
+    if user_id not in PREVIEW_PHOTOS:
+        return Response(status_code=404)
+    image = Image.new("RGB", (160, 160), PREVIEW_PHOTOS[user_id])
+    draw = ImageDraw.Draw(image)
+    draw.ellipse((52, 30, 108, 92), fill="#f1d3bd")    # testa
+    draw.ellipse((22, 98, 138, 210), fill="#1d2633")   # spalle
+    buffer = BytesIO()
+    image.save(buffer, "JPEG", quality=85)
+    return Response(buffer.getvalue(), media_type="image/jpeg")
+
+
 @app.post("/app/api/me")
 async def me(payload: dict = Body(default={})):
     return build_profile(USER_ID, lang=_lang())

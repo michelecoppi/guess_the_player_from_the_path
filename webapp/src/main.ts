@@ -6,8 +6,10 @@ import "./styles/event-spotlight.css";
 import "./styles/feature-overrides.css";
 import "./styles/visual-polish.css";
 import { bootstrap } from "./app/bootstrap";
+import { bindAvatarPhotos } from "./components/Avatar";
 
 if (typeof document !== "undefined") {
+  bindAvatarPhotos(document);
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
       start();
