@@ -71,6 +71,16 @@ test("leaderboard: podium rows and the worn frame around the avatar", () => {
   assert.ok(!plain.includes('class="ring'));
 });
 
+test("leaderboard: the frame keeps its effects (reviewed motion, tactics dots) like on the profile", () => {
+  const ring = "conic-gradient(#b8892f, #f7e39c, #d9b45b, #fff3c4, #b8892f)";
+  const shine = renderLeaderboardRow({ position: 5, profile_id: 8, name: "Elisa", points: 1, frame: { ring, motion: "shine" } });
+  assert.ok(shine.includes('data-motion="shine"'));
+  const tactics = renderLeaderboardRow({ position: 6, profile_id: 9, name: "Luca", points: 1, frame: { ring, tactics: 3 } });
+  assert.equal((tactics.match(/<circle /g) || []).length, 4); // three players and the ball
+  const odd = renderLeaderboardRow({ position: 7, profile_id: 10, name: "Eve", points: 1, frame: { ring, motion: "explode", tactics: 99 } });
+  assert.ok(!odd.includes("data-motion") && !odd.includes("avatar-tactics"));
+});
+
 test("leaderboard: a frame paint that is not in the reviewed list is never drawn", () => {
   const html = renderLeaderboardRow({
     position: 2, profile_id: 7, name: "Eve", points: 1,

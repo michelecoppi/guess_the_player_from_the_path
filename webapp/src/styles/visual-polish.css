@@ -41,15 +41,21 @@
 
 /* Rows were 65px tall: the name button keeps its 44px touch target, the padding goes. */
 .leaderboard-section .row { min-height:52px; padding-block:4px; gap:10px; }
+/* Every row lines up on the same columns. The reader's own row used to shift right by its
+   3px accent bar plus 10px of padding: now every row reserves the bar (transparent) and the
+   padding, so position, avatar, name and points sit on one grid down the list. */
+.leaderboard-section .leaderboard-list .row { padding-left:10px; padding-right:4px; border-left:3px solid transparent; }
+.leaderboard-section .leaderboard-list .row.me { border-left-color:var(--accent); }
+/* "10" is as wide as "1": a fixed, centred column with tabular figures. */
+.leaderboard-section .row .pos { flex:none; width:30px; text-align:center; font-variant-numeric:tabular-nums; }
 .leaderboard-section .row .row-avatar { width:34px; height:34px; }
 .leaderboard-section .row .row-avatar .avatar { font-size:13px; }
-.leaderboard-section .row.podium .pos { font-size:24px; font-weight:700; }
+/* The podium is colour and weight only: same size as the other rows, so nothing moves. */
+.leaderboard-section .row.podium .pos { font-weight:700; }
 .leaderboard-section .row.podium-1 .pos { color:#f5c542; }
 .leaderboard-section .row.podium-2 .pos { color:#c9d3df; }
 .leaderboard-section .row.podium-3 .pos { color:#d08b4f; }
 .leaderboard-section .row.podium-1 { background:linear-gradient(90deg,color-mix(in srgb,#f5c542 12%,transparent),transparent 70%); }
-.leaderboard-section .row.podium-1 .row-avatar { width:40px; height:40px; }
-.leaderboard-section .row.podium-1 .player-name { font-size:17px; }
 /* The reader's own row keeps its accent even on the podium. */
 .leaderboard-section .row.me.podium { background:var(--success-bg); }
 
