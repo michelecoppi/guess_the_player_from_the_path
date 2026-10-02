@@ -53,7 +53,7 @@ GitHub Actions: ci.yml (checks) → deploy.yml (Cloud Run) ; backup.yml (weekly 
 | --- | --- | --- |
 | Composition root | [`bot.py`](../bot.py), [`config.py`](../config.py) | Initialises observability and analytics, builds the PTB `Application` and the FastAPI app and wires them with a `TelegramBridge`; holds no routes or rules |
 | Bot app | [`apps/bot/application.py`](../apps/bot/application.py) | PTB `Application` with its shared HTTP client, registration of every Telegram handler (in order), webhook/command/menu-button setup and shutdown |
-| API app | [`apps/api/`](../apps/api/) | `app.py` factory (lifespan with secret validation, `FeatureDisabled` mapping, middleware, routers), `observe.py` (request middleware), `internal.py` (webhook and Cloud Tasks/Scheduler workers), `miniapp.py` (Mini App JSON API, `initData` auth, rate limit, flags), `static.py` (`/`, `/ping`, Mini App pages and assets, legal pages), `bridge.py` (what the API needs from the bot) |
+| API app | [`apps/api/`](../apps/api/) | `app.py` factory (lifespan with secret validation, `FeatureDisabled` mapping, middleware, routers), `observe.py` (request middleware), `internal.py` (webhook and Cloud Tasks/Scheduler workers), `miniapp.py` (Mini App JSON API, `initData` auth, rate limit, flags), `avatars.py` (Telegram profile photos for avatars behind signed URLs, #296), `static.py` (`/`, `/ping`, Mini App pages and assets, legal pages), `bridge.py` (what the API needs from the bot) |
 | Telegram handlers | [`handlers/`](../handlers/) | Translate Telegram updates/callbacks into service calls and localized replies |
 | Application services | [`services/`](../services/) | Game rules ([`game.py`](../services/game.py), [`matching.py`](../services/matching.py), [`hints.py`](../services/hints.py), [`streak.py`](../services/streak.py)), content generation, Mini App projections ([`webapp_api.py`](../services/webapp_api.py)), arena/events, shop, trophies, referrals, leagues, i18n, image rendering |
 | Persistence | [`services/firebase_service.py`](../services/firebase_service.py) (client, collection names, facade/re-exports) + [`services/repos/`](../services/repos/) (per-area repositories) | All Firestore reads/writes and transactions |
@@ -103,7 +103,7 @@ describes the components, not their files.
 | --- | --- | --- | --- |
 | Composition root | — | Build and wire an application; may import anything, imported by nothing | `bot.py`, `admin_ui.py` |
 | App | `bot` | Telegram adapters: commands, callbacks, payments, jobs triggered from chat | `apps/bot/`, `handlers/` |
-| App | `api` | HTTP adapter: webhook, Cloud Tasks workers, Mini App API and its projections, `initData` auth, rate limiting | `apps/api/`; `services/webapp_api.py`, `webapp_auth.py`, `rate_limit.py`. The Mini App frontend (`webapp/`) is delivered by this app |
+| App | `api` | HTTP adapter: webhook, Cloud Tasks workers, Mini App API and its projections, `initData` auth, rate limiting | `apps/api/`; `services/webapp_api.py`, `webapp_auth.py`, `rate_limit.py`, `avatars.py`. The Mini App frontend (`webapp/`) is delivered by this app |
 | App | `admin` | Streamlit Admin pages | `admin_pages/` |
 | App | `scripts` | Operator command lines (imports, backups, migrations, previews) | `scripts/` |
 | App | `tools` | Developer tooling (dev runner, environment, release, security, reports, this check) | `tools/` |

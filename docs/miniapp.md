@@ -155,6 +155,19 @@ reader's accent bar reserved (transparent) on every row. The first three positio
 band on the first). A Profile whose pass wears neither a frame nor a title shows a one-line
 link to the Shop under the points ("Customise your pass").
 
+**Telegram profile photos (#296).** Leaderboard and league rows, the public profile and the
+own profile carry `avatar`, a signed URL `/app/api/avatar/<id>?s=<signature>`
+(`services/avatars.py`). The avatar draws the initials and lays the photo over them
+(`.avatar-photo`, lazy); a photo that fails to load removes itself (`bindAvatarPhotos`, one
+capturing `error` listener) and the initials stay. Rendering never waits for photos. The
+endpoint (`apps/api/avatars.py`) answers only for a valid signature, asks the bot for the
+photo (`get_user_profile_photos`, smallest size ≥ 150 px, `get_file`), caches photos and
+"no photo" in memory per process (hours; a Telegram error only minutes) and lets the browser
+keep the image for a day. Photos are shown to everyone automatically (owner's decision): they
+are the photos the user makes public on Telegram, and Telegram gives the bot only what the
+user's privacy settings allow; the privacy page says so. The local preview serves drawn
+placeholder photos for some players and 404 for the others.
+
 Every career stop (`career_path` in Daily, events, duels and story) carries `country_code`
 from `services/content_i18n.py::COUNTRY_CODES`: ISO 3166, plus `GB-ENG`, `GB-SCT`, `GB-WLS`
 for England, Scotland and Wales and `YU` for Yugoslavia (Northern Ireland uses the Union flag,

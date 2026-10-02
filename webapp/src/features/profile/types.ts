@@ -7,6 +7,8 @@ import type { ResolvedAppearance } from "@/appearance/types";
 
 export interface ProfileUserSummary {
   name: string;
+  /** Signed Telegram photo URL (#296), see ApiUserSummary.avatar. */
+  avatar?: string | null;
   points: number;
   monthly_points: number;
   players_guessed: number;

@@ -52,6 +52,7 @@ export function renderLeaderboardRow(
     ringStyle: frame.ring ? `background: ${frame.ring}` : undefined,
     ringMotion: frame.motion,
     tactics: frame.tactics,
+    photoUrl: entry.avatar || undefined,
     extraClass: "row-avatar",
   });
   const podium = entry.position >= 1 && entry.position <= 3 ? ` podium podium-${entry.position}` : "";
@@ -115,7 +116,7 @@ export function renderPublicProfileView(publicProfile: PublicProfileState): stri
     <section class="public-profile-view" ${profileSurfaceAttributes(p.cosmetics)} aria-label="${escapeHtml(t("leaderboard.publicProfileTitle"))}">
       ${backBtn}
       <div class="card profile-hero mt-3">
-        ${renderAvatar({name:u.name,size:'large',tactics:cosmetics.frame.tactics,ringMotion:cosmetics.frame.motion,ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
+        ${renderAvatar({name:u.name,size:'large',photoUrl:u.avatar || undefined,tactics:cosmetics.frame.tactics,ringMotion:cosmetics.frame.motion,ringStyle:cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined})}
         <div class="hero-info">
           <p class="eyebrow">${escapeHtml(t("leaderboard.publicProfileTitle"))}</p>
           <h2 id="public-profile-heading" tabindex="-1">

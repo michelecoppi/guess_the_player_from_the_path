@@ -82,6 +82,8 @@ COMPONENTS: dict[str, str] = {
     "services.webapp_api": "api",
     "services.webapp_auth": "api",
     "services.rate_limit": "api",
+    # Signed URLs of the Telegram profile photos shown in Mini App avatars (#296).
+    "services.avatars": "api",
     # --- infrastructure ----------------------------------------------------------------------
     "services.firebase_service": INFRASTRUCTURE,
     "services.repos": INFRASTRUCTURE,

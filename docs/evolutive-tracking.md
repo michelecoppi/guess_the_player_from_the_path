@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#296](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/296) | Telegram profile photos in Mini App avatars, behind signed URLs |
 | [#292](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/292) | Mini App visual polish: text fixes, compact Daily, flags in the career, frames on the leaderboard |
 | [#271](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/271) | The Daily solution turns over like a football sticker |
 | [#272](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/272) | One-tap duel rematch with an outcome-aware invite line |
@@ -158,6 +159,12 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-10-02: #296 puts the Telegram profile photo in Mini App avatars. The owner chose
+  automatic display without opt-in: they are the photos users make public on Telegram, and
+  Telegram gives the bot only what each user's privacy settings allow; the privacy page says
+  so. No storage and no fixed cost (memory cache per process); photos load after the
+  leaderboard, never before it.
 
 - 2026-10-02: #292 collects the fixes from the owner's visual review of the Mini App on
   2026-10-01, approved after a before/after preview. The owner kept text fixes, the compact

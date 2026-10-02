@@ -463,6 +463,7 @@ export function renderProfileView(state: ProfileState): string {
         <div class="player-pass-label"><span>${v("playerPass")}</span>${icon("career")}</div>
         ${renderAvatar({
           name: u.name,
+          photoUrl: u.avatar || undefined,
           ringStyle: cosmetics.frame.ring ? `background: ${cosmetics.frame.ring}` : undefined,
           size: "large",
           tactics: cosmetics.frame.tactics,
