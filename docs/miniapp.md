@@ -148,8 +148,10 @@ by all-time points) and **Le tue leghe**. Both rankings come from the full `me` 
 in the first) and are empty lists when the `leaderboard` flag is off (#256).
 Each row also carries `frame`, the equipped frame style (`domains/shop/service.py::style_of`,
 read from the same user document, no extra read): the row shows a small avatar with that
-ring, validated on the client by `parseResolvedAppearance` (only reviewed `FRAME_PAINTS`
-pass). The first three positions are a podium (gold, silver, bronze numbers; a soft gold
+ring and its effects as on the Profile (reviewed motion, tactics dots; no perpetual spin),
+validated on the client by `parseResolvedAppearance` (only reviewed `FRAME_PAINTS` and
+`FRAME_MOTIONS` pass). Every row sits on the same columns: fixed position column, the
+reader's accent bar reserved (transparent) on every row. The first three positions are a podium (gold, silver, bronze numbers; a soft gold
 band on the first). A Profile whose pass wears neither a frame nor a title shows a one-line
 link to the Shop under the points ("Customise your pass").
 

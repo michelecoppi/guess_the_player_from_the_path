@@ -44,10 +44,14 @@ export function renderLeaderboardRow(
   // The frame someone bought is shown where others see it; the server sends it already
   // resolved and parseResolvedAppearance only lets through reviewed paints.
   const frame = identityAppearance({ frame: "frame" in entry ? entry.frame : undefined }).frame;
+  // Same effects as on the profile: the reviewed motion (shine, pulse, orbit) and the tactics
+  // dots. Perpetual spin stays off everywhere in V2 (appearance/surfaces.ts).
   const avatar = renderAvatar({
     name: entry.name,
     size: "small",
     ringStyle: frame.ring ? `background: ${frame.ring}` : undefined,
+    ringMotion: frame.motion,
+    tactics: frame.tactics,
     extraClass: "row-avatar",
   });
   const podium = entry.position >= 1 && entry.position <= 3 ? ` podium podium-${entry.position}` : "";
