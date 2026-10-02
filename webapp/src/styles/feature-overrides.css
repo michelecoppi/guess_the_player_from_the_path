@@ -301,9 +301,9 @@ input,select,textarea { max-width:100%; }
 .arena-heading-mark { font:600 62px/1 var(--font-display); color:var(--muted); opacity:.5; }
 .arena-modes { gap:12px; margin-top:20px; }
 .arena-modes .mode-entry { padding:22px 18px; border:1px solid var(--edge); border-radius:10px; background:color-mix(in srgb,var(--bg) 50%,transparent); gap:14px; }
-.arena-modes .mode-entry:first-child { background:var(--sport-surface); color:var(--sport-text); border-color:var(--sport-highlight); padding-block:30px; }
-.arena-modes .mode-entry:first-child small { color:var(--sport-text); }
-.arena-modes .mode-entry:first-child b { font-size:32px; }
+.arena-modes .mode-feature { background:var(--sport-surface); color:var(--sport-text); border-color:var(--sport-highlight); padding-block:30px; }
+.arena-modes .mode-feature small { color:var(--sport-text); }
+.arena-modes .mode-feature b { font-size:32px; }
 .arena-modes .mode-entry b { font-weight:600; font-size:26px; }
 .arena-modes .mode-entry>.icon:first-child { color:var(--accent); }
 .arena-feature { border-radius:12px; border:1px solid var(--sport-highlight); margin-top:20px; }
@@ -335,7 +335,7 @@ input,select,textarea { max-width:100%; }
 @media(min-width:700px) {
   #shelf-collections .shop-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .arena-modes { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .arena-modes .mode-entry:first-child { grid-column:1/-1; }
+  .arena-modes .mode-feature { grid-column:1/-1; }
 }
 @media(min-width:900px) {
   #root { padding-top:24px; }
@@ -768,9 +768,9 @@ body { background-color: var(--skin-profile-surface); }
 
   .arena-modes { gap:9px; margin-top:12px; }
   .arena-modes .mode-entry { min-height:84px; padding:12px 14px; gap:12px; grid-template-columns:25px minmax(0,1fr) 18px; }
-  .arena-modes .mode-entry:first-child { min-height:112px; padding:18px 14px; }
+  .arena-modes .mode-feature { min-height:112px; padding:18px 14px; }
   .arena-modes .mode-entry b { font-size:23px; }
-  .arena-modes .mode-entry:first-child b { font-size:28px; }
+  .arena-modes .mode-feature b { font-size:28px; }
   .arena-modes .mode-entry small { font-size:12px; line-height:1.35; margin-top:3px; }
   .arena-modes .mode-entry > .icon { width:21px; height:21px; }
   .arena-hub .page-heading { padding-bottom:9px; }

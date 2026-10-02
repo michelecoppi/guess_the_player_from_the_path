@@ -41,9 +41,21 @@ export function renderLeaderboardRow(
     ? `<button type="button" class="profile-link-btn" data-profile-id="${entry.profile_id}" aria-label="${escapeHtml(t("leaderboard.openProfile") + " · " + entry.name)}"><span class="player-name">${escapeHtml(displayName)}</span>${meTag}</button>`
     : `<span class="player-name">${escapeHtml(displayName)}${meTag}</span>`;
 
+  // The frame someone bought is shown where others see it; the server sends it already
+  // resolved and parseResolvedAppearance only lets through reviewed paints.
+  const frame = identityAppearance({ frame: "frame" in entry ? entry.frame : undefined }).frame;
+  const avatar = renderAvatar({
+    name: entry.name,
+    size: "small",
+    ringStyle: frame.ring ? `background: ${frame.ring}` : undefined,
+    extraClass: "row-avatar",
+  });
+  const podium = entry.position >= 1 && entry.position <= 3 ? ` podium podium-${entry.position}` : "";
+
   return `
-    <div class="row${isMe ? " me" : ""}" role="listitem" ${isMe ? 'aria-current="true"' : ""}>
+    <div class="row${isMe ? " me" : ""}${podium}" role="listitem" ${isMe ? 'aria-current="true"' : ""}>
       <span class="pos" aria-label="${escapeHtml(t("leaderboard.positionLabel", { n: pos }))}">${pos}</span>
+      ${avatar}
       <div class="name">${nameHtml}</div>
       <span class="pts" aria-label="${escapeHtml(t("leaderboard.pointsLabel", { n: pts }))}">${pts}</span>
     </div>

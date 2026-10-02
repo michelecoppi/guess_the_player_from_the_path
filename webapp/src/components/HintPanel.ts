@@ -13,7 +13,8 @@ export interface HintPanelProps {
   lockedLabel?: string;
   unlockButtonId?: string;
   unlockButtonLabel?: string;
-  hintsLeftLabel?: string;
+  /** Text after the count, or a function building the whole line (for singular/plural). */
+  hintsLeftLabel?: string | ((left: number) => string);
   noHintsLabel?: string;
   extraClass?: string;
 }
@@ -53,7 +54,7 @@ export function renderHintPanel(props: HintPanelProps): string {
     });
     remainingHtml = props.locked && props.lockedLabel
       ? `<p class="hints-remaining hints-locked">${escapeHtml(props.lockedLabel)}</p>`
-      : `<p class="hints-remaining">${left} ${escapeHtml(hintsLeftLabel)}</p>`;
+      : `<p class="hints-remaining">${escapeHtml(typeof hintsLeftLabel === "function" ? hintsLeftLabel(left) : `${left} ${hintsLeftLabel}`)}</p>`;
   }
 
   const idAttr = props.id ? ` id="${escapeHtml(props.id)}"` : "";

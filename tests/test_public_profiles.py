@@ -81,6 +81,16 @@ def test_leaderboard_links_use_real_user_ids_and_equipped_badges(monkeypatch):
     assert row["me"]
 
 
+def test_leaderboard_rows_carry_the_equipped_frame_for_the_avatar(monkeypatch):
+    monkeypatch.setattr(webapp_api.firebase_service, "get_top_users", lambda field="points_totali", limit=10: [
+        {"telegram_id": 42, "username": "Anna", "points": 3, "cosmetics": {"owned": ["anello_oro"], "equipped": {"frame": "anello_oro"}}},
+        {"telegram_id": 43, "username": "Bea", "points": 2, "cosmetics": {}},
+    ])
+    gold, plain = webapp_api._leaderboard(1)
+    assert gold["frame"]["ring"].startswith("conic-gradient(")
+    assert not plain["frame"].get("ring")
+
+
 def test_public_profile_search_returns_only_safe_summary_fields(monkeypatch):
     seen = []
     monkeypatch.setattr(webapp_api.firebase_service, "find_users_by_first_name", lambda prefix, limit: seen.append((prefix, limit)) or [{

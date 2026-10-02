@@ -476,6 +476,7 @@ export function renderProfileView(state: ProfileState): string {
           <div class="profile-hero-meta muted text-xs mt-1">
             ${u.points} ${escapeHtml(t("common.points"))} · ${escapeHtml(tCount("common.trophiesCount", u.trophies))}
           </div>
+          ${!cosmetics.frame.ring && !cosmetics.title.label ? `<button type="button" class="style-link" data-tab="shop">${v("styleCta")}${icon("arrow")}</button>` : ""}
         </div>
         <div class="profile-showcase-container mt-3">
           ${pinnedHtml}

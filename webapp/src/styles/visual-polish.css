@@ -1,0 +1,84 @@
+/* Visual polish after the October 2026 review: loaded last, so these rules win over the
+   earlier layers without !important. Each block names the screen it changes. */
+
+/* ---------- Daily: more of the career above the fold ---------- */
+
+/* The heading used to take half a phone screen: on mobile only 4 of 9 stops were visible
+   before scrolling. Smaller title, no repeated tagline, chips closer to the career. */
+@media (max-width:699px) {
+  .daily-page .daily-heading { padding-bottom:12px; }
+  .daily-page .daily-heading .edition { margin-bottom:6px; }
+  .daily-page .daily-heading h2 { font-size:32px; line-height:1.05; }
+  .daily-page .daily-heading > p.muted { display:none; }
+  .daily-page .match-meta { margin-top:10px; }
+  .daily-page .sheet-heading { padding-bottom:10px; }
+  .daily-page .sheet-heading h3 { font-size:21px; }
+  .daily-page .career-sheet { padding-top:14px; }
+}
+
+/* Only the result of a finished Daily is plain accent text on the right; difficulty and
+   points stay chips (before, whichever chip came last lost its background). */
+.daily-page .match-meta span:last-child:not(.match-status) { margin-left:0; color:inherit; font-weight:inherit; background:color-mix(in srgb,var(--text) 5%,transparent); padding:6px 10px; }
+
+/* "Pres. (gol)" wrapped onto two lines in its narrow column. */
+.career-columns span:last-child { white-space:nowrap; overflow-wrap:normal; justify-self:end; }
+
+/* Flag before the league and country: the same information, readable at a glance. */
+/* A thin outline keeps white flags (Japan, Poland) from melting into the dark card. */
+.meta .flag { display:inline-block; width:18px; height:14px; margin-right:6px; vertical-align:-2px; border-radius:2px; object-fit:cover; box-shadow:0 0 0 1px color-mix(in srgb,var(--text) 18%,transparent); }
+
+/* The answer dock was a full-width bar covering the career rows while scrolling: now a
+   compact pill on the right, which leaves the club names readable underneath. */
+@media (max-width:699px) {
+  .daily-answer-dock { left:auto; min-height:44px; padding:8px 12px 8px 16px; border-radius:999px; gap:10px; }
+  .daily-answer-dock strong { margin-left:0; }
+}
+
+/* Attempt pips: the unused ones were barely visible on the dark card. */
+.attempt.unused { color:var(--text); border-color:color-mix(in srgb,var(--text) 35%,transparent); background:color-mix(in srgb,var(--text) 6%,transparent); }
+
+/* ---------- Leaderboard: podium and worn frames ---------- */
+
+/* Rows were 65px tall: the name button keeps its 44px touch target, the padding goes. */
+.leaderboard-section .row { min-height:52px; padding-block:4px; gap:10px; }
+.leaderboard-section .row .row-avatar { width:34px; height:34px; }
+.leaderboard-section .row .row-avatar .avatar { font-size:13px; }
+.leaderboard-section .row.podium .pos { font-size:24px; font-weight:700; }
+.leaderboard-section .row.podium-1 .pos { color:#f5c542; }
+.leaderboard-section .row.podium-2 .pos { color:#c9d3df; }
+.leaderboard-section .row.podium-3 .pos { color:#d08b4f; }
+.leaderboard-section .row.podium-1 { background:linear-gradient(90deg,color-mix(in srgb,#f5c542 12%,transparent),transparent 70%); }
+.leaderboard-section .row.podium-1 .row-avatar { width:40px; height:40px; }
+.leaderboard-section .row.podium-1 .player-name { font-size:17px; }
+/* The reader's own row keeps its accent even on the podium. */
+.leaderboard-section .row.me.podium { background:var(--success-bg); }
+
+/* ---------- Profile: a quiet link to style the player pass ---------- */
+
+/* One line under the points, only while nothing is worn: a link, not a banner. The padding
+   keeps a comfortable tap area without making it look bigger. */
+.style-link { display:inline-flex; align-items:center; gap:4px; margin:4px 0 0 -6px; padding:6px; min-height:32px; border:0; border-radius:6px; background:transparent; color:var(--skin-accent); font-family:inherit; font-size:12px; font-weight:600; line-height:1.2; cursor:pointer; }
+.style-link .icon { width:14px; height:14px; }
+.style-link:hover { background:color-mix(in srgb,var(--skin-accent) 10%,transparent); }
+.style-link:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+
+/* ---------- Arena: one featured mode, the others as a grid ---------- */
+
+.arena-mode-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; grid-column:1/-1; }
+.arena-mode-grid .mode-entry { grid-template-columns:minmax(0,1fr); align-content:start; gap:8px; min-height:118px; padding:14px; }
+.arena-mode-grid .mode-entry > .icon:last-child { display:none; }
+.arena-mode-grid .mode-entry b { font-size:20px; }
+.arena-mode-grid .mode-entry small { font-size:11.5px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.arena-modes .mode-feature { grid-template-columns:28px minmax(0,1fr) auto 20px; align-items:center; }
+.mode-live { font-style:normal; font-size:11px; font-weight:700; padding:4px 8px; border-radius:999px; background:var(--sport-highlight,var(--accent)); color:var(--sport-surface,#06120c); white-space:nowrap; }
+
+/* ---------- Shop: a heading that wraps cleanly ---------- */
+
+/* The decorative pitch art said nothing and squeezed the title into "Il tuo gioco. Il tuo /
+   stile.": on phones the title takes the full width and wraps in balanced lines. */
+@media (max-width:699px) {
+  .shop-shell .shop-pitch-art { display:none; }
+  .shop-shell .shop-heading { padding-right:0; }
+  .shop-shell .shop-hero h2 { max-width:none; text-wrap:balance; }
+  .shop-shell .shop-hero p { max-width:none; }
+}

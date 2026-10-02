@@ -49,9 +49,10 @@ export interface TranslationSchema {
     difficulty: string;
     bonus: string;
     placeholder: string;
+    placeholderShort: string;
     guessBtn: string;
     hintBtn: string;
-    hintsLeft: string;
+    hintsLeft: PluralForms;
     noHints: string;
     hintLocked: string;
     hintLockedNext: string;

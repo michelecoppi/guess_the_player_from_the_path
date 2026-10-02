@@ -53,6 +53,8 @@ export interface ApiLeaderboardEntry {
   profile_id?: number;
   name: string;
   badge?: string;
+  /** Equipped frame style (domains/shop/service.py style_of), validated by parseResolvedAppearance. */
+  frame?: unknown;
   points: number;
   me?: boolean;
 }

@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#292](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/292) | Mini App visual polish: text fixes, compact Daily, flags in the career, frames on the leaderboard |
 | [#271](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/271) | The Daily solution turns over like a football sticker |
 | [#272](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/272) | One-tap duel rematch with an outcome-aware invite line |
 | [#273](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/273) | Recent-days calendar in the profile, readable on every cosmetic theme |
@@ -157,6 +158,12 @@ for the full rationale and the soft/related dependencies that were deliberately
 Use one primary Project Area: Players, Data, Admin, Mini App, Bot, Analytics, Infrastructure, Documentation, Game or Growth. Do not use legacy aggregate names such as `Players/Data`, `Infra` or `Docs`.
 
 ## Tracking log
+
+- 2026-10-02: #292 collects the fixes from the owner's visual review of the Mini App on
+  2026-10-01, approved after a before/after preview. The owner kept text fixes, the compact
+  Daily, flags (asked to be real images, correct for every dataset country), the leaderboard
+  podium and frames, the Arena grid and the Shop heading, and asked for the Profile invitation
+  to be reduced from a box to a one-line link.
 
 - 2026-09-30: the owner asked for small features that make the experience nicer and approved
   three of them after a live demo: #271 (the Daily solution revealed as a sticker; a lost

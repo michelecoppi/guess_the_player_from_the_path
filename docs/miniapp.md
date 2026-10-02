@@ -146,6 +146,22 @@ open by default because everyone restarts from zero on the 1st), **Generale** (t
 by all-time points) and **Le tue leghe**. Both rankings come from the full `me` payload
 (`monthly_leaderboard` and `leaderboard`, same row shape; `points` is the monthly score
 in the first) and are empty lists when the `leaderboard` flag is off (#256).
+Each row also carries `frame`, the equipped frame style (`domains/shop/service.py::style_of`,
+read from the same user document, no extra read): the row shows a small avatar with that
+ring, validated on the client by `parseResolvedAppearance` (only reviewed `FRAME_PAINTS`
+pass). The first three positions are a podium (gold, silver, bronze numbers; a soft gold
+band on the first). A Profile whose pass wears neither a frame nor a title shows a one-line
+link to the Shop under the points ("Customise your pass").
+
+Every career stop (`career_path` in Daily, events, duels and story) carries `country_code`
+from `services/content_i18n.py::COUNTRY_CODES`: ISO 3166, plus `GB-ENG`, `GB-SCT`, `GB-WLS`
+for England, Scotland and Wales and `YU` for Yugoslavia (Northern Ireland uses the Union flag,
+the only official one). The career shows a decorative flag image before league and country.
+The images are in `webapp/src/assets/flags/` (one 72×54 WebP per code, ~600 bytes, from
+flag-icons 7.5.0 under MIT, see NOTICE; Yugoslavia drawn for this project). They are images,
+not emoji, because Windows has no emoji flags. `vite.config.ts` keeps them out of the inline
+limit, so each is a separate file loaded only when a career shows it.
+`tests/test_content_i18n.py` fails if a code has no image.
 
 A finished duel offers a one-tap rematch (#272): "Rematch <name>" is its main action (the
 generic "Create another duel" stays below it) and every finished match in the history has
@@ -185,14 +201,18 @@ copy notice) show the sticker already turned. After a loss the server does not s
 name, so the sticker stays face down with "turns over at midnight"; no rule about when the
 name is revealed changes. Both motions are off under `prefers-reduced-motion`.
 
-On narrow screens, an active Daily keeps a small answer shortcut above the fixed
-navigation while the career path is in view. It focuses the existing guess field and
+On narrow screens, an active Daily keeps a small answer shortcut (a pill on the right, so
+the club names underneath stay readable) above the fixed navigation while the career path
+is in view. The Daily heading is compact on phones (no tagline, status chip only once the
+challenge is over) so most of the career is visible before scrolling. It focuses the existing guess field and
 disappears when that field is visible or the challenge is complete. Standard path
 events use the same career-sheet and answer-desk presentation as Daily; every event's
 answer box has the Daily's shape (attempt squares, the shared `renderGuessInput` field and
 button, bonus note) (#250). Answer fields keep what is typed in the controller without
 re-rendering the page: a re-render per keystroke rebuilt the input and moved the caret to
-the start, reversing the text (Events and duels, #250). Arena mode
+the start, reversing the text (Events and duels, #250). In the Arena hub, duels are the
+featured entry (with the count of open duels when there are any) and events, archive,
+training and story form a two-column grid. Arena mode
 entries are compact on mobile; leaderboard search expands on request so the Top 10
 appears first. Shop keeps the Discover introduction and uses a shorter header and
 filters on mobile, especially in Catalogue. These are presentation changes; gameplay,

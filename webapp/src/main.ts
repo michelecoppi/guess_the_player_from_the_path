@@ -4,6 +4,7 @@ import "./styles/features.css";
 import "./styles/recap.css";
 import "./styles/event-spotlight.css";
 import "./styles/feature-overrides.css";
+import "./styles/visual-polish.css";
 import { bootstrap } from "./app/bootstrap";
 
 if (typeof document !== "undefined") {

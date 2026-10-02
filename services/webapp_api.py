@@ -243,6 +243,9 @@ def _leaderboard(user_id, monthly=False, rows=None):
             "profile_id": entry.get("telegram_id"),
             "name": entry.get("username", "?"),
             "badge": shop.badge_emoji(entry) or entry.get("badge", ""),
+            # La cornice indossata, per l'avatar accanto al nome: la classifica e' dove gli
+            # altri la vedono. Viene dallo stesso documento gia' letto, nessuna lettura in piu'.
+            "frame": shop.style_of(entry, "frame"),
             "points": entry.get(score_key, 0),
             "me": entry.get("telegram_id") == user_id,
         }

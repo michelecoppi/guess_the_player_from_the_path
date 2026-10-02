@@ -21,6 +21,18 @@ Dati dei calciatori (data/players.json)
   CC BY-SA. Questa attribuzione vale solo per i dati: non estende la
   CC BY-SA al codice, che resta sotto PolyForm Noncommercial 1.0.0.
 
+Bandiere dei paesi (webapp/src/assets/flags/)
+  Ricavate da flag-icons 7.5.0 di Panayiotis Lipiridis,
+  https://github.com/lipis/flag-icons, con licenza MIT:
+  Copyright (c) 2013 Panayiotis Lipiridis. Il permesso e' concesso a
+  chiunque ottenga una copia del software di usarlo, copiarlo,
+  modificarlo e distribuirlo, a condizione che la nota di copyright e
+  questo permesso siano inclusi; il software e' fornito "cosi' com'e'",
+  senza garanzie. Testo completo: https://opensource.org/license/mit
+  Le SVG originali sono state convertite in WebP 72x54. La bandiera
+  della Jugoslavia (yu.webp), assente in flag-icons, e' disegnata per
+  questo progetto.
+
 Dipendenze software
   Le librerie di terze parti elencate in requirements.txt e
   requirements-dev.txt restano soggette alle rispettive licenze

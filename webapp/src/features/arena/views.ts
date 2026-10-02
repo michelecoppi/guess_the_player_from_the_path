@@ -203,16 +203,19 @@ function renderOpenDuelsList(state: ArenaState): string {
 
 export function renderHubView(state: ArenaState): string {
   const active = state.data?.open?.find(duel => !duel.complete && duel.opponent);
+  const openCount = (state.data?.open || []).filter(duel => !duel.complete).length;
   return `<div class="arena-view arena-hub">
     <header class="page-heading"><div><p class="eyebrow">${v("matchDay")}</p><h2 class="page-title">${escapeHtml(t("nav.arena"))}</h2></div><span class="arena-heading-mark" aria-hidden="true">VS</span></header>
     ${active ? `<button type="button" class="active-duel" data-arena-duel="${escapeHtml(active.code)}"><span class="duel-indicator">${icon("arena")}</span><span><b>${escapeHtml(t("arena.activeDuelWith", { name: active.opponent || "" }))}</b><small>${escapeHtml(t("arena.progress", { n: active.round, total: active.total }))}</small></span>${icon("arrow")}</button>` : ""}
     <div id="arena-event-slot"></div>
     <nav class="arena-modes" aria-label="${escapeHtml(t("nav.arena"))}">
-      <button class="mode-entry" data-arena-nav="duels" type="button">${icon("arena")}<span><b>${escapeHtml(t("pages.arenaTitle"))}</b><small>${escapeHtml(t("arena.featureDesc"))}</small></span>${icon("arrow")}</button>
-      <button class="mode-entry" data-tab="events" type="button">${icon("events")}<span><b>${escapeHtml(t("arena.eventsTitle"))}</b><small>${escapeHtml(t("arena.eventsDesc"))}</small></span>${icon("arrow")}</button>
-      <button class="mode-entry" data-tab="archive" type="button">${icon("archive")}<span><b>${escapeHtml(t("arena.archiveTitle"))}</b><small>${escapeHtml(t("arena.archiveDesc"))}</small></span>${icon("arrow")}</button>
-      <button class="mode-entry training-entry" data-arena-nav="training" type="button">${icon("training")}<span><b>${escapeHtml(t("training.title"))}</b><small>${escapeHtml(t("training.desc"))}</small></span>${icon("arrow")}</button>
-      <button class="mode-entry story-entry" data-arena-nav="story" type="button">${icon("story")}<span><b>${escapeHtml(t("story.title"))}</b><small>${escapeHtml(t("story.desc"))}</small></span>${icon("arrow")}</button>
+      <button class="mode-entry mode-feature" data-arena-nav="duels" type="button">${icon("arena")}<span><b>${escapeHtml(t("pages.arenaTitle"))}</b><small>${escapeHtml(t("arena.featureDesc"))}</small></span>${openCount ? `<em class="mode-live">${escapeHtml(v("openDuels").replace("{n}", String(openCount)))}</em>` : ""}${icon("arrow")}</button>
+      <div class="arena-mode-grid">
+        <button class="mode-entry" data-tab="events" type="button">${icon("events")}<span><b>${escapeHtml(t("arena.eventsTitle"))}</b><small>${escapeHtml(t("arena.eventsDesc"))}</small></span>${icon("arrow")}</button>
+        <button class="mode-entry" data-tab="archive" type="button">${icon("archive")}<span><b>${escapeHtml(t("arena.archiveTitle"))}</b><small>${escapeHtml(t("arena.archiveDesc"))}</small></span>${icon("arrow")}</button>
+        <button class="mode-entry training-entry" data-arena-nav="training" type="button">${icon("training")}<span><b>${escapeHtml(t("training.title"))}</b><small>${escapeHtml(t("training.desc"))}</small></span>${icon("arrow")}</button>
+        <button class="mode-entry story-entry" data-arena-nav="story" type="button">${icon("story")}<span><b>${escapeHtml(t("story.title"))}</b><small>${escapeHtml(t("story.desc"))}</small></span>${icon("arrow")}</button>
+      </div>
     </nav>
   </div>`;
 }

@@ -93,6 +93,33 @@ def test_localize_career_does_not_touch_the_input():
     assert json.dumps(CAREER, sort_keys=True) == before
 
 
+def test_localize_career_adds_the_country_code_for_the_flag_in_every_language():
+    for lang in ("it", "en", "es"):
+        assert [stop.get("country_code") for stop in localize_career(CAREER, lang)] == ["ES", "US"]
+
+
+def test_a_country_missing_from_the_table_has_no_code():
+    stop = {"team": "Atlantide FC", "country": "Atlantide", "start_year": 1990}
+    assert "country_code" not in localize_career([stop], "it")[0]
+
+
+def test_yugoslavia_keeps_its_historical_flag():
+    stop = {"team": "Stella Rossa", "country": "Jugoslavia", "start_year": 1990}
+    assert localize_career([stop], "en")[0]["country_code"] == "YU"
+
+
+def test_every_known_country_has_a_flag_code_and_an_image():
+    """Una bandiera senza immagine sarebbe un'icona rotta nella carriera della Mini App."""
+    from pathlib import Path
+
+    from services.content_i18n import COUNTRY_CODES, COUNTRY_NAMES
+
+    assert sorted(set(COUNTRY_NAMES) - set(COUNTRY_CODES)) == []
+    flags = Path(__file__).resolve().parents[1] / "webapp" / "src" / "assets" / "flags"
+    missing = sorted(code for code in set(COUNTRY_CODES.values()) if not (flags / f"{code.lower()}.webp").is_file())
+    assert missing == []
+
+
 def test_localize_career_accepts_an_empty_or_missing_career():
     assert localize_career(None, "en") == []
     assert localize_career([], "es") == []
@@ -106,7 +133,7 @@ def test_localize_career_keeps_every_other_field():
     )
     assert localized[0] == {
         "team": "A", "country": "Spain", "league": "La Liga", "start_year": 2000,
-        "end_year": 2001, "apps": 30, "goals": 5, "loan": True,
+        "end_year": 2001, "apps": 30, "goals": 5, "loan": True, "country_code": "ES",
     }
 
 

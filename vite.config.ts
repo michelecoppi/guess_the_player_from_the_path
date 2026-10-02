@@ -14,6 +14,9 @@ export default defineConfig({
     // Maps are generated (to decode production stack traces locally, #180) but the bundles do
     // not reference them and they are never served or shipped (#181).
     sourcemap: "hidden",
+    // Each flag is ~600 bytes, under Vite's inline limit: inlined, all 105 would sit in the main
+    // bundle (+64 kB gzip) for the 5-10 a career shows. As files they load only when shown.
+    assetsInlineLimit: (file: string) => (file.includes("/assets/flags/") ? false : undefined),
   },
   resolve: {
     alias: {
