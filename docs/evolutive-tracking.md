@@ -13,6 +13,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 | --- | --- |
 | [#296](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/296) | Telegram profile photos in Mini App avatars, behind signed URLs |
 | [#292](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/292) | Mini App visual polish: text fixes, compact Daily, flags in the career, frames on the leaderboard |
+| [#298](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/298) | Classify Promo Studio's collections in the Firestore backup inventory |
 | [#271](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/271) | The Daily solution turns over like a football sticker |
 | [#272](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/272) | One-tap duel rematch with an outcome-aware invite line |
 | [#273](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/273) | Recent-days calendar in the profile, readable on every cosmetic theme |

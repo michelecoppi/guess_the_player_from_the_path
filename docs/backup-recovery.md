@@ -44,9 +44,10 @@ offer an SLA.
 
 ## 3. Collection inventory
 
-Every top-level collection found in the code, classified. `tests/test_backup_inventory.py`
-fails if the code references a collection that is not in the inventory, if an inventory
-entry is no longer used, or if this table disagrees with the inventory module.
+Every top-level collection found in the code, plus the collections another system writes into
+the same database, classified. `tests/test_backup_inventory.py` fails if the code references a
+collection that is not in the inventory, if an inventory entry is no longer used, or if this
+table disagrees with the inventory module.
 
 | Collection | Classification | Backed up | Subcollections | Recovery-critical | Why |
 | --- | --- | --- | --- | --- | --- |
@@ -66,6 +67,8 @@ entry is no longer used, or if this table disagrees with the inventory module.
 | `daily_jobs` | reconstructable | yes | — | no | Nightly broadcast payload and `sent_total`; derivable, but tiny, and restoring it keeps a resumed job from re-deciding |
 | `work_receipts` | ephemeral | no | — | no | Dedup receipts (30-day `delete_after`); useful only within retry windows much shorter than the backup interval; a restored `processing` receipt would raise a spurious `uncertain` alert and suppress a notification. Duplicate notifications stay prevented by `users.last_notification_day`, which is restored |
 | `update_locks` | ephemeral | no | — | no | Per-user leases of a few minutes; a restored lock is useless or blocks updates, and the code recreates locks on demand |
+| `promo_posts` | durable | yes | — | no | Promo Studio post queue (drafts, approvals, publication outcome), written by [promo_studio](https://github.com/michelecoppi/promo_studio) and kept in this database by decision (#231). Not game state; restoring it needs care (§8.4) |
+| `promo_brief_decisions` | durable | yes | — | no | Promo Studio's use/skip decision on each supervisor campaign brief, by `campaign_id`; read by the supervisor's daily brief |
 
 **Silently missing before #50.** The previous exporter had a hand-written list of eight
 collections. It did not export `referrals`, `app_duels`, `group_rounds` (durable state),
@@ -73,6 +76,16 @@ collections. It did not export `referrals`, `app_duels`, `group_rounds` (durable
 subcollection whose parent document no longer exists (for example participants of an event
 document deleted by hand). All of these are now covered. `work_receipts` and `update_locks`
 remain excluded, now deliberately.
+
+**Collections written by other systems.** Promo Studio
+([michelecoppi/promo_studio](https://github.com/michelecoppi/promo_studio)) writes
+`promo_posts` and `promo_brief_decisions` into this database. No code in this repository
+references them, so the code scan cannot find them: they are declared in the inventory with
+`external_writer`, and the test checks that the game does not write them. A new collection added
+by Promo, or by any other external writer, shows up as unclassified (below) and has to be
+declared the same way. Artifacts made before #298 do not contain `promo_brief_decisions` (the
+collection was still empty) and now validate with an "incomplete backup" warning, so their
+quality is `exceptional`; the first backup after #298 is complete again.
 
 **Unclassified collections.** If the database contains a top-level collection the inventory
 does not know, the exporter still exports it (data is not dropped), records it under
@@ -287,6 +300,11 @@ emulator restore completes with `RESTORE COMPLETED AND VERIFIED`.
    queues (`gcloud tasks queues pause telegram-updates --location europe-west1`,
    same for `daily-broadcast`); paused tasks are kept and run after resume. Mini App API
    requests write directly and are not stopped by this; judge whether to block traffic.
+   If the restore writes `promo_posts`, also pause Promo Studio's publisher
+   (`gcloud scheduler jobs pause promo-publish`, see Promo's docs): an older queue turns
+   posts published after the backup back into `approved` without `external_id`, and the
+   publisher would post them again. Before resuming it, mark those posts `published` (the
+   channel shows what went out) or delete them.
 3. **Take a backup of the current state** (`backup.yml` → *Run workflow*). It is the rollback
    point for the restore itself (§8.7).
 4. **Dry-run against production** with the full guards and read the plan:

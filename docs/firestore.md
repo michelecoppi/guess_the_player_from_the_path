@@ -47,6 +47,15 @@ Dates are stored as ISO `YYYY-MM-DD` (`services/dates.py`).
 | `daily_jobs/{day}` | ISO day | Immutable nightly broadcast payload and `sent_total` |
 | `monthly_closures/{YYYY-MM}` | month | Frozen podium before monthly reset, plus `points_distribution` (anonymous sorted monthly points, read by the monthly recap) |
 
+**Written by Promo Studio**, not by this repository
+([michelecoppi/promo_studio](https://github.com/michelecoppi/promo_studio); kept in this
+database by decision, #231). The game never reads or writes them:
+
+| Path | Document id | Purpose |
+| --- | --- | --- |
+| `promo_posts/{id}` | deterministic post id | Promo post queue: drafts, approvals, publication outcome (`promo_post.v1` schema in Promo) |
+| `promo_brief_decisions/{campaign_id}` | campaign id | Use/skip decision on a supervisor campaign brief (`promo_brief_decision.v1`) |
+
 Backup coverage of each collection (durable, reconstructable or ephemeral, and why) is the
 inventory in [backup-recovery.md § 3](backup-recovery.md#3-collection-inventory); a new
 collection must be classified there (`services/firestore_backup/inventory.py`).

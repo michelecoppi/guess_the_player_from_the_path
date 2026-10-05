@@ -12,6 +12,9 @@ Classification:
   small and restoring it is harmless (it keeps idempotency records intact).
 - `ephemeral`: leases, locks and deduplication receipts whose useful life is much shorter
   than the backup interval; restoring them is useless at best and harmful at worst.
+
+Collections written into the same database by another system carry `external_writer` (the
+repository that owns them): the code scan cannot see them, so they are declared here by hand.
 """
 from __future__ import annotations
 
@@ -30,6 +33,7 @@ class CollectionPolicy:
     recovery_critical: bool
     subcollections: tuple[str, ...]
     reason: str
+    external_writer: str | None = None
 
 
 INVENTORY: tuple[CollectionPolicy, ...] = (
@@ -112,6 +116,20 @@ INVENTORY: tuple[CollectionPolicy, ...] = (
         "Per-user update leases of a few minutes. A restored lock is at best already expired and "
         "at worst blocks a user's updates; the code recreates them on demand.",
     ),
+    CollectionPolicy(
+        "promo_posts", DURABLE, True, False, (),
+        "Promo Studio post queue (drafts, approvals, publication outcome with external_id/url), "
+        "kept in the game database by decision (#231). Not game state. Restoring an older queue "
+        "turns posts published after the backup back into 'approved' without external_id, and "
+        "Promo's publisher would post them again: pause it before a restore (docs/backup-recovery.md §8.4).",
+        external_writer="michelecoppi/promo_studio",
+    ),
+    CollectionPolicy(
+        "promo_brief_decisions", DURABLE, True, False, (),
+        "Promo Studio's use/skip decision on each supervisor campaign brief, keyed by campaign_id. "
+        "Read by the supervisor's daily brief; no other copy exists.",
+        external_writer="michelecoppi/promo_studio",
+    ),
 )
 
 _BY_NAME = {policy.name: policy for policy in INVENTORY}
@@ -131,6 +149,10 @@ def backed_up_names() -> tuple[str, ...]:
 
 def excluded_names() -> tuple[str, ...]:
     return tuple(policy.name for policy in INVENTORY if not policy.backed_up)
+
+
+def external_names() -> tuple[str, ...]:
+    return tuple(policy.name for policy in INVENTORY if policy.external_writer)
 
 
 def declared_subcollections(name: str) -> tuple[str, ...]:
