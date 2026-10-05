@@ -72,9 +72,21 @@ def test_every_collection_in_the_code_is_classified():
 
 def test_every_inventory_entry_is_still_used_by_the_code():
     names = collection_names_in_code()
-    stale = [name for name in inventory.all_names() if name not in names]
+    stale = [name for name in inventory.all_names() if name not in names and name not in inventory.external_names()]
     stale += [sub for policy in inventory.INVENTORY for sub in policy.subcollections if sub not in names]
     assert not stale
+
+
+def test_external_collections_are_declared_and_not_written_by_the_game():
+    # Written into the game database by Promo Studio (#298): the scan cannot find them, so the
+    # inventory names their owner. If the game started writing one, it would no longer be external.
+    assert set(inventory.external_names()) == {"promo_posts", "promo_brief_decisions"}
+    names = collection_names_in_code()
+    for name in inventory.external_names():
+        policy = inventory.policy(name)
+        assert name not in names, names.get(name)
+        assert policy.external_writer == "michelecoppi/promo_studio"
+        assert policy.backed_up and not policy.recovery_critical and not policy.subcollections
 
 
 def test_the_known_durable_omissions_are_now_backed_up():

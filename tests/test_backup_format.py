@@ -191,6 +191,13 @@ def test_the_exporter_follows_subcollections_and_skips_ephemeral_collections():
     assert codec.decode_value(backup["data"]["users"]["1"]["fields"])["at"] == CREATED
 
 
+def test_promo_studio_collections_are_classified_not_flagged():
+    # Promo Studio writes its queue into the game database (#298): a backup holding it is clean.
+    data = _users({"points": 1}) | {"promo_posts": {"2026-10-05-it": {"exists": True, "fields": {"status": "draft"}}}}
+    report = archive.validate_archive(_archive(data))
+    assert report.ok and report.warnings == [], report.warnings
+
+
 def test_unclassified_collections_are_exported_and_flagged_not_lost():
     client = FakeClient(docs={"brand_new/x": {"x": 1}})
     backup = exporter.export_archive(client, source_project="demo-fake", source_emulator=True, clock=lambda: CREATED)
