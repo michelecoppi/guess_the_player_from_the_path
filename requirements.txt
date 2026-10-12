@@ -171,7 +171,7 @@ pillow==12.3.0
     # via
     #   -c requirements-dev.txt
     #   -r requirements.in
-posthog==7.54.0
+posthog==7.60.1
     # via
     #   -c requirements-dev.txt
     #   -r requirements.in
@@ -236,7 +236,7 @@ requests==2.34.2
     #   google-api-core
     #   google-cloud-storage
     #   posthog
-sentry-sdk==2.69.1
+sentry-sdk==2.70.0
     # via
     #   -c requirements-dev.txt
     #   -r requirements.in
@@ -268,7 +268,7 @@ urllib3==2.8.0
     #   -c requirements-dev.txt
     #   requests
     #   sentry-sdk
-uvicorn==0.53.0
+uvicorn==0.54.0
     # via
     #   -c requirements-dev.txt
     #   -r requirements.in
