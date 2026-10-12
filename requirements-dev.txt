@@ -209,7 +209,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-posthog==7.54.0
+posthog==7.60.1
     # via -r requirements.in
 proto-plus==1.29.0
     # via
@@ -296,7 +296,7 @@ rpds-py==2026.6.3
     #   referencing
 ruff==0.16.6
     # via -r requirements-dev.in
-sentry-sdk==2.69.1
+sentry-sdk==2.70.0
     # via -r requirements.in
 six==1.17.0
     # via python-dateutil
@@ -339,7 +339,7 @@ urllib3==2.8.0
     # via
     #   requests
     #   sentry-sdk
-uvicorn==0.53.0
+uvicorn==0.54.0
     # via
     #   -r requirements.in
     #   streamlit
