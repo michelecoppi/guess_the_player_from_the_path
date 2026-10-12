@@ -11,6 +11,7 @@ The roadmap was converted from `FUTURE_IMPROVEMENTS_GUESS_THE_PLAYER.md` into th
 
 | Issue | Work item |
 | --- | --- |
+| [#302](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/302) | Unblock CI: `npm audit` fails on `source-map-js` 1.2.1 (GHSA-68fv-2mgg-jv7q) |
 | [#296](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/296) | Telegram profile photos in Mini App avatars, behind signed URLs |
 | [#292](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/292) | Mini App visual polish: text fixes, compact Daily, flags in the career, frames on the leaderboard |
 | [#298](https://github.com/michelecoppi/guess_the_player_from_the_path/issues/298) | Classify Promo Studio's collections in the Firestore backup inventory |
