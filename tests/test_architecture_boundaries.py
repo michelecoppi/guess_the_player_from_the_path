@@ -135,6 +135,8 @@ def test_bot_py_stays_a_pure_composition_root():
 def test_composed_app_exposes_the_bot_bridge_to_the_http_app(monkeypatch):
     import importlib.util
 
+    from fastapi.routing import iter_route_contexts
+
     import config
 
     monkeypatch.setattr(config, "BOT_TOKEN", "123456:test-token")
@@ -143,6 +145,8 @@ def test_composed_app_exposes_the_bot_bridge_to_the_http_app(monkeypatch):
     spec.loader.exec_module(module)
     assert module.app.state.telegram is module.bot_bridge
     assert module.bot_bridge.application is module.telegram_app
-    paths = {route.path for route in module.app.routes}
+    # include_router leaves a lazy _IncludedRouter in app.routes (FastAPI >= 0.141), with no path
+    # of its own: iter_route_contexts expands it into the routes it serves, prefix included.
+    paths = {route.path for route in iter_route_contexts(module.app.routes)}
     assert {"/", "/webhook", "/internal/telegram-update", "/app/api/me", "/app/assets/{file_path:path}"} <= paths
     assert len(module.telegram_app.handlers[0]) > 40
