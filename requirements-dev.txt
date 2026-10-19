@@ -61,7 +61,7 @@ detect-secrets==1.5.0
     # via -r requirements-dev.in
 distro==1.9.0
     # via posthog
-fastapi==0.141.1
+fastapi==0.143.2
     # via -r requirements.in
 filelock==4.0.8
     # via cachecontrol
@@ -175,7 +175,9 @@ numpy==2.4.6
     #   pydeck
     #   streamlit
 opentelemetry-api==1.45.0
-    # via google-api-core
+    # via
+    #   fastapi
+    #   google-api-core
 packageurl-python==0.17.6
     # via cyclonedx-python-lib
 packaging==26.3
